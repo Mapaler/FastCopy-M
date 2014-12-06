@@ -1,0 +1,11 @@
+LIBRARY      "fastex64"
+EXPORTS
+	DllCanUnloadNow			PRIVATE
+	DllGetClassObject		PRIVATE
+	DllRegisterServer		PRIVATE
+	DllUnregisterServer		PRIVATE
+	SetMenuFlags			PRIVATE
+	GetMenuFlags			PRIVATE
+	IsRegistServer			PRIVATE
+	UpdateDll				PRIVATE
+

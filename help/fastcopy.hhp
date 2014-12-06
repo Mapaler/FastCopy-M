@@ -1,0 +1,22 @@
+[OPTIONS]
+Binary Index=No
+Compatibility=1.1 or later
+Compiled file=..\FastCopy.chm
+Contents file=FastCopy.hhc
+Default Font=‚l‚r ‚oƒSƒVƒbƒN,8,128
+Default Window=Main
+Default topic=FastCopy.htm
+Display compile progress=No
+Language=0x411 “ú–{Œê
+Title=FastCopy ver2.11 Help
+
+[WINDOWS]
+Main=,"FastCopy.hhc",,"FastCopy.htm","FastCopy.htm",,,,,0x2121,,0x10100e,,,,,1,,,0
+
+
+[FILES]
+FastCopy.htm
+FastCopy_eng.htm
+
+[INFOTYPES]
+
