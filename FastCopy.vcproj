@@ -19,8 +19,8 @@
 	<Configurations>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="Obj/Release"
-			IntermediateDirectory="Obj/Release"
+			OutputDirectory="obj/$(ConfigurationName)/$(PlatformName)/$(ProjectName)"
+			IntermediateDirectory="obj/$(ConfigurationName)/$(PlatformName)/$(ProjectName)"
 			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops"
 			UseOfMFC="0"
@@ -55,7 +55,7 @@
 				StringPooling="true"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
-				PrecompiledHeaderFile="Obj/Release/FastCopy.pch"
+				PrecompiledHeaderFile="$(IntDir)/$(InputName).pch"
 				AssemblerOutput="2"
 				AssemblerListingLocation="$(IntDir)\"
 				ObjectFile="$(IntDir)\"
@@ -77,12 +77,12 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="comctl32.lib winmm.lib"
-				OutputFile="FastCopy.exe"
+				OutputFile="obj/$(ConfigurationName)/$(PlatformName)/FastCopy.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				ProgramDatabaseFile="Obj/Release/FastCopy.pdb"
+				ProgramDatabaseFile="$(IntDir)\FastCopy.pdb"
 				GenerateMapFile="true"
-				MapFileName="Obj/Release/FastCopy.map"
+				MapFileName="$(IntDir)\FastCopy.map"
 				SubSystem="2"
 				TargetMachine="1"
 			/>
@@ -98,7 +98,7 @@
 			<Tool
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
-				OutputFile="Obj/Release/FastCopy.bsc"
+				OutputFile="$(IntDir)/$(InputName).bsc"
 			/>
 			<Tool
 				Name="VCFxCopTool"
@@ -115,8 +115,8 @@
 		</Configuration>
 		<Configuration
 			Name="Release|x64"
-			OutputDirectory="Obj/x64/release/"
-			IntermediateDirectory="Obj/x64/release/"
+			OutputDirectory="obj/$(ConfigurationName)/$(PlatformName)/$(ProjectName)"
+			IntermediateDirectory="obj/$(ConfigurationName)/$(PlatformName)/$(ProjectName)"
 			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops"
 			UseOfMFC="0"
@@ -153,7 +153,7 @@
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
 				RuntimeTypeInfo="false"
-				PrecompiledHeaderFile="$(IntDir)\FastCopy.pch"
+				PrecompiledHeaderFile="$(IntDir)/$(InputName).pch"
 				AssemblerOutput="2"
 				AssemblerListingLocation="$(IntDir)\"
 				ObjectFile="$(IntDir)\"
@@ -174,8 +174,8 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="comctl32.lib winmm.lib x64/lib/tlib.lib"
-				OutputFile="$(PlatformName)\FastCopy.exe"
+				AdditionalDependencies="comctl32.lib winmm.lib obj/$(ConfigurationName)/$(PlatformName)/lib/tlib.lib"
+				OutputFile="obj/$(ConfigurationName)/$(PlatformName)/FastCopy.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				AdditionalLibraryDirectories="lib/x64"
@@ -199,7 +199,7 @@
 			<Tool
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
-				OutputFile="$(IntDir)\FastCopy.bsc"
+				OutputFile="$(IntDir)/$(InputName).bsc"
 			/>
 			<Tool
 				Name="VCFxCopTool"
@@ -216,8 +216,8 @@
 		</Configuration>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory="obj/Debug"
-			IntermediateDirectory="obj/Debug"
+			OutputDirectory="obj/$(ConfigurationName)/$(PlatformName)/$(ProjectName)"
+			IntermediateDirectory="obj/$(ConfigurationName)/$(PlatformName)/$(ProjectName)"
 			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops"
 			UseOfMFC="0"
@@ -250,7 +250,7 @@
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS"
 				MinimalRebuild="true"
 				RuntimeLibrary="1"
-				PrecompiledHeaderFile="Obj/Debug/FastCopy.pch"
+				PrecompiledHeaderFile="$(IntDir)/$(InputName).pch"
 				AssemblerListingLocation="$(IntDir)\"
 				ObjectFile="$(IntDir)\"
 				ProgramDataBaseFileName="$(IntDir)\"
@@ -272,13 +272,13 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="comctl32.lib winmm.lib"
-				OutputFile="FastCopy.exe"
+				OutputFile="obj/$(ConfigurationName)/$(PlatformName)/FastCopy.exe"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile="Obj/Debug/FastCopy.pdb"
+				ProgramDatabaseFile="$(IntDir)\FastCopy.pdb"
 				GenerateMapFile="true"
-				MapFileName="Obj/Debug/FastCopy.map"
+				MapFileName="$(IntDir)\FastCopy.map"
 				SubSystem="2"
 				TargetMachine="1"
 			/>
@@ -294,7 +294,7 @@
 			<Tool
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
-				OutputFile="Obj/Debug/FastCopy.bsc"
+				OutputFile="$(IntDir)/$(InputName).bsc"
 			/>
 			<Tool
 				Name="VCFxCopTool"
@@ -311,8 +311,8 @@
 		</Configuration>
 		<Configuration
 			Name="Debug|x64"
-			OutputDirectory="Obj/x64/Debug"
-			IntermediateDirectory="Obj/x64/Debug"
+			OutputDirectory="obj/$(ConfigurationName)/$(PlatformName)/$(ProjectName)"
+			IntermediateDirectory="obj/$(ConfigurationName)/$(PlatformName)/$(ProjectName)"
 			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops"
 			UseOfMFC="0"
@@ -345,7 +345,7 @@
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS"
 				MinimalRebuild="true"
 				RuntimeLibrary="1"
-				PrecompiledHeaderFile="$(IntDir)\FastCopy.pch"
+				PrecompiledHeaderFile="$(IntDir)/$(InputName).pch"
 				AssemblerListingLocation="$(IntDir)\"
 				ObjectFile="$(IntDir)\"
 				ProgramDataBaseFileName="$(IntDir)\"
@@ -366,8 +366,8 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="comctl32.lib winmm.lib x64/lib/tlib_d.lib"
-				OutputFile="x64\debug\FastCopy.exe"
+				AdditionalDependencies="comctl32.lib winmm.lib obj/$(ConfigurationName)/$(PlatformName)/lib/tlib_d.lib"
+				OutputFile="obj/$(ConfigurationName)/$(PlatformName)/FastCopy.exe"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
 				AdditionalLibraryDirectories="lib"
@@ -391,7 +391,204 @@
 			<Tool
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
-				OutputFile="Obj/Debug/FastCopy.bsc"
+				OutputFile="$(IntDir)/$(InputName).bsc"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCWebDeploymentTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
+		</Configuration>
+		<Configuration
+			Name="old_icon|Win32"
+			OutputDirectory="obj/$(ConfigurationName)/$(PlatformName)/$(ProjectName)"
+			IntermediateDirectory="obj/$(ConfigurationName)/$(PlatformName)/$(ProjectName)"
+			ConfigurationType="1"
+			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops"
+			UseOfMFC="0"
+			ATLMinimizesCRunTimeLibraryUsage="false"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+				PreprocessorDefinitions="NDEBUG"
+				MkTypLibCompatible="true"
+				SuppressStartupBanner="true"
+				TargetEnvironment="1"
+				TypeLibraryName="Obj/Release/FastCopy.tlb"
+				HeaderFileName=""
+			/>
+			<Tool
+				Name="VCCLCompilerTool"
+				Optimization="2"
+				InlineFunctionExpansion="1"
+				PreprocessorDefinitions="_WIN32;NDEBUG;_WINDOWS;_old_icon"
+				StringPooling="true"
+				RuntimeLibrary="0"
+				EnableFunctionLevelLinking="true"
+				PrecompiledHeaderFile="$(IntDir)/$(InputName).pch"
+				AssemblerOutput="2"
+				AssemblerListingLocation="$(IntDir)\"
+				ObjectFile="$(IntDir)\"
+				ProgramDataBaseFileName="$(IntDir)\"
+				WarningLevel="3"
+				SuppressStartupBanner="true"
+			/>
+			<Tool
+				Name="VCManagedResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCResourceCompilerTool"
+				PreprocessorDefinitions="NDEBUG;_old_icon"
+				Culture="1041"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
+			<Tool
+				Name="VCLinkerTool"
+				AdditionalDependencies="comctl32.lib winmm.lib"
+				OutputFile="obj/$(ConfigurationName)/$(PlatformName)/FastCopy.exe"
+				LinkIncremental="1"
+				SuppressStartupBanner="true"
+				ProgramDatabaseFile="Obj/Release/FastCopy.pdb"
+				GenerateMapFile="true"
+				MapFileName="Obj/Release/FastCopy.map"
+				SubSystem="2"
+				TargetMachine="1"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCManifestTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+				SuppressStartupBanner="true"
+				OutputFile="$(IntDir)/$(InputName).bsc"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCWebDeploymentTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
+		</Configuration>
+		<Configuration
+			Name="old_icon|x64"
+			OutputDirectory="obj/$(ConfigurationName)/$(PlatformName)/$(ProjectName)"
+			IntermediateDirectory="obj/$(ConfigurationName)/$(PlatformName)/$(ProjectName)"
+			ConfigurationType="1"
+			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops"
+			UseOfMFC="0"
+			ATLMinimizesCRunTimeLibraryUsage="false"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+				PreprocessorDefinitions="NDEBUG"
+				MkTypLibCompatible="true"
+				SuppressStartupBanner="true"
+				TargetEnvironment="3"
+				TypeLibraryName="Obj/Release/FastCopy.tlb"
+				HeaderFileName=""
+			/>
+			<Tool
+				Name="VCCLCompilerTool"
+				Optimization="2"
+				InlineFunctionExpansion="1"
+				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_old_icon"
+				StringPooling="true"
+				ExceptionHandling="0"
+				RuntimeLibrary="0"
+				EnableFunctionLevelLinking="true"
+				RuntimeTypeInfo="false"
+				PrecompiledHeaderFile="$(IntDir)/$(InputName).pch"
+				AssemblerOutput="2"
+				AssemblerListingLocation="$(IntDir)\"
+				ObjectFile="$(IntDir)\"
+				ProgramDataBaseFileName="$(IntDir)\"
+				WarningLevel="3"
+				SuppressStartupBanner="true"
+			/>
+			<Tool
+				Name="VCManagedResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCResourceCompilerTool"
+				PreprocessorDefinitions="NDEBUG;_old_icon"
+				Culture="1041"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
+			<Tool
+				Name="VCLinkerTool"
+				AdditionalDependencies="comctl32.lib winmm.lib obj/Release/$(PlatformName)/lib/tlib.lib"
+				OutputFile="obj/$(ConfigurationName)/$(PlatformName)/FastCopy.exe"
+				LinkIncremental="1"
+				SuppressStartupBanner="true"
+				AdditionalLibraryDirectories="lib/x64"
+				GenerateManifest="false"
+				ProgramDatabaseFile="$(IntDir)\FastCopy.pdb"
+				GenerateMapFile="true"
+				MapFileName="$(IntDir)\FastCopy.map"
+				SubSystem="2"
+				TargetMachine="17"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCManifestTool"
+				AdditionalManifestFiles="src\$(TargetFileName).manifest"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+				SuppressStartupBanner="true"
+				OutputFile="$(IntDir)/$(InputName).bsc"
 			/>
 			<Tool
 				Name="VCFxCopTool"
@@ -449,6 +646,22 @@
 						PreprocessorDefinitions=""
 					/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="old_icon|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="old_icon|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath="src\FastCopy.cpp"
@@ -479,6 +692,22 @@
 				</FileConfiguration>
 				<FileConfiguration
 					Name="Debug|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="old_icon|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="old_icon|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -525,6 +754,24 @@
 						AdditionalIncludeDirectories=".\src;src"
 					/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="old_icon|Win32"
+					>
+					<Tool
+						Name="VCResourceCompilerTool"
+						PreprocessorDefinitions="_old_icon"
+						AdditionalIncludeDirectories=".\src;src"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="old_icon|x64"
+					>
+					<Tool
+						Name="VCResourceCompilerTool"
+						PreprocessorDefinitions="_old_icon"
+						AdditionalIncludeDirectories=".\src;src"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath="src\mainwin.cpp"
@@ -555,6 +802,22 @@
 				</FileConfiguration>
 				<FileConfiguration
 					Name="Debug|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="old_icon|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="old_icon|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -601,6 +864,22 @@
 						PreprocessorDefinitions=""
 					/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="old_icon|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="old_icon|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath="src\regexp.cpp"
@@ -631,6 +910,22 @@
 				</FileConfiguration>
 				<FileConfiguration
 					Name="Debug|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="old_icon|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="old_icon|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -673,6 +968,22 @@
 						PreprocessorDefinitions=""
 					/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="old_icon|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="old_icon|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath="src\version.cpp"
@@ -709,38 +1020,22 @@
 						PreprocessorDefinitions=""
 					/>
 				</FileConfiguration>
-			</File>
-		</Filter>
-		<Filter
-			Name="icon"
-			>
-			<File
-				RelativePath=".\src\icon\1.ico"
-				>
-			</File>
-			<File
-				RelativePath=".\src\icon\2.ico"
-				>
-			</File>
-			<File
-				RelativePath=".\src\icon\3.ico"
-				>
-			</File>
-			<File
-				RelativePath=".\src\icon\4.ico"
-				>
-			</File>
-			<File
-				RelativePath=".\src\icon\5.ico"
-				>
-			</File>
-			<File
-				RelativePath=".\src\icon\6.ico"
-				>
-			</File>
-			<File
-				RelativePath=".\src\icon\7.ico"
-				>
+				<FileConfiguration
+					Name="old_icon|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="old_icon|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
 			</File>
 		</Filter>
 		<File

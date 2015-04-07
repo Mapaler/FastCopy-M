@@ -61,7 +61,12 @@ struct CopyInfo {
 	FastCopy::OverWrite	overWrite;
 };
 
-#define MAX_NORMAL_FASTCOPY_ICON	6
+#ifdef _old_icon
+	#define MAX_NORMAL_FASTCOPY_ICON	4
+#else
+	#define MAX_NORMAL_FASTCOPY_ICON	6
+#endif
+
 #define FCNORMAL_ICON_IDX			0
 #define FCWAIT_ICON_IDX				MAX_NORMAL_FASTCOPY_ICON
 #define MAX_FASTCOPY_ICON			MAX_NORMAL_FASTCOPY_ICON + 1
