@@ -76,6 +76,7 @@
 #define IDS_FACMD_ALWAYS                120
 #define IDS_FACMD_NORMAL                121
 #define IDS_FACMD_ERROR                 122
+#define IDS_Aborting                    150
 #define SETUP_SHEET1                    202
 #define SETUP_SHEET2                    203
 #define SETUP_SHEET3                    204
@@ -211,7 +212,6 @@
 #define IDS_TaskTrayInfo_Files          2150
 #define IDS_TaskTrayInfo_sec            2151
 #define IDS_TaskTrayInfo_Sec            2151
-#define IDS_TaskTrayInfo_sec            2151
 #define IDS_TaskTrayInfo_Estimating     2152
 #define IDS_TaskTrayInfo_Total          2153
 #define IDS_TaskTrayInfo_Remain         2154
@@ -354,13 +354,20 @@
 #define MKDIR_BUTTON                    3380
 #define RMDIR_BUTTON                    3381
 #define FACMD_COMBO                     3382
+
 #define FASTCOPY_ICON                   4000
 #define FASTCOPY2_ICON                  4001
 #define FASTCOPY3_ICON                  4002
 #define FASTCOPY4_ICON                  4003
-#define FASTCOPY5_ICON                  4004
-#define FASTCOPY6_ICON                  4005
-#define FCWAIT_ICON                     4006
+
+#ifdef _old_icon
+	#define FCWAIT_ICON                     4004
+#else
+	#define FASTCOPY5_ICON                  4004
+	#define FASTCOPY6_ICON                  4005
+	#define FCWAIT_ICON                     4006
+#endif
+
 #define JOBOBJ_MENUITEM_START           5000
 #define JOBOBJ_MENUITEM_END             5999
 #define FINACT_MENUITEM_START           6000
@@ -397,7 +404,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
 #define _APS_3D_CONTROLS                     1
-#define _APS_NEXT_RESOURCE_VALUE        525
+#define _APS_NEXT_RESOURCE_VALUE        527
 #define _APS_NEXT_COMMAND_VALUE         30030
 #define _APS_NEXT_CONTROL_VALUE         3382
 #define _APS_NEXT_SYMED_VALUE           2383
