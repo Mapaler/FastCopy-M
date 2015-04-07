@@ -6,7 +6,7 @@
 	Update					: 2012-06-18(Mon)
 	Copyright				: H.Shirouzu
 	Reference				: 
-	Modify  				: Mapaler 2014-5-29
+	Modify  				: Mapaler 2015-04-07
 	======================================================================== */
 
 #include "mainwin.h"
@@ -2785,17 +2785,20 @@ BOOL TMainDlg::SetTaskTrayInfo(BOOL is_finish_status, double doneRate,
 	if (!cfg.taskbarMode) {
 		if (info.mode == FastCopy::DELETE_MODE) {
 			len += sprintf(buf + len, IsListing() ?
-				"FastCopy (%.1fMB %d%s %d%s)" :
-				"FastCopy (%.1fMB %d%s %d%s %.2fMB/s)",
+				"%s (%.1fMB %d%s %d%s)" :
+				"%s (%.1fMB %d%s %d%s %.2fMB/s)",
+				GetLoadStr(IDS_FASTCOPY),
 				(double)ti.total.deleteTrans / (1024 * 1024),
 				ti.total.deleteFiles,
 				GetLoadStr(IDS_TaskTrayInfo_Files),
 				ti.tickCount / 1000,
 				GetLoadStr(IDS_TaskTrayInfo_Sec),
-				(double)ti.total.deleteFiles * 1000 / ti.tickCount);
+				(double)ti.total.deleteFiles * 1000 / ti.tickCount
+				);
 		}
+		
 		else if (ti.total.isPreSearch) {
-			len += sprintf(buf + len, " %s (%s %.1f MB/%d %s/%d %s)",
+			len += sprintf(buf + len, " %s (%s %.1f MB | %d %s | %d %s)",
 				GetLoadStr(IDS_TaskTrayInfo_Estimating),
 				GetLoadStr(IDS_TaskTrayInfo_Total),
 				(double)ti.total.preTrans / (1024 * 1024),
@@ -2813,11 +2816,13 @@ BOOL TMainDlg::SetTaskTrayInfo(BOOL is_finish_status, double doneRate,
 					GetLoadStr(IDS_TaskTrayInfo_Remain),
 					remain_h,
 					remain_m,
-					remain_s);
+					remain_s
+					);
 			}
 			len += sprintf(buf + len, IsListing() ?
-				"FastCopy (%.1fMB %d%s %d%s)" :
-				"FastCopy (%.1fMB %d%s %d%s %.2fMB/s)",
+				"%s (%.1fMB %d%s %d%s)" :
+				"%s (%.1fMB %d%s %d%s %.2fMB/s)",
+				GetLoadStr(IDS_FASTCOPY),
 				(double)ti.total.writeTrans / (1024 * 1024),
 				ti.total.writeFiles,
 				GetLoadStr(IDS_TaskTrayInfo_Files),
@@ -2968,19 +2973,20 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 			" ---- %s ----\r\n"
 			"%s = %.1fMB\r\n"
 			"%s = %d (%d)\r\n"
-			"%s = %.2f%s\r\n"
-			"%s = %.2f%s",
-			GetLoadStr(IDS_Info_Estimating),
-			GetLoadStr(IDS_Info_PreTrans),
-			(double)ti.total.preTrans / (1024 * 1024),
-			GetLoadStr(IDS_Info_PreFiles),
-			ti.total.preFiles, ti.total.preDirs,
-			GetLoadStr(IDS_Info_PreTime),
-			(double)ti.tickCount / 1000,
-			GetLoadStr(IDS_Info_sec),
-			GetLoadStr(IDS_Info_PreTime),
-			(double)ti.total.preFiles * 1000 / ti.tickCount),
-			GetLoadStr(IDS_Info_files_s);
+			"%s = %.2f %s\r\n"
+			"%s = %.2f %s",
+			GetLoadStr(IDS_Info_Estimating)
+			, GetLoadStr(IDS_Info_PreTrans)
+			, (double)ti.total.preTrans / (1024 * 1024)
+			, GetLoadStr(IDS_Info_PreFiles)
+			, ti.total.preFiles, ti.total.preDirs
+			, GetLoadStr(IDS_Info_PreTime)
+			, (double)ti.tickCount / 1000
+			, GetLoadStr(IDS_Info_sec)
+			, GetLoadStr(IDS_Info_PreTime)
+			, (double)ti.total.preFiles * 1000 / ti.tickCount
+			, GetLoadStr(IDS_Info_files_s)
+			);
 	}
 	else if (info.mode == FastCopy::DELETE_MODE) {
 		len += sprintf(buf + len,
@@ -2998,18 +3004,19 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 			"%s = %d (%d)\r\n"
 			"%s = %.2f %s\r\n"
 			"%s = %.2f %s",
-			GetLoadStr(IDS_Info_TotalDel),
-			(double)ti.total.deleteTrans / (1024 * 1024),
-			GetLoadStr(IDS_Info_DelFiles),
-			ti.total.deleteFiles, ti.total.deleteDirs,
-			GetLoadStr(IDS_Info_TotalTime),
-			(double)ti.tickCount / 1000,
-			GetLoadStr(IDS_Info_sec),
-			GetLoadStr(IDS_Info_FileRate),
-			(double)ti.total.deleteFiles * 1000 / ti.tickCount,
-			GetLoadStr(IDS_Info_files_s),
-			GetLoadStr(IDS_Info_OverWrite),
-			(double)ti.total.writeTrans / ((double)ti.tickCount / 1000) / (1024 * 1024));
+			GetLoadStr(IDS_Info_TotalDel)
+			, (double)ti.total.deleteTrans / (1024 * 1024)
+			, GetLoadStr(IDS_Info_DelFiles)
+			, ti.total.deleteFiles, ti.total.deleteDirs
+			, GetLoadStr(IDS_Info_TotalTime)
+			, (double)ti.tickCount / 1000
+			, GetLoadStr(IDS_Info_sec)
+			, GetLoadStr(IDS_Info_FileRate)
+			, (double)ti.total.deleteFiles * 1000 / ti.tickCount
+			, GetLoadStr(IDS_Info_files_s)
+			, GetLoadStr(IDS_Info_OverWrite)
+			, (double)ti.total.writeTrans / ((double)ti.tickCount / 1000) / (1024 * 1024)
+			);
 	}
 	else {
 		if (IsListing()) {
@@ -3026,7 +3033,8 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 				, (info.flags & FastCopy::RESTORE_HARDLINK) ?
 				  ti.total.linkFiles :
 				  ti.total.writeDirs
-				, ti.total.writeDirs);
+				, ti.total.writeDirs
+				);
 		}
 		else {
 			len += sprintf(buf + len,
@@ -3046,7 +3054,8 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 				, (info.flags & FastCopy::RESTORE_HARDLINK) ?
 				  ti.total.linkFiles :
 				  ti.total.writeDirs
-				, ti.total.writeDirs);
+				, ti.total.writeDirs
+				);
 		}
 
 		if (ti.total.skipFiles || ti.total.skipDirs) {
@@ -3056,7 +3065,8 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 				, GetLoadStr(IDS_Info_TotalSkip)
 				, (double)ti.total.skipTrans / (1024 * 1024)
 				, GetLoadStr(IDS_Info_SkipFiles)
-				, ti.total.skipFiles, ti.total.skipDirs);
+				, ti.total.skipFiles, ti.total.skipDirs
+				);
 		}
 		if (ti.total.deleteFiles || ti.total.deleteDirs) {
 			len += sprintf(buf + len,
@@ -3065,7 +3075,8 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 				, GetLoadStr(IDS_Info_TotalDel)
 				, (double)ti.total.deleteTrans / (1024 * 1024)
 				, GetLoadStr(IDS_Info_DelFiles)
-				, ti.total.deleteFiles, ti.total.deleteDirs);
+				, ti.total.deleteFiles, ti.total.deleteDirs
+				);
 		}
 		len += sprintf(buf + len, IsListing() ?
 			"%s = %.2f %s\r\n" :
@@ -3090,7 +3101,8 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 				, GetLoadStr(IDS_Info_VerifyRead)
 				, (double)ti.total.verifyTrans / (1024 * 1024)
 				, GetLoadStr(IDS_Info_VerifyFiles)
-				, ti.total.verifyFiles);
+				, ti.total.verifyFiles
+				);
 		}
 	}
 
@@ -3112,7 +3124,8 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 				GetLoadStr(IDS_Info_ErrorFiles),
 				ti.total.errFiles, 
 				GetLoadStr(IDS_Info_ErrorDirs),
-				ti.total.errDirs);
+				ti.total.errDirs
+				);
 			SendDlgItemMessageV(PATH_EDIT, EM_SETSEL, offset_v, offset_v);
 			SendDlgItemMessage(PATH_EDIT, EM_REPLACESEL, 0, (LPARAM)buf);
 //			int line = SendDlgItemMessage(PATH_EDIT, EM_GETLINECOUNT, 0, 0);
@@ -3126,7 +3139,8 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 			GetLoadStr(IDS_Info_ErrorFiles),
 			ti.total.errFiles,
 			GetLoadStr(IDS_Info_ErrorDirs),
-			ti.total.errDirs);
+			ti.total.errDirs
+			);
 		SetDlgItemText(PATH_EDIT, buf);
 		SetWindowTitle();
 	}
