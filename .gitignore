@@ -26,3 +26,9 @@
 *.exe
 *.out
 *.app
+*.user
+/lib
+/obj
+*.ncb
+*.suo
+*.aps

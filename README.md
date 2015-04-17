@@ -2,14 +2,20 @@ FastCopy_CN
 ===========
 
 FastCopy Chinesization and modify to support other language more overall.
-</br>
+
 Build on Visual Studio C++ 2005
-</br>
-Download page : http://bbs.kafan.cn/thread-1732762-1-1.html
-</br>
-Official website : http://ipmsg.org/tools/fastcopy.html.en
-</br>
-Official License
+
+## Download
+
+http://bbs.kafan.cn/thread-1732762-1-1.html
+
+## Official website
+
+http://ipmsg.org/tools/fastcopy.html.en
+ 
+##Official License
+BSD license
+
 <div class="help_license">
 	<strong>Copyright 2004-2012 SHIROUZU Hiroaki All rights reserved.</strong><br>
 	<br>
