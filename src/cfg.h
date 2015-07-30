@@ -1,11 +1,11 @@
 ﻿/* static char *cfg_id = 
-	"@(#)Copyright (C) 2005-2012 H.Shirouzu		cfg.h	Ver2.10"; */
+	"@(#)Copyright (C) 2005-2015 H.Shirouzu		cfg.h	Ver3.00"; */
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2005-01-23(Sun)
-	Update					: 2012-06-17(Sun)
+	Update					: 2015-07-22(Wed)
 	Copyright				: H.Shirouzu
-	Reference				: 
+	License					: GNU General Public License version 3
 	======================================================================== */
 
 #ifndef CFG_H
@@ -14,10 +14,10 @@
 #include "resource.h"
 
 struct Job {
-	void	*title;
-	void	*src;
-	void	*dst;
-	void	*cmd;
+	WCHAR	*title;
+	WCHAR	*src;
+	WCHAR	*dst;
+	WCHAR	*cmd;
 	int		bufSize;
 	int		estimateMode;
 	int		diskMode;
@@ -27,30 +27,30 @@ struct Job {
 	BOOL	enableStream;
 	BOOL	enableVerify;
 	BOOL	isFilter;
-	void	*includeFilter;
-	void	*excludeFilter;
-	void	*fromDateFilter;
-	void	*toDateFilter;
-	void	*minSizeFilter;
-	void	*maxSizeFilter;
+	WCHAR	*includeFilter;
+	WCHAR	*excludeFilter;
+	WCHAR	*fromDateFilter;
+	WCHAR	*toDateFilter;
+	WCHAR	*minSizeFilter;
+	WCHAR	*maxSizeFilter;
 
 	void Init() {
 		memset(this, 0, sizeof(Job));
 	}
-	void SetString(void *_title, void *_src, void *_dst, void *_cmd,
-					void *_includeFilter, void *_excludeFilter,
-					void *_fromDateFilter, void *_toDateFilter,
-					void *_minSizeFilter, void *_maxSizeFilter) {
-		title = strdupV(_title);
-		src = strdupV(_src);
-		dst = strdupV(_dst);
-		cmd = strdupV(_cmd);
-		includeFilter = strdupV(_includeFilter);
-		excludeFilter = strdupV(_excludeFilter);
-		fromDateFilter = strdupV(_fromDateFilter);
-		toDateFilter = strdupV(_toDateFilter);
-		minSizeFilter = strdupV(_minSizeFilter);
-		maxSizeFilter = strdupV(_maxSizeFilter);
+	void SetString(WCHAR *_title, WCHAR *_src, WCHAR *_dst, WCHAR *_cmd,
+					WCHAR *_includeFilter, WCHAR *_excludeFilter,
+					WCHAR *_fromDateFilter, WCHAR *_toDateFilter,
+					WCHAR *_minSizeFilter, WCHAR *_maxSizeFilter) {
+		title = wcsdup(_title);
+		src = wcsdup(_src);
+		dst = wcsdup(_dst);
+		cmd = wcsdup(_cmd);
+		includeFilter = wcsdup(_includeFilter);
+		excludeFilter = wcsdup(_excludeFilter);
+		fromDateFilter = wcsdup(_fromDateFilter);
+		toDateFilter = wcsdup(_toDateFilter);
+		minSizeFilter = wcsdup(_minSizeFilter);
+		maxSizeFilter = wcsdup(_maxSizeFilter);
 	}
 	void Set(const Job *job) {
 		memcpy(this, job, sizeof(Job));
@@ -84,9 +84,9 @@ struct Job {
 };
 
 struct FinAct {
-	void	*title;
-	void	*sound;
-	void	*command;
+	WCHAR	*title;
+	WCHAR	*sound;
+	WCHAR	*command;
 	int		shutdownTime;
 	DWORD	flags;
 	enum {	BUILTIN=0x1, ERR_SOUND=0x2, ERR_CMD=0x4, ERR_SHUTDOWN=0x8, WAIT_CMD=0x10,
@@ -96,10 +96,10 @@ struct FinAct {
 		memset(this, 0, sizeof(FinAct));
 		shutdownTime = -1;
 	}
-	void SetString(void *_title, void *_sound, void *_command) {
-		title = strdupV(_title);
-		sound = strdupV(_sound);
-		command = strdupV(_command);
+	void SetString(WCHAR *_title, WCHAR *_sound, WCHAR *_command) {
+		title = wcsdup(_title);
+		sound = wcsdup(_sound);
+		command = wcsdup(_command);
 	}
 	void Set(const FinAct *finAct) {
 		memcpy(this, finAct, sizeof(FinAct));
@@ -124,29 +124,36 @@ struct FinAct {
 class Cfg {
 protected:
 	TInifile	ini;
-	BOOL Init(void *user_dir, void *virtual_dir);
-	BOOL IniStrToV(char *inipath, void *path);
-	BOOL VtoIniStr(void *path, char *inipath);
-	BOOL EntryHistory(void **path_array, void ****history_array, int max);
+	BOOL Init(WCHAR *user_dir, WCHAR *virtual_dir);
+	BOOL IniStrToW(char *str, WCHAR *wstr);
+	BOOL EntryHistory(WCHAR **path_array, WCHAR ****history_array, int max);
+	BOOL GetFilterStr(const char *key, char *tmpbuf, WCHAR *wbuf);
 
 public:
+	int		iniVersion;
 	int		bufSize;
+	int		maxRunNum;
 	int		maxTransSize;
+	int		maxOvlSize;
+	int		maxOvlNum;
 	int		maxOpenFiles;
 	int		maxAttrSize;
 	int		maxDirSize;
 	int		nbMinSizeNtfs;
 	int		nbMinSizeFat;
+	int		timeDiffGrace;
 	BOOL	isReadOsBuf;
 	int		maxHistory;
 	int		maxHistoryNext;
 	int		copyMode;
 	int		copyFlags;
+	int		copyUnFlags;
 	int		skipEmptyDir;	// 0:no, 1:filter-mode only, 2:always
 	int		forceStart;		// 0:delete only, 1:always(copy+delete), 2:always wait
 	BOOL	ignoreErr;
 	int		estimateMode;
 	int		diskMode;
+	int		netDrvMode;
 	int		lcid;
 	int		waitTick;
 	int		speedLevel;
@@ -156,6 +163,7 @@ public:
 	BOOL	enableAcl;
 	BOOL	enableStream;
 	BOOL	enableVerify;
+	BOOL	useOverlapIo;
 	BOOL	usingMD5;
 	BOOL	enableNSA;
 	BOOL	delDirWithFilter;
@@ -165,7 +173,7 @@ public:
 	BOOL	isReparse;
 	BOOL	isLinkDest;
 	int		maxLinkHash;
-	_int64	allowContFsize;
+	int64	allowContFsize;
 	BOOL	isReCreate;
 	BOOL	isExtendFilter;
 	int		taskbarMode; // 0: use tray, 1: use taskbar
@@ -174,8 +182,10 @@ public:
 	BOOL	isErrLog;
 	BOOL	isUtf8Log;
 	int		fileLogMode;
+	int		fileLogFlags;	// 0: None, 1: with timestamp, 2: with size, 3 both
 	BOOL	aclErrLog;
 	BOOL	streamErrLog;
+	int		debugFlags;
 	BOOL	isRunasButton;
 	BOOL	isSameDirRename;
 	BOOL	shextAutoClose;
@@ -183,20 +193,20 @@ public:
 	BOOL	shextNoConfirm;
 	BOOL	shextNoConfirmDel;
 	BOOL	execConfirm;
-	void	**srcPathHistory;
-	void	**dstPathHistory;
-	void	**delPathHistory;
-	void	**includeHistory;
-	void	**excludeHistory;
-	void	**fromDateHistory;
-	void	**toDateHistory;
-	void	**minSizeHistory;
-	void	**maxSizeHistory;
-	void	*execPathV;
-	void	*execDirV;
-	void	*userDirV;
-	void	*virtualDirV;
-	void	*errLogPathV;	// UNICODE
+	WCHAR	**srcPathHistory;
+	WCHAR	**dstPathHistory;
+	WCHAR	**delPathHistory;
+	WCHAR	**includeHistory;
+	WCHAR	**excludeHistory;
+	WCHAR	**fromDateHistory;
+	WCHAR	**toDateHistory;
+	WCHAR	**minSizeHistory;
+	WCHAR	**maxSizeHistory;
+	WCHAR	*execPath;
+	WCHAR	*execDir;
+	WCHAR	*userDir;
+	WCHAR	*virtualDir;
+	WCHAR	*errLogPath;	// UNICODE
 	Job		**jobArray;
 	int		jobMax;
 	FinAct  **finActArray;
@@ -204,23 +214,27 @@ public:
 	POINT	winpos;
 	SIZE	winsize;
 	char	driveMap[64];
+	WCHAR	statusFont[LF_FACESIZE];
+	int		statusFontSize;
+
+	BOOL	needIniConvert;
 
 	Cfg();
 	~Cfg();
-	BOOL ReadIni(void *user_dir, void *virtual_dir);
+	BOOL ReadIni(WCHAR *user_dir, WCHAR *virtual_dir);
 	BOOL PostReadIni(void);
 	BOOL WriteIni(void);
-	BOOL EntryPathHistory(void *src, void *dst);
-	BOOL EntryDelPathHistory(void *del);
-	BOOL EntryFilterHistory(void *inc, void *exc, void *from, void *to, void *min, void *max);
+	BOOL EntryPathHistory(WCHAR *src, WCHAR *dst);
+	BOOL EntryDelPathHistory(WCHAR *del);
+	BOOL EntryFilterHistory(WCHAR *inc, WCHAR *exc, WCHAR *from, WCHAR *to, WCHAR *min, WCHAR *max);
 
-	int SearchJobV(void *title);
-	BOOL AddJobV(const Job *job);
-	BOOL DelJobV(void *title);
+	int SearchJobW(WCHAR *title);
+	BOOL AddJobW(const Job *job);
+	BOOL DelJobW(WCHAR *title);
 
-	int SearchFinActV(void *title, BOOL cmd_line=FALSE);
-	BOOL AddFinActV(const FinAct *job);
-	BOOL DelFinActV(void *title);
+	int SearchFinActW(WCHAR *title, BOOL cmd_line=FALSE);
+	BOOL AddFinActW(const FinAct *job);
+	BOOL DelFinActW(WCHAR *title);
 };
 
 #define INVALID_POINTVAL	-10000

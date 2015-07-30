@@ -1,10 +1,10 @@
 ﻿static char *tdlg_id = 
-	"@(#)Copyright (C) 1996-2011 H.Shirouzu		tdlg.cpp	Ver0.97";
+	"@(#)Copyright (C) 1996-2015 H.Shirouzu		tdlg.cpp	Ver0.99";
 /* ========================================================================
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Dialog Class
 	Create					: 1996-06-01(Sat)
-	Update					: 2011-04-20(Wed)
+	Update					: 2015-06-22(Mon)
 	Copyright				: H.Shirouzu
 	Reference				: 
 	======================================================================== */
@@ -21,7 +21,7 @@ TDlg::TDlg(UINT _resId, TWin *_parent) : TWin(_parent)
 
 TDlg::~TDlg()
 {
-	if (hWnd) EndDialog(FALSE);
+	if (hWnd) EndDialog(IDCANCEL);
 	delete [] dlgItems;
 }
 
@@ -29,7 +29,7 @@ BOOL TDlg::Create(HINSTANCE hInstance)
 {
 	TApp::GetApp()->AddWin(this);
 
-	hWnd = ::CreateDialogV(hInstance ? hInstance : TApp::GetInstance(), (void *)resId,
+	hWnd = ::CreateDialogW(hInstance ? hInstance : TApp::GetInstance(), (WCHAR *)resId,
 				parent ? parent->hWnd : NULL, (DLGPROC)TApp::WinProc);
 
 	if (hWnd)
@@ -42,15 +42,19 @@ int TDlg::Exec(void)
 {
 	TApp::GetApp()->AddWin(this);
 	modalFlg = TRUE;
-	int result = ::DialogBoxV(TApp::GetInstance(), (void *)resId, parent ? parent->hWnd : NULL,
-					(DLGPROC)TApp::WinProc);
+	if (parent) parent->modalCount++;
+
+	int result = (int)::DialogBoxW(TApp::GetInstance(), (WCHAR *)resId,
+							parent ? parent->hWnd : NULL, (DLGPROC)TApp::WinProc);
+
+	if (parent) parent->modalCount--;
 	modalFlg = FALSE;
 	return	result;
 }
 
 void TDlg::Destroy(void)
 {
-	EndDialog(FALSE);
+	EndDialog(IDCANCEL);
 }
 
 LRESULT TDlg::WinProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -220,7 +224,7 @@ LRESULT TDlg::WinProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	case WM_HSCROLL:
 	case WM_VSCROLL:
-		EventScroll(uMsg, LOWORD(wParam), HIWORD(wParam), (HWND)lParam);
+		EventScrollWrapper(uMsg, LOWORD(wParam), HIWORD(wParam), (HWND)lParam);
 		return	0;
 
 	case WM_ENTERMENULOOP:

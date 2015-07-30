@@ -1,11 +1,11 @@
 ﻿static char *shellext_id = 
-	"@(#)Copyright (C) 2005-2012 H.Shirouzu		shellext.cpp	Ver2.10";
+	"@(#)Copyright (C) 2005-2015 H.Shirouzu		shellext.cpp	Ver3.00";
 /* ========================================================================
 	Project  Name			: Shell Extension for Fast Copy
 	Create					: 2005-01-23(Sun)
-	Update					: 2012-06-17(Sun)
+	Update					: 2015-06-22(Mon)
 	Copyright				: H.Shirouzu
-	Reference				: 
+	License					: GNU General Public License version 3
 	======================================================================== */
 
 #include "../tlib/tlib.h"
@@ -38,7 +38,7 @@ static char	*DllRegKeys[] = {
 	NULL
 };
 
-static void	*FMT_TOSTR_V;
+static WCHAR	*FMT_TOSTR;
 
 //#define SHEXT_DEBUG_LOG
 
@@ -142,17 +142,17 @@ STDMETHODIMP ShellExt::Initialize(LPCITEMIDLIST pIDFolder, IDataObject *pDataObj
 			return E_INVALIDARG;
 
 		HDROP	hDrop = (HDROP)::GlobalLock(medium.hGlobal);
-		int max = DragQueryFileV(hDrop, 0xffffffff, NULL, 0);
+		int max = DragQueryFileW(hDrop, 0xffffffff, NULL, 0);
 
 		for (int i=0; i < max; i++) {
-			DragQueryFileV(hDrop, i, path, sizeof(path) / CHAR_LEN_V);
+			DragQueryFileW(hDrop, i, path, wsizeof(path));
 			srcArray.RegisterPath(path);
 		}
 		::GlobalUnlock(medium.hGlobal);
 		::ReleaseStgMedium(&medium);
 	}
 
-	if (pIDFolder && SHGetPathFromIDListV(pIDFolder, path)) {
+	if (pIDFolder && SHGetPathFromIDListW(pIDFolder, path)) {
 		dstArray.RegisterPath(path);
 	}
 
@@ -191,11 +191,11 @@ BOOL ShellExt::GetClipBoardInfo(PathArray *pathArray, BOOL *is_cut)
 	BOOL	ret = FALSE;
 	int		max = 0;
 
-	if (hDrop && (max = DragQueryFileV(hDrop, 0xffffffff, NULL, 0)) > 0) {
+	if (hDrop && (max = DragQueryFileW(hDrop, 0xffffffff, NULL, 0)) > 0) {
 		if (pathArray) {
 			for (int i=0; i < max; i++) {
 				WCHAR	path[MAX_PATH_EX];
-				DragQueryFileV(hDrop, i, path, sizeof(path) / CHAR_LEN_V);
+				DragQueryFileW(hDrop, i, path, wsizeof(path));
 				pathArray->RegisterPath(path);
 			}
 		}
@@ -217,15 +217,15 @@ BOOL ShellExt::GetClipBoardInfo(PathArray *pathArray, BOOL *is_cut)
 	return	ret;
 }
 
-BOOL ShellExt::IsDir(void *path, BOOL is_resolve)
+BOOL ShellExt::IsDir(WCHAR *path, BOOL is_resolve)
 {
 	WCHAR	wbuf[MAX_PATH_EX];
 
-	if (is_resolve && ReadLinkV(path, wbuf)) {
+	if (is_resolve && ReadLinkW(path, wbuf)) {
 		path = wbuf;
 	}
 
-	DWORD	attr = GetFileAttributesV(path);
+	DWORD	attr = GetFileAttributesW(path);
 
 	return	(attr != 0xffffffff && (attr & FILE_ATTRIBUTE_DIRECTORY)) ? TRUE : FALSE;
 }
@@ -367,17 +367,17 @@ STDMETHODIMP ShellExt::InvokeCommand(CMINVOKECOMMANDINFO *info)
 
 			DbgLogW(L"send fastcopy src=%s\r\n", buf);
 
-			::WriteFile(hWrite, buf, len * CHAR_LEN_V, &len, 0);
+			::WriteFile(hWrite, buf, len * sizeof(WCHAR), &len, 0);
 
 			if (is_dd || isClip) {
 				WCHAR	dir[MAX_PATH_EX];
 				WCHAR	path[MAX_PATH_EX];
-				void	*dstPath = (isClip && ReadLinkV(dst.Path(0), path)) ? path : dst.Path(0);
+				WCHAR	*dstPath = (isClip && ReadLinkW(dst.Path(0), path)) ? path : dst.Path(0);
 
-				MakePathV(dir, dstPath, EMPTY_STR_V);	// 末尾に \\ を付与
-				len = sprintfV(buf, FMT_TOSTR_V, dir) + 1;
+				MakePathW(dir, dstPath, L"");	// 末尾に \\ を付与
+				len = swprintf(buf, FMT_TOSTR, dir) + 1;
 				DbgLogW(L"send fastcopy dst=%s\r\n", buf);
-				::WriteFile(hWrite, buf, len * CHAR_LEN_V, &len, 0);
+				::WriteFile(hWrite, buf, len * sizeof(WCHAR *), &len, 0);
 			}
 			delete [] buf;
 			::CloseHandle(pr_info.hProcess);
@@ -534,7 +534,7 @@ BOOL GetClsId(REFIID cls_name, char *cls_id, int size)
 
 STDAPI DllRegisterServer(void)
 {
-	if (SHGetPathFromIDListV == NULL)
+	if (SHGetPathFromIDListW == NULL)
 		return	E_FAIL;
 
 	TShellExtRegistry	reg;
@@ -706,17 +706,14 @@ void PathArray::Init(void)
 	}
 }
 
-int PathArray::GetMultiPath(void *multi_path, int max_len)
+int PathArray::GetMultiPath(WCHAR *multi_path, int max_len)
 {
 	int		total_len = 0;
-	void	*FMT_STR	= IS_WINNT_V ? (void *)L"%s\"%s\"" : (void *)"%s\"%s\"";
-	void	*SPACE_STR	= IS_WINNT_V ? (void *)L" " : (void *)" ";
 
 	for (int i=0; i < num; i++) {
-		if (total_len + strlenV(pathArray[i]) + 4 >= max_len)
+		if (total_len + (int)wcslen(pathArray[i]) + 4 >= max_len)
 			break;
-		total_len += sprintfV((char *)multi_path + total_len * CHAR_LEN_V, FMT_STR,
-					i ? SPACE_STR : "\0", pathArray[i]);
+		total_len += swprintf(multi_path + total_len, i ? L" \"%s\"" : L"\"%s\"", pathArray[i]);
 	}
 	return	total_len;
 }
@@ -726,15 +723,15 @@ int PathArray::GetMultiPathLen(void)
 	return	totalLen + 3 * num + 10;
 }
 
-BOOL PathArray::RegisterPath(const void *path)
+BOOL PathArray::RegisterPath(const WCHAR *path)
 {
 #define MAX_ALLOC	100
 	if ((num % MAX_ALLOC) == 0)
-		pathArray = (void **)realloc(pathArray, (num + MAX_ALLOC) * sizeof(void *));
+		pathArray = (WCHAR **)realloc(pathArray, (num + MAX_ALLOC) * sizeof(WCHAR *));
 
-	int		len = strlenV(path) + 1;
-	pathArray[num] = malloc(len * CHAR_LEN_V);
-	memcpy(pathArray[num++], path, len * CHAR_LEN_V);
+	int	len = (int)wcslen(path) + 1;
+	pathArray[num] = (WCHAR *)malloc(len * sizeof(WCHAR));
+	memcpy(pathArray[num++], path, len * sizeof(WCHAR));
 	totalLen += len;
 
 	return	TRUE;
@@ -757,16 +754,9 @@ ShellExtSystem::ShellExtSystem(HINSTANCE hI)
 #ifdef SHEXT_DEBUG_LOG
 	::InitializeCriticalSection(&cs);
 #endif
-	TLibInit_Win32V();
+	FMT_TOSTR = L" /to=\"%s\"";
 
-	if (IS_WINNT_V) {
-		FMT_TOSTR_V = L" /to=\"%s\"";
-	}
-	else {
-		FMT_TOSTR_V = " /to=\"%s\"";
-	}
-
-/*	if (IS_WINNT_V && TIsWow64()) {
+/*	if (TIsWow64()) {
 		DWORD	val = 0;
 		TWow64DisableWow64FsRedirection(&val);
 		TRegDisableReflectionKey(HKEY_CURRENT_USER);

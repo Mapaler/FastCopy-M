@@ -1,11 +1,11 @@
 ﻿/* static char *miscdlg_id = 
-	"@(#)Copyright (C) 2005-2012 H.Shirouzu		miscdlg.h	Ver2.10"; */
+	"@(#)Copyright (C) 2005-2015 H.Shirouzu		miscdlg.h	Ver3.00"; */
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2005-01-23(Sun)
-	Update					: 2012-06-17(Sun)
+	Update					: 2015-06-22(Mon)
 	Copyright				: H.Shirouzu
-	Reference				: 
+	License					: GNU General Public License version 3
 	======================================================================== */
 
 #ifndef MISCDLG_H
@@ -23,110 +23,54 @@ public:
 
 class TConfirmDlg : public TDlg {
 	BOOL		allow_continue;
-	const void	*message;
+	const WCHAR	*message;
 public:
 	TConfirmDlg(UINT _resId=CONFIRM_DIALOG) : TDlg(_resId) {}
-	int Exec(const void *_message, BOOL _allow_continue, TWin *_parent);
+	int Exec(const WCHAR *_message, BOOL _allow_continue, TWin *_parent);
 	virtual BOOL	EvCreate(LPARAM lParam);
 };
 
 class TExecConfirmDlg : public TDlg {
-	const void		*src;
-	const void		*dst;
-	const void		*title;
+	const WCHAR		*src;
+	const WCHAR		*dst;
+	const WCHAR		*title;
 	Cfg				*cfg;
 	FastCopy::Info	*info;
 	BOOL			isShellExt;
 
 public:
-	TExecConfirmDlg(FastCopy::Info *_info, Cfg *_cfg, TWin *_parent, const void *_title=NULL,
+	TExecConfirmDlg(FastCopy::Info *_info, Cfg *_cfg, TWin *_parent, const WCHAR *_title=NULL,
 		BOOL _isShellExt=FALSE)
 		: TDlg(_info->mode == FastCopy::DELETE_MODE ? DELCONFIRM_DIALOG : COPYCONFIRM_DIALOG,
 		_parent), cfg(_cfg), info(_info), title(_title), isShellExt(_isShellExt) {}
-	int Exec(const void *_src, const void *_dst=NULL);
+	int Exec(const WCHAR *_src, const WCHAR *_dst=NULL);
 	virtual BOOL	EvCreate(LPARAM lParam);
 	virtual BOOL	EvCommand(WORD wNotifyCode, WORD wID, LPARAM hWndCtl);
 	virtual BOOL	EvSize(UINT fwSizeType, WORD nWidth, WORD nHeight);
 };
 
-class TSetupSheet : public TDlg {
-protected:
-	Cfg	*cfg;
-
-public:
-	TSetupSheet() { cfg = NULL; }
-	BOOL Create(int resid, Cfg *_cfg, TWin *_parent);
-	BOOL GetData();
-	virtual BOOL	EvCreate(LPARAM lParam);
-	virtual BOOL	EventScroll(UINT uMsg, int Code, int nPos, HWND hwndScrollBar);
-};
-
-#define MAX_SETUP_SHEET	6
-class TSetupDlg : public TDlg {
-	Cfg			*cfg;
-	TSubClass	setup_list;
-	TSetupSheet	sheet[MAX_SETUP_SHEET];
-
-public:
-	TSetupDlg(Cfg *_cfg, TWin *_parent = NULL);
-	virtual BOOL	EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl);
-	virtual BOOL	EvCreate(LPARAM lParam);
-	void	SetSheet(int idx=-1);
-};
-
-class ShellExt {
-	HMODULE	hShellExtDll;
-
-public:
-	ShellExt() { hShellExtDll = NULL; }
-	~ShellExt() { if (hShellExtDll) UnLoad(); }
-	BOOL	Load(void *parent_dir, void *dll_name);
-	BOOL	UnLoad(void);
-	BOOL	Status(void) { return	hShellExtDll ? TRUE : FALSE; }
-	HRESULT	(WINAPI *RegisterDllProc)(void);
-	HRESULT	(WINAPI *UnRegisterDllProc)(void);
-	BOOL	(WINAPI *IsRegisterDllProc)(void);
-	BOOL	(WINAPI *SetMenuFlagsProc)(int);
-	int		(WINAPI *GetMenuFlagsProc)(void);
-	BOOL	(WINAPI *UpdateDllProc)(void);
-};
-
-class TShellExtDlg : public TDlg {
-	Cfg			*cfg;
-	ShellExt	shellExt;
-
-public:
-	TShellExtDlg(Cfg *_cfg, TWin *_parent = NULL);
-	virtual BOOL	EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl);
-	virtual BOOL	EvCreate(LPARAM lParam);
-	virtual BOOL	EvNcDestroy(void);
-
-	BOOL	RegisterShellExt(BOOL is_register);
-	BOOL	ReflectStatus(void);
-};
-
 enum	DirFileMode { DIRSELECT, RELOAD, FILESELECT, SELECT_EXIT };
 
-class TBrowseDirDlgV : public TSubClass
+class TBrowseDirDlgW : public TSubClass
 {
 public:
 	DirFileMode mode;
 
 protected:
-	void		*fileBuf;
+	WCHAR		*fileBuf;
 	IMalloc		*iMalloc;
-	BROWSEINFO	brInfo;		// W version との差は、文字ポインタ系メンバの型の違いのみ
+	BROWSEINFOW	brInfo;		// W version との差は、文字ポインタ系メンバの型の違いのみ
 	int			flg;
 
 public:
-	TBrowseDirDlgV(void *title, void *_fileBuf, int _flg, TWin *parentWin);
-	virtual ~TBrowseDirDlgV();
+	TBrowseDirDlgW(WCHAR *title, WCHAR *_fileBuf, int _flg, TWin *parentWin);
+	virtual ~TBrowseDirDlgW();
 	virtual BOOL	AttachWnd(HWND _hWnd);
 	virtual BOOL	EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl);
 	virtual BOOL	SetFileBuf(LPARAM list);
 	virtual BOOL	Exec();
 	DirFileMode GetMode(void) { return mode; };
-	BOOL	GetParentDirV(void *srcfile, void *dir);
+	BOOL	GetParentDirW(WCHAR *srcfile, WCHAR *dir);
 	static int CALLBACK BrowseDirDlg_Proc(HWND hWnd, UINT uMsg, LPARAM lParam, LPARAM data);
 };
 
@@ -134,15 +78,15 @@ public:
 #define BRDIR_CTRLADD		0x0002
 #define BRDIR_BACKSLASH		0x0004
 #define BRDIR_FILESELECT	0x0008
-BOOL BrowseDirDlgV(TWin *parentWin, UINT editCtl, void *title, int flg=0);
+BOOL BrowseDirDlgW(TWin *parentWin, UINT editCtl, WCHAR *title, int flg=0);
 
-class TInputDlgV : public TDlg
+class TInputDlg : public TDlg
 {
 protected:
-	void	*dirBuf;
+	WCHAR	*dirBuf;
 
 public:
-	TInputDlgV(void *_dirBuf, TWin *_win) : TDlg(INPUT_DIALOG, _win) { dirBuf = _dirBuf; }
+	TInputDlg(WCHAR *_dirBuf, TWin *_win) : TDlg(INPUT_DIALOG, _win) { dirBuf = _dirBuf; }
 	virtual BOOL	EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl);
 };
 
@@ -167,9 +111,9 @@ public:
 	static UINT WINAPI OpenFileDlgProc(HWND hdlg, UINT msg, WPARAM wParam, LPARAM lParam);
 	virtual BOOL AttachWnd(HWND _hWnd);
 	virtual BOOL EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl);
-	virtual BOOL Exec(void *target, void *title=NULL, void *filter=NULL, void *defaultDir=NULL);
-	virtual BOOL Exec(UINT editCtl, void *title=NULL, void *filter=NULL, void *defaultDir=NULL,
-					void *init_data=NULL);
+	virtual BOOL Exec(WCHAR *target, WCHAR *title=NULL, WCHAR *filter=NULL, WCHAR *defaultDir=NULL);
+	virtual BOOL Exec(UINT editCtl, WCHAR *title=NULL, WCHAR *filter=NULL, WCHAR *defaultDir=NULL,
+						WCHAR *init_data=NULL);
 
 	DirFileMode GetMode(void) { return mode; };
 };
@@ -204,36 +148,40 @@ public:
 
 class TMsgBox : public TDlg {
 protected:
-	void	*msg;
-	void 	*title;
-	UINT	style;
-	BOOL	isExecV;
+	const WCHAR	*msg;
+	const WCHAR	*title;
+	UINT		style;
+	BOOL		isExecW;
 	enum { msg_item, ok_item, cancel_item, max_dlgitem };
 
 public:
 	TMsgBox(TWin *_parent);
-	~TMsgBox();
+	virtual ~TMsgBox();
 
 	virtual BOOL EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl);
 	virtual BOOL EvCreate(LPARAM lParam);
 	virtual BOOL EvSize(UINT fwSizeType, WORD nWidth, WORD nHeight);
-	virtual UINT ExecV(void *_msg, void *_title=L"Error", UINT _style=MB_OK);
-	virtual UINT Exec(char *_msg, char *_title="Error", UINT _style=MB_OK);
+	virtual UINT ExecW(const WCHAR *_msg, const WCHAR *_title=L"Error", UINT _style=MB_OK);
+	virtual UINT Exec(const char *_msg, const char *_title="Error", UINT _style=MB_OK);
 };
 
 class TFinDlg : public TMsgBox {
 protected:
 	int			sec;
-	const char	*fmt;
+	int			orgSec;
+	const char	*main_msg;
+	const char	*proc_msg;
+	const char	*time_fmt;
+	TMainDlg	*mainDlg;
 
 public:
-	TFinDlg(TWin *_parent);
-	~TFinDlg();
+	TFinDlg(TMainDlg *_parent);
+	virtual ~TFinDlg();
 
-	virtual UINT Exec(int sec, DWORD _fmtID);
+	virtual UINT Exec(int sec, DWORD mainmsg_id);
 	virtual BOOL EvCreate(LPARAM lParam);
 	virtual BOOL EvTimer(WPARAM timerID, TIMERPROC proc);
-	void UpdateText();
+	void Update();
 };
 
 class TListHeader : public TSubClassCtl {
@@ -267,8 +215,8 @@ public:
 	TEditSub(TWin *_parent);
 
 	virtual BOOL	AttachWnd(HWND _hWnd);
-	virtual int		ExGetText(void *buf, int max_len, DWORD flags=GT_USECRLF, UINT codepage=CP_UTF8);
-	virtual BOOL	ExSetText(const void *buf, int max_len=-1, DWORD flags=ST_DEFAULT, UINT codepage=CP_UTF8);
+	virtual int		ExGetText(WCHAR *buf, int max_len, DWORD flags=GT_USECRLF, UINT codepage=CP_UTF8);
+	virtual BOOL	ExSetText(const WCHAR *buf, int max_len=-1, DWORD flags=ST_DEFAULT, UINT codepage=CP_UTF8);
 
 	virtual BOOL	EvCommand(WORD wNotifyCode, WORD wID, LPARAM hWndCtl);
 	virtual BOOL	EvContextMenu(HWND childWnd, POINTS pos);

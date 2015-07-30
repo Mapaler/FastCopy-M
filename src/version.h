@@ -1,18 +1,18 @@
 ﻿/*static char *version_id = 
-	"@(#)Copyright (C) 20004-2012 H.Shirouzu   version.cpp	ver2.10";
+	"@(#)Copyright (C) 20004-2015 H.Shirouzu   version.cpp	ver3.00";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Module Name				: Version
 	Create					: 2010-06-13(Sun)
-	Update					: 2012-06-17(Sun)
+	Update					: 2015-06-22(Mon)
 	Copyright				: H.Shirouzu
-	Reference				: 
+	License					: GNU General Public License version 3
 	======================================================================== */
 
 #ifndef VERSION_H
 #define VERSION_H
 
-void SetVersionStr(BOOL is_admin=FALSE);
+void SetVersionStr(BOOL is_admin=FALSE, BOOL is_noui=FALSE);
 const char *GetVersionStr();
 const char *GetVerAdminStr();
 const char *GetCopyrightStr(void);

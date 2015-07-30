@@ -1,11 +1,11 @@
 ﻿static char *cfg_id = 
-	"@(#)Copyright (C) 2004-2012 H.Shirouzu		cfg.cpp	ver2.10";
+	"@(#)Copyright (C) 2004-2015 H.Shirouzu		cfg.cpp	ver3.00";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2012-06-17(Sun)
+	Update					: 2015-07-22(Wed)
 	Copyright				: H.Shirouzu
-	Reference				: 
+	License					: GNU General Public License version 3
 	======================================================================== */
 
 #include "mainwin.h"
@@ -14,8 +14,13 @@
 #include <stdarg.h>
 #include <stddef.h>
 
-#define FASTCOPY_INI			"FastCopy.ini"
+#define FASTCOPY_INI_OLD		L"FastCopy.ini"
+#define FASTCOPY_INI			L"FastCopy2.ini"
+#define FASTCOPY_INI_OBSOLETE	L"FastCopy.ini-is-obsolete.txt"
+#define FASTCOPY_OBSOLETE_MSG	"FastCopy.ini is obsolete, and FastCopy2.ini is used in FastCopy" \
+								" ver2.2 or later.\r\n (FastCopy2.ini is encoded by UTF-8)\r\n"
 #define MAIN_SECTION			"main"
+#define INI_VERSION_KEY			"ini_version"
 #define SRC_HISTORY				"src_history"
 #define DST_HISTORY				"dst_history"
 #define DEL_HISTORY				"del_history"
@@ -29,21 +34,28 @@
 #define MAX_HISTORY_KEY			"max_history"
 #define COPYMODE_KEY			"default_copy_mode"
 #define COPYFLAGS_KEY			"default_copy_flags"
+#define COPYUNFLAGS_KEY			"default_copy_unflags"
 #define SKIPEMPTYDIR_KEY		"skip_empty_dir"
 #define FORCESTART_KEY			"force_start"
 #define IGNORE_ERR_KEY			"ignore_error"
 #define ESTIMATE_KEY			"estimate_mode"
 #define DISKMODE_KEY			"disk_mode"
+#define NETDRVMODE_KEY			"netdrv_mode"
 #define ISTOPLEVEL_KEY			"is_toplevel"
 #define ISERRLOG_KEY			"is_errlog"
 #define ISUTF8LOG_KEY			"is_utf8log"
 #define FILELOGMODE_KEY			"filelog_mode"
+#define FILELOGFLAGS_KEY		"filelog_flags"
 #define ACLERRLOG_KEY			"aclerr_log"
 #define STREAMERRLOG_KEY		"streamerr_log"
+#define DEBUGFLAGS_KEY			"debug_flags"
 #define ISRUNASBUTTON_KEY		"is_runas_button"
 #define ISSAMEDIRRENAME_KEY		"is_samedir_rename"
 #define BUFSIZE_KEY				"bufsize"
 #define MAXTRANSSIZE_KEY		"max_transize"
+#define MAXRUNNUM_KEY			"max_runnum"
+#define MAXOVLSIZE_KEY			"max_ovlsize"
+#define MAXOVLNUM_KEY			"max_ovlnum"
 #define MAXOPENFILES_KEY		"max_openfiles"
 #define MAXATTRSIZE_KEY			"max_attrsize"
 #define MAXDIRSIZE_KEY			"max_dirsize"
@@ -62,6 +74,7 @@
 #define DRIVEMAP_KEY			"driveMap"
 #define OWDEL_KEY				"overwrite_del"
 #define ACL_KEY					"acl"
+#define USEOVERLAPIO_KEY		"use_overlapio"
 #define STREAM_KEY				"stream"
 #define VERIFY_KEY				"verify"
 #define USEMD5_KEY				"using_md5"
@@ -79,9 +92,12 @@
 #define WINPOS_KEY				"win_pos"
 #define TASKBARMODE_KEY			"taskbarMode"
 #define INFOSPAN_KEY			"infoSpan"
+#define STATUSFONT_KEY			"status_font"
+#define STATUSFONTSIZE_KEY		"status_fontsize"
 
 #define NONBUFMINSIZENTFS_KEY	"nonbuf_minsize_ntfs2"
 #define NONBUFMINSIZEFAT_KEY	"nonbuf_minsize_fat"
+#define TIMEDIFFGRACE_KEY		"timediff_grace"
 #define ISREADOSBUF_KEY			"is_readosbuf"
 
 #define FMT_JOB_KEY				"job_%d"
@@ -101,18 +117,22 @@
 #define SHUTDOWNTIME_KEY		"shutdown_time"
 #define FLAGS_KEY				"flags"
 
+#define CUR_INI_VERSION			2
 #define DEFAULT_MAX_HISTORY		10
 #define DEFAULT_COPYMODE		1
 #define DEFAULT_COPYFLAGS		0
+#define DEFAULT_COPYUNFLAGS		0
 #define DEFAULT_EMPTYDIR		1
 #define DEFAULT_FORCESTART		0
+#define DEFAULT_MAXRUNNUM		3
+#define DEFAULT_MAXOVLNUM		4
 #ifdef _WIN64
 #define DEFAULT_BUFSIZE			128
 #define DEFAULT_MAXTRANSSIZE	16
 #define DEFAULT_MAXATTRSIZE		(1024 * 1024 * 1024)
 #define DEFAULT_MAXDIRSIZE		(1024 * 1024 * 1024)
 #else
-#define DEFAULT_BUFSIZE			32
+#define DEFAULT_BUFSIZE			64
 #define DEFAULT_MAXTRANSSIZE	8
 #define DEFAULT_MAXATTRSIZE		(128 * 1024 * 1024)
 #define DEFAULT_MAXDIRSIZE		(128 * 1024 * 1024)
@@ -127,85 +147,85 @@
 #define FINACT_MAX				1000
 #define DEFAULT_FASTCOPYLOG		"FastCopy.log"
 #define DEFAULT_INFOSPAN		2
-
+#define DEFAULT_STATUSFONT		"Terminal"
+#define DEFAULT_STATUSFONTSIZE	98
 
 /*
 	Vista以降
 */
 #ifdef _WIN64
-BOOL ConvertToX86Dir(void *target)
+BOOL ConvertToX86Dir(WCHAR *target)
 {
 	WCHAR	buf[MAX_PATH];
 	WCHAR	buf86[MAX_PATH];
 	int		len;
 
-	if (!TSHGetSpecialFolderPathV(NULL, buf, CSIDL_PROGRAM_FILES, FALSE)) return FALSE;
-	len = strlenV(buf);
-	SetChar(buf, len++, '\\');
-	SetChar(buf, len, 0);
+	if (!::SHGetSpecialFolderPathW(NULL, buf, CSIDL_PROGRAM_FILES, FALSE)) return FALSE;
+	len = (int)wcslen(buf);
+	buf[len++] = '\\';
+	buf[len] = 0;
 
-	if (strnicmpV(buf, target, len)) return FALSE;
+	if (wcsnicmp(buf, target, len)) return FALSE;
 
-	if (!TSHGetSpecialFolderPathV(NULL, buf86, CSIDL_PROGRAM_FILESX86, FALSE)) return FALSE;
-	MakePathV(buf, buf86, MakeAddr(target, len));
-	strcpyV(target, buf);
+	if (!::SHGetSpecialFolderPathW(NULL, buf86, CSIDL_PROGRAM_FILESX86, FALSE)) return FALSE;
+	MakePathW(buf, buf86, target + len);
+	wcscpy(target, buf);
 
 	return	 TRUE;
 }
 #endif
 
-BOOL ConvertVirtualStoreConf(void *execDirV, void *userDirV, void *virtualDirV)
+BOOL ConvertVirtualStoreConf(WCHAR *execDir, WCHAR *userDir, WCHAR *virtualDir)
 {
-#define FASTCOPY_INI_W			L"FastCopy.ini"
 	WCHAR	buf[MAX_PATH];
 	WCHAR	org_ini[MAX_PATH], usr_ini[MAX_PATH], vs_ini[MAX_PATH];
-	BOOL	is_admin = TIsUserAnAdmin();
+	BOOL	is_admin = ::IsUserAnAdmin();
 	BOOL	is_exists;
 
-	MakePathV(usr_ini, userDirV, FASTCOPY_INI_W);
-	MakePathV(org_ini, execDirV, FASTCOPY_INI_W);
+	MakePathW(usr_ini, userDir, FASTCOPY_INI);
+	MakePathW(org_ini, execDir, FASTCOPY_INI);
 
 #ifdef _WIN64
 	ConvertToX86Dir(org_ini);
 #endif
 
-	is_exists = GetFileAttributesV(usr_ini) != 0xffffffff;
+	is_exists = ::GetFileAttributesW(usr_ini) != 0xffffffff;
 	 if (!is_exists) {
-		CreateDirectoryV(userDirV, NULL);
+		::CreateDirectoryW(userDir, NULL);
 	}
 
-	if (virtualDirV && GetChar(virtualDirV, 0)) {
-		MakePathV(vs_ini,  virtualDirV, FASTCOPY_INI_W);
-		if (GetFileAttributesV(vs_ini) != 0xffffffff) {
+	if (virtualDir && virtualDir[0]) {
+		MakePathW(vs_ini,  virtualDir, FASTCOPY_INI);
+		if (::GetFileAttributesW(vs_ini) != 0xffffffff) {
 			if (!is_exists) {
 				is_exists = ::CopyFileW(vs_ini, usr_ini, TRUE);
 			}
-			MakePathV(buf, userDirV, L"to_OldDir(VirtualStore).lnk");
-			SymLinkV(virtualDirV, buf);
-			sprintfV(buf, L"%s.obsolete", vs_ini);
-			MoveFileW(vs_ini, buf);
-			if (GetFileAttributesV(vs_ini) != 0xffffffff) {
-				DeleteFileV(vs_ini);
+			MakePathW(buf, userDir, L"to_OldDir(VirtualStore).lnk");
+			SymLinkW(virtualDir, buf);
+			swprintf(buf, L"%s.obsolete", vs_ini);
+			::MoveFileW(vs_ini, buf);
+			if (::GetFileAttributesW(vs_ini) != 0xffffffff) {
+				::DeleteFileW(vs_ini);
 			}
 		}
 	}
 
-	if ((is_admin || !is_exists) && GetFileAttributesV(org_ini) != 0xffffffff) {
+	if ((is_admin || !is_exists) && ::GetFileAttributesW(org_ini) != 0xffffffff) {
 		if (!is_exists) {
 			is_exists = ::CopyFileW(org_ini, usr_ini, TRUE);
 		}
 		if (is_admin) {
-			sprintfV(buf, L"%s.obsolete", org_ini);
-			MoveFileW(org_ini, buf);
-			if (GetFileAttributesV(org_ini) != 0xffffffff) {
-				DeleteFileV(org_ini);
+			swprintf(buf, L"%s.obsolete", org_ini);
+			::MoveFileW(org_ini, buf);
+			if (::GetFileAttributesW(org_ini) != 0xffffffff) {
+				::DeleteFileW(org_ini);
 			}
 		}
 	}
 
-	MakePathV(buf, userDirV, L"to_ExeDir.lnk");
-	if (GetFileAttributesV(buf) == 0xffffffff) {
-		SymLinkV(execDirV, buf);
+	MakePathW(buf, userDir, L"to_ExeDir.lnk");
+	if (::GetFileAttributesW(buf) == 0xffffffff) {
+		SymLinkW(execDir, buf);
 	}
 
 	return	TRUE;
@@ -224,80 +244,193 @@ Cfg::Cfg()
 
 Cfg::~Cfg()
 {
-	free(virtualDirV);
-	free(userDirV);
-	free(errLogPathV);
-	free(execDirV);
-	free(execPathV);
+	free(virtualDir);
+	free(userDir);
+	free(errLogPath);
+	free(execDir);
+	free(execPath);
 }
 
-BOOL Cfg::Init(void *user_dir, void *virtual_dir)
+BOOL Cfg::Init(WCHAR *user_dir, WCHAR *virtual_dir)
 {
 	WCHAR	buf[MAX_PATH], path[MAX_PATH], *fname = NULL;
 
-	GetModuleFileNameV(NULL, buf, MAX_PATH);
-	GetFullPathNameV(buf, MAX_PATH, path, (void **)&fname);
+	::GetModuleFileNameW(NULL, buf, MAX_PATH);
+	::GetFullPathNameW(buf, MAX_PATH, path, &fname);
 	if (!fname) return FALSE;
 
-	execPathV = strdupV(path);
-	SetChar(fname, -1, 0); // remove '\\'
-	execDirV = strdupV(path);
+	execPath = wcsdup(path);
+	fname[-1] = 0; // remove '\\' of dir\\fname
+	execDir = wcsdup(path);
 
-	errLogPathV = NULL;
-	userDirV = NULL;
-	virtualDirV = NULL;
+	errLogPath = NULL;
+	userDir = NULL;
+	virtualDir = NULL;
 
-	if (IsWinVista() && TIsVirtualizedDirV(execDirV)) {
+	if (IsWinVista() && TIsVirtualizedDirW(execDir)) {
 		if (user_dir) {
-			userDirV = strdupV(user_dir);
-			if (virtual_dir) virtualDirV = strdupV(virtual_dir);
+			userDir = wcsdup(user_dir);
+			if (virtual_dir) virtualDir = wcsdup(virtual_dir);
 		}
 		else {
 			WCHAR	virtual_store[MAX_PATH];
 			WCHAR	fastcopy_dir[MAX_PATH];
 			WCHAR	*fastcopy_dirname = NULL;
 
-			GetFullPathNameW(path, MAX_PATH, fastcopy_dir, &fastcopy_dirname);
+			::GetFullPathNameW(path, MAX_PATH, fastcopy_dir, &fastcopy_dirname);
 
-			TSHGetSpecialFolderPathV(NULL, buf, CSIDL_APPDATA, FALSE);
-			MakePathV(path, buf, fastcopy_dirname);
-			userDirV = strdupV(path);
+			::SHGetSpecialFolderPathW(NULL, buf, CSIDL_APPDATA, FALSE);
+			MakePathW(path, buf, fastcopy_dirname);
+			userDir = wcsdup(path);
 
-			strcpyV(buf, execDirV);
+			wcscpy(buf, execDir);
 #ifdef _WIN64
 			ConvertToX86Dir(buf);
 #endif
-			if (!TMakeVirtualStorePathV(buf, virtual_store)) return FALSE;
-			virtualDirV = strdupV(virtual_store);
+			if (!TMakeVirtualStorePathW(buf, virtual_store)) return FALSE;
+			virtualDir = wcsdup(virtual_store);
 		}
-		ConvertVirtualStoreConf(execDirV, userDirV, virtualDirV);
+		ConvertVirtualStoreConf(execDir, userDir, virtualDir);
 	}
-	if (!userDirV) userDirV = strdupV(execDirV);
+	if (!userDir) userDir = wcsdup(execDir);
 
-	char	ini_path[MAX_PATH];
-	MakePath(ini_path, toA(userDirV), FASTCOPY_INI);
+	WCHAR	ini_path[MAX_PATH];
+	MakePathW(ini_path, userDir, FASTCOPY_INI);
+
 	ini.Init(ini_path);
+	ini.SetSection(MAIN_SECTION);
+	needIniConvert = FALSE;
+
+	if (ini.GetInt(INI_VERSION_KEY, -1) < CUR_INI_VERSION) {
+		if (::GetFileAttributesW(ini_path) != 0xffffffff) {
+			WCHAR	bak_path[MAX_PATH];
+			wcscpy(bak_path, ini_path);
+			wcscat(bak_path, L".bak");
+			if (!::MoveFileExW(ini_path, bak_path, MOVEFILE_REPLACE_EXISTING)) {
+				::DeleteFileW(ini_path);
+			}
+			ini.UnInit();
+			ini.Init(ini_path);
+		}
+		WCHAR	ini_path_old[MAX_PATH];
+		MakePathW(ini_path_old, userDir, FASTCOPY_INI_OLD);
+
+		if (::GetFileAttributesW(ini_path_old) != 0xffffffff) {
+			ini.UnInit();
+			ini.Init(ini_path_old); // loading done
+			ini.SetIniFileNameW(ini_path);
+			needIniConvert = TRUE;
+
+			// obsolete message file
+			MakePathW(ini_path_old, userDir, FASTCOPY_INI_OBSOLETE);
+			HANDLE hFile = ::CreateFileW(ini_path_old, GENERIC_WRITE, 0, 0, CREATE_ALWAYS,
+											FILE_ATTRIBUTE_NORMAL, 0);
+			DWORD	size;
+			::WriteFile(hFile, FASTCOPY_OBSOLETE_MSG, sizeof(FASTCOPY_OBSOLETE_MSG), &size, 0);
+			::CloseHandle(hFile);
+		}
+	}
 
 	return	TRUE;
 }
 
-BOOL Cfg::ReadIni(void *user_dir, void *virtual_dir)
+void ConvertFilter(const WCHAR *s, WCHAR *d)
+{
+	int		len = (int)wcslen(s);
+	WCHAR	ch;
+	int		si = 0;
+	int		di = 0;
+	BOOL	is_charclass = FALSE;
+
+	while ((ch = s[si++])) {
+		if (ch == '\\' && si < len && !is_charclass) {
+			ch = s[si++];
+			d[di++] = '[';
+			d[di++] = '\\';
+			d[di++] = ch;
+			d[di++] = ']';
+		}
+		else {
+			d[di++] = ch;
+			switch (ch) {
+			case '[':  if (!is_charclass) is_charclass = TRUE;
+				break;
+			case ']':  if (is_charclass)  is_charclass = FALSE;
+				break;
+			case '\\': if (si < len) d[di++] = s[si++];
+				break;
+			default:
+				break;
+			}
+		}
+	}
+	d[di] = 0;
+
+	DebugW(L"%s -> %s\n", s, d);
+}
+
+BOOL Cfg::GetFilterStr(const char *key, char *tmpbuf, WCHAR *wbuf)
+{
+	ini.GetStr(key, tmpbuf, MAX_HISTORY_CHAR_BUF, "");
+	IniStrToW(tmpbuf, wbuf);
+
+	if (needIniConvert) {
+		PathArray pa;
+
+		pa.RegisterMultiPath(wbuf);
+
+		for (int i=0; i < pa.Num(); i++) {
+			ConvertFilter(pa.Path(i), wbuf);
+			pa.ReplacePath(i, wbuf);
+		}
+		pa.GetMultiPath(wbuf, MAX_HISTORY_CHAR_BUF);
+	}
+
+	return	TRUE;
+}
+
+//#include <crtdbg.h>
+//_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF|_CRTDBG_CHECK_ALWAYS_DF|_CRTDBG_CHECK_CRT_DF|_CRTDBG_DELAY_FREE_MEM_DF);
+//_ASSERTE( _CrtCheckMemory( ) );
+
+BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 {
 	if (!Init(user_dir, virtual_dir)) return FALSE;
 
 	int		i, j;
-	char	key[100], *p;
-	char	*buf = new char [MAX_HISTORY_CHAR_BUF];
-	WCHAR	*wbuf = new WCHAR [MAX_HISTORY_BUF];
+	char	section[100], key[100], *p;
+	DynBuf	buf(MAX_HISTORY_CHAR_BUF);
+	Wstr	wbuf(MAX_HISTORY_CHAR_BUF);
 	char	*section_array[] = {	SRC_HISTORY, DST_HISTORY, DEL_HISTORY,
 									INC_HISTORY, EXC_HISTORY,
 									FROMDATE_HISTORY, TODATE_HISTORY,
 									MINSIZE_HISTORY, MAXSIZE_HISTORY };
-	void	***history_array[] = {	&srcPathHistory, &dstPathHistory, &delPathHistory,
+	bool	is_filter_array[] = {	false, false, false,
+									true, true,
+									false, false,
+									false, false };
+	WCHAR	***history_array[] = {	&srcPathHistory, &dstPathHistory, &delPathHistory,
 									&includeHistory, &excludeHistory,
 									&fromDateHistory, &toDateHistory,
 									&minSizeHistory, &maxSizeHistory };
 
+/*
+	WCHAR	wtestbuf[MAX_HISTORY_CHAR_BUF];
+	WCHAR	*wtest[] = {
+							L"12345",
+							L"abc\\[abc\\]\\",
+							L"aaa\\aaa",
+							L"abc[\\ax]",
+							L"abc[\\ax]\\",
+							L"12[[]345",
+							L"12[[]345\\",
+							L"12\\a3\\[45\\",
+							L"12345",
+							NULL };
+
+
+	for (int i=0; wtest[i]; i++) GetFilterStrCore(wtest[i], wtestbuf);
+*/
 	srcPathHistory	= NULL;
 	dstPathHistory	= NULL;
 	delPathHistory	= NULL;
@@ -311,28 +444,40 @@ BOOL Cfg::ReadIni(void *user_dir, void *virtual_dir)
 	finActMax = 0;
 
 	ini.SetSection(MAIN_SECTION);
+	iniVersion		= ini.GetInt(INI_VERSION_KEY, CUR_INI_VERSION);
 	bufSize			= ini.GetInt(BUFSIZE_KEY, DEFAULT_BUFSIZE);
+	maxRunNum		= ini.GetInt(MAXRUNNUM_KEY, DEFAULT_MAXRUNNUM);
 	maxTransSize	= ini.GetInt(MAXTRANSSIZE_KEY, DEFAULT_MAXTRANSSIZE);
+	maxOvlNum		= ini.GetInt(MAXOVLNUM_KEY, DEFAULT_MAXOVLNUM);
+	maxOvlSize		= ini.GetInt(MAXOVLSIZE_KEY, -1);
+
 	maxOpenFiles	= ini.GetInt(MAXOPENFILES_KEY, DEFAULT_MAXOPENFILES);
 	maxAttrSize		= ini.GetInt(MAXATTRSIZE_KEY, DEFAULT_MAXATTRSIZE);
 	maxDirSize		= ini.GetInt(MAXDIRSIZE_KEY, DEFAULT_MAXDIRSIZE);
 	nbMinSizeNtfs	= ini.GetInt(NONBUFMINSIZENTFS_KEY, DEFAULT_NBMINSIZE_NTFS);
 	nbMinSizeFat	= ini.GetInt(NONBUFMINSIZEFAT_KEY, DEFAULT_NBMINSIZE_FAT);
+	timeDiffGrace	= ini.GetInt(TIMEDIFFGRACE_KEY, 0);
+
 	isReadOsBuf		= ini.GetInt(ISREADOSBUF_KEY, FALSE);
 	maxHistoryNext	= maxHistory = ini.GetInt(MAX_HISTORY_KEY, DEFAULT_MAX_HISTORY);
 	copyMode		= ini.GetInt(COPYMODE_KEY, DEFAULT_COPYMODE);
 	copyFlags		= ini.GetInt(COPYFLAGS_KEY, DEFAULT_COPYFLAGS);
+	copyUnFlags		= ini.GetInt(COPYUNFLAGS_KEY, DEFAULT_COPYUNFLAGS);
+
 	skipEmptyDir	= ini.GetInt(SKIPEMPTYDIR_KEY, DEFAULT_EMPTYDIR);
 	forceStart		= ini.GetInt(FORCESTART_KEY, DEFAULT_FORCESTART);
 	ignoreErr		= ini.GetInt(IGNORE_ERR_KEY, TRUE);
 	estimateMode	= ini.GetInt(ESTIMATE_KEY, 0);
 	diskMode		= ini.GetInt(DISKMODE_KEY, 0);
+	netDrvMode		= ini.GetInt(NETDRVMODE_KEY, 0);
 	isTopLevel		= ini.GetInt(ISTOPLEVEL_KEY, FALSE);
 	isErrLog		= ini.GetInt(ISERRLOG_KEY, TRUE);
 	isUtf8Log		= ini.GetInt(ISUTF8LOG_KEY, TRUE);
 	fileLogMode		= ini.GetInt(FILELOGMODE_KEY, 0);
+	fileLogFlags	= ini.GetInt(FILELOGFLAGS_KEY, 0);
 	aclErrLog		= ini.GetInt(ACLERRLOG_KEY, FALSE);
 	streamErrLog	= ini.GetInt(STREAMERRLOG_KEY, FALSE);
+	debugFlags		= ini.GetInt(DEBUGFLAGS_KEY, 0);
 	isRunasButton	= ini.GetInt(ISRUNASBUTTON_KEY, FALSE);
 	isSameDirRename	= ini.GetInt(ISSAMEDIRRENAME_KEY, TRUE);
 	shextAutoClose	= ini.GetInt(SHEXTAUTOCLOSE_KEY, TRUE);
@@ -349,6 +494,7 @@ BOOL Cfg::ReadIni(void *user_dir, void *virtual_dir)
 	enableAcl		= ini.GetInt(ACL_KEY, FALSE);
 	enableStream	= ini.GetInt(STREAM_KEY, FALSE);
 	enableVerify	= ini.GetInt(VERIFY_KEY, FALSE);
+	useOverlapIo	= ini.GetInt(USEOVERLAPIO_KEY, TRUE);
 	usingMD5		= ini.GetInt(USEMD5_KEY, TRUE);
 	enableNSA		= ini.GetInt(NSA_KEY, FALSE);
 	delDirWithFilter= ini.GetInt(DELDIR_KEY, FALSE);
@@ -373,30 +519,37 @@ BOOL Cfg::ReadIni(void *user_dir, void *virtual_dir)
 
 	ini.GetStr(DRIVEMAP_KEY, driveMap, sizeof(driveMap), "");
 
+	ini.GetStr(STATUSFONT_KEY, buf, MAX_HISTORY_CHAR_BUF, DEFAULT_STATUSFONT);
+	IniStrToW(buf, statusFont);
+	statusFontSize = ini.GetInt(STATUSFONTSIZE_KEY, DEFAULT_STATUSFONTSIZE);
+
 /* logfile */
 	ini.GetStr(LOGFILE_KEY, buf, MAX_PATH, DEFAULT_FASTCOPYLOG);
-	IniStrToV(buf, wbuf);
-	if (lstrchrV(wbuf, '\\') == NULL) {
-		MakePathV(buf, userDirV, wbuf);
-		errLogPathV = strdupV(buf);
+	IniStrToW(buf, wbuf.Buf());
+	if (wcschr(wbuf, '\\') == NULL) {
+		Wstr	wname(wbuf);
+		MakePathW(wbuf.Buf(), userDir, wname);
 	}
-	else {
-		errLogPathV = strdupV(wbuf);
-	}
+	errLogPath = wcsdup(wbuf);
 
 /* History */
 	for (i=0; i < sizeof(section_array) / sizeof(char *); i++) {
-		char	*&section = section_array[i];
-		void	**&history = *history_array[i];
+		char	*section_p = section_array[i];
+		bool	&is_filter = is_filter_array[i];
+		WCHAR	**&history = *history_array[i];
 
-		ini.SetSection(section);
-		history = (void **)calloc(maxHistory, sizeof(WCHAR *));
+		ini.SetSection(section_p);
+		history = (WCHAR **)calloc(maxHistory, sizeof(WCHAR *));
 		for (j=0; j < maxHistory + 30; j++) {
 			wsprintf(key, "%d", j);
 			if (j < maxHistory) {
-				ini.GetStr(key, buf, MAX_HISTORY_CHAR_BUF, "");
-				IniStrToV(buf, wbuf);
-				history[j] = strdupV(wbuf);
+				if (is_filter) {
+					GetFilterStr(key, buf, wbuf.Buf());
+				} else {
+					ini.GetStr(key, buf, MAX_HISTORY_CHAR_BUF);
+					IniStrToW(buf, wbuf.Buf());
+				}
+				history[j] = wcsdup(wbuf);
 			}
 			else if (!ini.DelKey(key))
 				break;
@@ -405,48 +558,46 @@ BOOL Cfg::ReadIni(void *user_dir, void *virtual_dir)
 
 /* Job */
 	for (i=0; i < JOB_MAX; i++) {
-		Job	job;
+		Job		job;
 
-		wsprintf(buf, FMT_JOB_KEY, i);
-		ini.SetSection(buf);
+		wsprintf(section, FMT_JOB_KEY, i);
+		ini.SetSection(section);
 
 		if (ini.GetStr(TITLE_KEY, buf, MAX_HISTORY_CHAR_BUF) <= 0)
 			break;
-		IniStrToV(buf, wbuf);
-		job.title = strdupV(wbuf);
+		IniStrToW(buf, wbuf.Buf());
+		job.title = wcsdup(wbuf);
 
 		ini.GetStr(SRC_KEY, buf, MAX_HISTORY_CHAR_BUF);
-		IniStrToV(buf, wbuf);
-		job.src = strdupV(wbuf);
+		IniStrToW(buf, wbuf.Buf());
+		job.src = wcsdup(wbuf);
 
 		ini.GetStr(DST_KEY, buf, MAX_HISTORY_CHAR_BUF);
-		IniStrToV(buf, wbuf);
-		job.dst = strdupV(wbuf);
+		IniStrToW(buf, wbuf.Buf());
+		job.dst = wcsdup(wbuf);
 
 		ini.GetStr(CMD_KEY, buf, MAX_HISTORY_CHAR_BUF);
-		IniStrToV(buf, wbuf);
-		job.cmd = strdupV(wbuf);
+		IniStrToW(buf, wbuf.Buf());
+		job.cmd = wcsdup(wbuf);
 
-		ini.GetStr(INCLUDE_KEY, buf, MAX_HISTORY_CHAR_BUF);
-		IniStrToV(buf, wbuf);
-		job.includeFilter = strdupV(wbuf);
-		ini.GetStr(EXCLUDE_KEY, buf, MAX_HISTORY_CHAR_BUF);
-		IniStrToV(buf, wbuf);
-		job.excludeFilter = strdupV(wbuf);
+		GetFilterStr(INCLUDE_KEY, buf, wbuf.Buf());
+		job.includeFilter = wcsdup(wbuf);
+		GetFilterStr(EXCLUDE_KEY, buf, wbuf.Buf());
+		job.excludeFilter = wcsdup(wbuf);
 
 		ini.GetStr(FROMDATE_KEY, buf, MAX_HISTORY_CHAR_BUF);
-		IniStrToV(buf, wbuf);
-		job.fromDateFilter = strdupV(wbuf);
+		IniStrToW(buf, wbuf.Buf());
+		job.fromDateFilter = wcsdup(wbuf);
 		ini.GetStr(TODATE_KEY, buf, MAX_HISTORY_CHAR_BUF);
-		IniStrToV(buf, wbuf);
-		job.toDateFilter = strdupV(wbuf);
+		IniStrToW(buf, wbuf.Buf());
+		job.toDateFilter = wcsdup(wbuf);
 
 		ini.GetStr(MINSIZE_KEY, buf, MAX_HISTORY_CHAR_BUF);
-		IniStrToV(buf, wbuf);
-		job.minSizeFilter = strdupV(wbuf);
+		IniStrToW(buf, wbuf.Buf());
+		job.minSizeFilter = wcsdup(wbuf);
 		ini.GetStr(MAXSIZE_KEY, buf, MAX_HISTORY_CHAR_BUF);
-		IniStrToV(buf, wbuf);
-		job.maxSizeFilter = strdupV(wbuf);
+		IniStrToW(buf, wbuf.Buf());
+		job.maxSizeFilter = wcsdup(wbuf);
 
 		job.estimateMode = ini.GetInt(ESTIMATE_KEY, 0);
 		job.diskMode = ini.GetInt(DISKMODE_KEY, 0);
@@ -458,7 +609,7 @@ BOOL Cfg::ReadIni(void *user_dir, void *virtual_dir)
 		job.isFilter = ini.GetInt(FILTER_KEY, FALSE);
 		job.bufSize = ini.GetInt(BUFSIZE_KEY, DEFAULT_BUFSIZE);
 
-		AddJobV(&job);
+		AddJobW(&job);
 	}
 
 /* FinAct */
@@ -470,30 +621,29 @@ BOOL Cfg::ReadIni(void *user_dir, void *virtual_dir)
 
 		if (ini.GetStr(TITLE_KEY, buf, MAX_HISTORY_CHAR_BUF) <= 0)
 			break;
-		IniStrToV(buf, wbuf);
-		act.title = strdupV(wbuf);
+		IniStrToW(buf, wbuf.Buf());
+		act.title = wcsdup(wbuf.Buf());
 
 		ini.GetStr(SOUND_KEY, buf, MAX_HISTORY_CHAR_BUF);
-		IniStrToV(buf, wbuf);
-		act.sound = strdupV(wbuf);
+		IniStrToW(buf, wbuf.Buf());
+		act.sound = wcsdup(wbuf);
 
 		ini.GetStr(CMD_KEY, buf, MAX_HISTORY_CHAR_BUF);
-		IniStrToV(buf, wbuf);
-		act.command = strdupV(wbuf);
+		IniStrToW(buf, wbuf.Buf());
+		act.command = wcsdup(wbuf);
 
 		act.flags = ini.GetInt(FLAGS_KEY, 0);
 
 		if (ini.GetStr(SHUTDOWNTIME_KEY, buf, MAX_HISTORY_CHAR_BUF) > 0) {
 			act.shutdownTime = strtol(buf, 0, 10);
 		}
-		AddFinActV(&act);
+		AddFinActW(&act);
 	}
 
-	if (::GetFileAttributes(ini.GetIniFileName()) == 0xffffffff) {
+	if (::GetFileAttributesW(ini.GetIniFileNameW()) == 0xffffffff) {
 		WriteIni();
 	}
-	delete [] wbuf;
-	delete [] buf;
+	needIniConvert = FALSE;
 
 	return	TRUE;
 }
@@ -512,12 +662,12 @@ BOOL Cfg::PostReadIni(void)
 			FinAct	act;
 			act.flags = flags_list[i] | FinAct::BUILTIN;
 			if (i >= 1) act.shutdownTime = 60;
-			act.SetString(GetLoadStrV(id_list[i]), L"", L"");
-			AddFinActV(&act);
+			act.SetString(GetLoadStrW(id_list[i]), L"", L"");
+			AddFinActW(&act);
 		}
 		if (finActArray[i]->flags & FinAct::BUILTIN) {
 			free(finActArray[i]->title);
-			finActArray[i]->title = strdupV(GetLoadStrV(id_list[i]));
+			finActArray[i]->title = wcsdup(GetLoadStrW(id_list[i]));
 		}
 	}
 
@@ -529,25 +679,41 @@ BOOL Cfg::WriteIni(void)
 	ini.StartUpdate();
 
 	ini.SetSection(MAIN_SECTION);
+
+	ini.SetInt(INI_VERSION_KEY, iniVersion);
+	ini.KeyToTop(INI_VERSION_KEY);
+
 	ini.SetInt(BUFSIZE_KEY, bufSize);
+	ini.SetInt(MAXRUNNUM_KEY, maxRunNum);
 	ini.SetInt(MAXTRANSSIZE_KEY, maxTransSize);
+	ini.SetInt(MAXOVLNUM_KEY, maxOvlNum);
+//	ini.SetInt(MAXOVLSIZE_KEY, maxOvlSize);
+
 //	ini.SetInt(MAXOPENFILES_KEY, maxOpenFiles);
 	ini.SetInt(NONBUFMINSIZENTFS_KEY, nbMinSizeNtfs);
 	ini.SetInt(NONBUFMINSIZEFAT_KEY, nbMinSizeFat);
+	ini.SetInt(TIMEDIFFGRACE_KEY, timeDiffGrace);
+
 	ini.SetInt(ISREADOSBUF_KEY, isReadOsBuf);
 	ini.SetInt(MAX_HISTORY_KEY, maxHistoryNext);
 	ini.SetInt(COPYMODE_KEY, copyMode);
 //	ini.SetInt(COPYFLAGS_KEY, copyFlags);
+//	ini.SetInt(COPYUNFLAGS_KEY, copyUnFlags);
+
 	ini.SetInt(SKIPEMPTYDIR_KEY, skipEmptyDir);
 	ini.SetInt(IGNORE_ERR_KEY, ignoreErr);
 	ini.SetInt(ESTIMATE_KEY, estimateMode);
 	ini.SetInt(DISKMODE_KEY, diskMode);
+	ini.SetInt(NETDRVMODE_KEY, netDrvMode);
+
 	ini.SetInt(ISTOPLEVEL_KEY, isTopLevel);
 	ini.SetInt(ISERRLOG_KEY, isErrLog);
 	ini.SetInt(ISUTF8LOG_KEY, isUtf8Log);
 	ini.SetInt(FILELOGMODE_KEY, fileLogMode);
+	ini.SetInt(FILELOGFLAGS_KEY, fileLogFlags);
 	ini.SetInt(ACLERRLOG_KEY, aclErrLog);
 	ini.SetInt(STREAMERRLOG_KEY, streamErrLog);
+//	ini.SetInt(DEBUGFLAGS_KEY, debugFlags);
 //	ini.SetInt(ISRUNASBUTTON_KEY, isRunasButton);
 	ini.SetInt(ISSAMEDIRRENAME_KEY, isSameDirRename);
 	ini.SetInt(SHEXTAUTOCLOSE_KEY, shextAutoClose);
@@ -565,6 +731,7 @@ BOOL Cfg::WriteIni(void)
 	ini.SetInt(ACL_KEY, enableAcl);
 	ini.SetInt(STREAM_KEY, enableStream);
 	ini.SetInt(VERIFY_KEY, enableVerify);
+	ini.SetInt(USEOVERLAPIO_KEY, useOverlapIo);
 //	ini.SetInt(USEMD5_KEY, usingMD5);
 	ini.SetInt(NSA_KEY, enableNSA);
 	ini.SetInt(DELDIR_KEY, delDirWithFilter);
@@ -589,22 +756,22 @@ BOOL Cfg::WriteIni(void)
 									INC_HISTORY, EXC_HISTORY,
 									FROMDATE_HISTORY, TODATE_HISTORY,
 									MINSIZE_HISTORY, MAXSIZE_HISTORY };
-	void	***history_array[] = {	&srcPathHistory, &dstPathHistory, &delPathHistory,
+	WCHAR	***history_array[] = {	&srcPathHistory, &dstPathHistory, &delPathHistory,
 									&includeHistory, &excludeHistory,
 									&fromDateHistory, &toDateHistory,
 									&minSizeHistory, &maxSizeHistory };
 	int		i, j;
 	char	key[100];
-	char	*buf = new char [MAX_HISTORY_CHAR_BUF];
+	DynBuf	buf(MAX_HISTORY_CHAR_BUF);
 
 	for (i=0; i < sizeof(section_array) / sizeof(char *); i++) {
 		char	*&section = section_array[i];
-		void	**&history = *history_array[i];
+		WCHAR	**&history = *history_array[i];
 
 		ini.SetSection(section);
 		for (j=0; j < maxHistory; j++) {
 			wsprintf(key, "%d", j);
-			VtoIniStr(history[j], buf);
+			WtoU8(history[j], buf, MAX_HISTORY_CHAR_BUF);
 			if (j < maxHistoryNext)
 				ini.SetStr(key, buf);
 			else
@@ -618,31 +785,31 @@ BOOL Cfg::WriteIni(void)
 
 		ini.SetSection(buf);
 
-		VtoIniStr(job->title, buf);
+		WtoU8(job->title, buf, MAX_HISTORY_CHAR_BUF);
 		ini.SetStr(TITLE_KEY,		buf);
 
-		VtoIniStr(job->src, buf);
+		WtoU8(job->src, buf, MAX_HISTORY_CHAR_BUF);
 		ini.SetStr(SRC_KEY,			buf);
 
-		VtoIniStr(job->dst, buf);
+		WtoU8(job->dst, buf, MAX_HISTORY_CHAR_BUF);
 		ini.SetStr(DST_KEY,			buf);
 
-		VtoIniStr(job->cmd, buf);
+		WtoU8(job->cmd, buf, MAX_HISTORY_CHAR_BUF);
 		ini.SetStr(CMD_KEY,			buf);
 
-		VtoIniStr(job->includeFilter, buf);
+		WtoU8(job->includeFilter, buf, MAX_HISTORY_CHAR_BUF);
 		ini.SetStr(INCLUDE_KEY,		buf);
-		VtoIniStr(job->excludeFilter, buf);
+		WtoU8(job->excludeFilter, buf, MAX_HISTORY_CHAR_BUF);
 		ini.SetStr(EXCLUDE_KEY,		buf);
 
-		VtoIniStr(job->fromDateFilter, buf);
+		WtoU8(job->fromDateFilter, buf, MAX_HISTORY_CHAR_BUF);
 		ini.SetStr(FROMDATE_KEY,	buf);
-		VtoIniStr(job->toDateFilter, buf);
+		WtoU8(job->toDateFilter, buf, MAX_HISTORY_CHAR_BUF);
 		ini.SetStr(TODATE_KEY,	buf);
 
-		VtoIniStr(job->minSizeFilter, buf);
+		WtoU8(job->minSizeFilter, buf, MAX_HISTORY_CHAR_BUF);
 		ini.SetStr(MINSIZE_KEY,	buf);
-		VtoIniStr(job->maxSizeFilter, buf);
+		WtoU8(job->maxSizeFilter, buf, MAX_HISTORY_CHAR_BUF);
 		ini.SetStr(MAXSIZE_KEY,	buf);
 
 		ini.SetInt(ESTIMATE_KEY,	job->estimateMode);
@@ -664,13 +831,13 @@ BOOL Cfg::WriteIni(void)
 
 		ini.SetSection(buf);
 
-		VtoIniStr(finAct->title, buf);
+		WtoU8(finAct->title, buf, MAX_HISTORY_CHAR_BUF);
 		ini.SetStr(TITLE_KEY,		buf);
 
-		VtoIniStr(finAct->sound, buf);
+		WtoU8(finAct->sound, buf, MAX_HISTORY_CHAR_BUF);
 		ini.SetStr(SOUND_KEY,		buf);
 
-		VtoIniStr(finAct->command, buf);
+		WtoU8(finAct->command, buf, MAX_HISTORY_CHAR_BUF);
 		ini.SetStr(CMD_KEY,			buf);
 
 		ini.SetInt(SHUTDOWNTIME_KEY,	finAct->shutdownTime);
@@ -679,31 +846,29 @@ BOOL Cfg::WriteIni(void)
 	wsprintf(buf, FMT_FINACT_KEY, i);
 	ini.DelSection(buf);
 
-	delete [] buf;
-
 	return	ini.EndUpdate();
 }
 
-BOOL Cfg::EntryPathHistory(void *src, void *dst)
+BOOL Cfg::EntryPathHistory(WCHAR *src, WCHAR *dst)
 {
-	void	*path_array[] = { src, dst };
-	void	***history_array[] = { &srcPathHistory, &dstPathHistory };
+	WCHAR	*path_array[] = { src, dst };
+	WCHAR	***history_array[] = { &srcPathHistory, &dstPathHistory };
 
 	return	EntryHistory(path_array, history_array, 2);
 }
 
-BOOL Cfg::EntryDelPathHistory(void *del)
+BOOL Cfg::EntryDelPathHistory(WCHAR *del)
 {
-	void	*path_array[] = { del };
-	void	***history_array[] = { &delPathHistory };
+	WCHAR	*path_array[] = { del };
+	WCHAR	***history_array[] = { &delPathHistory };
 
 	return	EntryHistory(path_array, history_array, 1);
 }
 
-BOOL Cfg::EntryFilterHistory(void *inc, void *exc, void *from, void *to, void *min, void *max)
+BOOL Cfg::EntryFilterHistory(WCHAR *inc, WCHAR *exc, WCHAR *from, WCHAR *to, WCHAR *min, WCHAR *max)
 {
-	void	*path_array[] = { inc, exc, from, to, min, max };
-	void	***history_array[] = {
+	WCHAR	*path_array[] = { inc, exc, from, to, min, max };
+	WCHAR	***history_array[] = {
 		&includeHistory, &excludeHistory, &fromDateHistory, &toDateHistory,
 		&minSizeHistory, &maxSizeHistory
 	};
@@ -711,93 +876,72 @@ BOOL Cfg::EntryFilterHistory(void *inc, void *exc, void *from, void *to, void *m
 	return	EntryHistory(path_array, history_array, 6);
 }
 
-BOOL Cfg::EntryHistory(void **path_array, void ****history_array, int max)
+BOOL Cfg::EntryHistory(WCHAR **path_array, WCHAR ****history_array, int max)
 {
 	BOOL	ret = TRUE;
-	void	*target_path;
+	WCHAR	*target_path;
 
 	for (int i=0; i < max; i++) {
 		int		idx;
-		void	*&path = path_array[i];
-		void	**&history = *history_array[i];
+		WCHAR	*&path = path_array[i];
+		WCHAR	**&history = *history_array[i];
 
-		if (!path || strlenV(path) >= MAX_HISTORY_BUF || GetChar(path, 0) == 0) {
+		if (!path || wcslen(path) >= MAX_HISTORY_BUF || path[0] == 0) {
 			ret = FALSE;
 			continue;
 		}
 		for (idx=0; idx < maxHistory; idx++) {
-			if (lstrcmpiV(path, history[idx]) == 0)
+			if (wcsicmp(path, history[idx]) == 0)
 				break;
 		}
 		if (idx) {
 			if (idx == maxHistory) {
-				target_path = strdupV(path);
+				target_path = wcsdup(path);
 				free(history[--idx]);
 			}
 			else {
 				target_path = history[idx];
 			}
-			memmove(history + 1, history, idx * sizeof(void *));
+			memmove(history + 1, history, idx * sizeof(WCHAR *));
 			history[0] = target_path;
 		}
 	}
 	return	ret;
 }
 
-BOOL Cfg::IniStrToV(char *inipath, void *path)
+BOOL Cfg::IniStrToW(char *str, WCHAR *wstr)
 {
-	if (IS_WINNT_V) {
-		int		len = (int)strlen(inipath) + 1;
-		if (*inipath == '|') {
-			hexstr2bin(inipath + 1, (BYTE *)path, len, &len);
-		}
-		else {
-			AtoW(inipath, (WCHAR *)path, len);
+	int		len = (int)strlen(str) + 1;
+
+	if (needIniConvert && *str == '|') { // old style
+		hexstr2bin(str + 1, (BYTE *)wstr, len, &len);
+	}
+	else {
+		if (needIniConvert && !IsUTF8(str)) {
+			AtoW(str, wstr, len);
+		} else {
+			U8toW(str, wstr, len);
 		}
 	}
-	else
-		strcpyV(path, inipath);
 
 	return	TRUE;
 }
 
-BOOL Cfg::VtoIniStr(void *path, char *inipath)
-{
-	if (IS_WINNT_V) {
-		int		len = (strlenV(path) + 1) * CHAR_LEN_V;
-		int		err_cnt = 0;
-
-		*inipath = 0;
-		if (!::WideCharToMultiByte(CP_ACP, 0, (WCHAR *)path, -1, inipath, len, 0, &err_cnt))
-			return	FALSE;
-
-		if (err_cnt) {
-			*inipath = '|';
-			bin2hexstr((BYTE *)path, len, inipath + 1);
-		}
-	}
-	else
-		strcpyV(inipath, path);
-
-	return	TRUE;
-}
-
-int Cfg::SearchJobV(void *title)
+int Cfg::SearchJobW(WCHAR *title)
 {
 	for (int i=0; i < jobMax; i++) {
-		if (lstrcmpiV(jobArray[i]->title, title) == 0)
+		if (wcsicmp(jobArray[i]->title, title) == 0)
 			return	i;
 	}
 	return	-1;
 }
 
-BOOL Cfg::AddJobV(const Job *job)
+BOOL Cfg::AddJobW(const Job *job)
 {
-	if (GetChar(job->title, 0) == 0
-	|| strlenV(job->src) >= MAX_HISTORY_BUF || GetChar(job->src, 0) == 0)
+	if (job->title[0] == 0 || wcslen(job->src) >= MAX_HISTORY_BUF || job->src[0] == 0)
 		return	FALSE;
 
-	int idx = SearchJobV(job->title);
+	int idx = SearchJobW(job->title);
 
 	if (idx >= 0) {
 		delete jobArray[idx];
@@ -810,7 +954,7 @@ BOOL Cfg::AddJobV(const Job *job)
 		jobArray = (Job **)realloc(jobArray, sizeof(Job *) * (jobMax + ALLOC_JOB));
 
 	for (idx=0; idx < jobMax; idx++) {
-		if (lstrcmpiV(jobArray[idx]->title, job->title) > 0)
+		if (wcsicmp(jobArray[idx]->title, job->title) > 0)
 			break;
 	}
 	memmove(jobArray + idx + 1, jobArray + idx, sizeof(Job *) * (jobMax++ - idx));
@@ -818,9 +962,9 @@ BOOL Cfg::AddJobV(const Job *job)
 	return	TRUE;
 }
 
-BOOL Cfg::DelJobV(void *title)
+BOOL Cfg::DelJobW(WCHAR *title)
 {
-	int idx = SearchJobV(title);
+	int idx = SearchJobW(title);
 	if (idx == -1)
 		return	FALSE;
 
@@ -829,29 +973,29 @@ BOOL Cfg::DelJobV(void *title)
 	return	TRUE;
 }
 
-int Cfg::SearchFinActV(void *title, BOOL is_cmdline)
+int Cfg::SearchFinActW(WCHAR *title, BOOL is_cmdline)
 {
 	for (int i=0; i < finActMax; i++) {
-		if (lstrcmpiV(finActArray[i]->title, title) == 0)
+		if (wcsicmp(finActArray[i]->title, title) == 0)
 			return	i;
 	}
 
 	if (is_cmdline) {
-		int	id_list[] = { IDS_STANDBY, IDS_HIBERNATE, IDS_SHUTDOWN };
-		for (int i=0; i < 3; i++) {
-			if (lstrcmpiV(GetLoadStrV(id_list[i]), title) == 0) return i + 1;
+		WCHAR	*std_title[] = { STANDBY_STR, HIBERNATE_STR, SHUTDOWN_STR, 0 };
+		for (int i=0; std_title[i]; i++) {
+			if (wcsicmp(std_title[i], title) == 0) return i + 1;
 		}
 	}
 
 	return	-1;
 }
 
-BOOL Cfg::AddFinActV(const FinAct *finAct)
+BOOL Cfg::AddFinActW(const FinAct *finAct)
 {
-	if (GetChar(finAct->title, 0) == 0)
+	if (finAct->title[0] == 0)
 		return	FALSE;
 
-	int		idx = SearchFinActV(finAct->title);
+	int		idx = SearchFinActW(finAct->title);
 
 	if (idx >= 0) {
 		DWORD builtin_flag = finActArray[idx]->flags & FinAct::BUILTIN;
@@ -870,9 +1014,9 @@ BOOL Cfg::AddFinActV(const FinAct *finAct)
 	return	TRUE;
 }
 
-BOOL Cfg::DelFinActV(void *title)
+BOOL Cfg::DelFinActW(WCHAR *title)
 {
-	int idx = SearchFinActV(title);
+	int idx = SearchFinActW(title);
 	if (idx == -1)
 		return	FALSE;
 

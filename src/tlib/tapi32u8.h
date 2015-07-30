@@ -1,9 +1,9 @@
-﻿/* @(#)Copyright (C) 1996-2012 H.Shirouzu		tapi32u8.h	Ver0.99 */
+﻿/* @(#)Copyright (C) 1996-2015 H.Shirouzu		tapi32u8.h	Ver0.99 */
 /* ========================================================================
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Main Header
 	Create					: 2005-04-10(Sun)
-	Update					: 2012-04-02(Mon)
+	Update					: 2015-06-22(Mon)
 	Copyright				: H.Shirouzu
 	Reference				: 
 	======================================================================== */
@@ -25,23 +25,27 @@ struct WIN32_FIND_DATA_U8 {
 };
 
 
+#define CP_UTF8                   65001       // UTF-8 translation
 int WtoU8(const WCHAR *src, char *dst, int bufsize, int max_len=-1);
 int U8toW(const char *src, WCHAR *dst, int bufsize, int max_len=-1);
-WCHAR *U8toW(const char *src, BOOL noStatic=FALSE);
-char *WtoU8(const WCHAR *src, BOOL noStatic=FALSE);
-char *WtoA(const WCHAR *src, BOOL noStatic=FALSE);
-char *AtoU8(const char *src, BOOL noStatic=FALSE);
-char *U8toA(const char *src, BOOL noStatic=FALSE);
-char *toA(const void *src, BOOL noStatic=FALSE);
-WCHAR *toW(const void *src, BOOL noStatic=FALSE);
-void *toV(const char *src, BOOL noStatic=FALSE);
-void *toV(const WCHAR *src, BOOL noStatic=FALSE);
-
-#define CP_UTF8                   65001       // UTF-8 translation
 int AtoW(const char *src, WCHAR *dst, int bufsize, int max_len=-1);
 int WtoA(const WCHAR *src, char *dst, int bufsize, int max_len=-1);
 
-WCHAR *AtoW(const char *src, BOOL noStatic=FALSE);
+/* dynamic allocation */
+WCHAR *U8toW(const char *src, int max_len=-1);
+char *WtoU8(const WCHAR *src, int max_len=-1);
+char *WtoA(const WCHAR *src, int max_len=-1);
+char *AtoU8(const char *src, int max_len=-1);
+char *U8toA(const char *src, int max_len=-1);
+WCHAR *AtoW(const char *src, int max_len=-1);
+
+/* use static buffer */
+WCHAR *U8toWs(const char *src, int max_len=-1);
+char *WtoU8s(const WCHAR *src, int max_len=-1);
+char *WtoAs(const WCHAR *src, int max_len=-1);
+char *AtoU8s(const char *src, int max_len=-1);
+char *U8toAs(const char *src, int max_len=-1);
+WCHAR *AtoWs(const char *src, int max_len=-1);
 
 inline int WtoS(LPCWSTR src, char *dst, int bufsize, StrMode mode, int max_len=-1) {
 	return (mode == BY_UTF8) ? WtoU8(src, dst, bufsize, max_len)
@@ -56,12 +60,14 @@ UINT GetDriveTypeU8(const char *path);
 class U8str {
 	char	*s;
 public:
-	U8str(const WCHAR *_s=NULL) { s = _s ? WtoU8(_s, TRUE) : NULL; }
+	U8str(const WCHAR *_s=NULL) { s = _s ? WtoU8(_s) : NULL; }
 	U8str(const char *_s, StrMode mode=BY_UTF8) {
-		s = _s ? mode == BY_UTF8 ? strdupNew(s) : AtoU8(_s, TRUE) : NULL;
+		s = (_s ? mode == BY_UTF8 ? strdupNew(s) : AtoU8(_s) : NULL);
 	}
+	U8str(const U8str &u) { Init(u.s); }
 	U8str(int len) { if (len) { s = new char [len]; *s = 0; } else { s = NULL; } }
 	~U8str() { delete [] s; }
+	void Init(const char *_s) { s = (_s ? strdupNew(_s) : NULL); }
 	operator const char *() { return s; }
 	char	*Buf() { return s; }
 };
@@ -70,24 +76,28 @@ class Wstr {
 	WCHAR	*s;
 public:
 	Wstr(const char *_s, StrMode mode=BY_UTF8) {
-		s = _s ? mode == BY_UTF8 ? U8toW(_s, TRUE) : AtoW(_s, TRUE) : NULL;
+		s = (_s ? mode == BY_UTF8 ? U8toW(_s) : AtoW(_s) : NULL);
 	}
+	Wstr(const WCHAR *_s) { Init(_s); }
+	Wstr(const Wstr& w) { Init(w.s); }
 	Wstr(int len) { if (len) { s = new WCHAR [len]; *s = 0; } else { s = NULL; } }
 	~Wstr() { delete [] s; }
+	void Init(const WCHAR *_s) { s = (_s ? wcsdupNew(_s) : NULL); }
 	operator const WCHAR *() { return s; }
-	operator const void *() { return s; }	// for V()
 	WCHAR	*Buf() { return s; }
 };
 
 class MBCSstr {
 	char	*s;
 public:
-	MBCSstr(const WCHAR *_s=NULL) { s = _s ? WtoA(_s, TRUE) : NULL; }
+	MBCSstr(const WCHAR *_s=NULL) { s = _s ? WtoA(_s) : NULL; }
 	MBCSstr(const char *_s, StrMode mode=BY_UTF8) {
-		s = _s ? mode == BY_UTF8 ? U8toA(_s, TRUE) : strdupNew(s) : NULL;
+		s = _s ? mode == BY_UTF8 ? U8toA(_s) : strdupNew(s) : NULL;
 	}
 	MBCSstr(int len) { if (len) { s = new char [len]; *s = 0; } else { s = NULL; } }
+	MBCSstr(const MBCSstr& m) { Init(m.s); }
 	~MBCSstr() { delete [] s; }
+	void Init(const char *_s) { s = (_s ? strdupNew(_s) : NULL); }
 	operator const char *() { return s; }
 	char	*Buf() { return s; }
 };

@@ -1,12 +1,12 @@
 ﻿static char *version_id = 
-	"@(#)Copyright (C) 2004-2012 H.Shirouzu	Version.cpp	ver2.11";
+	"@(#)Copyright (C) 2004-2015 H.Shirouzu	Version.cpp ver3.00b1";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Module Name				: Version
 	Create					: 2010-06-13(Sun)
-	Update					: 2012-06-18(Mon)
+	Update					: 2015-07-30(Thu)
 	Copyright				: H.Shirouzu
-	Reference				: 
+	License					: GNU General Public License version 3
 	======================================================================== */
 
 #include "tlib/tlib.h"
@@ -20,10 +20,11 @@ static char version_str[32];
 static char copyright_str[128];
 static char admin_str[32];
 
-void SetVersionStr(BOOL is_admin)
+void SetVersionStr(BOOL is_admin, BOOL is_noui)
 {
 	sprintf(version_str, "%.20s", strstr(version_id, "ver"));
 	if (is_admin) strcpy(admin_str, " (Admin)");
+	if (is_noui) strcpy(admin_str, " (NoUI)");
 }
 
 const char *GetVersionStr()
@@ -35,6 +36,8 @@ const char *GetVersionStr()
 
 const char *GetVerAdminStr()
 {
+	if (admin_str[0] == 0)
+		SetVersionStr();
 	return	admin_str;
 }
 

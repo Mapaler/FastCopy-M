@@ -1,10 +1,10 @@
 ﻿static char *tap32u8_id = 
-	"@(#)Copyright (C) 1996-2012 H.Shirouzu		tap32u8.cpp	Ver0.99";
+	"@(#)Copyright (C) 1996-2015 H.Shirouzu		tap32u8.cpp	Ver0.99";
 /* ========================================================================
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Application Frame Class
 	Create					: 1996-06-01(Sat)
-	Update					: 2012-04-02(Mon)
+	Update					: 2015-06-22(Mon)
 	Copyright				: H.Shirouzu
 	Reference				: 
 	======================================================================== */
@@ -403,15 +403,14 @@ int WtoU8(const WCHAR *src, char *dst, int bufsize, int max_len)
 		*dst = 0;
 		return	0;
 	}
+	else if (bufsize >= 2) { // clear for UTF8
+		int len = min(bufsize, 3);
+		memset(dst + bufsize - len, 0, len);
+	}
 
 	int affect_len = bufsize ? bufsize - 1 : 0;
 	int len = ::WideCharToMultiByte(CP_UTF8, 0, src, max_len, dst, affect_len, 0, 0);
-
-	if (len == 0 && dst && bufsize > 0) {
-		if ((len = (int)strnlen(dst, affect_len)) == affect_len) {
-			dst[len] = 0;
-		}
-	}
+	if (len < bufsize && dst) dst[len] = 0;
 
 	return	len;
 }
@@ -420,10 +419,12 @@ int U8toW(const char *src, WCHAR *dst, int bufsize, int max_len)
 {
 	int len = ::MultiByteToWideChar(CP_UTF8, 0, src, max_len, dst, bufsize);
 
-	if (len == 0 && dst && bufsize > 0) {
-		if ((len = (int)wcsnlen(dst, bufsize)) == bufsize) {
-			dst[--len] = 0;
+	if (len == 0) {
+		if (dst && bufsize > 0) {
+			if ((len = (int)wcsnlen(dst, bufsize)) == bufsize) dst[--len] = 0;
 		}
+	} else if (len < bufsize) {
+		dst[len] = 0;
 	}
 
 	return	len;
@@ -433,14 +434,19 @@ int AtoW(const char *src, WCHAR *dst, int bufsize, int max_len)
 {
 	int len = ::MultiByteToWideChar(CP_ACP, 0, src, max_len, dst, bufsize);
 
-	if (len == 0 && dst && bufsize > 0) {
-		if ((len = (int)wcsnlen(dst, bufsize)) == bufsize) {
-			dst[--len] = 0;
+	if (len == 0) {
+		if (dst && bufsize > 0) {
+			if ((len = (int)wcsnlen(dst, bufsize)) == bufsize) {
+				dst[--len] = 0;
+			}
 		}
+	} else if (len < bufsize) {
+		dst[len] = 0;
 	}
 
 	return	len;
 }
+
 int WtoA(const WCHAR *src, char *dst, int bufsize, int max_len)
 {
 	if (bufsize == 1) {
@@ -451,137 +457,135 @@ int WtoA(const WCHAR *src, char *dst, int bufsize, int max_len)
 	int affect_len = bufsize ? bufsize - 1 : 0;
 	int len = ::WideCharToMultiByte(CP_ACP, 0, src, max_len, dst, affect_len, 0, 0);
 
-	if (len == 0 && dst && bufsize > 0) {
-		if ((len = (int)strnlen(dst, affect_len)) == affect_len) {
-			dst[len] = 0;
+	if (len == 0) {
+		if (dst && bufsize > 0) {
+			if ((len = (int)strnlen(dst, affect_len)) == affect_len) {
+				dst[len] = 0;
+			}
 		}
+	} else if (len < bufsize) {
+		dst[len] = 0;
 	}
 
 	return	len;
 }
 
+WCHAR *U8toW(const char *src, int max_len) {
+	WCHAR	*wbuf = NULL;
+	int		len = U8toW(src, NULL, 0, max_len) + 1;
 
-WCHAR *U8toW(const char *src, BOOL noStatic) {
-	static	WCHAR	*_wbuf = NULL;
-
-	WCHAR	*wtmp = NULL;
-	WCHAR	*&wbuf = noStatic ? wtmp : _wbuf;
-
-	if (wbuf) {
-		delete [] wbuf;
-		wbuf = NULL;
-	}
-
-	int		len;
-	if ((len = U8toW(src, NULL, 0)) > 0) {
-		wbuf = new WCHAR [len + 1];
-		U8toW(src, wbuf, len);
+	if (len > 0) {
+		wbuf = new WCHAR [len];
+		U8toW(src, wbuf, len, max_len);
 	}
 	return	wbuf;
 }
 
-char *WtoU8(const WCHAR *src, BOOL noStatic) {
-	static	char	*_buf = NULL;
+#define MAX_STATIC_ARRAY 8 // 2^n
 
-	char	*tmp = NULL;
-	char	*&buf = noStatic ? tmp : _buf;
+WCHAR *U8toWs(const char *src, int max_len) {
+	static	WCHAR	*wbuf[MAX_STATIC_ARRAY];
+	static	u_long	idx;
 
-	if (buf) {
-		delete [] buf;
-		buf = NULL;
-	}
+	WCHAR	*&cur_buf = wbuf[idx++ % MAX_STATIC_ARRAY];
+	if (cur_buf) delete [] cur_buf;
+	return	(cur_buf = U8toW(src, max_len));
+}
 
-	int		len;
-	if ((len = WtoU8(src, NULL, 0)) > 0) {
-		buf = new char [len + 1];
-		WtoU8(src, buf, len);
+char *WtoU8(const WCHAR *src, int max_len) {
+	char	*buf = NULL;
+	int		len = WtoU8(src, NULL, 0, max_len) + 1;
+
+	if (len > 0) {
+		buf = new char [len];
+		WtoU8(src, buf, len, max_len);
 	}
 	return	buf;
 }
 
-char *WtoA(const WCHAR *src, BOOL noStatic) {
-	static	char	*_buf = NULL;
+char *WtoU8s(const WCHAR *src, int max_len) {
+	static	char	*buf[MAX_STATIC_ARRAY];
+	static	u_long	idx;
 
-	char	*tmp = NULL;
-	char	*&buf = noStatic ? tmp : _buf;
+	char	*&cur_buf = buf[idx++ % MAX_STATIC_ARRAY];
+	if (cur_buf) delete [] cur_buf;
+	return	(cur_buf = WtoU8(src, max_len));
+}
 
-	if (buf) {
-		delete [] buf;
-		buf = NULL;
+WCHAR *AtoW(const char *src, int max_len) {
+	WCHAR	*wbuf = NULL;
+	int		len	  = AtoW(src, NULL, 0, max_len) + 1;
+
+	if (len > 0) {
+		wbuf = new WCHAR [len];
+		AtoW(src, wbuf, len, max_len);
 	}
+	return	wbuf;
+}
 
-	int		len;
-	if ((len = WtoA(src, NULL, 0)) > 0) {
-		buf = new char [len + 1];
-		WtoA(src, buf, len);
+WCHAR *AtoWs(const char *src, int max_len) {
+	static	WCHAR	*wbuf[MAX_STATIC_ARRAY];
+	static	u_long	idx;
+
+	WCHAR	*&cur_buf = wbuf[idx++ % MAX_STATIC_ARRAY];
+	if (cur_buf) delete [] cur_buf;
+	return	(cur_buf = AtoW(src, max_len));
+}
+
+char *WtoA(const WCHAR *src, int max_len) {
+	char	*buf = NULL;
+	int		len	  = WtoA(src, NULL, 0, max_len) + 1;
+
+	if (len > 0) {
+		buf = new char [len];
+		WtoA(src, buf, len, max_len);
 	}
 	return	buf;
 }
 
-char *toA(const void *src, BOOL noStatic) {
-	if (IS_WINNT_V) {
-		return	WtoA((WCHAR *)src, noStatic);
-	}
-	return	noStatic ? strdupNew((char *)src) : (char *)src;
+char *WtoAs(const WCHAR *src, int max_len) {
+	static	char	*buf[MAX_STATIC_ARRAY];
+	static	u_long	idx;
+
+	char	*&cur_buf = buf[idx++ % MAX_STATIC_ARRAY];
+	if (cur_buf) delete [] cur_buf;
+	return	(cur_buf = WtoA(src, max_len));
 }
 
-WCHAR *toW(const void *src, BOOL noStatic) {
-	if (!IS_WINNT_V) {
-		return	AtoW((char *)src, noStatic);
-	}
-	return	noStatic ? wcsdupNew((WCHAR *)src) : (WCHAR *)src;
-}
+char *AtoU8(const char *src, int max_len) {
+	WCHAR	*wsrc = AtoW(src, max_len);
+	char	*buf;
 
-void *toV(const char *src, BOOL noStatic) {
-	if (IS_WINNT_V) {
-		return	AtoW(src, noStatic);
-	}
-	return	noStatic ? strdupNew(src) : (char *)src;
-}
-
-void *toV(const WCHAR *src, BOOL noStatic) {
-	if (!IS_WINNT_V) {
-		return	WtoA(src, noStatic);
-	}
-	return	noStatic ? wcsdupNew(src) : (void *)src;
-}
-
-char *AtoU8(const char *src, BOOL noStatic) {
-	static	char	*_buf = NULL;
-
-	char	*tmp = NULL;
-	char	*&buf = noStatic ? tmp : _buf;
-
-	if (buf) {
-		delete [] buf;
-		buf = NULL;
-	}
-
-	WCHAR	*wsrc = AtoW(src, TRUE);
-	if (wsrc) {
-		buf = WtoU8(wsrc, TRUE);
-	}
+	if (wsrc) buf = WtoU8(wsrc, max_len);
 	delete [] wsrc;
 	return	buf;
 }
 
-char *U8toA(const char *src, BOOL noStatic) {
-	static	char	*_buf = NULL;
+char *AtoU8s(const char *src, int max_len) {
+	static	char	*buf[MAX_STATIC_ARRAY];
+	static	u_long	idx;
 
-	char	*tmp = NULL;
-	char	*&buf = noStatic ? tmp : _buf;
+	char	*&cur_buf = buf[idx++ % MAX_STATIC_ARRAY];
+	if (cur_buf) delete [] cur_buf;
+	return	(cur_buf = AtoU8(src, max_len));
+}
 
-	if (buf) {
-		delete [] buf;
-		buf = NULL;
-	}
+char *U8toA(const char *src, int max_len) {
+	char	*buf = NULL;
 
-	WCHAR	*wsrc = U8toW(src, TRUE);
-	if (wsrc) {
-		buf = WtoA(wsrc, TRUE);
-	}
+	WCHAR	*wsrc = U8toW(src, max_len);
+	if (wsrc) buf = WtoA(wsrc, max_len);
 	delete [] wsrc;
 	return	buf;
+}
+
+char *U8toAs(const char *src, int max_len) {
+	static	char	*buf[MAX_STATIC_ARRAY];
+	static	u_long	idx;
+
+	char	*&cur_buf = buf[idx++ % MAX_STATIC_ARRAY];
+	if (cur_buf) delete [] cur_buf;
+	return	(cur_buf = U8toA(src, max_len));
 }
 
 
