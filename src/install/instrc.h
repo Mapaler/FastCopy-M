@@ -14,7 +14,7 @@
 #define IDS_ADMINCHANGE                 10
 #define IDS_COMPLETE_WIN7               11
 #define IDS_STRING12                    12
-#define IDS_SELECTPATH                  12
+#define IDS_SELECTPATH                  13
 #define INSTALL_SHEET                   101
 #define SETUP_ICON                      104
 #define MKDIR_BUTTON                    110
