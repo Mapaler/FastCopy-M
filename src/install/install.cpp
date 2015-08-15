@@ -4,7 +4,7 @@
 	Project  Name			: Installer for FastCopy
 	Module Name				: Installer Application Class
 	Create					: 2005-02-02(Wed)
-	Update					: 2015-06-22(Mon)
+	Update					: 2015-08-05(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -17,7 +17,7 @@
 char *current_shell = TIsWow64() ? CURRENT_SHEXTDLL_EX : CURRENT_SHEXTDLL;
 char *SetupFiles [] = {
 	FASTCOPY_EXE, INSTALL_EXE, CURRENT_SHEXTDLL, CURRENT_SHEXTDLL_EX,
-	README_TXT, README_ENG_TXT, HELP_CHM, NULL
+	README_TXT, README_ENG_TXT, GPL_TXT, HELP_CHM, NULL
 };
 
 /*
@@ -550,16 +550,10 @@ BOOL TInstDlg::Install(void)
 	const char *msg = GetLoadStr(is_delay_copy ? IDS_DELAYSETUPCOMPLETE : IDS_SETUPCOMPLETE);
 	int			flg = MB_OKCANCEL|MB_ICONINFORMATION;
 
-	if (IsWin7()) {
-		msg = Fmt("%s%s", msg, GetLoadStr(IDS_COMPLETE_WIN7));
-	}
-
 	TLaunchDlg	dlg(msg, this);
-	UINT		id;
 
-	if ((id = dlg.Exec()) == IDOK || id == LAUNCH_BUTTON) {
-		char	*arg = (id == LAUNCH_BUTTON) ? "/install" : "";
-		ShellExecute(NULL, "open", setupPath, arg, setupDir, SW_SHOW);
+	if (dlg.Exec() == IDOK) {
+		ShellExecute(NULL, "open", setupPath, "", setupDir, SW_SHOW);
 	}
 
 	::PostQuitMessage(0);
@@ -1009,27 +1003,15 @@ TLaunchDlg::~TLaunchDlg()
 BOOL TLaunchDlg::EvCreate(LPARAM lParam)
 {
 	SetDlgItemText(MESSAGE_STATIC, msg);
-	if (IsWin7()) {
-		::ShowWindow(GetDlgItem(LAUNCH_BUTTON), SW_SHOW);
-	}
-
 	Show();
 	return	TRUE;
 }
-
-#define NOTIFY_SETTINGS	"shell32.dll,Options_RunDLL 5"
 
 BOOL TLaunchDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl)
 {
 	switch (wID)
 	{
 	case IDOK: case IDCANCEL:
-		EndDialog(wID);
-		return	TRUE;
-
-	case LAUNCH_BUTTON:
-		//ShellExecuteU8(NULL, NULL, GetLoadStr(IDS_TRAYURL), 0, 0, SW_SHOW);
-		ShellExecuteU8(NULL, "open", "rundll32.exe", NOTIFY_SETTINGS, 0, SW_SHOW);
 		EndDialog(wID);
 		return	TRUE;
 	}

@@ -72,11 +72,11 @@
 <body bgcolor="#eeffff">
 
 <div align="center">
-<h1 class="help_head1">FastCopy ver3.00 beta 1</h1>
+<h1 class="help_head1">FastCopy ver3.00</h1>
 </div>
 <div class="help_all">
 
-<div align="right">2015/07/30 H.Shirouzu</div>
+<div align="right">2015/08/12 H.Shirouzu</div>
 
 <center>
 <strong>Warning :</strong> This document was made with the Japanese-English translation software. <br>
@@ -191,7 +191,7 @@ I want to correct this document. (If you made corrections, please send to <a hre
 	<div class="help_sub_section">
 		FastCopy retains the history of 10 entries in Source/DestDir. (This can be increased or decreased in the Option | Main settings dialog.)<br>
 		If you want to specify two or more files/dirs in the Source field, please use semicolon as a separator.<br>
-		If you want to add files/dirs to the Source field by using drag and drop, simply drop with pushing CTRL button.<br>
+		If you want to add files/dirs to the Source field by using drag and drop, simply drop with pushing CTRL.<br>
 		<br>
 		You can also drag & drop to DestDir field.
 
@@ -239,14 +239,19 @@ I want to correct this document. (If you made corrections, please send to <a hre
 	<a name="buttons"/>
 	<h3 class="help_head3">Buttons & Options</h3>
 	<div class="help_sub_section">
+		<a name="mainwin"/>
 		<table class="help_table" border="4">
 		<tr><td nowrap><strong>Execute</strong></td>
-		<td>The copy operation is executed. While copy is executing, this button changes "Cancel..." button. <br><strong>(The confirmation dialog is displayed, if this button is pushed with pushing CTRL button)</strong></td></tr>
+		<td>The copy operation is executed. While copy is executing, this button changes "Cancel..." button. <br> - <strong>With pushing CTRL</strong>, the confirmation dialog is displayed.</td></tr>
 		<tr><td nowrap><strong>Listing</strong></td>
-		<td>The files and directories list that will be copied and deleted are displayed. '+' means copying, and '-' means deleting.<strong>(Compare file pairs that will be skipped(except skipping by filter), if this button is pushed with pushing CTRL button(button label "listing" -> "listing+v"))</strong></td></tr>
+		<td>The files and directories list that will be copied and deleted are displayed. '+' means copying, and '-' means deleting.<br>
+		- <strong>With pushing CTRL</strong>(button label "listing" -> "listing+v"), compare the file pairs that will be skipped(except skipping by filter).<br>
+		- <strong>With pushing Shift</strong>(and if filelog is enabled), write listing contents to filelog. (If FileDate/FileSize option in log settings is enabled, these information will be shown/written)
+		</td></tr>
 		<tr><td nowrap><strong>Buffer size</strong></td>
 		<td>Specify the size(MB) of the main buffer for Read/Write oprations. <br>
-		(ver3.0 or later, 64bit version can be specified 4096(MB) or over.)</td></tr>
+		(ver3.0 or later, 64bit version can be specified 4096(MB) or over.)<br>
+		(More than twice value of <a href="#setting_io">Max I/O Size</a> is required)</td></tr>
 		<tr><td nowrap><strong>Speed Control</strong></td>
 		<td>Specify "Full Speed", "Auto Slow"(*1), "90%"~"10%", "Suspend".<br>
 		If you feel it is hogging resources, it is recommended to set to "Auto Slow" (If it detects mouse moving/active window changing (and fastcopy window isn't foreground), it is slowed down).<br>
@@ -275,7 +280,8 @@ I want to correct this document. (If you made corrections, please send to <a hre
 		<a name="options"/>
 		<table class="help_table" border="4">
 		<tr><td><strong>ACL</strong></td>
-		<td>Copy Access Control List (ACL). (Only applicable to NTFS)</td></tr>
+		<td>Copy Access Control List (ACL). (Only applicable to NTFS)<br>
+		<strong>(It is recomended to use with <a href="#elevate">Administrative privilege</a>)</strong></td></tr> 
 		<tr><td><strong>Alt Stream</strong></td>
 		<td>Copy Alternate Stream. (Only applicable to NTFS)</td></tr>
 		<tr><td><strong>Wipe & Delete (prevent deleted files reviving)</strong></td>
@@ -408,6 +414,7 @@ It can be specfied include filter strings(<a href="#wild_card">UNIX wildcard for
 		<div class="help_sub_section">
 			Show this help.
 		</div>
+		<a name="elevate">
 		<h4 class="help_head4">Elevate</h4>
 		<div class="help_sub_section">
 			Elevate administrative privilege. If it is already take privilege, title bar will show "(Admin)".
@@ -440,7 +447,9 @@ It can be specfied include filter strings(<a href="#wild_card">UNIX wildcard for
 
 			<table class="help_table" border="4">
 			<tr><td nowrap><strong>Max I/O size(MB)</strong></td><td>Total parallel Read/Write request unit size for OS.<br>
-				The real size of ReadFile/WriteFile unit size is MaxIoSize / Num of OverLap I/O issue</td></tr>
+				The real size of ReadFile/WriteFile unit size is MaxIoSize / Num of OverLap I/O issue.<br>
+			(<a href="#mainwin">Buffer size</a> is required more than twice value of Max I/O Size)</td></tr>
+
 			<tr><td nowrap><strong>Num of OverLap I/O issue</strong></td><td><strong>(v3.0 or later)</strong>I/O performance(especially network drive) is improved by using overlapped ReadFile/WriteFile I/O.<br>
 			(<strong>If it is specified "1", it will not use overlapped I/O</strong>)</td></tr>
 			</table>
@@ -674,7 +683,8 @@ demerit points are same as read, but sometimes many head seeks ocurr in wrinting
 	<br><br>
 	<strong>/estimate</strong> ... Estimate complete time.
 	<br><br>
-	<strong>/no_ui</strong> ... Don't show confirm dialogs. for background task. if /no_ui is used, /no_confirm_del and /no_confirm_stop is setted automatically. If FastCopy run in session 0(kicked by task scheduler), /no_ui is setted automatically. But even if /no_ui is setted, standby/hibernate/shutdown count-down dialog will not prevent.
+	<a name="#no_ui"/>
+	<strong>/no_ui</strong> ... Don't show confirm dialogs. for background task. if /no_ui is used, /no_confirm_del /no_confirm_stop /force_close is setted automatically. If FastCopy run in session 0(kicked by task scheduler), /no_ui is setted automatically. But even if /no_ui is setted, standby/hibernate/shutdown count-down dialog will not prevent.
 	<br><br>
 	<strong>/no_confirm_del</strong> ... Don't confirm before deleting.
 	<br><br>
@@ -795,11 +805,11 @@ demerit points are same as read, but sometimes many head seeks ocurr in wrinting
 
 <table class="help_table" border="4">
 <tr><th>Version</th><th>Detail</th></tr>
-<tr><td>v3.00 b1</td><td>
+<tr><td>v3.00</td><td>
 Improve I/O speed(especially network drive) by <a href="#setting_io">Overlapped I/O</a><br>
 Add <a href="#filter">Relative include/exclude filter</a>.<br>
 Optimize <a href="#setting_parallel">multiple running FastCopys</a>. (Enable parallel running if every FastCopys use the HDDs that another FastCopys aren't used. if not, the FastCopy that is waiting for terminating another FastCopy. And if a FastCopy has standby/shutdown post-process option, it will execute it after all fastcopy tasks terminating.<br>
-Add /no_ui option. (for task scheduler or batch job) <br>
+Add <a href="#no_ui">/no_ui</a> option. (for task scheduler or batch job) <br>
 MainBuffer can be specified 4096MB or over. (only 64bit FastCopy)<br>
 Add the option that can record <a href="#setting_log">timestamp/filesize information in filelog</a>.<br>
 Add <a href="#setting_copyopt">tolerance at the timestamp comparison option</a><br>
@@ -807,7 +817,8 @@ Improve Physical drive group decision<br>
 Improve helpfile.<br>
 Easy to see the display (font, comma-delimited, point precision adjustment). <br>
 Main settings filename is changed FastCopy.ini -> <strong><font color="red">FastCopy2.ini</font></strong>.<br>
-Change license BSD to <a href="#license">GPLv3</a>
+Change license BSD to <a href="#license">GPLv3</a><br>
+Misc refine.
 </td></tr>
 <tr><td>v2.11</td><td>Fix to ignore command line and shell extension in English GUI mode</td></tr>
 <tr><td>v2.10</td><td>
@@ -819,7 +830,7 @@ Add taskbar minimzie mode instead of tasktray.
 Add Post-process command condition.
 Misc refine.
 </td></tr>
-<tr><td>v2.08</td><td>Append selected directory to source field, if it is pushed OK button in Source directory Select Dialog with pushing CTRL key. Fix save path history problem(v2.07 only)</td></tr>
+<tr><td>v2.08</td><td>Append selected directory to source field, if it is pushed OK button in Source directory Select Dialog with pushing CTRL. Fix save path history problem(v2.07 only)</td></tr>
 <tr><td>v2.07</td><td>Prevent autocomplete of combobox at resizing main window. misc refine.</td></tr>
 <tr><td>v2.06</td><td>Fix exception at verify mode(v2.05 only).</td></tr>
 <tr><td>v2.05</td><td>Fix not to save settins in Win98. Enable to select writing ACL/AltStream errors to the log.</td></tr>
@@ -827,7 +838,7 @@ Misc refine.
 <tr><td>v2.03</td><td>Fix "Elevate" menu item didn't work in English UI.</td></tr>
 <tr><td>v2.02</td><td>Release x64 native version. Store fastcopy.ini and logfiles in \Users\(USER)\AppData\roaming\FastCopy, if installed in \Progmram Files in Vista or Win7(UAC on/off is unrelated). Misc refine/fix.</td></tr>
 <tr><td>v2.01</td><td>Fix not to finish "move" in same HDD rarely. Restore not to require absolute path.</td></tr>
-<tr><td>v2.00</td><td>Add simple compare function("listing" with CTRL button). Store fastcopy.ini and logfiles in \Users\(USER)\AppData\roaming\FastCopy, if UAC is enabled and installed in \Progmram Files. Enable manual settings of Physical Drive group. Enable 32bit shell extension in 64bitOS. Fix exception when deleting Job.</td></tr>
+<tr><td>v2.00</td><td>Add simple compare function("listing" with CTRL). Store fastcopy.ini and logfiles in \Users\(USER)\AppData\roaming\FastCopy, if UAC is enabled and installed in \Progmram Files. Enable manual settings of Physical Drive group. Enable 32bit shell extension in 64bitOS. Fix exception when deleting Job.</td></tr>
 <tr><td>v1.99r4</td><td>Adjust destination filename to source filename when both upper/lower case are different (except "overwrite all" mode). Fix showing no detail error.</td></tr>
 <tr><td>v1.99r3</td><td>Fix automatically decision of HDD mode problem.(v1.99r2 only) Improve to estimate complete time.</td></tr>
 <tr><td>v1.99r2</td><td>Add detail filelog option(/filelog). Enable filter in move mode. Speed up starting (Replace API's inifile access by original routine.) Affect filter for the files those are specified direct in Source EditBox. Modify /srcfile option when using MBCS in srcfile contents. Additionally, refinement</td></tr>

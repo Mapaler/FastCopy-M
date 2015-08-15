@@ -3,7 +3,7 @@
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2005-01-23(Sun)
-	Update					: 2015-07-22(Wed)
+	Update					: 2015-08-12(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -1134,12 +1134,12 @@ BOOL TFinDlg::EvTimer(WPARAM timerID, TIMERPROC proc)
 	return	TRUE;
 }
 
-int SetSpeedLevelLabel(TDlg *dlg, int level)
+int SetSpeedLevelLabel(TWin *win, int level)
 {
 	if (level == -1)
-		level = (int)dlg->SendDlgItemMessage(SPEED_SLIDER, TBM_GETPOS, 0, 0);
+		level = (int)win->SendDlgItemMessage(SPEED_SLIDER, TBM_GETPOS, 0, 0);
 	else
-		dlg->SendDlgItemMessage(SPEED_SLIDER, TBM_SETPOS, TRUE, level);
+		win->SendDlgItemMessage(SPEED_SLIDER, TBM_SETPOS, TRUE, level);
 
 	char	buf[64];
 	sprintf(buf,
@@ -1148,7 +1148,7 @@ int SetSpeedLevelLabel(TDlg *dlg, int level)
 			level == SPEED_SUSPEND ?	GetLoadStr(IDS_SUSPEND_DISP) :
 			 							GetLoadStr(IDS_RATE_DISP),
 			level * 10);
-	dlg->SetDlgItemText(SPEED_STATIC, buf);
+	win->SetDlgItemText(SPEED_STATIC, buf);
 	return	level;
 }
 

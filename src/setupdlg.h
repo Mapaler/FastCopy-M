@@ -3,7 +3,7 @@
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2015-07-17(Fri)
-	Update					: 2015-07-17(Fri)
+	Update					: 2015-08-12(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -14,17 +14,34 @@
 #include "resource.h"
 #include "cfg.h"
 
+class TSetupDlg;
+
+struct SheetDefSv {
+	int		bufSize;
+	int		estimateMode;
+	BOOL	ignoreErr;
+	BOOL	enableVerify;
+	BOOL	enableAcl;
+	BOOL	enableStream;
+	int		speedLevel;
+	BOOL	isExtendFilter;
+	BOOL	enableOwdel;
+};
+
 class TSetupSheet : public TDlg {
 protected:
-	Cfg	*cfg;
+	Cfg			*cfg;
+	TSetupDlg	*setupDlg;
+	SheetDefSv	*sv;
 
 public:
-	TSetupSheet() { cfg = NULL; }
-	BOOL Create(int resid, Cfg *_cfg, TWin *_parent);
+	TSetupSheet() { cfg = NULL; sv = NULL; }
+	~TSetupSheet() { if (sv) free(sv); }
+	BOOL Create(int resid, Cfg *_cfg, TSetupDlg *_parent);
 	BOOL	CheckData();
 	BOOL	SetData();
 	BOOL	GetData();
-//	void	ReflectDisp();
+	void	ReflectToMainWindow();
 	virtual BOOL	EvCreate(LPARAM lParam);
 	virtual BOOL	EventScroll(UINT uMsg, int Code, int nPos, HWND hwndScrollBar);
 	virtual	BOOL	EvCommand(WORD wNotifyCode, WORD wID, LPARAM hWndCtl);
@@ -48,7 +65,8 @@ class TSetupDlg : public TDlg {
 
 public:
 	TSetupDlg(Cfg *_cfg, TWin *_parent = NULL);
-	void	SetSheet(int idx=-1);
+	void		SetSheet(int idx=-1);
+	TSetupSheet	*GetSheet(int idx) { return &sheet[idx - SETUP_SHEET1]; }
 
 	virtual BOOL	EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl);
 	virtual BOOL	EvCreate(LPARAM lParam);

@@ -3,7 +3,7 @@
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2005-01-23(Sun)
-	Update					: 2015-07-22(Wed)
+	Update					: 2015-08-12(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -143,6 +143,7 @@ public:
 	int		nbMinSizeFat;
 	int		timeDiffGrace;
 	BOOL	isReadOsBuf;
+	BOOL	isWShareOpen;
 	int		maxHistory;
 	int		maxHistoryNext;
 	int		copyMode;
@@ -154,6 +155,7 @@ public:
 	int		estimateMode;
 	int		diskMode;
 	int		netDrvMode;
+	int		aclReset;
 	int		lcid;
 	int		waitTick;
 	int		speedLevel;

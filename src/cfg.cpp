@@ -3,7 +3,7 @@
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-07-22(Wed)
+	Update					: 2015-08-12(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -18,7 +18,7 @@
 #define FASTCOPY_INI			L"FastCopy2.ini"
 #define FASTCOPY_INI_OBSOLETE	L"FastCopy.ini-is-obsolete.txt"
 #define FASTCOPY_OBSOLETE_MSG	"FastCopy.ini is obsolete, and FastCopy2.ini is used in FastCopy" \
-								" ver2.2 or later.\r\n (FastCopy2.ini is encoded by UTF-8)\r\n"
+								" ver3.0 or later.\r\n (FastCopy2.ini is encoded by UTF-8)\r\n"
 #define MAIN_SECTION			"main"
 #define INI_VERSION_KEY			"ini_version"
 #define SRC_HISTORY				"src_history"
@@ -41,6 +41,7 @@
 #define ESTIMATE_KEY			"estimate_mode"
 #define DISKMODE_KEY			"disk_mode"
 #define NETDRVMODE_KEY			"netdrv_mode"
+#define ACLRESET_KEY			"acl_reset"
 #define ISTOPLEVEL_KEY			"is_toplevel"
 #define ISERRLOG_KEY			"is_errlog"
 #define ISUTF8LOG_KEY			"is_utf8log"
@@ -99,6 +100,7 @@
 #define NONBUFMINSIZEFAT_KEY	"nonbuf_minsize_fat"
 #define TIMEDIFFGRACE_KEY		"timediff_grace"
 #define ISREADOSBUF_KEY			"is_readosbuf"
+#define WRITESHAREOPEN_KEY		"writeshare_open"
 
 #define FMT_JOB_KEY				"job_%d"
 #define TITLE_KEY				"title"
@@ -450,7 +452,12 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 	maxTransSize	= ini.GetInt(MAXTRANSSIZE_KEY, DEFAULT_MAXTRANSSIZE);
 	maxOvlNum		= ini.GetInt(MAXOVLNUM_KEY, DEFAULT_MAXOVLNUM);
 	maxOvlSize		= ini.GetInt(MAXOVLSIZE_KEY, -1);
-
+	if ((maxTransSize % maxOvlNum)) {
+		maxTransSize = (maxTransSize + maxOvlNum - 1) / maxOvlNum * maxOvlNum;
+	}
+	if (bufSize < maxTransSize * BUFIO_SIZERATIO) {
+		bufSize = maxTransSize * BUFIO_SIZERATIO;
+	}
 	maxOpenFiles	= ini.GetInt(MAXOPENFILES_KEY, DEFAULT_MAXOPENFILES);
 	maxAttrSize		= ini.GetInt(MAXATTRSIZE_KEY, DEFAULT_MAXATTRSIZE);
 	maxDirSize		= ini.GetInt(MAXDIRSIZE_KEY, DEFAULT_MAXDIRSIZE);
@@ -459,6 +466,7 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 	timeDiffGrace	= ini.GetInt(TIMEDIFFGRACE_KEY, 0);
 
 	isReadOsBuf		= ini.GetInt(ISREADOSBUF_KEY, FALSE);
+	isWShareOpen	= ini.GetInt(WRITESHAREOPEN_KEY, FALSE);
 	maxHistoryNext	= maxHistory = ini.GetInt(MAX_HISTORY_KEY, DEFAULT_MAX_HISTORY);
 	copyMode		= ini.GetInt(COPYMODE_KEY, DEFAULT_COPYMODE);
 	copyFlags		= ini.GetInt(COPYFLAGS_KEY, DEFAULT_COPYFLAGS);
@@ -470,6 +478,7 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 	estimateMode	= ini.GetInt(ESTIMATE_KEY, 0);
 	diskMode		= ini.GetInt(DISKMODE_KEY, 0);
 	netDrvMode		= ini.GetInt(NETDRVMODE_KEY, 0);
+	aclReset		= ini.GetInt(ACLRESET_KEY, 0);
 	isTopLevel		= ini.GetInt(ISTOPLEVEL_KEY, FALSE);
 	isErrLog		= ini.GetInt(ISERRLOG_KEY, TRUE);
 	isUtf8Log		= ini.GetInt(ISUTF8LOG_KEY, TRUE);
@@ -608,6 +617,9 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 		job.enableVerify = ini.GetInt(VERIFY_KEY, FALSE);
 		job.isFilter = ini.GetInt(FILTER_KEY, FALSE);
 		job.bufSize = ini.GetInt(BUFSIZE_KEY, DEFAULT_BUFSIZE);
+		if (job.bufSize < maxTransSize * BUFIO_SIZERATIO) {
+			job.bufSize = maxTransSize * BUFIO_SIZERATIO;
+		}
 
 		AddJobW(&job);
 	}
@@ -695,6 +707,8 @@ BOOL Cfg::WriteIni(void)
 	ini.SetInt(TIMEDIFFGRACE_KEY, timeDiffGrace);
 
 	ini.SetInt(ISREADOSBUF_KEY, isReadOsBuf);
+	//ini.SetInt(WRITESHAREOPEN_KEY, isWShareOpen);
+
 	ini.SetInt(MAX_HISTORY_KEY, maxHistoryNext);
 	ini.SetInt(COPYMODE_KEY, copyMode);
 //	ini.SetInt(COPYFLAGS_KEY, copyFlags);
@@ -705,6 +719,7 @@ BOOL Cfg::WriteIni(void)
 	ini.SetInt(ESTIMATE_KEY, estimateMode);
 	ini.SetInt(DISKMODE_KEY, diskMode);
 	ini.SetInt(NETDRVMODE_KEY, netDrvMode);
+//	ini.SetInt(ACLRESET_KEY, aclReset);
 
 	ini.SetInt(ISTOPLEVEL_KEY, isTopLevel);
 	ini.SetInt(ISERRLOG_KEY, isErrLog);

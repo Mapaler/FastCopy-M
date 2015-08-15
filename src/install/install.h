@@ -114,6 +114,7 @@ public:
 #define INSTALL_EXE			"setup.exe"
 #define README_TXT			"readme.txt"
 #define README_ENG_TXT		"readme_eng.txt"
+#define GPL_TXT				"license-gpl3.txt"
 #define HELP_CHM			"FastCopy.chm"
 #define SHELLEXT1_DLL		"FastCopy_shext.dll"
 #define SHELLEXT2_DLL		"FastCopy_shext2.dll"

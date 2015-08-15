@@ -3,7 +3,7 @@
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2005-01-23(Sun)
-	Update					: 2015-06-22(Mon)
+	Update					: 2015-08-12(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -223,6 +223,6 @@ public:
 };
 
 
-int SetSpeedLevelLabel(TDlg *dlg, int level=-1);
+int SetSpeedLevelLabel(TWin *win, int level=-1);
 
 #endif

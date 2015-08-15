@@ -3,7 +3,7 @@
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2015-07-17(Fri)
-	Update					: 2015-07-17(Fri)
+	Update					: 2015-08-12(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -16,11 +16,14 @@
 /*
 	Setup用Sheet
 */
-BOOL TSetupSheet::Create(int _resId, Cfg *_cfg, TWin *_parent)
+BOOL TSetupSheet::Create(int _resId, Cfg *_cfg, TSetupDlg *_parent)
 {
 	cfg    = _cfg;
 	resId  = _resId;
-	parent = _parent;
+	parent = setupDlg = _parent;
+
+	if (resId == MAIN_SHEET) sv = new SheetDefSv;
+
 	return	TDlg::Create();
 }
 
@@ -43,6 +46,11 @@ BOOL TSetupSheet::EvCreate(LPARAM lParam)
 BOOL TSetupSheet::CheckData()
 {
 	if (resId == MAIN_SHEET) {
+		if (GetDlgItemInt(BUFSIZE_EDIT) <
+			setupDlg->GetSheet(IO_SHEET)->GetDlgItemInt(MAXTRANS_EDIT) * BUFIO_SIZERATIO) {
+			MessageBox(GetLoadStr(IDS_SMALLBUF_SETERR));
+			return	FALSE;
+		}
 		return	TRUE;
 	}
 	else if (resId == IO_SHEET) {
@@ -52,6 +60,11 @@ BOOL TSetupSheet::CheckData()
 		}
 		if (GetDlgItemInt(MAXTRANS_EDIT) % GetDlgItemInt(MAXOVL_EDIT)) {
 			MessageBox(GetLoadStr(IDS_MAXOVL_SETERR));
+			return	FALSE;
+		}
+		if (GetDlgItemInt(MAXTRANS_EDIT) * BUFIO_SIZERATIO >
+			setupDlg->GetSheet(MAIN_SHEET)->GetDlgItemInt(BUFSIZE_EDIT)) {
+			MessageBox(GetLoadStr(IDS_BIGIO_SETERR));
 			return	FALSE;
 		}
 		return	TRUE;
@@ -95,19 +108,27 @@ BOOL TSetupSheet::CheckData()
 BOOL TSetupSheet::SetData()
 {
 	if (resId == MAIN_SHEET) {
+		if (sv) {
+			sv->bufSize			= cfg->bufSize;
+			sv->estimateMode	= cfg->estimateMode;
+			sv->ignoreErr		= cfg->ignoreErr;
+			sv->enableVerify	= cfg->enableVerify;
+			sv->enableAcl		= cfg->enableAcl;
+			sv->enableStream	= cfg->enableStream;
+			sv->speedLevel		= cfg->speedLevel;
+			sv->isExtendFilter	= cfg->isExtendFilter;
+			sv->enableOwdel		= cfg->enableOwdel;
+		}
 		SetDlgItemInt(BUFSIZE_EDIT, cfg->bufSize);
-		CheckDlgButton(IGNORE_CHECK, cfg->ignoreErr);
 		CheckDlgButton(ESTIMATE_CHECK, cfg->estimateMode);
-		CheckDlgButton(ACL_CHECK, cfg->enableAcl);
-		::EnableWindow(GetDlgItem(ACL_CHECK), TRUE);
-		CheckDlgButton(STREAM_CHECK, cfg->enableStream);
-		::EnableWindow(GetDlgItem(STREAM_CHECK), TRUE);
+		CheckDlgButton(IGNORE_CHECK, cfg->ignoreErr);
 		CheckDlgButton(VERIFY_CHECK, cfg->enableVerify);
-		CheckDlgButton(OWDEL_CHECK, cfg->enableOwdel);
-		CheckDlgButton(EXTENDFILTER_CHECK, cfg->isExtendFilter);
-		SendDlgItemMessage(SPEED_SLIDER, TBM_SETRANGE, FALSE,
-			MAKELONG(SPEED_SUSPEND, SPEED_FULL));
+		CheckDlgButton(ACL_CHECK, cfg->enableAcl);
+		CheckDlgButton(STREAM_CHECK, cfg->enableStream);
+		SendDlgItemMessage(SPEED_SLIDER, TBM_SETRANGE, 0, MAKELONG(SPEED_SUSPEND, SPEED_FULL));
 		SetSpeedLevelLabel(this, cfg->speedLevel);
+		CheckDlgButton(EXTENDFILTER_CHECK, cfg->isExtendFilter);
+		CheckDlgButton(OWDEL_CHECK, cfg->enableOwdel);
 	}
 	else if (resId == IO_SHEET) {
 		SetDlgItemInt(MAXTRANS_EDIT, cfg->maxTransSize);
@@ -170,18 +191,57 @@ BOOL TSetupSheet::SetData()
 	return	TRUE;
 }
 
+void TSetupSheet::ReflectToMainWindow()
+{
+	TWin *win = parent ? parent->Parent() : NULL;
+
+	if (!win) return;
+
+	if (cfg->bufSize != sv->bufSize) {
+		win->SetDlgItemInt(BUFSIZE_EDIT, cfg->bufSize);
+	}
+	if (cfg->estimateMode != sv->estimateMode) {
+		win->CheckDlgButton(ESTIMATE_CHECK, cfg->estimateMode);
+	}
+	if (cfg->ignoreErr != sv->ignoreErr) {
+		win->CheckDlgButton(IGNORE_CHECK, cfg->ignoreErr);
+	}
+	if (cfg->enableVerify != sv->enableVerify) {
+		win->CheckDlgButton(VERIFY_CHECK, cfg->enableVerify);
+	}
+	if (cfg->enableAcl != sv->enableAcl) {
+		win->CheckDlgButton(ACL_CHECK, cfg->enableAcl);
+	}
+	if (cfg->enableStream != sv->enableStream) {
+		win->CheckDlgButton(STREAM_CHECK, cfg->enableStream);
+	}
+	if (cfg->speedLevel != sv->speedLevel) {
+		SetSpeedLevelLabel(win, cfg->speedLevel);
+		win->PostMessage(WM_HSCROLL, MAKEWPARAM(SB_THUMBTRACK, cfg->speedLevel),
+			(LPARAM)win->GetDlgItem(SPEED_SLIDER));
+	}
+	if (cfg->isExtendFilter != sv->isExtendFilter) {
+		win->CheckDlgButton(EXTENDFILTER_CHECK, cfg->isExtendFilter);
+	}
+	if (cfg->enableOwdel != sv->enableOwdel) {
+		win->CheckDlgButton(OWDEL_CHECK, cfg->enableOwdel);
+	}
+}
+
 BOOL TSetupSheet::GetData()
 {
 	if (resId == MAIN_SHEET) {
 		cfg->bufSize        = GetDlgItemInt(BUFSIZE_EDIT);
-		cfg->ignoreErr      = IsDlgButtonChecked(IGNORE_CHECK);
 		cfg->estimateMode   = IsDlgButtonChecked(ESTIMATE_CHECK);
+		cfg->ignoreErr      = IsDlgButtonChecked(IGNORE_CHECK);
+		cfg->enableVerify   = IsDlgButtonChecked(VERIFY_CHECK);
 		cfg->enableAcl      = IsDlgButtonChecked(ACL_CHECK);
 		cfg->enableStream   = IsDlgButtonChecked(STREAM_CHECK);
-		cfg->enableVerify   = IsDlgButtonChecked(VERIFY_CHECK);
-		cfg->enableOwdel    = IsDlgButtonChecked(OWDEL_CHECK);
-		cfg->isExtendFilter = IsDlgButtonChecked(EXTENDFILTER_CHECK);
 		cfg->speedLevel     = (int)SendDlgItemMessage(SPEED_SLIDER, TBM_GETPOS, 0, 0);
+		cfg->isExtendFilter = IsDlgButtonChecked(EXTENDFILTER_CHECK);
+		cfg->enableOwdel    = IsDlgButtonChecked(OWDEL_CHECK);
+
+		ReflectToMainWindow();
 	}
 	else if (resId == IO_SHEET) {
 		cfg->maxTransSize  = GetDlgItemInt(MAXTRANS_EDIT);
@@ -493,6 +553,12 @@ BOOL TShellExtDlg::ReflectStatus(void)
 	CheckDlgButton(NOCONFIRMDEL_CHECK, cfg->shextNoConfirmDel);
 	CheckDlgButton(TASKTRAY_CHECK, cfg->shextTaskTray);
 	CheckDlgButton(AUTOCLOSE_CHECK, cfg->shextAutoClose);
+
+	if (!::IsUserAnAdmin()) {
+		SetDlgItemText(SHELL_STATIC, GetLoadStr(IDS_SHELLEXT_NEEDADMIN));
+		::EnableWindow(GetDlgItem(IDSHELLEXT_OK), FALSE);
+		::EnableWindow(GetDlgItem(IDSHELLEXT_CANCEL), FALSE);
+	}
 
 	return	TRUE;
 }

@@ -3,7 +3,7 @@
 /* ========================================================================
 	Project  Name			: general routine
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-07-22(Wed)
+	Update					: 2015-08-12(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stddef.h>
 #include "utility.h"
+#include <aclapi.h>
 
 /*=========================================================================
 	拡張 strtok()
@@ -494,9 +495,9 @@ int CALLBACK EditWordBreakProcW(WCHAR *str, int cur, int len, int action)
 {
 	switch (action) {
 	case WB_ISDELIMITER:
-		return	TRUE;
+		return	0;
 	}
-	return	0;
+	return	cur;
 }
 
 BOOL GetRootDirW(const WCHAR *path, WCHAR *root_dir)
@@ -584,7 +585,6 @@ BOOL IsReparseDataSame(void *d1, void *d2)
 
 BOOL DeleteReparsePoint(HANDLE hFile, void *buf)
 {
-
 	REPARSE_DATA_BUFFER	rdbuf;
 	DWORD	size = IsReparseTagMicrosoft(((REPARSE_DATA_BUFFER *)buf)->ReparseTag) ?
 					REPARSE_DATA_BUFFER_HEADER_SIZE : REPARSE_GUID_DATA_BUFFER_HEADER_SIZE;
@@ -594,6 +594,133 @@ BOOL DeleteReparsePoint(HANDLE hFile, void *buf)
 	return	::DeviceIoControl(hFile, FSCTL_DELETE_REPARSE_POINT, &rdbuf, size, 0, 0, &size, NULL);
 }
 
+static BOOL GetSelfSid(SID *sid, DWORD *sid_size)
+{
+	WCHAR	user[128]={}, sys[128]={}, domain[128]={};
+	DWORD	user_size = wsizeof(user);
+	DWORD	domain_size = wsizeof(domain);
+
+	if (!::GetUserNameW(user, &user_size)) return FALSE;
+
+	SID_NAME_USE snu = SidTypeUser;
+	return	::LookupAccountNameW(sys, user, sid, sid_size, domain, &domain_size, &snu);
+}
+
+static ACL *MyselfAcl()
+{
+	BYTE	sid_buf[512];
+	SID		*sid = (SID *)sid_buf;
+	DWORD	size = sizeof(sid_buf);
+
+	if (!GetSelfSid(sid, &size)) return NULL;
+
+	DWORD	acl_size = 512; // 手抜き
+	ACL		*acl = (ACL *)malloc(acl_size);
+
+	::InitializeAcl(acl, acl_size, ACL_REVISION);
+	::AddAccessAllowedAce(acl, ACL_REVISION, GENERIC_ALL, sid);
+
+	return	acl;
+}
+
+BOOL ResetAcl(const WCHAR *path, BOOL myself_acl)
+{
+	static ACL	default_acl;
+	static BOOL	once_result = ::InitializeAcl(&default_acl, sizeof(default_acl), ACL_REVISION);
+
+	ACL	*acl = once_result ? &default_acl : NULL;
+
+	if (myself_acl) {
+		static ACL	*local_acl = MyselfAcl();
+		if (local_acl) acl = local_acl;
+	}
+	if (!acl) return FALSE;
+
+	return	::SetNamedSecurityInfoW((WCHAR *)path, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION |
+		UNPROTECTED_DACL_SECURITY_INFORMATION, 0, 0, acl, 0) == ERROR_SUCCESS;
+}
+
+BOOL ForceRemoveDirectoryW(const WCHAR *path, DWORD flags)
+{
+	if (::RemoveDirectoryW(path)) return TRUE;
+	if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) return FALSE;
+
+	if (flags & FMF_ACL) {
+		flags &= ~FMF_ACL;
+		ResetAcl(path);
+		if (::RemoveDirectoryW(path)) return TRUE;
+		if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) return FALSE;
+	}
+	if (flags & FMF_MYACL) {
+		flags &= ~FMF_MYACL;
+		ResetAcl(path, TRUE);
+		if (::RemoveDirectoryW(path)) return TRUE;
+		if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) return FALSE;
+	}
+	if (flags & FMF_ATTR) {
+		flags &= ~FMF_ATTR;
+		::SetFileAttributesW(path, FILE_ATTRIBUTE_DIRECTORY);
+		if (::RemoveDirectoryW(path)) return TRUE;
+		if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) return FALSE;
+	}
+	return	FALSE;
+}
+
+BOOL ForceDeleteFileW(const WCHAR *path, DWORD flags)
+{
+	if (::DeleteFileW(path)) return TRUE;
+	if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) return FALSE;
+
+	if (flags & FMF_ACL) {
+		flags &= ~FMF_ACL;
+		ResetAcl(path);
+		if (::DeleteFileW(path)) return TRUE;
+		if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) return FALSE;
+	}
+	if (flags & FMF_MYACL) {
+		flags &= ~FMF_MYACL;
+		ResetAcl(path, TRUE);
+		if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) return FALSE;
+	}
+	if (flags & FMF_ATTR) {
+		flags &= ~FMF_ATTR;
+		::SetFileAttributesW(path, FILE_ATTRIBUTE_NORMAL);
+		if (::DeleteFileW(path)) return TRUE;
+		if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) return FALSE;
+	}
+	return	FALSE;
+}
+
+HANDLE ForceCreateFileW(const WCHAR *path, DWORD mode, DWORD share, SECURITY_ATTRIBUTES *sa,
+	DWORD cr_mode, DWORD cr_flg, HANDLE hTempl, DWORD flags)
+{
+	HANDLE	fh = ::CreateFileW(path, mode, share, sa, cr_mode, cr_flg, hTempl);
+	if (fh != INVALID_HANDLE_VALUE) return fh;
+	if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) return INVALID_HANDLE_VALUE;
+
+	if (flags & FMF_ACL) {
+		flags &= ~FMF_ACL;
+		ResetAcl(path);
+		fh = ::CreateFileW(path, mode, share, sa, cr_mode, cr_flg, hTempl);
+		if (fh != INVALID_HANDLE_VALUE) return fh;
+		if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) return INVALID_HANDLE_VALUE;
+	}
+	if (flags & FMF_MYACL) {
+		flags &= ~FMF_MYACL;
+		ResetAcl(path, TRUE);
+		fh = ::CreateFileW(path, mode, share, sa, cr_mode, cr_flg, hTempl);
+		if (fh != INVALID_HANDLE_VALUE) return fh;
+		if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) return INVALID_HANDLE_VALUE;
+	}
+	if (flags & FMF_ATTR) {
+		flags &= ~FMF_ATTR;
+		::SetFileAttributesW(path, FILE_ATTRIBUTE_NORMAL); // DIRの場合も ronlyは消える
+		fh = ::CreateFileW(path, mode, share, sa, cr_mode, cr_flg, hTempl);
+		if (fh != INVALID_HANDLE_VALUE) return fh;
+		if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) return INVALID_HANDLE_VALUE;
+	}
+	return	fh;
+}
 
 /*
  DataList ...  List with data(hash/fileID...)

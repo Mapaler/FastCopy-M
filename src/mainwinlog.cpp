@@ -3,7 +3,7 @@
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2015-05-28(Thu)
-	Update					: 2015-05-28(Thu)
+	Update					: 2015-08-12(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -23,7 +23,7 @@ BOOL TMainDlg::StartFileLog()
 	WCHAR	logDir[MAX_PATH] = L"";
 	WCHAR	wbuf[MAX_PATH]   = L"";
 
-	if (fileLogMode == NO_FILELOG || IsListing()) return FALSE;
+	if (fileLogMode == NO_FILELOG || (!isListLog && IsListing())) return FALSE;
 
 	if (fileLogMode == AUTO_FILELOG || wcschr(fileLogPath, '\\') == 0) {
 		MakePathW(logDir, cfg.userDir, GetLoadStrW(IDS_FILELOG_SUBDIR));

@@ -1,9 +1,9 @@
-﻿/* static char *fastcopy_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		mainwin.h	Ver3.00b1"; */
+﻿/* static char *mainwin_id = 
+	"@(#)Copyright (C) 2004-2015 H.Shirouzu		mainwin.h	Ver3.00"; */
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-07-30(Thu)
+	Update					: 2015-08-12(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -111,6 +111,7 @@ protected:
 	BOOL		isErrLog;
 	BOOL		isUtf8Log;
 	FileLogMode	fileLogMode;
+	BOOL		isListLog;
 	BOOL		isReparse;
 	BOOL		isLinkDest;
 	int			maxLinkHash;
@@ -150,6 +151,7 @@ protected:
 	UINT		TaskBarCreateMsg;
 	int			miniHeight;
 	int			normalHeight;
+	int			normalHeightOrg;
 	int			filterHeight;
 	BOOL		isErrEditHide;
 	UINT		curIconIndex;
@@ -267,7 +269,7 @@ public:
 	BOOL	RunasSync(HWND hOrg);
 
 	BOOL	SetMiniWindow(void);
-	BOOL	SetNormalWindow(void);
+	BOOL	SetNormalWindow();
 	void	RefreshWindow(BOOL is_start_stop=FALSE);
 	BOOL	SetWindowTitle();
 	BOOL	IsDestDropFiles(HDROP hDrop);
@@ -278,7 +280,7 @@ public:
 	void	SetComboBox(UINT item, WCHAR **history, SetHistMode mode);
 	void	SetPathHistory(SetHistMode mode, UINT item=0);
 	void	SetFilterHistory(SetHistMode mode, UINT item=0);
-	BOOL	TaskTray(int nimMode, HICON hSetIcon=NULL, LPCSTR tip=NULL);
+	BOOL	TaskTray(int nimMode, HICON hSetIcon=NULL, LPCSTR tip=NULL, BOOL balloon=FALSE);
 	CopyInfo *GetCopyInfo() { return copyInfo; }
 	void	SetFinAct(int idx);
 	int		GetFinActIdx() { return finActIdx; }

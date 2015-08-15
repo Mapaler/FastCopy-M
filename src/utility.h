@@ -3,7 +3,7 @@
 /* ========================================================================
 	Project  Name			: Utility
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-06-22(Mon)
+	Update					: 2015-08-12(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -176,6 +176,13 @@ DWORD ReadReparsePoint(HANDLE hFile, void *buf, DWORD size);
 BOOL WriteReparsePoint(HANDLE hFile, void *buf, DWORD size);
 BOOL DeleteReparsePoint(HANDLE hFile, void *buf);
 BOOL IsReparseDataSame(void *d1, void *d2);
+BOOL ResetAcl(const WCHAR *path, BOOL myself_acl=FALSE);
+
+enum { FMF_NONE=0, FMF_ACL=1, FMF_MYACL=2, FMF_ATTR=0x100 }; // flags
+BOOL ForceRemoveDirectoryW(const WCHAR *path, DWORD flags=FMF_NONE);
+BOOL ForceDeleteFileW(const WCHAR *path, DWORD flags=FMF_NONE);
+HANDLE ForceCreateFileW(const WCHAR *path, DWORD mode, DWORD share, SECURITY_ATTRIBUTES *sa,
+	DWORD cr_mode, DWORD cr_flg, HANDLE hTempl, DWORD flags=FMF_NONE);
 
 void DBGWrite(char *fmt,...);
 void DBGWriteW(WCHAR *fmt,...);

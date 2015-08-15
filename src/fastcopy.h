@@ -1,9 +1,9 @@
 ﻿/* static char *fastcopy_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		fastcopy.h	Ver3.00b1"; */
+	"@(#)Copyright (C) 2004-2015 H.Shirouzu		fastcopy.h	Ver3.00"; */
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-07-30(Thu)
+	Update					: 2015-08-12(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -29,6 +29,8 @@
 #define PATH_UNC_PREFIX		L"\\\\?\\UNC"
 #define PATH_LOCAL_PREFIX_LEN	4
 #define PATH_UNC_PREFIX_LEN		7
+
+#define BUFIO_SIZERATIO		2
 
 #define IsDir(attr) ((attr) & FILE_ATTRIBUTE_DIRECTORY)
 #define IsReparse(attr) ((attr) & FILE_ATTRIBUTE_REPARSE_POINT)
@@ -142,8 +144,9 @@ struct FileStat {
 	DWORD		nFileSizeHigh;	// とは逆順（int64 用）
 	DWORD		dwFileAttributes;	// 0 == ALTSTREAM
 	DWORD		lastError;
-	BOOL		isExists;
-	BOOL		isCaseChanged;
+	bool		isExists;
+	bool		isCaseChanged;
+	bool		isWriteShare;
 	FilterRes	filterRes;
 	int			renameCount;
 	int			size;
@@ -267,6 +270,7 @@ public:
 		DELDIR_WITH_FILTER	=	0x00100000,
 		VERIFY_MD5			=	0x00200000,
 		VERIFY_FILE			=	0x00400000,
+		WRITESHARE_OPEN		=	0x00800000,
 		//
 		LISTING				=	0x01000000,
 		LISTING_ONLY		=	0x02000000,
@@ -312,6 +316,7 @@ public:
 		char	driveMap[64];	// (I/ ) 物理ドライブマップ
 		int		maxRunNum;		// (I/ ) 最大並列同時数（強制実行の場合は無視）
 		int		netDrvMode;		// (I/ ) ネットワークドライブの同一判定（DriveMng::NetDrvMode参照）
+		int		aclReset;		// (I/ ) Create/Remove等で ACLリセットをどこまで行うか
 		BOOL	isRenameMode;	// ( /O) ...「複製します」ダイアログタイトル用情報（暫定）
 	};							//			 将来的に、情報が増えれば、メンバから切り離し
 
@@ -647,6 +652,7 @@ protected:
 	BOOL PreSearch(void);
 	BOOL PreSearchProc(WCHAR *path, int prefix_len, int dir_len, FilterRes fr);
 	BOOL PutMoveList(WCHAR *path, int path_len, FileStat *stat, MoveObj::Status status);
+	void FlushMoveListCore(MoveObj *data);
 	BOOL FlushMoveList(BOOL is_finish=FALSE);
 	BOOL PushMkdirQueue(FileStat *stat, int dlen, bool is_mkdir, bool extra, bool is_reparse);
 	BOOL ReadProc(int dir_len, BOOL confirm_dir, FilterRes fr);
@@ -741,7 +747,7 @@ protected:
 	FsType GetFsType(const WCHAR *root_dir);
 	int GetSectorSize(const WCHAR *root_dir);
 	int MakeUnlimitedPath(WCHAR *buf);
-	BOOL PutList(WCHAR *path, DWORD opt, DWORD lastErr=0, int64 size=-1, int64 wtime=-1,
+	BOOL PutList(WCHAR *path, DWORD opt, DWORD lastErr=0, int64 wtime=-1, int64 size=-1,
 			BYTE *digest=NULL);
 
 	VBVec<int> &FindDepth(WCHAR *path) {

@@ -4,7 +4,7 @@
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Application Frame Class
 	Create					: 1996-06-01(Sat)
-	Update					: 2015-06-22(Mon)
+	Update					: 2015-08-12(Wed)
 	Copyright				: H.Shirouzu
 	Reference				: 
 	======================================================================== */
@@ -39,9 +39,10 @@ BOOL TLibInit_Ntdll()
 
 TDigest::TDigest()
 {
-	hProv = NULL;
-	hHash = NULL;
-	updateSize = 0;
+	hProv	= NULL;
+	hHash	= NULL;
+	used	= false;
+	updated	= false;
 }
 
 TDigest::~TDigest()
@@ -63,14 +64,15 @@ BOOL TDigest::Init(TDigest::Type _type)
 		::CryptDestroyHash(hHash);
 		hHash = NULL;
 	}
-	updateSize = 0;
+	used	= false;
+	updated	= false;
 
 	return	::CryptCreateHash(hProv, type == SHA1 ? CALG_SHA : CALG_MD5, 0, 0, &hHash);
 }
 
 BOOL TDigest::Reset()
 {
-	if (updateSize > 0) {
+	if (updated || used) {
 		return	Init(type);
 	}
 	return	TRUE;
@@ -78,14 +80,16 @@ BOOL TDigest::Reset()
 
 BOOL TDigest::Update(void *data, int size)
 {
-	updateSize += size;
+	updated = true;
 	return	::CryptHashData(hHash, (BYTE *)data, size, 0);
 }
 
 BOOL TDigest::GetVal(void *data)
 {
 	DWORD	size = GetDigestSize();
+	if (used) return FALSE;
 
+	used = true;
 	return	::CryptGetHashParam(hHash, HP_HASHVAL, (BYTE *)data, &size, 0);
 }
 

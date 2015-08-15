@@ -3,7 +3,7 @@
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Main Header
 	Create					: 1996-06-01(Sat)
-	Update					: 2015-06-22(Mon)
+	Update					: 2015-08-12(Wed)
 	Copyright				: H.Shirouzu
 	Reference				: 
 	======================================================================== */
@@ -409,7 +409,7 @@ BOOL TWow64RevertWow64FsRedirection(void *oldval);
 BOOL TIsEnableUAC();
 BOOL TIsVirtualizedDirW(WCHAR *path);
 BOOL TMakeVirtualStorePathW(WCHAR *org_path, WCHAR *buf);
-BOOL TSetPrivilege(LPSTR pszPrivilege, BOOL bEnable);
+BOOL TSetPrivilege(LPSTR privName, BOOL bEnable);
 BOOL TSetThreadLocale(int lcid);
 BOOL TChangeWindowMessageFilter(UINT msg, DWORD flg);
 void TSwitchToThisWindow(HWND hWnd, BOOL flg);
@@ -428,6 +428,8 @@ BOOL GetParentDirW(const WCHAR *srcfile, WCHAR *dir);
 HWND ShowHelpW(HWND hOwner, WCHAR *help_dir, WCHAR *help_file, WCHAR *section=NULL);
 HWND ShowHelpU8(HWND hOwner, const char *help_dir, const char *help_file, const char *section=NULL);
 HWND CloseHelpAll();
+
+BOOL ForceSetTrayIcon(HWND hWnd, UINT id, DWORD pref=2);
 
 #endif
 

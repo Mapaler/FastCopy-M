@@ -4,7 +4,7 @@
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Application Frame Class
 	Create					: 1996-06-01(Sat)
-	Update					: 2015-06-22(Mon)
+	Update					: 2015-08-12(Wed)
 	Copyright				: H.Shirouzu
 	Reference				: 
 	======================================================================== */
@@ -127,11 +127,15 @@ void Condition::Notify(void)	// 現状では、眠っているスレッド全員
 }
 
 // Condtion test
+//#include <process.h>
+//
 //struct Arg {
 //	Condition	&cv;
 //	int			&val;
+//	bool		&done;
 //	int			no;
-//	Arg(Condition *_cv, int *_val, int _no) : cv(*_cv), val(*_val), no(_no) {}
+//	Arg(Condition *_cv, int *_val, bool *_done, int _no)
+//		: cv(*_cv), val(*_val), done(*_done), no(_no) {}
 //};
 //
 //#define MULTI   5
@@ -150,6 +154,8 @@ void Condition::Notify(void)	// 現状では、眠っているスレッド全員
 //			arg.cv.Wait();
 //		}
 //	}
+//	arg.done = true;
+//	arg.cv.Notify();
 //	arg.cv.UnLock();
 //}
 //
@@ -158,23 +164,33 @@ void Condition::Notify(void)	// 現状では、眠っているスレッド全員
 //	DWORD		tick = GetTickCount();
 //	Condition	cv[MULTI];
 //	int			val[MULTI] = {};
+//	bool		done[MULTI][THREADS] = {};
 //
 //	for (int i=0; i < MULTI; i++) {
 //		cv[i].Initialize();
 //
 //		for (int ii=0; ii < THREADS; ii++) {
-//			_beginthread(cond_func, 0, new Arg(&cv[i], &val[i], ii));
+//			_beginthread(cond_func, 0, new Arg(&cv[i], &val[i], &done[i][ii], ii));
 //		}
 //	}
 //
 //	for (int i=0; i < MULTI; i++) {
 //		cv[i].Lock();
 //		while (1) {
-//			if (val[i] == VAL) break;
+//			if (val[i] == VAL) {
+//				for (int ii=0; ii < THREADS; ii++) {
+//					while (1) {
+//						if (done[i][ii]) break;
+//						cv[i].Wait();
+//					}
+//				}
+//				break;
+//			}
 //			cv[i].Wait();
 //		}
 //		cv[i].UnLock();
 //	}
+//
 //	Debug(Fmt("%d\n", GetTickCount() - tick));
 //}
 
@@ -996,31 +1012,25 @@ BOOL TMakeVirtualStorePathW(WCHAR *org_path, WCHAR *buf)
 	return	TRUE;
 }
 
-BOOL TSetPrivilege(LPSTR pszPrivilege, BOOL bEnable)
+BOOL TSetPrivilege(LPSTR privName, BOOL bEnable)
 {
-    HANDLE           hToken;
-    TOKEN_PRIVILEGES tp;
+	HANDLE				hToken;
+	TOKEN_PRIVILEGES	tp = {1};
 
-    if (!::OpenProcessToken(::GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES|TOKEN_QUERY, &hToken))
-        return FALSE;
+	if (!::OpenProcessToken(::GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES|TOKEN_QUERY, &hToken))
+		return FALSE;
 
-    if (!::LookupPrivilegeValue(NULL, pszPrivilege, &tp.Privileges[0].Luid))
-        return FALSE;
+	BOOL ret = ::LookupPrivilegeValue(NULL, privName, &tp.Privileges[0].Luid);
 
-    tp.PrivilegeCount = 1;
+	if (ret) {
+		if (bEnable) tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+		else		 tp.Privileges[0].Attributes = 0;
 
-    if (bEnable)
-         tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-    else
-         tp.Privileges[0].Attributes = 0;
+		ret = ::AdjustTokenPrivileges(hToken, FALSE, &tp, 0, 0, 0);
+	}
+	::CloseHandle(hToken);
 
-    if (!::AdjustTokenPrivileges(hToken, FALSE, &tp, 0, (PTOKEN_PRIVILEGES)NULL, 0))
-         return FALSE;
-
-    if (!::CloseHandle(hToken))
-         return FALSE;
-
-    return TRUE;
+	return	ret;
 }
 
 BOOL TSetThreadLocale(int lcid)
@@ -1409,4 +1419,67 @@ void operator delete [](void *d)
 
 #endif
 
+
+/*
+	Explorer非公開COM I/F
+*/
+struct NOTIFYITEM {
+	WCHAR	*exe;
+	WCHAR	*tip;
+	HICON	hIcon;
+	HWND	hWnd;
+	DWORD	pref;
+	UINT	id;
+	GUID	guid;
+};
+
+class __declspec(uuid("D782CCBA-AFB0-43F1-94DB-FDA3779EACCB")) INotificationCB : public IUnknown {
+public:
+	virtual HRESULT __stdcall Notify(u_long, NOTIFYITEM *) = 0;
+};
+
+class __declspec(uuid("FB852B2C-6BAD-4605-9551-F15F87830935")) ITrayNotify : public IUnknown {
+public:
+	virtual HRESULT __stdcall RegisterCallback(INotificationCB *) = 0;
+	virtual HRESULT __stdcall SetPreference(const NOTIFYITEM *) = 0;
+	virtual HRESULT __stdcall EnableAutoTray(BOOL) = 0;
+};
+class __declspec(uuid("D133CE13-3537-48BA-93A7-AFCD5D2053B4")) ITrayNotify8 : public IUnknown {
+public:
+	virtual HRESULT __stdcall RegisterCallback(INotificationCB *, u_long *) = 0;
+	virtual HRESULT __stdcall UnregisterCallback(u_long *) = 0;
+	virtual HRESULT __stdcall SetPreference(const NOTIFYITEM *) = 0;
+	virtual HRESULT __stdcall EnableAutoTray(BOOL) = 0;
+	virtual HRESULT __stdcall DoAction(BOOL) = 0;
+};
+const CLSID TrayNotifyId = {
+	0x25DEAD04, 0x1EAC, 0x4911, {0x9E, 0x3A, 0xAD, 0x0A, 0x4A, 0xB5, 0x60, 0xFD}
+};
+
+BOOL ForceSetTrayIcon(HWND hWnd, UINT id, DWORD pref)
+{
+	BOOL		ret = FALSE;
+	NOTIFYITEM	ni = { 0, 0, 0, hWnd, pref, id, 0 };
+
+	if (IsWin8()) {
+		ITrayNotify8 *tn = NULL;
+
+		CoCreateInstance(TrayNotifyId, NULL, CLSCTX_LOCAL_SERVER, __uuidof(ITrayNotify8),
+			(void **)&tn);
+		if (tn) {
+			if (SUCCEEDED(tn->SetPreference(&ni))) ret = TRUE;
+			tn->Release();
+		}
+	} else {
+		ITrayNotify *tn = NULL;
+
+		CoCreateInstance(TrayNotifyId, NULL, CLSCTX_LOCAL_SERVER, __uuidof(ITrayNotify),
+			(void **)&tn);
+		if (tn) {
+			if (SUCCEEDED(tn->SetPreference(&ni))) ret = TRUE;
+			tn->Release();
+		}
+	}
+	return	ret;
+}
 

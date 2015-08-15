@@ -12,7 +12,6 @@
 #define IDS_START                       8
 #define IDS_DELAYSETUPCOMPLETE          9
 #define IDS_ADMINCHANGE                 10
-#define IDS_COMPLETE_WIN7               11
 #define INSTALL_SHEET                   101
 #define SETUP_ICON                      104
 #define MKDIR_BUTTON                    110
@@ -30,7 +29,6 @@
 #define INPUT_EDIT                      1140
 #define SETUP_RADIO                     1143
 #define UNINSTALL_RADIO                 1147
-#define LAUNCH_BUTTON                   1148
 #define RUNAS_BUTTON                    1155
 
 // Next default values for new objects

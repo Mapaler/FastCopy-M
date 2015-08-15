@@ -3,7 +3,7 @@
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2015-05-27(Wed)
-	Update					: 2015-07-22(Wed)
+	Update					: 2015-08-06(Thu)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -311,6 +311,9 @@ BOOL TMainDlg::CommandLineExecW(int argc, WCHAR **argv)
 			if ((argv = CommandLineToArgvExW(shellExtBuf.WBuf(), &argc)) == NULL)
 				break;
 			continue;	// 再 parse
+		}
+		else if (wcsicmpEx(*argv, NOUI_STR, &len) == 0) {
+			// すでに確認済み
 		}
 		else {
 			MessageBoxW(FmtW(L"%s is not recognized.\r\n%s", *argv,

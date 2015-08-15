@@ -1,9 +1,9 @@
 ﻿static char *fastcopy_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		fastcopy.cpp	ver3.00b1";
+	"@(#)Copyright (C) 2004-2015 H.Shirouzu		fastcopy.cpp	ver3.00";
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-07-30(Thu)
+	Update					: 2015-08-12(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -453,7 +453,7 @@ BOOL FastCopy::RegisterInfo(const PathArray *_srcArray, const PathArray *_dstArr
 	if (isListingOnly) info.flags &= ~PRE_SEARCH;
 
 	// 最大転送サイズ上限（InitSrcPath で再設定）
-	if (info.maxOvlSize < 0) {
+	if (info.maxOvlSize <= 0) {
 		info.maxOvlSize = (info.maxTransSize / info.maxOvlNum) + MIN_BUF - 1;
 		info.maxOvlSize = info.maxOvlSize / MIN_BUF * MIN_BUF;
 	}
@@ -465,15 +465,18 @@ BOOL FastCopy::RegisterInfo(const PathArray *_srcArray, const PathArray *_dstArr
 	if (info.fromDateFilter != 0  || info.toDateFilter  != 0)  filterMode |= DATE_FILTER;
 	if (info.minSizeFilter  != -1 || info.maxSizeFilter != -1) filterMode |= SIZE_FILTER;
 
+	int64	need_size = (int64)info.maxOvlSize * info.maxOvlNum * BUFIO_SIZERATIO;
 	if (!isListingOnly &&
 		(info.mode != DELETE_MODE || (info.flags & (OVERWRITE_DELETE|OVERWRITE_DELETE_NSA))) &&
-		(info.bufSize < (info.maxOvlSize * info.maxOvlNum * 2) || info.bufSize < MIN_BUF * 2
+		(info.bufSize < need_size || info.bufSize < MIN_BUF * 2
 #ifdef _WIN64
 		)) {
-		return	ConfirmErr(L"Too small Main Buffer.",          NULL, CEF_STOP), FALSE;
+		return	ConfirmErr(FmtW(L"Too small Main Buffer.\r\n need %I64dMB or over",
+			need_size/1024/1024), NULL, CEF_STOP|CEF_NOAPI), FALSE;
 #else
 		|| info.bufSize > MAX_BUF)) {
-		return	ConfirmErr(L"Too large or small Main Buffer.", NULL, CEF_STOP), FALSE;
+		return	ConfirmErr(FmtW(L"Too large or small Main Buffer.\r\n need %I64dMB or over and"
+			L" under 1023MB", need_size/1024/1024), NULL, CEF_STOP|CEF_NOAPI), FALSE;
 #endif
 	}
 
@@ -914,7 +917,7 @@ BOOL FastCopy::PreSearchProc(WCHAR *path, int prefix_len, int dir_len, FilterRes
 	return	ret && !isAbort;
 }
 
-BOOL FastCopy::PutList(WCHAR *path, DWORD opt, DWORD lastErr, int64 fsize, int64 wtime,
+BOOL FastCopy::PutList(WCHAR *path, DWORD opt, DWORD lastErr, int64 wtime, int64 fsize,
 	BYTE *digest)
 {
 	BOOL	add_backslash = path[0] == '\\' && path[1] != '\\';
@@ -948,24 +951,29 @@ BOOL FastCopy::PutList(WCHAR *path, DWORD opt, DWORD lastErr, int64 fsize, int64
 			if (!(info.fileLogFlags & FILELOG_TIMESTAMP)) wtime = -1;
 
 			if (fsize >= 0 || wtime >= 0 || digest) {
-				WCHAR	*p = wbuf + wcscpyz(wbuf, L" :");
+				WCHAR	*start = wbuf + wcscpyz(wbuf, L"   <");
+				WCHAR	*p = start;
 
 				if (wtime >= 0) {
 					__time64_t t = FileTime2UnixTime((FILETIME *)&wtime);
 					struct tm tm;
 					_localtime64_s(&tm, &t);
-					p += swprintf(p, L" %04d%02d%02d-%02d%02d%02d", tm.tm_year+1900,
+					p += swprintf(p, L"%04d%02d%02d-%02d%02d%02d", tm.tm_year+1900,
 						tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
 				}
 				if (fsize >= 0) {
-					*p++ = ' ';
+					if (p != start) *p++ = ' ';
+					//p += wcscpyz(p, L"size=");
 					p += comma_int64(p, fsize);
 				}
 				if (digest) {
 					int len = dstDigest.GetDigestSize();
-					p += wcscpyz(p, (len == MD5_SIZE) ? L" md5=" : L" sha1=");
+					if (p != start) *p++ = ' ';
+					p += wcscpyz(p, (len == MD5_SIZE) ? L"md5=" : L"sha1=");
 					p += bin2hexstrW(digest, len, p);
 				}
+				*p++ = '>';
+				*p++ = 0;
 			}
 			else wbuf[0] = 0;
 
@@ -979,8 +987,7 @@ BOOL FastCopy::PutList(WCHAR *path, DWORD opt, DWORD lastErr, int64 fsize, int64
 							(opt & PL_HARDLINK) ? PLSTR_LINK :
 							(opt & PL_CASECHANGE) ? PLSTR_CASECHANGE :
 							(opt & PL_COMPARE) || lastErr ? PLSTR_COMPARE : L"",
-							*wbuf ? wbuf : L""
-							);
+							wbuf);
 		}
 		listBuf.AddUsedSize(len * sizeof(WCHAR));
 	}
@@ -1020,12 +1027,12 @@ BOOL FastCopy::WaitOvlIo(HANDLE fh, OverLap *ovl, int64 *total_size, int64 *orde
 
 BOOL FastCopy::MakeDigest(WCHAR *path, DigestBuf *dbuf, FileStat *stat)
 {
+	int64	file_size = stat->FileSize();
 	bool	is_src = (dbuf == &srcDigest);
-	bool	is_ovl = stat->FileSize() > info.maxOvlSize;
+	bool	is_ovl = file_size > info.maxOvlSize;
 	DWORD	flg = ((info.flags & USE_OSCACHE_READ) ? 0 : FILE_FLAG_NO_BUFFERING)
 				| FILE_FLAG_SEQUENTIAL_SCAN | flagOvl;
-	DWORD	share = FILE_SHARE_READ|FILE_SHARE_WRITE;
-	HANDLE	hFile = CreateFileWithRetry(path, GENERIC_READ, share, 0, OPEN_EXISTING, flg, 0, 5);
+	DWORD	share = FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE;
 	BOOL	ret = FALSE;
 	OvlList	&ovl_list = is_src ? rOvl : wOvl;
 
@@ -1035,14 +1042,15 @@ BOOL FastCopy::MakeDigest(WCHAR *path, DigestBuf *dbuf, FileStat *stat)
 	}
 	memset(dbuf->val, 0, dbuf->GetDigestSize());
 	dbuf->Reset();
+	if (file_size == 0) return TRUE;
 
+	HANDLE	hFile = CreateFileWithRetry(path, GENERIC_READ, share, 0, OPEN_EXISTING, flg, 0, 5);
 	if (hFile == INVALID_HANDLE_VALUE) return FALSE;
 	if (is_ovl) DisableLocalBuffering(hFile);
 
 	if ((DWORD)dbuf->buf.Size() < MaxReadDigestBuf() && !dbuf->buf.Grow(MaxReadDigestBuf()))
 		goto END;
 
-	int64	file_size = stat->FileSize();
 	int64	total_size = 0;
 	int64	order_total = 0, dummy;
 	int64	&verifyTrans = is_src ? total.verifyTrans : dummy;	// src/dstダブルカウント避け
@@ -1055,7 +1063,7 @@ BOOL FastCopy::MakeDigest(WCHAR *path, DigestBuf *dbuf, FileStat *stat)
 		ovl->buf = dbuf->buf.Buf() + (maxDigestReadSize * (count++ % info.maxOvlNum));
 		ovl->SetOvlOffset(total_size + order_total);
 
-		if (!ReadFileWithReduce(hFile, ovl->buf, maxDigestReadSize, ovl)) break;
+		if (!(ret = ReadFileWithReduce(hFile, ovl->buf, maxDigestReadSize, ovl))) break;
 		order_total += ovl->orderSize;
 
 		BOOL is_empty_ovl = ovl_list.IsEmpty(FREE_LIST);
@@ -1066,7 +1074,7 @@ BOOL FastCopy::MakeDigest(WCHAR *path, DigestBuf *dbuf, FileStat *stat)
 		while (OverLap	*ovl_tmp = ovl_list.GetObj(USED_LIST)) {
 			ovl_list.PutObj(FREE_LIST, ovl_tmp);
 			if (!(ret = WaitOvlIo(hFile, ovl_tmp, &total_size, &order_total))) break;
-			dbuf->Update(ovl_tmp->buf, ovl_tmp->transSize);
+			ret = dbuf->Update(ovl_tmp->buf, ovl_tmp->transSize);
 			verifyTrans += ovl_tmp->transSize; 
 			if (!is_flush || !ret || isAbort) break;
 		}
@@ -1075,6 +1083,10 @@ BOOL FastCopy::MakeDigest(WCHAR *path, DigestBuf *dbuf, FileStat *stat)
 	if (total_size == file_size) {
 		ret = dbuf->GetVal(dbuf->val);
 	}
+	else if (ret) {	// size over
+		ret = FALSE;
+	}
+
 	if (ovl_list.TopObj(USED_LIST)) IoAbortFile(hFile, &ovl_list);
 
 END:
@@ -1109,8 +1121,8 @@ BOOL FastCopy::IsSameContents(FileStat *srcStat, FileStat *dstStat)
 
 	if (ret) {
 		total.verifyFiles++;
-		PutList(confirmDst + dstPrefixLen, PL_NOADD, 0, dstStat->FileSize(),
-			dstStat->WriteTime(), srcDigest.val);
+		PutList(confirmDst + dstPrefixLen, PL_NOADD, 0, dstStat->WriteTime(), dstStat->FileSize(),
+			srcDigest.val);
 	}
 	else {
 		total.errFiles++;
@@ -1136,10 +1148,11 @@ FastCopy::LinkStatus FastCopy::CheckHardLink(WCHAR *path, int len, HANDLE hFileO
 {
 	HANDLE		hFile;
 	LinkStatus	ret = LINK_ERR;
-	DWORD		share = FILE_SHARE_READ|FILE_SHARE_WRITE;
+	DWORD		share = FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE;
 
 	if (hFileOrg == INVALID_HANDLE_VALUE) {
-		if ((hFile = ::CreateFileW(path, 0, share, 0, OPEN_EXISTING, 0,0)) == INVALID_HANDLE_VALUE){
+		hFile = ::CreateFileW(path, 0, share, 0, OPEN_EXISTING, 0, 0);
+		if (hFile == INVALID_HANDLE_VALUE){
 //			DBGWriteW(L"CheckHardLink can't open(%s) %d\n", path);
 			return	ret;
 		}
@@ -1236,8 +1249,8 @@ BOOL FastCopy::ReadProcFileEntry(int dir_len, BOOL confirm_local)
 			if (isRename) {
 				SetRenameCount(srcStat);
 			} else {
-				dstStat->isExists = TRUE;
-				srcStat->isCaseChanged = wcscmp(srcStat->cFileName, dstStat->cFileName);
+				dstStat->isExists = true;
+				srcStat->isCaseChanged = !!wcscmp(srcStat->cFileName, dstStat->cFileName);
 
 				if (!IsOverWriteFile(srcStat, dstStat) &&
 					(IsReparse(srcStat->dwFileAttributes) == IsReparse(dstStat->dwFileAttributes)
@@ -1299,11 +1312,11 @@ BOOL FastCopy::ReadProcDirEntry(int dir_len, int dirst_start, BOOL confirm_dir, 
 			FileStat	*dstStat = hash.Search(srcStat->upperName, srcStat->hashVal);
 
 			if (dstStat) {
-				srcStat->isCaseChanged = wcscmp(srcStat->cFileName, dstStat->cFileName);
+				srcStat->isCaseChanged = !!wcscmp(srcStat->cFileName, dstStat->cFileName);
 				if (isRename)	SetRenameCount(srcStat, TRUE);
-				else			srcStat->isExists = dstStat->isExists = TRUE;
+				else			srcStat->isExists = dstStat->isExists = true;
 			}
-			else srcStat->isExists = FALSE;
+			else srcStat->isExists = false;
 		}
 	}
 
@@ -1414,7 +1427,7 @@ BOOL FastCopy::ExecMkDirQueue(void)
 			src[info.dirLen] = 0;
 			req = GetDirExtData(info.stat); // extraを読めずとも mkdir は発行する
 			src[info.dirLen] = '\\';
-			if (info.isReparse && info.stat->rep == NULL) return FALSE;
+			// if (info.isReparse && info.stat->rep == NULL) return FALSE;
 		}
 		SendRequest(info.isMkDir ? MKDIR : INTODIR, req, info.stat);
 		if (isAbort) return FALSE;
@@ -1454,6 +1467,45 @@ BOOL FastCopy::PutMoveList(WCHAR *path, int path_len, FileStat *stat, MoveObj::S
 	return	head ? TRUE : FALSE;
 }
 
+void FastCopy::FlushMoveListCore(MoveObj *data)
+{
+	int 	prefix_len = (data->path[5] == ':') ? PATH_LOCAL_PREFIX_LEN : PATH_UNC_PREFIX_LEN;
+	BOOL	is_reparse = IsReparse(data->dwAttr);
+
+	if (data->dwAttr & FILE_ATTRIBUTE_DIRECTORY) {
+		if (!isListingOnly && (data->dwAttr & FILE_ATTRIBUTE_READONLY)) { // data->path's stat
+			::SetFileAttributesW(data->path, FILE_ATTRIBUTE_DIRECTORY);
+			// ResetAcl()
+		}
+		if (!isListingOnly && ForceRemoveDirectoryW(data->path, info.aclReset) == FALSE) {
+			total.errDirs++;
+			ConfirmErr(L"RemoveDirectory(move)", data->path + prefix_len);
+		} else {
+			total.deleteDirs++;
+			if (isListing) {
+				PutList(data->path + prefix_len, PL_DIRECTORY|PL_DELETE|
+					(is_reparse ? PL_REPARSE : 0), 0, data->wTime);
+			}
+		}
+	} else {
+		if (!isListingOnly && (data->dwAttr & FILE_ATTRIBUTE_READONLY)) { // data->path's stat
+			::SetFileAttributesW(data->path, FILE_ATTRIBUTE_NORMAL);
+			// ResetAcl()
+		}
+		if (!isListingOnly && ForceDeleteFileW(data->path, info.aclReset) == FALSE) {
+			total.errFiles++;
+			ConfirmErr(L"DeleteFile(move)", data->path + prefix_len);
+		} else {
+			total.deleteFiles++;
+			total.deleteTrans += data->fileSize;
+			if (isListing) {
+				PutList(data->path + prefix_len, PL_DELETE|(is_reparse ? PL_REPARSE : 0), 0,
+					data->wTime, data->fileSize);
+			}
+		}
+	}
+}
+
 BOOL FastCopy::FlushMoveList(BOOL is_finish)
 {
 	BOOL	is_nowait = FALSE;
@@ -1480,40 +1532,8 @@ BOOL FastCopy::FlushMoveList(BOOL is_finish)
 
 			if (data->status == MoveObj::START) break;
 			if (data->status == MoveObj::DONE) {
-				int 	prefix_len = (data->path[5] == ':') ?
-										PATH_LOCAL_PREFIX_LEN : PATH_UNC_PREFIX_LEN;
-				BOOL	is_reparse = IsReparse(data->dwAttr);
-
 				moveList.UnLock();
-				if (!isListingOnly && (data->dwAttr & FILE_ATTRIBUTE_READONLY)) {
-					::SetFileAttributesW(data->path,
-						data->dwAttr & ~FILE_ATTRIBUTE_READONLY);
-				}
-				if (data->dwAttr & FILE_ATTRIBUTE_DIRECTORY) {
-					if (!isListingOnly && ::RemoveDirectoryW(data->path) == FALSE) {
-						total.errDirs++;
-						ConfirmErr(L"RemoveDirectory(move)", data->path + prefix_len);
-					} else {
-						total.deleteDirs++;
-						if (isListing) {
-							PutList(data->path + prefix_len,
-								PL_DIRECTORY|PL_DELETE|(is_reparse ? PL_REPARSE : 0));
-						}
-					}
-				} else {
-					if (!isListingOnly && ::DeleteFileW(data->path) == FALSE) {
-						total.errFiles++;
-						ConfirmErr(L"DeleteFile(move)", data->path + prefix_len);
-					} else {
-						total.deleteFiles++;
-						total.deleteTrans += data->fileSize;
-						if (isListing) {
-							PutList(data->path + prefix_len,
-								PL_DELETE|(is_reparse ? PL_REPARSE : 0), 0,
-								data->fileSize, data->wTime);
-						}
-					}
-				}
+				FlushMoveListCore(data);
 				done_cnt++;
 				if (waitTick) Wait((waitTick + 9) / 10);
 				moveList.Lock();
@@ -1556,12 +1576,24 @@ FastCopy::ReqHead *FastCopy::GetDirExtData(FileStat *stat)
 	BOOL	ret = TRUE;
 	BOOL	is_reparse = IsReparse(stat->dwFileAttributes) && (info.flags & USE_REPARSE) == 0;
 	int		used_size_save = (int)dirStatBuf.UsedSize();
-	DWORD	share = FILE_SHARE_READ|FILE_SHARE_WRITE;
+	DWORD	mode = GENERIC_READ|READ_CONTROL;
+	DWORD	share = FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE;
 	DWORD	flg = FILE_FLAG_BACKUP_SEMANTICS | (is_reparse ? FILE_FLAG_OPEN_REPARSE_POINT : 0);
 	ReqHead	*req;
 
-	if ((fh = ::CreateFileW(src, GENERIC_READ|READ_CONTROL, share, 0, OPEN_EXISTING, flg , 0))
-			== INVALID_HANDLE_VALUE) return	NULL;
+	fh = ::CreateFileW(src, mode, share, 0, OPEN_EXISTING, flg , 0);
+	if (fh == INVALID_HANDLE_VALUE) {
+		//  FILE_READ_EA|FILE_READ_ATTRIBUTES|SYNCHRONIZE
+		mode &= ~GENERIC_READ;
+		fh = ::CreateFileW(src, mode, share, 0, OPEN_EXISTING, flg , 0);
+	}
+	if (fh == INVALID_HANDLE_VALUE) {
+		if (is_reparse || (info.flags & REPORT_ACL_ERROR)) {
+			ConfirmErr(is_reparse ? L"OpenDir (reparse)" : L"OpenDir(ACL/EADATA)",
+				src + srcPrefixLen);
+		}
+		return	NULL;
+	}
 
 	if (is_reparse) {
 		size = MAXIMUM_REPARSE_DATA_BUFFER_SIZE;
@@ -1833,7 +1865,8 @@ BOOL FastCopy::OpenFileProc(FileStat *stat, int dir_len)
 		DWORD	mode = GENERIC_READ;
 		DWORD	flg = ((info.flags & USE_OSCACHE_READ) ?
 					0 : FILE_FLAG_NO_BUFFERING) | FILE_FLAG_SEQUENTIAL_SCAN;
-		DWORD	share = FILE_SHARE_READ|FILE_SHARE_WRITE;
+		DWORD	share = FILE_SHARE_READ | ((info.flags & WRITESHARE_OPEN) ?
+			(FILE_SHARE_WRITE|FILE_SHARE_DELETE) : 0);
 
 		stat->hOvlFile = INVALID_HANDLE_VALUE;
 
@@ -1845,13 +1878,23 @@ BOOL FastCopy::OpenFileProc(FileStat *stat, int dir_len)
 			flg |= flagOvl;
 		}
 		if (is_reparse) {
-			flg  |= FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT;
+			flg |= FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT;
 		}
 		if ((stat->hFile = ::CreateFileW(src, mode, share, 0, OPEN_EXISTING, flg, 0))
 				== INVALID_HANDLE_VALUE) {
 			stat->lastError = ::GetLastError();
-			ret = FALSE;
+
+			if (stat->lastError == ERROR_SHARING_VIOLATION && (share & FILE_SHARE_WRITE) == 0) {
+				share |= FILE_SHARE_WRITE;
+				stat->hFile = ::CreateFileW(src, mode, share, 0, OPEN_EXISTING, flg, 0);
+			}
 		}
+		if (stat->hFile == INVALID_HANDLE_VALUE) {
+			ret = FALSE;
+		} else if ((share & FILE_SHARE_WRITE)) {
+			stat->isWriteShare = true;
+		}
+
 		if (ret && is_ovl) {
 			if (is_backup) {	// エラーの場合は hFile が使われる
 				stat->hOvlFile = ::CreateFileW(src, mode, share, 0, OPEN_EXISTING, flg|flagOvl, 0);
@@ -2001,7 +2044,7 @@ BOOL FastCopy::OpenFileBackupStreamCore(int src_len, int64 size, WCHAR *altname,
 
 	FileStat	*subStat = (FileStat *)(fileStatBuf.Buf() + fileStatBuf.UsedSize());
 	bool		is_ovl = (size > info.maxOvlSize) && flagOvl;
-	DWORD		share = FILE_SHARE_READ|FILE_SHARE_WRITE;
+	DWORD		share = FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE;
 	DWORD		flg = ((info.flags & USE_OSCACHE_READ) ? 0 : FILE_FLAG_NO_BUFFERING)
 					| FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_BACKUP_SEMANTICS | flagOvl;
 
@@ -2243,6 +2286,12 @@ BOOL FastCopy::ReadAbortFile(int cur_idx, Command cmd, int dir_len, BOOL is_stre
 	return	ret;
 }
 
+bool IsFileChanged(FileStat *stat)
+{
+	FILETIME wt;
+	return !::GetFileTime(stat->hFile, 0, 0, &wt) || (*(int64 *)&wt != stat->WriteTime());
+}
+
 BOOL FastCopy::ReadFileProcCore(int cur_idx, int dir_len, Command cmd, FileStat *stat)
 {
 	int64	file_size = stat->FileSize();
@@ -2293,8 +2342,10 @@ BOOL FastCopy::ReadFileProcCore(int cur_idx, int dir_len, Command cmd, FileStat 
 
 			total.readTrans += ovl_tmp->transSize; 
 			ovl_tmp->req->readSize = ovl_tmp->transSize;
+
 			if (total_size > file_size ||
-			(total_size < file_size && ovl_tmp->orderSize != ovl_tmp->transSize)) {
+				(total_size < file_size && ovl_tmp->orderSize != ovl_tmp->transSize) ||
+				(total_size == file_size && stat->isWriteShare && IsFileChanged(stat))) {
 				is_modifyerr = TRUE;
 				ret = FALSE;
 				break;
@@ -2321,6 +2372,11 @@ BOOL FastCopy::ReadFileProc(int *open_idx, int dir_len)
 	BOOL	ret = TRUE;
 	int		cur_idx = (*open_idx)++;
 	FileStat *stat = openFiles[cur_idx];
+
+	if (stat->hFile != INVALID_HANDLE_VALUE /* && stat->isWriteShare */) {
+		::GetFileTime(stat->hFile, 0, 0, &stat->ftLastWriteTime);
+		stat->nFileSizeLow = ::GetFileSize(stat->hFile, &stat->nFileSizeHigh);
+	}
 	int64	file_size = stat->FileSize();
 	Command	cmd = (enableAcl || enableStream) ? stat->dwFileAttributes ?
 				WRITE_BACKUP_FILE : WRITE_BACKUP_ALTSTREAM : WRITE_FILE;
@@ -2575,6 +2631,7 @@ BOOL FastCopy::DeleteProc(WCHAR *path, int dir_len, FilterRes fr)
 			continue;
 		}
 
+		stat.ftLastWriteTime	= fdat.ftLastWriteTime;
 		stat.nFileSizeLow		= fdat.nFileSizeLow;
 		stat.nFileSizeHigh		= fdat.nFileSizeHigh;
 		stat.dwFileAttributes	= fdat.dwFileAttributes;
@@ -2606,10 +2663,16 @@ BOOL FastCopy::DeleteDirProc(WCHAR *path, int dir_len, WCHAR *fname, FileStat *s
 
 	PushDepth(path, new_dir_len);
 
+	if (!isListingOnly && (stat->dwFileAttributes & FILE_ATTRIBUTE_READONLY)) {
+		path[new_dir_len-1] = 0;
+		::SetFileAttributesW(path, FILE_ATTRIBUTE_DIRECTORY);
+		path[new_dir_len-1] = '\\';
+		// ResetAcl()
+	}
+
 	if (info.mode == DELETE_MODE && (info.flags & (OVERWRITE_DELETE|OVERWRITE_DELETE_NSA))) {
 		memcpy(confirmDst + dir_len, path + dir_len, (new_dir_len - dir_len + 2) * sizeof(WCHAR));
 	}
-
 	if (!is_reparse) {
 		ret = DeleteProc(path, new_dir_len, fr);
 		if (isAbort) goto END;
@@ -2623,17 +2686,14 @@ BOOL FastCopy::DeleteDirProc(WCHAR *path, int dir_len, WCHAR *fname, FileStat *s
 	path[new_dir_len - 1] = 0;
 
 	if (!isListingOnly) {
-		if (!is_reparse) {
-			::SetFileAttributesW(path, stat->dwFileAttributes & ~FILE_ATTRIBUTE_READONLY);
-		}
 		WCHAR	*target = path;
 
 		if (info.mode == DELETE_MODE && (info.flags & (OVERWRITE_DELETE|OVERWRITE_DELETE_NSA))) {
-			if (RenameRandomFname(path, confirmDst, dir_len, new_dir_len-dir_len-1)) {
+			if (RenameRandomFname(path, confirmDst, dir_len, new_dir_len - dir_len - 1)) {
 				target = confirmDst;
 			}
 		}
-		if ((ret = ::RemoveDirectoryW(target)) == FALSE) {
+		if ((ret = ForceRemoveDirectoryW(target, info.aclReset)) == FALSE) {
 			total.errDirs++;
 			ConfirmErr(L"RemoveDirectory", target + dstPrefixLen);
 			goto END;
@@ -2641,7 +2701,7 @@ BOOL FastCopy::DeleteDirProc(WCHAR *path, int dir_len, WCHAR *fname, FileStat *s
 	}
 	if (isListing) {
 		PutList(path + dstPrefixLen, PL_DIRECTORY|PL_DELETE|(is_reparse ? PL_REPARSE : 0), 0,
-			stat->FileSize(), stat->WriteTime());
+			stat->WriteTime());
 	}
 	total.deleteDirs++;
 
@@ -2656,11 +2716,12 @@ BOOL FastCopy::DeleteFileProc(WCHAR *path, int dir_len, WCHAR *fname, FileStat *
 	BOOL	is_reparse = IsReparse(stat->dwFileAttributes);
 
 	if (!isListingOnly) {
-		if (stat->dwFileAttributes & FILE_ATTRIBUTE_READONLY) {
-			::SetFileAttributesW(path, FILE_ATTRIBUTE_NORMAL);
-		}
 		WCHAR	*target = path;
 
+		if ((stat->dwFileAttributes & FILE_ATTRIBUTE_READONLY)) { // path's stat
+			::SetFileAttributesW(path, FILE_ATTRIBUTE_NORMAL);
+			// ResetAcl()
+		}
 		if (info.mode == DELETE_MODE && (info.flags & (OVERWRITE_DELETE|OVERWRITE_DELETE_NSA))
 		&& !is_reparse) {
 			if (RenameRandomFname(target, confirmDst, dir_len, len)) {
@@ -2674,15 +2735,14 @@ BOOL FastCopy::DeleteFileProc(WCHAR *path, int dir_len, WCHAR *fname, FileStat *
 				total.writeFiles++;
 			}
 		}
-
-		if (::DeleteFileW(target) == FALSE) {
+		if (ForceDeleteFileW(target, info.aclReset) == FALSE) {
 			total.errFiles++;
 			return	ConfirmErr(L"DeleteFile", target + dstPrefixLen), FALSE;
 		}
 	}
 	if (isListing) {
-		PutList(path + dstPrefixLen, PL_DELETE|(is_reparse ? PL_REPARSE : 0), 0,
-			stat->FileSize(), stat->WriteTime());
+		PutList(path + dstPrefixLen, PL_DELETE|(is_reparse ? PL_REPARSE : 0), 0, stat->WriteTime(),
+			stat->FileSize());
 	}
 
 	total.deleteFiles++;
@@ -2838,8 +2898,10 @@ BOOL FastCopy::WriteRandomData(WCHAR *path, FileStat *stat, BOOL skip_hardlink)
 						|| (stat->FileSize() % dstSectorSize) == 0)
 							&& (info.flags & USE_OSCACHE_WRITE) == 0 ? TRUE : FALSE;
 	DWORD	flg = (is_nonbuf ? FILE_FLAG_NO_BUFFERING : 0) | FILE_FLAG_SEQUENTIAL_SCAN;
-	DWORD	share = FILE_SHARE_READ|FILE_SHARE_WRITE;
-	HANDLE	hFile = ::CreateFileW(path, GENERIC_WRITE, share, 0, OPEN_EXISTING, flg, 0);
+	DWORD	share = FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE;
+
+	HANDLE	hFile = ForceCreateFileW(path, GENERIC_WRITE, share, 0, OPEN_EXISTING, flg, 0,
+		info.aclReset);	// ReadOnly attr のクリアは親で完了済み
 	BOOL	ret = TRUE;
 
 	if (hFile == INVALID_HANDLE_VALUE) {
@@ -2973,8 +3035,8 @@ BOOL FastCopy::WriteProc(int dir_len)
 					total.linkFiles++;
 				}
 				else {
-					PutList(dst + dstPrefixLen, PL_NORMAL, 0, writeReq->stat.FileSize(),
-						 writeReq->stat.WriteTime());
+					PutList(dst + dstPrefixLen, PL_NORMAL, 0, writeReq->stat.WriteTime(),
+						writeReq->stat.FileSize());
 					total.writeFiles++;
 					total.writeTrans += writeReq->stat.FileSize();
 				}
@@ -2993,7 +3055,7 @@ BOOL FastCopy::WriteProc(int dir_len)
 			PushDepth(dst, dir_len);
 			ret = WriteDirProc(dir_len);
 		}
-		else if (writeReq->cmd == DELETE_FILES) {
+		else if (writeReq->cmd == DELETE_FILES) {	// stat is dest stat from SendRequest
 			if (IsDir(writeReq->stat.dwFileAttributes)) {
 				ret = DeleteDirProc(dst, dir_len, writeReq->stat.cFileName, &writeReq->stat,
 									FR_MATCH);
@@ -3070,8 +3132,12 @@ BOOL FastCopy::WriteDirProc(int dir_len)
 	if (is_mkdir) {
 		if (isListingOnly || ::CreateDirectoryW(dst, NULL)) {
 			if (isListing && !is_reparse)
-				PutList(dst + dstPrefixLen, PL_DIRECTORY);
+				PutList(dst + dstPrefixLen, PL_DIRECTORY, 0, sv_stat.WriteTime());
 			total.writeDirs++;
+		}
+		else if (::GetLastError() != ERROR_ALREADY_EXISTS) {
+			total.errDirs++;
+			ConfirmErr(L"CreateDirectory", dst + dstPrefixLen);
 		}
 	}
 	wcscpy(dst + new_dir_len, L"\\");
@@ -3089,12 +3155,12 @@ BOOL FastCopy::WriteDirProc(int dir_len)
 	// タイムスタンプ/ACL/属性/リパースポイントのセット
 	if (isListingOnly || (ret = SetDirExtData(&sv_stat))) {
 		if (isListing && is_reparse && is_mkdir) {
-			PutList(dst + dstPrefixLen, PL_DIRECTORY|PL_REPARSE);
+			PutList(dst + dstPrefixLen, PL_DIRECTORY|PL_REPARSE, 0, sv_stat.WriteTime());
 		}
 	}
 	else if (is_reparse && is_mkdir) {
 		// 新規作成dirのリパースポイント化に失敗した場合は、dir削除
-		::RemoveDirectoryW(dst);
+		ForceRemoveDirectoryW(dst, info.aclReset|FMF_ATTR);
 	}
 
 	if (buf_size) {
@@ -3107,25 +3173,27 @@ END:
 
 BOOL FastCopy::SetDirExtData(FileStat *stat)
 {
-	if (stat->dwFileAttributes &
-			(FILE_ATTRIBUTE_HIDDEN|FILE_ATTRIBUTE_READONLY|FILE_ATTRIBUTE_SYSTEM)) {
-		::SetFileAttributesW(dst, stat->dwFileAttributes);
-	}
 	HANDLE	fh;
-	DWORD	mode = GENERIC_WRITE | (stat->acl && enableAcl ? (WRITE_OWNER|WRITE_DAC) : 0);
+	DWORD	mode = GENERIC_WRITE | (stat->acl && stat->aclSize && enableAcl ?
+		(WRITE_OWNER|WRITE_DAC) : 0) | READ_CONTROL;
 	BOOL	is_reparse = IsReparse(stat->dwFileAttributes) && (info.flags & USE_REPARSE) == 0;
-	BOOL	ret = TRUE;
-	DWORD	share = FILE_SHARE_READ|FILE_SHARE_WRITE;
+	BOOL	ret = FALSE;
+	DWORD	share = FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE;
 	DWORD	flg = FILE_FLAG_BACKUP_SEMANTICS|(is_reparse ? FILE_FLAG_OPEN_REPARSE_POINT : 0);
 
-	if ((fh = ::CreateFileW(dst, mode, share, 0, OPEN_EXISTING, flg, 0)) == INVALID_HANDLE_VALUE) {
-		if (is_reparse) {
+	fh = ForceCreateFileW(dst, mode, share, 0, OPEN_EXISTING, flg, 0, info.aclReset|FMF_ATTR);
+	if (fh == INVALID_HANDLE_VALUE) {
+		mode &= ~WRITE_OWNER;
+		fh = ::CreateFileW(dst, mode, share, 0, OPEN_EXISTING, flg , 0);
+	}
+	if (fh == INVALID_HANDLE_VALUE) {
+		if (is_reparse || (info.flags & REPORT_ACL_ERROR)) {
+			ConfirmErr(is_reparse ? L"CreateDir(reparse)" : L"CreateDir(ACL)", dst + dstPrefixLen);
 			total.errDirs++;
 		}
-		return	FALSE;
+		goto END;
 	}
-
-	if (is_reparse && stat->rep) {
+	if (is_reparse && stat->rep && stat->repSize) {
 		char	rp[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
 		BOOL	is_set = TRUE;
 		if (ReadReparsePoint(fh, rp, sizeof(rp)) > 0) {
@@ -3137,25 +3205,35 @@ BOOL FastCopy::SetDirExtData(FileStat *stat)
 		}
 		if (is_set) {
 			if (WriteReparsePoint(fh, stat->rep, stat->repSize) <= 0) {
-				ret = FALSE;
 				total.errDirs++;
 				ConfirmErr(L"WriteReparsePoint(dir)", dst + dstPrefixLen);
+				goto END;
 			}
 		}
+		ret = TRUE; // リパースポイント作成が成功した場合は ACL成功の有無は問わない
 	}
 
-	if (stat->acl) {
+	if ((stat->acl && stat->aclSize) && (mode & WRITE_OWNER)) {
 		void	*backupContent = NULL;
 		DWORD	size;
 		if (!::BackupWrite(fh, stat->acl, stat->aclSize, &size, FALSE, TRUE, &backupContent)) {
 			if (info.flags & REPORT_ACL_ERROR)
 				ConfirmErr(L"BackupWrite(DIRACL)", dst + dstPrefixLen);
+			goto END;
 		}
 		::BackupWrite(fh, NULL, NULL, NULL, TRUE, TRUE, &backupContent);
 	}
-	::SetFileTime(fh, &stat->ftCreationTime, &stat->ftLastAccessTime, &stat->ftLastWriteTime);
-	::CloseHandle(fh);
+	ret = TRUE;
 
+END:
+	if (fh != INVALID_HANDLE_VALUE) {
+		::SetFileTime(fh, &stat->ftCreationTime, &stat->ftLastAccessTime, &stat->ftLastWriteTime);
+		::CloseHandle(fh);
+	}
+	if (stat->dwFileAttributes &
+			(FILE_ATTRIBUTE_HIDDEN|FILE_ATTRIBUTE_READONLY|FILE_ATTRIBUTE_SYSTEM)) {
+		::SetFileAttributesW(dst, stat->dwFileAttributes);
+	}
 	return	ret;
 }
 
@@ -3227,7 +3305,7 @@ BOOL FastCopy::WDigestThreadCore(void)
 
 		if (calc->status == DigestCalc::DONE) {
 			if (isListing) {
-				PutList(calc->path + dstPrefixLen, PL_NORMAL, 0, calc->fileSize, calc->wTime,
+				PutList(calc->path + dstPrefixLen, PL_NORMAL, 0, calc->wTime, calc->fileSize,
 					calc->digest);
 			}
 			if (info.mode == MOVE_MODE) {
@@ -3241,8 +3319,8 @@ BOOL FastCopy::WDigestThreadCore(void)
 			}
 			total.errFiles++;
 			if (isListing) {
-				PutList(calc->path + dstPrefixLen, PL_NORMAL|PL_COMPARE, 0, calc->fileSize,
-					calc->wTime, calc->digest);
+				PutList(calc->path + dstPrefixLen, PL_NORMAL|PL_COMPARE, 0, calc->wTime,
+					calc->fileSize, calc->digest);
 			}
 		}
 		else if (calc->status == DigestCalc::PASS) {
@@ -3339,13 +3417,12 @@ BOOL FastCopy::MakeDigestAsync(DigestObj *obj)
 	if (waitTick) Wait((waitTick + 9) / 10);
 
 	if (obj->fileSize) {
-		BY_HANDLE_FILE_INFORMATION	bhi;
-		if ((hFile = CreateFileWithRetry(obj->path, GENERIC_READ, share, 0, OPEN_EXISTING, flg,
-				0, 5)) == INVALID_HANDLE_VALUE || !::GetFileInformationByHandle(hFile, &bhi)) {
+		hFile = CreateFileWithRetry(obj->path, GENERIC_READ, share, 0, OPEN_EXISTING, flg, 0, 5);
+		if (hFile == INVALID_HANDLE_VALUE) {
 			ConfirmErr(L"OpenFile(digest)", obj->path + dstPrefixLen);
 			goto ERR;
 		}
-		file_size = FileSize(bhi);
+		::GetFileSizeEx(hFile, (LARGE_INTEGER *)&file_size);
 	}
 	if (file_size != obj->fileSize) {
 		ConfirmErr(L"Size is changed", obj->path + dstPrefixLen, CEF_NOAPI);
@@ -3589,7 +3666,7 @@ BOOL FastCopy::WriteFileProcCore(HANDLE *_fh, int dst_len, FileStat *stat, WInfo
 	BOOL	useOvl = (flagOvl && wi.file_size > info.maxOvlSize);
 
 	if (wi.cmd == WRITE_BACKUP_FILE || wi.cmd == WRITE_BACKUP_ALTSTREAM) {
-		if (stat->acl && enableAcl) mode |= WRITE_OWNER|WRITE_DAC;
+		if (stat->acl && stat->aclSize && enableAcl) mode |= WRITE_OWNER|WRITE_DAC;
 		flg |= FILE_FLAG_BACKUP_SEMANTICS;
 	}
 	if (useOvl && wi.cmd != WRITE_BACKUP_FILE) {
@@ -3598,11 +3675,12 @@ BOOL FastCopy::WriteFileProcCore(HANDLE *_fh, int dst_len, FileStat *stat, WInfo
 	if (wi.is_reparse) {
 		flg |= FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT;
 	}
-	if ((fh = ::CreateFileW(dst, mode, share, 0, CREATE_ALWAYS, flg, 0))
-			== INVALID_HANDLE_VALUE) {
-		::SetFileAttributesW(dst, FILE_ATTRIBUTE_NORMAL);
-		if (stat->acl && enableAcl) ::DeleteFileW(dst); // 削除をtryしていない
-		fh = ::CreateFileW(dst, mode, share, 0, CREATE_ALWAYS, flg, 0);
+	fh = ForceCreateFileW(dst, mode, share, 0, CREATE_ALWAYS, flg, 0, FMF_ATTR);
+	if (fh == INVALID_HANDLE_VALUE) {
+		if (info.aclReset || enableAcl) {
+			fh = ForceCreateFileW(dst, mode, share, 0, CREATE_ALWAYS, flg, 0,
+				FMF_ACL|info.aclReset);
+		}
 	}
 	if (fh == INVALID_HANDLE_VALUE) {
 		if (!wi.is_stream || (info.flags & REPORT_STREAM_ERROR))
@@ -3658,10 +3736,7 @@ BOOL FastCopy::WriteFileProc(int dst_len)
 	if (waitTick) Wait((waitTick + 9) / 10);
 
 	if (wi.is_require_del) {
-		if (!::DeleteFileW(dst) && ::GetLastError() != ERROR_FILE_NOT_FOUND) {
-			::SetFileAttributesW(dst, FILE_ATTRIBUTE_NORMAL);
-			::DeleteFileW(dst);
-		}
+		ForceDeleteFileW(dst, FMF_ATTR|info.aclReset);
 	}
 	if (wi.is_hardlink) {
 		if ((ret = RestoreHardLinkInfo(writeReq->stat.GetLinkData(), hardLinkDst, dstBaseLen))) {
@@ -3704,8 +3779,8 @@ BOOL FastCopy::WriteFileProc(int dst_len)
 		SetTotalErrInfo(wi.is_stream, wi.file_size);
 		SetErrWFileID(stat->fileID);
 		if (!wi.is_stream && // fh が無効かつERROR_NO_SYSTEM_RESOURCESはネットワーク作成後エラー
-			(fh != INVALID_HANDLE_VALUE || GetLastError() == ERROR_NO_SYSTEM_RESOURCES)) {
-			::DeleteFileW(dst);
+			(fh != INVALID_HANDLE_VALUE || ::GetLastError() == ERROR_NO_SYSTEM_RESOURCES)) {
+			ForceDeleteFileW(dst, FMF_ATTR|info.aclReset);
 		}
 	}
 	if (!wi.is_stream && info.mode == MOVE_MODE && (info.flags & VERIFY_FILE) == 0 && !isAbort) {
@@ -3713,7 +3788,7 @@ BOOL FastCopy::WriteFileProc(int dst_len)
 	}
 	if ((isListingOnly || isListing && !wi.is_digest) && !wi.is_stream && ret) {
 		DWORD flags = wi.is_hardlink ? PL_HARDLINK : wi.is_reparse ? PL_REPARSE : PL_NORMAL;
-		PutList(dst + dstPrefixLen, flags, 0, stat->FileSize(), stat->WriteTime());
+		PutList(dst + dstPrefixLen, flags, 0, stat->WriteTime(), stat->FileSize());
 	}
 
 	return	ret && !isAbort;
@@ -3743,7 +3818,7 @@ BOOL FastCopy::WriteFileCore(HANDLE fh, FileStat *stat, WInfo *_wi, DWORD mode, 
 		LONG	high_size = (LONG)(alloc_size >> 32);
 
 		::SetFilePointer(fh, (LONG)alloc_size, &high_size, FILE_BEGIN);
-		if (!::SetEndOfFile(fh) && GetLastError() == ERROR_DISK_FULL) {
+		if (!::SetEndOfFile(fh) && ::GetLastError() == ERROR_DISK_FULL) {
 			ConfirmErr(wi.is_stream ? L"SetEndOfFile(st)" : L"SetEndOfFile",
 			 dst + dstPrefixLen, file_size >= info.allowContFsize ? 0 : CEF_STOP);
 			ret = FALSE;
@@ -3769,7 +3844,7 @@ BOOL FastCopy::WriteFileCore(HANDLE fh, FileStat *stat, WInfo *_wi, DWORD mode, 
 			ret = FALSE;
 			if (!wi.is_stream || (info.flags & REPORT_STREAM_ERROR)) {
 				ConfirmErr(wi.is_stream ? L"WriteFile(st)" : L"WriteFile", dst + dstPrefixLen,
-					(GetLastError() != ERROR_DISK_FULL || file_size >= info.allowContFsize
+					(::GetLastError() != ERROR_DISK_FULL || file_size >= info.allowContFsize
 					 || wi.is_stream) ? 0 : CEF_STOP);
 			}
 			break;
@@ -3813,7 +3888,7 @@ BOOL FastCopy::WriteFileCore(HANDLE fh, FileStat *stat, WInfo *_wi, DWORD mode, 
 	}
 	if (ret && is_reopen && fh2 == INVALID_HANDLE_VALUE) {
 		fh2 = CreateFileWithRetry(dst, mode, share, 0, OPEN_EXISTING, flg, 0, 10);
-		if (fh2 == INVALID_HANDLE_VALUE && GetLastError() != ERROR_SHARING_VIOLATION) {
+		if (fh2 == INVALID_HANDLE_VALUE && ::GetLastError() != ERROR_SHARING_VIOLATION) {
 			flg  &= ~FILE_FLAG_BACKUP_SEMANTICS;
 			mode &= ~(WRITE_OWNER|WRITE_DAC);
 			fh2 = CreateFileWithRetry(dst, mode, share, 0, OPEN_EXISTING, flg, 0, 10);
@@ -4320,8 +4395,9 @@ int FastCopy::FdatToFileStat(WIN32_FIND_DATAW *fdat, FileStat *stat, BOOL is_use
 	stat->hFile				= INVALID_HANDLE_VALUE;
 	stat->hOvlFile			= INVALID_HANDLE_VALUE;
 	stat->lastError			= 0;
-	stat->isExists			= FALSE;
-	stat->isCaseChanged		= FALSE;
+	stat->isExists			= false;
+	stat->isCaseChanged		= false;
+	stat->isWriteShare		= false;
 	stat->filterRes			= fr;
 	stat->renameCount		= 0;
 	stat->acl				= NULL;
@@ -4385,7 +4461,7 @@ FastCopy::Confirm::Result FastCopy::ConfirmErr(const WCHAR *msg, const WCHAR *pa
 	p += wcscpyz(p, msg);
 
 	if (is_data_modified) {
-		p += wcscpyz(p, L"(filesize changed)");
+		p += wcscpyz(p, L"(file is modified)");
 	}
 	if (api_err && err_code) {
 		p += wcscpyz(p, L"(");
