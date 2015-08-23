@@ -1,21 +1,29 @@
 FastCopy-M
 ===========
+"M" is Multilanguage
 
+FastCopy-M特点：
+FastCopy-M feature:
+
+汉化并支持更加完整的多国语言显示
 FastCopy Chinesization and modify to support other language more overall.
 
+主界面复制时图标也显示动画
 The main window icon displayed animation when runing copy process.
 
+支持调用网络URL作为帮助文件
 Support use http url to replace "chm" help files.
 
-Build on Visual Studio C++ 2015
+FastCopy-M采用VS2015，你可以自行替换工程到原始版本（或手动修改文件内版本号）以在VS2013或2012上编译。
+FastCopy-M used VS2015, if you want bulid on VS2013 or earlier you can replace the "*.sln", "*.vcxproj" to original version (or modify project version in these file) by your self.
 
-## Download
+## Release Download
 
 http://www.mapaler.com/fastcopy-m/
 
 ## Official website
 
-http://ipmsg.org/tools/fastcopy_beta.html
+http://ipmsg.org/tools/fastcopy.html
  
 ##Official License
 GPLv3
