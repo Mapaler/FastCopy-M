@@ -38,10 +38,71 @@
 			<param name="Local" value="fastcopy.htm#environment">
 			</OBJECT>
 		<LI> <OBJECT type="text/sitemap">
-			<param name="Name" value="使用法">
-			<param name="Local" value="fastcopy.htm#usage">
-			<param name="ImageNumber" value="9">
+			<param name="Name" value="&sup2;&Yacute;&frac12;&Auml;&deg;&Ugrave;">
+			<param name="Local" value="FastCopy.htm#install">
 			</OBJECT>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="使用法・画面">
+			<param name="Local" value="fastcopy.htm#usage">
+			</OBJECT>
+			<UL>
+			<LI> <OBJECT type="text/sitemap">
+				<param name="Name" value="1) Source/DestDir">
+				<param name="Local" value="fastcopy.htm#source_dst">
+				<param name="ImageNumber" value="9">
+				</OBJECT>
+			<LI> <OBJECT type="text/sitemap">
+				<param name="Name" value="2) 動作モード">
+				<param name="Local" value="fastcopy.htm#mode">
+				<param name="ImageNumber" value="9">
+				</OBJECT>
+			<LI> <OBJECT type="text/sitemap">
+				<param name="Name" value="3) ボタン＆オプション指定">
+				<param name="Local" value="fastcopy.htm#buttons">
+				<param name="ImageNumber" value="9">
+				</OBJECT>
+			<LI> <OBJECT type="text/sitemap">
+				<param name="Name" value="4) フィルタ指定">
+				<param name="Local" value="fastcopy.htm#filter">
+				<param name="ImageNumber" value="9">
+				</OBJECT>
+			<LI> <OBJECT type="text/sitemap">
+				<param name="Name" value="5) ジャンクション・他">
+				<param name="Local" value="fastcopy.htm#reparse">
+				<param name="ImageNumber" value="9">
+				</OBJECT>
+			<LI> <OBJECT type="text/sitemap">
+				<param name="Name" value="6) メニュー項目">
+				<param name="Local" value="fastcopy.htm#menus">
+				<param name="ImageNumber" value="9">
+				</OBJECT>
+			</UL>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="設定">
+			<param name="Local" value="fastcopy.htm#settings">
+			</OBJECT>
+			<UL>
+			<LI> <OBJECT type="text/sitemap">
+				<param name="Name" value="1) 一般設定">
+				<param name="Local" value="fastcopy.htm#gen_settings">
+				<param name="ImageNumber" value="9">
+				</OBJECT>
+			<LI> <OBJECT type="text/sitemap">
+				<param name="Name" value="2) シェル拡張設定・他">
+				<param name="Local" value="fastcopy.htm#shell">
+				<param name="ImageNumber" value="9">
+				</OBJECT>
+			<LI> <OBJECT type="text/sitemap">
+				<param name="Name" value="3) 終了時処理">
+				<param name="Local" value="fastcopy.htm#finact">
+				<param name="ImageNumber" value="9">
+				</OBJECT>
+			<LI> <OBJECT type="text/sitemap">
+				<param name="Name" value="4) ジョブ管理">
+				<param name="Local" value="fastcopy.htm#job">
+				<param name="ImageNumber" value="9">
+				</OBJECT>
+			</UL>
 		<LI> <OBJECT type="text/sitemap">
 			<param name="Name" value="&ordm;&Iuml;&Yacute;&Auml;&THORN;&times;&sup2;&Yacute;">
 			<param name="Local" value="fastcopy.htm#cmdline">
@@ -94,9 +155,67 @@
 			<param name="Local" value="fastcopy_eng.htm#install">
 			</OBJECT>
 		<LI> <OBJECT type="text/sitemap">
-			<param name="Name" value="Usage">
+			<param name="Name" value="Usage/MainWindow">
 			<param name="Local" value="fastcopy_eng.htm#usage">
 			</OBJECT>
+			<UL>
+			<LI> <OBJECT type="text/sitemap">
+				<param name="Name" value="1) Source/DestDir">
+				<param name="Local" value="fastcopy_eng.htm#source_dst">
+				<param name="ImageNumber" value="9">
+				</OBJECT>
+			<LI> <OBJECT type="text/sitemap">
+				<param name="Name" value="2) Operation mode">
+				<param name="Local" value="fastcopy_eng.htm#mode">
+				<param name="ImageNumber" value="9">
+				</OBJECT>
+			<LI> <OBJECT type="text/sitemap">
+				<param name="Name" value="3) Button & Options">
+				<param name="Local" value="fastcopy_eng.htm#buttons">
+				<param name="ImageNumber" value="9">
+				</OBJECT>
+			<LI> <OBJECT type="text/sitemap">
+				<param name="Name" value="4) Filters">
+				<param name="Local" value="fastcopy_eng.htm#filter">
+				<param name="ImageNumber" value="9">
+				</OBJECT>
+			<LI> <OBJECT type="text/sitemap">
+				<param name="Name" value="5) Junction & Misc">
+				<param name="Local" value="fastcopy_eng.htm#reparse">
+				<param name="ImageNumber" value="9">
+				</OBJECT>
+			<LI> <OBJECT type="text/sitemap">
+				<param name="Name" value="6) Menu items">
+				<param name="Local" value="fastcopy_eng.htm#menus">
+				<param name="ImageNumber" value="9">
+				</OBJECT>
+			</UL>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="Settings">
+			<param name="Local" value="fastcopy_eng.htm#settings">
+			</OBJECT>
+			<UL>
+			<LI> <OBJECT type="text/sitemap">
+				<param name="Name" value="1) General Settings">
+				<param name="Local" value="fastcopy_eng.htm#gen_settings">
+				<param name="ImageNumber" value="9">
+				</OBJECT>
+			<LI> <OBJECT type="text/sitemap">
+				<param name="Name" value="2) Shell Extension & Misc">
+				<param name="Local" value="fastcopy_eng.htm#shell">
+				<param name="ImageNumber" value="9">
+				</OBJECT>
+			<LI> <OBJECT type="text/sitemap">
+				<param name="Name" value="3) Post-Process">
+				<param name="Local" value="fastcopy_eng.htm#finact">
+				<param name="ImageNumber" value="9">
+				</OBJECT>
+			<LI> <OBJECT type="text/sitemap">
+				<param name="Name" value="4) Job Management">
+				<param name="Local" value="fastcopy_eng.htm#job">
+				<param name="ImageNumber" value="9">
+				</OBJECT>
+			</UL>
 		<LI> <OBJECT type="text/sitemap">
 			<param name="Name" value="CommandLine">
 			<param name="Local" value="fastcopy_eng.htm#cmdline">
@@ -120,6 +239,16 @@
 		<LI> <OBJECT type="text/sitemap">
 			<param name="Name" value="History">
 			<param name="Local" value="fastcopy_eng.htm#history">
+			</OBJECT>
+	</UL>
+	<LI> <OBJECT type="text/sitemap">
+		<param name="Name" value="License">
+		<param name="WindowName" value="Main">
+		</OBJECT>
+	<UL>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="license">
+			<param name="Local" value="license-gpl3.txt">
 			</OBJECT>
 	</UL>
 </UL>

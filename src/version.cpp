@@ -1,12 +1,13 @@
 ﻿static char *version_id = 
-	"@(#)Copyright (C) 2004-2012 H.Shirouzu	Version.cpp	ver2.11";
+	"@(#)Copyright (C) 2004-2015 H.Shirouzu	Version.cpp ver3.02";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Module Name				: Version
 	Create					: 2010-06-13(Sun)
-	Update					: 2012-06-18(Mon)
+	Update					: 2015-08-20(Thu)
 	Copyright				: H.Shirouzu
-	Reference				: 
+	License					: GNU General Public License version 3
+	Modify					: Mapaler 2015-08-23
 	======================================================================== */
 
 #include "tlib/tlib.h"
@@ -18,12 +19,14 @@
 
 static char version_str[32];
 static char copyright_str[128];
+static char mender_str[128];
 static char admin_str[32];
 
-void SetVersionStr(BOOL is_admin)
+void SetVersionStr(BOOL is_admin, BOOL is_noui)
 {
 	sprintf(version_str, "%.20s", strstr(version_id, "ver"));
 	if (is_admin) strcpy(admin_str, " (Admin)");
+	if (is_noui) strcpy(admin_str, " (NoUI)");
 }
 
 const char *GetVersionStr()
@@ -35,6 +38,8 @@ const char *GetVersionStr()
 
 const char *GetVerAdminStr()
 {
+	if (admin_str[0] == 0)
+		SetVersionStr();
 	return	admin_str;
 }
 
@@ -48,5 +53,13 @@ const char *GetCopyrightStr(void)
 		}
 	}
 	return	copyright_str;
+}
+
+const char *GetMenderStr(void)
+{
+	if (mender_str[0] == 0) {
+		sprintf(mender_str, "FastCopy-M branch By Mapaler");
+	}
+	return	mender_str;
 }
 

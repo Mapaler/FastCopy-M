@@ -1,11 +1,11 @@
 ﻿/* static char *shellext_id = 
-	"@(#)Copyright (C) 2005-2012 H.Shirouzu		shellext.h	Ver2.10"; */
+	"@(#)Copyright (C) 2005-2015 H.Shirouzu		shellext.h	Ver3.00"; */
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2005-01-23(Sun)
-	Update					: 2012-06-17(Sun)
+	Update					: 2015-06-22(Mon)
 	Copyright				: H.Shirouzu
-	Reference				: 
+	License					: GNU General Public License version 3
 	======================================================================== */
 
 #ifndef SHELLEXT_H
@@ -46,17 +46,17 @@ class PathArray {
 protected:
 	int		num;
 	int		totalLen;
-	void	**pathArray;
+	WCHAR	**pathArray;
 
 public:
 	PathArray(void);
 	~PathArray();
 	void	Init(void);
-	void	*Path(int idx) { return idx < num ? pathArray[idx] : NULL; }
-	int		GetMultiPath(void *multi_path, int max_len);
+	WCHAR	*Path(int idx) { return idx < num ? pathArray[idx] : NULL; }
+	int		GetMultiPath(WCHAR *multi_path, int max_len);
 	int		GetMultiPathLen();
 	int		Num(void) { return	num; }
-	BOOL	RegisterPath(const void *path);
+	BOOL	RegisterPath(const WCHAR *path);
 	PathArray &operator =(PathArray &src) {
 		Init(); for(int i=0; i < src.Num(); i++) RegisterPath(src.Path(i)); return *this;
 	}
@@ -78,7 +78,7 @@ public:
 
 	BOOL	DeleteMenu(UINT *del_idx);
 	BOOL	GetClipBoardInfo(PathArray *pathArray, BOOL *is_cut);
-	BOOL	IsDir(void *path, BOOL is_resolve);
+	BOOL	IsDir(WCHAR *path, BOOL is_resolve);
 
 	STDMETHODIMP Initialize(LPCITEMIDLIST pIDFolder, IDataObject *pDataObj, HKEY hRegKey);
 	STDMETHODIMP QueryInterface(REFIID riid, void **ppv);

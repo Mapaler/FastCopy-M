@@ -1,11 +1,11 @@
 ﻿/* static char *shelldef_id = 
-	"@(#)Copyright (C) 2005-2012 H.Shirouzu		shelldef.h	Ver2.10"; */
+	"@(#)Copyright (C) 2005-2015 H.Shirouzu		shelldef.h	Ver3.00"; */
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2008-06-05(Thu)
-	Update					: 2012-06-17(Sun)
+	Update					: 2015-06-22(Mon)
 	Copyright				: H.Shirouzu
-	Reference				: 
+	License					: GNU General Public License version 3
 	======================================================================== */
 
 #ifndef SHELLDEF_H

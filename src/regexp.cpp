@@ -1,22 +1,21 @@
 ﻿static char *regexp_id = 
-	"@(#)Copyright (C) 2005-2006 H.Shirouzu		regexp.cpp	ver1.84";
+	"@(#)Copyright (C) 2005-2015 H.Shirouzu		regexp.cpp	ver3.00";
 /* ========================================================================
 	Project  Name			: Regular Expression / Wild Card Match Library
 	Create					: 2005-11-03(The)
-	Update					: 2006-01-31(Tue)
+	Update					: 2015-06-22(Mon)
 	Copyright				: H.Shirouzu
-	Reference				: 
+	License					: GNU General Public License version 3
 	======================================================================== */
 
 #include "tlib/tlib.h"
 #include "regexp.h"
 
-
 RegExp::RegExp()
 {
 	memset(states_tbl, 0, sizeof(states_tbl));
+	epsilon_num = 0;
 	epsilon_tbl = NULL;
-	end_states = 0;
 	max_state = 0;
 }
 
@@ -30,134 +29,173 @@ void RegExp::Init()
 	for (int type=NORMAL_TBL; type < MAX_STATES_TBL; type++) {
 		if (states_tbl[type]) {
 			for (int i=0; i < BYTE_NUM; i++) {
-				if (states_tbl[type][i])
-					delete states_tbl[type][i];
+				if (states_tbl[type][i]) {
+					for (int j=0; j < BYTE_NUM; j++) {
+						if (states_tbl[type][i][j]) {
+							delete states_tbl[type][i][j];
+						}
+					}
+					delete [] states_tbl[type][i];
+				}
 			}
 			delete [] states_tbl[type];
 			states_tbl[type] = NULL;
 		}
 	}
+
 	if (epsilon_tbl) {
-		delete [] epsilon_tbl;
+		for (int i=0; i < epsilon_num; i++) {
+			if (epsilon_tbl[i]) delete epsilon_tbl[i];
+		}
+		free(epsilon_tbl);
 		epsilon_tbl = NULL;
 	}
 	max_state = 0;
-	end_states = 0;
+	epsilon_num = 0;
+	end_states.Reset();
 }
 
-void RegExp::AddRegStates(StatesType type, WCHAR ch, const RegStates &state_pattern)
+void RegExp::AddRegState(StatesType type, WCHAR ch, int state)
 {
 	int	idx = ch >> BITS_OF_BYTE;
 
-	RegStates	**&tbl = states_tbl[type];
+	RegStates	***&tbl = states_tbl[type];
 
 	if (!tbl) {
-		tbl = new RegStates *[BYTE_NUM];
-		memset(tbl, 0, sizeof(RegStates *) * BYTE_NUM);
+		tbl = new RegStates **[BYTE_NUM];
+		memset(tbl, 0, sizeof(RegStates **) * BYTE_NUM);
 	}
 
-	RegStates	*&sub_tbl = tbl[idx];
+	RegStates	**&sub_tbl = tbl[idx];
 
 	if (!sub_tbl) {
-		sub_tbl = new RegStates [BYTE_NUM];
-		memset(sub_tbl, 0, sizeof(RegStates) * BYTE_NUM);
+		sub_tbl = new RegStates *[BYTE_NUM];
+		memset(sub_tbl, 0, sizeof(RegStates *) * BYTE_NUM);
 	}
-	sub_tbl[(u_char)ch] |= state_pattern;
+
+	ch = (u_char)ch;
+	if (!sub_tbl[ch]) {
+		sub_tbl[ch] = new RegStates(max_state);
+	}
+	sub_tbl[ch]->AddState(state);
 }
 
-RegStates RegExp::GetRegStates(StatesType type, WCHAR ch)
+RegStates *RegExp::GetRegStates(StatesType type, WCHAR ch)
 {
-	RegStates	**&tbl = states_tbl[type];
-	RegStates *sub_tbl = tbl ? tbl[ch >> BITS_OF_BYTE] : NULL;
+	RegStates	***&tbl = states_tbl[type];
+	RegStates	**sub_tbl = tbl ? tbl[ch >> BITS_OF_BYTE] : NULL;
 
-	return	sub_tbl ? sub_tbl[(u_char)ch] : 0;
+	return	sub_tbl ? sub_tbl[(u_char)ch] : NULL;
 }
 
-void RegExp::AddEpStates(int state, const RegStates &add_states)
+void RegExp::AddEpState(int state, int new_state)
 {
-	if (!epsilon_tbl) {
-		epsilon_tbl = new RegStates [sizeof(RegStates)][BYTE_NUM];
-		memset(epsilon_tbl, 0, sizeof(RegStates) * sizeof(RegStates) * BYTE_NUM);
-	}
+	RegStates	*&tbl = epsilon_tbl[state];
 
-	RegStates	*tbl = epsilon_tbl[state / BITS_OF_BYTE];
-	int			bit = 1 << (state % BITS_OF_BYTE);
+	if (!tbl) tbl = new RegStates(max_state);
 
-	for (int i=0; i < BYTE_NUM; i++) {
-		if (i & bit)
-			tbl[i] |= add_states;
-	}
+	tbl->AddState(new_state);
 }
 
-RegStates RegExp::GetEpStates(RegStates cur_states)
+void RegExp::GetEpStates(const RegStates& cur_states, RegStates *ret_states)
 {
-	RegStates	ret_states = 0;
+	ret_states->Reset();
 
-	for (int i=0; cur_states; i++) {
-		ret_states |= epsilon_tbl[i][cur_states & 0xff];
-		cur_states >>= BITS_OF_BYTE;
+	for (int idx=0; cur_states.GetBitIdx(idx, &idx); idx++) {
+		if (epsilon_tbl[idx]) {
+			*ret_states |= *(epsilon_tbl[idx]);
+		}
 	}
-	return	ret_states;
 }
 
-void RegExp::AddRegStatesEx(StatesType type, WCHAR ch, RegExp::CaseSense cs)
+void RegExp::AddRegStateEx(StatesType type, WCHAR ch, int state, RegExp::CaseSense cs)
 {
 	if (cs == CASE_SENSE)
-		AddRegStates(type, ch, (RegStates)1 << (max_state + 1));
+		AddRegState(type, ch, state);
 	else {
-		AddRegStates(type, (WCHAR)CharLowerV((void *)ch), (RegStates)1 << (max_state + 1));
-		AddRegStates(type, (WCHAR)CharUpperV((void *)ch), (RegStates)1 << (max_state + 1));
+		AddRegState(type, (WCHAR)::CharLowerW((WCHAR *)ch), state);
+		AddRegState(type, (WCHAR)::CharUpperW((WCHAR *)ch), state);
+
+		// CASE_INSENSE_SLASH mode では '/' 入力で '\\' も受理するように
+		if (cs == CASE_INSENSE_SLASH && (ch == '/' || ch == '\\')) {
+			AddRegState(type, (ch == '/') ? '\\' :  '/', state);
+		}
 	}
 }
 
-BOOL RegExp::RegisterWildCard(const void *wild_str, RegExp::CaseSense cs)
+bool RegExp::SetupEpTable(int append_state)
 {
-	if (max_state + lstrlenV(wild_str) >= sizeof(RegStates) * BITS_OF_BYTE - 2)
-		return	FALSE;		// start & end の２状態を除いた残り
+#define BIG_ALLOC 128
+	int	state_limits = append_state + max_state + 2;
+	int	new_epnum    = ALIGN_SIZE(state_limits, BIG_ALLOC);
 
-	AddEpStates(0, (RegStates)1 << ++max_state);
+	if (epsilon_num >= new_epnum) return true;
+	if (new_epnum >= MAX_REGST_STATE) return false;
+
+	epsilon_tbl = (RegStates **)realloc(epsilon_tbl, sizeof(RegStates *) * new_epnum);
+
+	if (!epsilon_tbl) return false;
+
+	for (int i=epsilon_num; i < new_epnum; i++) {
+		epsilon_tbl[i] = NULL;
+	}
+	epsilon_num = new_epnum;
+
+	return	true;
+}
+
+
+bool RegExp::RegisterWildCard(const WCHAR *wild_str, RegExp::CaseSense cs)
+{
+	if (!SetupEpTable((int)wcslen(wild_str))) return false;
+
+	max_state++;
+	AddEpState(0, max_state);
 
 	enum Mode { NORMAL, CHARCLASS } mode = NORMAL;
-	enum SubMode { DEFAULT, CC_START, CC_NORMAL, CC_RANGE } submode = DEFAULT;
+	enum SubMode { DEFAULT, CC_START, CC_NORMAL, CC_RANGE, CC_END } submode = DEFAULT;
 
-	int			start_state = max_state, escape = 0;
+	int			escape = 0;
 	StatesType	type = NORMAL_TBL;
 	WCHAR		ch = 0, last_ch, start_ch, end_ch;
 
 	do {
 		last_ch = ch;
-		ch = lGetCharIncV(&wild_str);	// 0 も文末判定文字として登録
-
-		switch (escape) {
-		case 1:  escape = 2; break;
-		case 2:  escape = 0; break;
-		default: if (ch == '\\') { escape = 1; continue; }
-		}
+		ch = *wild_str++;	// 0 も文末判定文字として登録
 
 		if (mode == NORMAL) {
-			if (!escape) {
-				switch (ch) {
-				case '[':
-					mode = CHARCLASS;
-					submode = CC_START;
-					continue;
+			switch (ch) {
+			case '[':
+				mode = CHARCLASS;
+				submode = CC_START;
+				continue;
 
-				case '?':
-					AddEpStates(max_state, (RegStates)1 << (max_state + 1));
-					max_state++;
-					continue;
-
-				case '*':
-					AddEpStates(max_state, (RegStates)1 << (max_state + 0));
-					continue;
-				}
-			}
-			if (ch || escape || last_ch != '*') {	// '*' で終了した場合は '\0'
-				AddRegStatesEx(type, ch, cs);		// まで確認せずに判定終了させる
+			case '?':
+				AddEpState(max_state, max_state + 1);
 				max_state++;
+				AddRegStateEx(REV_TBL, '\0', max_state, cs);
+				if (cs == CASE_INSENSE_SLASH) {
+					AddRegStateEx(REV_TBL, '/', max_state, cs);
+				}
+				continue;
+
+			case '*':
+				AddEpState(max_state, max_state);
+				if (cs == CASE_INSENSE_SLASH)
+					AddRegStateEx(REV_TBL, '/', max_state, cs);
+				continue;
+			}
+			if (ch || last_ch != '*') {	// '*' で終了した場合は '\0'まで確認せずに判定終了
+				max_state++;
+				AddRegStateEx(type, ch, max_state, cs);
 			}
 		}
 		else {	// CHARCLASS mode
+			switch (escape) {
+			case 1:  escape = 2; break;
+			case 2:  escape = 0; break;
+			default: if (ch == '\\') { escape = 1; continue; }
+			}
 			if (submode == CC_START) {
 				submode = CC_NORMAL;
 				end_ch = 0;
@@ -168,18 +206,20 @@ BOOL RegExp::RegisterWildCard(const void *wild_str, RegExp::CaseSense cs)
 			}
 			else if (submode == CC_RANGE) {
 				while (start_ch <= ch) {
-					AddRegStatesEx(type, start_ch, cs);
+					AddRegStateEx(type, start_ch, max_state + 1, cs);
 					start_ch++;
 				}
 				if (type == REV_TBL)
-					AddEpStates(max_state, (RegStates)1 << (max_state + 1));
+					AddEpState(max_state, max_state + 1);
 				submode = CC_NORMAL;
 				continue;
 			}
 
 			if (ch == ']' && !escape) {
+				if (submode == CC_RANGE) return false;
 				mode = NORMAL;
 				type = NORMAL_TBL;
+				submode = CC_END;
 				max_state++;
 				continue;
 			}
@@ -188,32 +228,58 @@ BOOL RegExp::RegisterWildCard(const void *wild_str, RegExp::CaseSense cs)
 				start_ch = end_ch;
 				continue;
 			}
-			AddRegStatesEx(type, end_ch = ch, cs);
-			if (type == REV_TBL)
-				AddEpStates(max_state, (RegStates)1 << (max_state + 1));
+			AddRegStateEx(type, end_ch = ch, max_state + 1, cs);
+			if (type == REV_TBL) {
+				AddEpState(max_state, max_state + 1);
+			}
+			AddRegStateEx(REV_TBL, '\0', max_state, cs);
 		}
 	} while (ch);
 
-	end_states |= (RegStates)1 << max_state;
+	if (mode == CHARCLASS) return false;
 
-	return	TRUE;
+	end_states.AddState(max_state);
+
+	return	true;
 }
 
-BOOL RegExp::IsMatch(const void *target)
+bool RegExp::IsMatch(const WCHAR *target)
 {
-	if (!epsilon_tbl)
-		return	FALSE;
+	if (!epsilon_tbl) return false;
 
-	RegStates	total_states = GetEpStates(1);
+	RegStates	total_states(max_state);
+	RegStates	ep_states(max_state);
+	RegStates	tmp_states(max_state);
 
-	while ((total_states & end_states) == 0 && total_states) {
-		WCHAR	ch = lGetCharIncV(&target);		// 0 は文末判定文字として利用
+	tmp_states.AddState(0);
 
-		total_states = ((total_states << 1) & GetRegStates(NORMAL_TBL, ch))
-						| (GetEpStates(total_states) & ~GetRegStates(REV_TBL, ch));
+	GetEpStates(tmp_states, &total_states);
 
+	while (!total_states.IsZero()) {
+		WCHAR		ch		= *target++;
+		RegStates	*normal	= GetRegStates(NORMAL_TBL, ch);
+		RegStates	*rev	= GetRegStates(REV_TBL,    ch);
+
+		GetEpStates(total_states, &ep_states);
+		total_states.ShiftLeft();
+
+		if (normal) {
+			total_states &= *normal;
+		} else {
+			total_states.Reset();
+		}
+
+		if (rev) {
+			rev->GetReverse(&tmp_states);
+			ep_states &= tmp_states;
+		}
+
+		total_states |= ep_states;
+
+		if (total_states.HasCommonBits(end_states)) return true;
 		if (!ch) break;
 	}
-	return	(total_states & end_states) ? TRUE : FALSE;
+
+	return	false;
 }
 

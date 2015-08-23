@@ -1,11 +1,11 @@
-﻿/* @(#)Copyright (C) 2005-2012 H.Shirouzu		install.h	Ver2.10 */
+﻿/* @(#)Copyright (C) 2005-2015 H.Shirouzu		install.h	Ver3.00 */
 /* ========================================================================
 	Project  Name			: Installer for IPMSG32
 	Module Name				: Main Header
 	Create					: 2005-02-02(Wed)
-	Update					: 2012-06-17(Sun)
+	Update					: 2015-06-22(Mon)
 	Copyright				: H.Shirouzu
-	Reference				: 
+	License					: GNU General Public License version 3
 	======================================================================== */
 
 enum InstMode { SETUP_MODE, UNINSTALL_MODE };
@@ -19,8 +19,8 @@ struct InstallCfg {
 	WCHAR		*setupDir;
 	WCHAR		*appData;
 	WCHAR		*virtualDir;
-	void		*startMenu;
-	void		*deskTop;
+	WCHAR		*startMenu;
+	WCHAR		*deskTop;
 };
 
 class TInstSheet : public TDlg
@@ -113,6 +113,8 @@ public:
 #define FASTCOPY_EXE		"FastCopy.exe"
 #define INSTALL_EXE			"setup.exe"
 #define README_TXT			"readme.txt"
+#define README_ENG_TXT		"readme_eng.txt"
+#define GPL_TXT				"license-gpl3.txt"
 #define HELP_CHM			"FastCopy.chm"
 #define SHELLEXT1_DLL		"FastCopy_shext.dll"
 #define SHELLEXT2_DLL		"FastCopy_shext2.dll"

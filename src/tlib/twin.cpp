@@ -1,10 +1,10 @@
 ﻿static char *twin_id = 
-	"@(#)Copyright (C) 1996-2012 H.Shirouzu		twin.cpp	Ver0.99";
+	"@(#)Copyright (C) 1996-2015 H.Shirouzu		twin.cpp	Ver0.99";
 /* ========================================================================
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Window Class
 	Create					: 1996-06-01(Sat)
-	Update					: 2012-04-02(Mon)
+	Update					: 2015-06-22(Mon)
 	Copyright				: H.Shirouzu
 	Reference				: 
 	======================================================================== */
@@ -23,6 +23,9 @@ TWin::TWin(TWin *_parent)
 	parent		= _parent;
 	sleepBusy	= FALSE;
 	isUnicode	= TRUE;
+	scrollHack	= TRUE;
+	modalCount	= 0;
+	twinId		= TApp::GenTWinID();
 }
 
 TWin::~TWin()
@@ -35,19 +38,19 @@ BOOL TWin::Create(LPCSTR className, LPCSTR title, DWORD style, DWORD exStyle, HM
 	Wstr	className_w(className, BY_MBCS);
 	Wstr	title_w(title, BY_MBCS);
 
-	return	CreateV(className_w, title_w, style, exStyle, hMenu);
+	return	CreateW(className_w, title_w, style, exStyle, hMenu);
 }
 
-BOOL TWin::CreateV(const void *className, const void *title, DWORD style, DWORD exStyle,
+BOOL TWin::CreateW(const WCHAR *className, const WCHAR *title, DWORD style, DWORD exStyle,
 	HMENU hMenu)
 {
 	if (className == NULL) {
-		className = TApp::GetApp()->GetDefaultClassV();
+		className = TApp::GetApp()->GetDefaultClassW();
 	}
 
 	TApp::GetApp()->AddWin(this);
 
-	if ((hWnd = ::CreateWindowExV(exStyle, className, title, style,
+	if ((hWnd = ::CreateWindowExW(exStyle, className, title, style,
 				rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
 				parent ? parent->hWnd : NULL, hMenu, TApp::GetInstance(), NULL)) == NULL)
 		return	TApp::GetApp()->DelWin(this), FALSE;
@@ -227,7 +230,7 @@ LRESULT TWin::WinProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	case WM_HSCROLL:
 	case WM_VSCROLL:
-		done = EventScroll(uMsg, LOWORD(wParam), HIWORD(wParam), (HWND)lParam);
+		done = EventScrollWrapper(uMsg, LOWORD(wParam), HIWORD(wParam), (HWND)lParam);
 		break;
 
 	case WM_ENTERMENULOOP:
@@ -463,8 +466,23 @@ BOOL TWin::EvChar(WCHAR code, LPARAM keyData)
 	return	FALSE;
 }
 
+BOOL TWin::EventScrollWrapper(UINT uMsg, int nCode, int nPos, HWND scrollBar)
+{
+	if (scrollHack) {
+		// 32bit対応スクロール変換
+		if (nCode == SB_THUMBTRACK || nCode == SB_THUMBPOSITION) {
+			SCROLLINFO	si = { sizeof(si), SIF_TRACKPOS };
+			if (::GetScrollInfo(hWnd, uMsg == WM_HSCROLL ? SB_HORZ : SB_VERT, &si)) {
+				nPos = si.nTrackPos;
+			}
+		}
+	}
+	return	EventScroll(uMsg, nCode, nPos, scrollBar);
+}
+
 BOOL TWin::EventScroll(UINT uMsg, int nCode, int nPos, HWND scrollBar)
 {
+	scrollHack = FALSE;
 	return	FALSE;
 }
 
@@ -528,9 +546,9 @@ UINT TWin::GetDlgItemText(int ctlId, LPSTR buf, int len)
 	return	::GetDlgItemText(hWnd, ctlId, buf, len);
 }
 
-UINT TWin::GetDlgItemTextV(int ctlId, void *buf, int len)
+UINT TWin::GetDlgItemTextW(int ctlId, WCHAR *buf, int len)
 {
-	return	::GetDlgItemTextV(hWnd, ctlId, buf, len);
+	return	::GetDlgItemTextW(hWnd, ctlId, buf, len);
 }
 
 BOOL TWin::SetDlgItemText(int ctlId, LPCSTR buf)
@@ -538,9 +556,9 @@ BOOL TWin::SetDlgItemText(int ctlId, LPCSTR buf)
 	return	::SetDlgItemText(hWnd, ctlId, buf);
 }
 
-BOOL TWin::SetDlgItemTextV(int ctlId, const void *buf)
+BOOL TWin::SetDlgItemTextW(int ctlId, const WCHAR *buf)
 {
-	return	::SetDlgItemTextV(hWnd, ctlId, buf);
+	return	::SetDlgItemTextW(hWnd, ctlId, buf);
 }
 
 int TWin::GetDlgItemInt(int ctlId, BOOL *err, BOOL sign)
@@ -580,17 +598,20 @@ BOOL TWin::EnableWindow(BOOL is_enable)
 
 int TWin::MessageBox(LPCSTR msg, LPCSTR title, UINT style)
 {
-	return	::MessageBox(hWnd, msg, title, style);
-}
+	modalCount++;
+	int ret = ::MessageBox(hWnd, msg, title, style);
+	modalCount--;
 
-int TWin::MessageBoxV(void *msg, void *title, UINT style)
-{
-	return	::MessageBoxV(hWnd, msg, title, style);
+	return	ret;
 }
 
 int TWin::MessageBoxW(LPCWSTR msg, LPCWSTR title, UINT style)
 {
-	return	::MessageBoxW(hWnd, msg, title, style);
+	modalCount++;
+	int ret = ::MessageBoxW(hWnd, msg, title, style);
+	modalCount--;
+
+	return	ret;
 }
 
 BOOL TWin::BringWindowToTop(void)
@@ -608,11 +629,6 @@ BOOL TWin::PostMessageW(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	return	::PostMessageW(hWnd, uMsg, wParam, lParam);
 }
 
-BOOL TWin::PostMessageV(UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
-	return	::PostMessageV(hWnd, uMsg, wParam, lParam);
-}
-
 LRESULT TWin::SendMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	return	::SendMessage(hWnd, uMsg, wParam, lParam);
@@ -621,11 +637,6 @@ LRESULT TWin::SendMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 LRESULT TWin::SendMessageW(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	return	::SendMessageW(hWnd, uMsg, wParam, lParam);
-}
-
-LRESULT TWin::SendMessageV(UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
-	return	::SendMessageV(hWnd, uMsg, wParam, lParam);
 }
 
 LRESULT TWin::SendDlgItemMessage(int idCtl, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -638,14 +649,14 @@ LRESULT TWin::SendDlgItemMessageW(int idCtl, UINT uMsg, WPARAM wParam, LPARAM lP
 	return	::SendDlgItemMessageW(hWnd, idCtl, uMsg, wParam, lParam);
 }
 
-LRESULT TWin::SendDlgItemMessageV(int idCtl, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
-	return	::SendDlgItemMessageV(hWnd, idCtl, uMsg, wParam, lParam);
-}
-
 BOOL TWin::GetWindowRect(RECT *_rect)
 {
 	return	::GetWindowRect(hWnd, _rect ? _rect : &rect);
+}
+
+BOOL TWin::GetClientRect(RECT *rc)
+{
+	return	::GetClientRect(hWnd, rc);
 }
 
 BOOL TWin::SetWindowPos(HWND hInsAfter, int x, int y, int cx, int cy, UINT fuFlags)
@@ -695,19 +706,19 @@ int TWin::GetWindowText(LPSTR text, int size)
 	return	::GetWindowText(hWnd, text, size);
 }
 
-int TWin::GetWindowTextV(void *text, int size)
+int TWin::GetWindowTextW(WCHAR *text, int size)
 {
-	return	::GetWindowTextV(hWnd, text, size);
+	return	::GetWindowTextW(hWnd, text, size);
 }
 
-BOOL TWin::SetWindowTextV(const void *text)
+BOOL TWin::SetWindowTextW(const WCHAR *text)
 {
-	return	::SetWindowTextV(hWnd, text);
+	return	::SetWindowTextW(hWnd, text);
 }
 
-int TWin::GetWindowTextLengthV(void)
+int TWin::GetWindowTextLengthW(void)
 {
-	return	::GetWindowTextLengthV(hWnd);
+	return	::GetWindowTextLengthW(hWnd);
 }
 
 BOOL TWin::SetWindowText(LPCSTR text)
@@ -782,7 +793,7 @@ BOOL TWin::CreateU8(LPCSTR className, LPCSTR title, DWORD style, DWORD exStyle, 
 	Wstr	className_w(className, BY_UTF8);
 	Wstr	title_w(title, BY_UTF8);
 
-	return	CreateV(className_w, title_w, style, exStyle, hMenu);
+	return	CreateW(className_w, title_w, style, exStyle, hMenu);
 }
 
 UINT TWin::GetDlgItemTextU8(int ctlId, char *buf, int len)
@@ -790,7 +801,7 @@ UINT TWin::GetDlgItemTextU8(int ctlId, char *buf, int len)
 	Wstr	wbuf(len);
 
 	*buf = 0;
-	GetDlgItemTextW(hWnd, ctlId, wbuf.Buf(), len);
+	GetDlgItemTextW(ctlId, wbuf.Buf(), len);
 
 	return	WtoU8(wbuf, buf, len);
 }
@@ -802,12 +813,13 @@ BOOL TWin::SetDlgItemTextU8(int ctlId, const char *buf)
 	return	::SetDlgItemTextW(hWnd, ctlId, wbuf);
 }
 
-int TWin::MessageBoxU8(const char *msg, char *title, UINT style)
+int TWin::MessageBoxU8(LPCSTR msg, LPCSTR title, UINT style)
 {
 	Wstr	wmsg(msg);
 	Wstr	wtitle(title);
 
-	return	::MessageBoxW(hWnd, wmsg, wtitle, style);
+	
+	return	MessageBoxW(wmsg, wtitle, style);
 }
 
 int TWin::GetWindowTextU8(char *text, int len)
@@ -855,7 +867,7 @@ TSubClass::~TSubClass()
 BOOL TSubClass::AttachWnd(HWND _hWnd)
 {
 	TApp::GetApp()->AddWinByWnd(this, _hWnd);
-	oldProc = (WNDPROC)::SetWindowLongV(_hWnd, GWL_WNDPROC, (LONG_PTR)TApp::WinProc);
+	oldProc = (WNDPROC)::SetWindowLongW(_hWnd, GWL_WNDPROC, (LONG_PTR)TApp::WinProc);
 	return	oldProc ? TRUE : FALSE;
 }
 
@@ -863,14 +875,14 @@ BOOL TSubClass::DetachWnd()
 {
 	if (!oldProc || !hWnd) return FALSE;
 
-	::SetWindowLongV(hWnd, GWL_WNDPROC, (LONG_PTR)oldProc);
+	::SetWindowLongW(hWnd, GWL_WNDPROC, (LONG_PTR)oldProc);
 	oldProc = NULL;
 	return	TRUE;
 }
 
 LRESULT TSubClass::DefWindowProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	return	::CallWindowProcV((WNDPROC)oldProc, hWnd, uMsg, wParam, lParam);
+	return	::CallWindowProcW((WNDPROC)oldProc, hWnd, uMsg, wParam, lParam);
 }
 
 TSubClassCtl::TSubClassCtl(TWin *_parent) : TSubClass(_parent)

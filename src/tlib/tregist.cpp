@@ -1,10 +1,10 @@
 ﻿static char *tregist_id = 
-	"@(#)Copyright (C) 1996-2011 H.Shirouzu		tregist.cpp	Ver0.99";
+	"@(#)Copyright (C) 1996-2015 H.Shirouzu		tregist.cpp	Ver0.99";
 /* ========================================================================
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Registry Class
 	Create					: 1996-06-01(Sat)
-	Update					: 2011-03-27(Sun)
+	Update					: 2015-06-22(Mon)
 	Copyright				: H.Shirouzu
 	Reference				: 
 	======================================================================== */
@@ -23,7 +23,7 @@ TRegistry::TRegistry(LPCWSTR company, LPCWSTR appName, StrMode mode)
 {
 	openCnt = 0;
 	strMode = mode;
-	ChangeAppV(company, appName);
+	ChangeAppW(company, appName);
 }
 
 TRegistry::TRegistry(HKEY top_key, StrMode mode)
@@ -42,15 +42,13 @@ TRegistry::~TRegistry(void)
 
 BOOL TRegistry::ChangeApp(LPCSTR company, LPSTR appName)
 {
-	if (!IS_WINNT_V) return	ChangeAppV(company, appName);
-
 	Wstr	company_w(company, strMode);
 	Wstr	appName_w(appName, strMode);
 
-	return	ChangeAppV(company_w, appName_w);
+	return	ChangeAppW(company_w, appName_w);
 }
 
-BOOL TRegistry::ChangeAppV(const void *company, const void *appName)
+BOOL TRegistry::ChangeAppW(const WCHAR *company, const WCHAR *appName)
 {
 	while (openCnt > 0) {
 		CloseKey();
@@ -59,13 +57,13 @@ BOOL TRegistry::ChangeAppV(const void *company, const void *appName)
 	topKey = HKEY_CURRENT_USER;
 
 	WCHAR	wbuf[100];
-	sprintfV(wbuf, IS_WINNT_V ? (void *)L"software\\%s" : (void *)"software\\%s", company);
+	swprintf(wbuf, L"software\\%s", company);
 
-	if (appName && GetChar(appName, 0)) {
-		sprintfV(wbuf + strlenV(wbuf), L"\\%s", appName);
+	if (appName && *appName) {
+		swprintf(wbuf + wcslen(wbuf), L"\\%s", appName);
 	}
 
-	return	CreateKeyV(wbuf);
+	return	CreateKeyW(wbuf);
 }
 
 void TRegistry::ChangeTopKey(HKEY top_key)
@@ -78,13 +76,11 @@ void TRegistry::ChangeTopKey(HKEY top_key)
 
 BOOL TRegistry::OpenKey(LPCSTR subKey, BOOL createFlg)
 {
-	if (!IS_WINNT_V) return	OpenKeyV(subKey, createFlg);
-
 	Wstr	subkey_w(subKey, strMode);
-	return	OpenKeyV(subkey_w, createFlg);
+	return	OpenKeyW(subkey_w, createFlg);
 }
 
-BOOL TRegistry::OpenKeyV(const void *subKey, BOOL createFlg)
+BOOL TRegistry::OpenKeyW(const WCHAR *subKey, BOOL createFlg)
 {
 	HKEY	parentKey = (openCnt == 0 ? topKey : hKey[openCnt -1]);
 
@@ -95,13 +91,13 @@ BOOL TRegistry::OpenKeyV(const void *subKey, BOOL createFlg)
 	LONG	status;
 
 	if (createFlg) {
-		status = ::RegCreateKeyExV(parentKey, subKey, 0, NULL, REG_OPTION_NON_VOLATILE,
+		status = ::RegCreateKeyExW(parentKey, subKey, 0, NULL, REG_OPTION_NON_VOLATILE,
 					KEY_ALL_ACCESS, NULL, &hKey[openCnt], &tmp);
 	}
 	else {
-		if ((status = ::RegOpenKeyExV(parentKey, subKey, 0, KEY_ALL_ACCESS, &hKey[openCnt]))
+		if ((status = ::RegOpenKeyExW(parentKey, subKey, 0, KEY_ALL_ACCESS, &hKey[openCnt]))
 				!= ERROR_SUCCESS)
-			status = ::RegOpenKeyExV(parentKey, subKey, 0, KEY_READ, &hKey[openCnt]);
+			status = ::RegOpenKeyExW(parentKey, subKey, 0, KEY_READ, &hKey[openCnt]);
 	}
 
 	if (status == ERROR_SUCCESS)
@@ -125,9 +121,9 @@ BOOL TRegistry::GetInt(LPCSTR subKey, int *val)
 	return	GetLong(subKey, (long *)val);
 }
 
-BOOL TRegistry::GetIntV(const void *subKey, int *val)
+BOOL TRegistry::GetIntW(const WCHAR *subKey, int *val)
 {
-	return	GetLongV(subKey, (long *)val);
+	return	GetLongW(subKey, (long *)val);
 }
 
 BOOL TRegistry::SetInt(LPCSTR subKey, int val)
@@ -135,24 +131,22 @@ BOOL TRegistry::SetInt(LPCSTR subKey, int val)
 	return	SetLong(subKey, (long)val);
 }
 
-BOOL TRegistry::SetIntV(const void *subKey, int val)
+BOOL TRegistry::SetIntW(const WCHAR *subKey, int val)
 {
-	return	SetLongV(subKey, (long)val);
+	return	SetLongW(subKey, (long)val);
 }
 
 BOOL TRegistry::GetLong(LPCSTR subKey, long *val)
 {
-	if (!IS_WINNT_V) return	GetLongV(subKey, val);
-
 	Wstr	subKey_w(subKey, strMode);
-	return	GetLongV(subKey_w, val);
+	return	GetLongW(subKey_w, val);
 }
 
-BOOL TRegistry::GetLongV(const void *subKey, long *val)
+BOOL TRegistry::GetLongW(const WCHAR *subKey, long *val)
 {
 	DWORD	type = REG_DWORD, dw_size = sizeof(long);
 
-	if (::RegQueryValueExV(hKey[openCnt -1], subKey, 0, &type, (BYTE *)val, &dw_size)
+	if (::RegQueryValueExW(hKey[openCnt -1], subKey, 0, &type, (BYTE *)val, &dw_size)
 			== ERROR_SUCCESS) {
 		return	TRUE;
 	}
@@ -160,34 +154,30 @@ BOOL TRegistry::GetLongV(const void *subKey, long *val)
 	WCHAR	wbuf[100];
 	long	size_byte = sizeof(wbuf);
 
-	if (::RegQueryValueV(hKey[openCnt -1], subKey, wbuf, &size_byte) != ERROR_SUCCESS)
+	if (::RegQueryValueW(hKey[openCnt -1], subKey, wbuf, &size_byte) != ERROR_SUCCESS)
 		return	FALSE;
-	*val = strtolV(wbuf, 0, 10);
+	*val = wcstol(wbuf, 0, 10);
 	return	TRUE;
 }
 
 BOOL TRegistry::SetLong(LPCSTR subKey, long val)
 {
-	if (!IS_WINNT_V) return	SetLongV(subKey, val);
-
 	Wstr	subKey_w(subKey, strMode);
-	return	SetLongV(subKey_w, val);
+	return	SetLongW(subKey_w, val);
 }
 
-BOOL TRegistry::SetLongV(const void *subKey, long val)
+BOOL TRegistry::SetLongW(const WCHAR *subKey, long val)
 {
-	return	::RegSetValueExV(hKey[openCnt -1], subKey, 0, REG_DWORD,
+	return	::RegSetValueExW(hKey[openCnt -1], subKey, 0, REG_DWORD,
 			(const BYTE *)&val, sizeof(val)) == ERROR_SUCCESS;
 }
 
 BOOL TRegistry::GetStr(LPCSTR subKey, LPSTR str, int size_byte)
 {
-	if (!IS_WINNT_V) return	GetStrV(subKey, str, size_byte);
-
 	Wstr	subKey_w(subKey, strMode);
 	Wstr	str_w(size_byte);
 
-	if (!GetStrV(subKey_w, str_w.Buf(), size_byte)) {
+	if (!GetStrW(subKey_w, str_w.Buf(), size_byte * 2)) {
 		return	FALSE;
 	}
 	WtoS(str_w, str, size_byte, strMode);
@@ -205,13 +195,13 @@ BOOL TRegistry::GetStrA(LPCSTR subKey, LPSTR str, int size)
 	return	TRUE;
 }
 
-BOOL TRegistry::GetStrV(const void *subKey, void *str, int size_byte)
+BOOL TRegistry::GetStrW(const WCHAR *subKey, WCHAR *str, int size_byte)
 {
 	DWORD	type = REG_SZ;
 
-	if (::RegQueryValueExV(hKey[openCnt -1], subKey, 0, &type, (BYTE *)str,
+	if (::RegQueryValueExW(hKey[openCnt -1], subKey, 0, &type, (BYTE *)str,
 			(DWORD *)&size_byte) != ERROR_SUCCESS
-	&&  ::RegQueryValueV(hKey[openCnt -1], subKey, str, (LPLONG)&size_byte) != ERROR_SUCCESS)
+	&&  ::RegQueryValueW(hKey[openCnt -1], subKey, str, (LPLONG)&size_byte) != ERROR_SUCCESS)
 		return	FALSE;
 
 	return	TRUE;
@@ -219,11 +209,9 @@ BOOL TRegistry::GetStrV(const void *subKey, void *str, int size_byte)
 
 BOOL TRegistry::SetStr(LPCSTR subKey, LPCSTR str)
 {
-	if (!IS_WINNT_V) return	SetStrV(subKey, str);
-
 	Wstr	subKey_w(subKey, strMode), str_w(str, strMode);
 
-	return	SetStrV(subKey_w, str_w);
+	return	SetStrW(subKey_w, str_w);
 }
 
 BOOL TRegistry::SetStrA(LPCSTR subKey, LPCSTR str)
@@ -231,103 +219,91 @@ BOOL TRegistry::SetStrA(LPCSTR subKey, LPCSTR str)
 	return	::RegSetValueExA(hKey[openCnt -1], subKey, 0, REG_SZ, (const BYTE *)str, (DWORD)strlen(str) +1) == ERROR_SUCCESS;
 }
 
-BOOL TRegistry::SetStrV(const void *subKey, const void *str)
+BOOL TRegistry::SetStrW(const WCHAR *subKey, const WCHAR *str)
 {
-	return	::RegSetValueExV(hKey[openCnt -1], subKey, 0, REG_SZ, (const BYTE *)str,
-			(strlenV(str) +1) * CHAR_LEN_V) == ERROR_SUCCESS;
+	return	::RegSetValueExW(hKey[openCnt -1], subKey, 0, REG_SZ, (const BYTE *)str,
+			(DWORD((wcslen(str) +1) * sizeof(WCHAR)))) == ERROR_SUCCESS;
 }
 
 BOOL TRegistry::GetByte(LPCSTR subKey, BYTE *data, int *size)
 {
-	if (!IS_WINNT_V) return	GetByteV(subKey, data, size);
-
 	Wstr	subKey_w(subKey, strMode);
 
-	return	GetByteV(subKey_w, data, size);
+	return	GetByteW(subKey_w, data, size);
 }
 
-BOOL TRegistry::GetByteV(const void *subKey, BYTE *data, int *size)
+BOOL TRegistry::GetByteW(const WCHAR *subKey, BYTE *data, int *size)
 {
 	DWORD	type = REG_BINARY;
 
-	return	::RegQueryValueExV(hKey[openCnt -1], subKey, 0, &type,
+	return	::RegQueryValueExW(hKey[openCnt -1], subKey, 0, &type,
 			(BYTE *)data, (LPDWORD)size) == ERROR_SUCCESS;
 }
 
 BOOL TRegistry::SetByte(LPCSTR subKey, const BYTE *data, int size)
 {
-	if (!IS_WINNT_V) return	SetByteV(subKey, data, size);
-
 	Wstr	subKey_w(subKey, strMode);
-	return	SetByteV(subKey_w, data, size);
+	return	SetByteW(subKey_w, data, size);
 }
 
-BOOL TRegistry::SetByteV(const void *subKey, const BYTE *data, int size)
+BOOL TRegistry::SetByteW(const WCHAR *subKey, const BYTE *data, int size)
 {
-	return	::RegSetValueExV(hKey[openCnt -1], subKey, 0, REG_BINARY, data, size)
+	return	::RegSetValueExW(hKey[openCnt -1], subKey, 0, REG_BINARY, data, size)
 			== ERROR_SUCCESS;
 }
 
 BOOL TRegistry::DeleteKey(LPCSTR subKey)
 {
-	if (!IS_WINNT_V) return	DeleteKeyV(subKey);
-
 	Wstr	subKey_w(subKey, strMode);
-	return	DeleteKeyV(subKey_w);
+	return	DeleteKeyW(subKey_w);
 }
 
-BOOL TRegistry::DeleteKeyV(const void *subKey)
+BOOL TRegistry::DeleteKeyW(const WCHAR *subKey)
 {
-	return	::RegDeleteKeyV(hKey[openCnt -1], subKey) == ERROR_SUCCESS;
+	return	::RegDeleteKeyW(hKey[openCnt -1], subKey) == ERROR_SUCCESS;
 }
 
 BOOL TRegistry::DeleteValue(LPCSTR subValue)
 {
-	if (!IS_WINNT_V) return	DeleteValueV(subValue);
-
 	Wstr	subValue_w(subValue, strMode);
-	return	DeleteValueV(subValue_w);
+	return	DeleteValueW(subValue_w);
 }
 
-BOOL TRegistry::DeleteValueV(const void *subValue)
+BOOL TRegistry::DeleteValueW(const WCHAR *subValue)
 {
-	return	::RegDeleteValueV(hKey[openCnt -1], subValue) == ERROR_SUCCESS;
+	return	::RegDeleteValueW(hKey[openCnt -1], subValue) == ERROR_SUCCESS;
 }
 
 BOOL TRegistry::EnumKey(DWORD cnt, LPSTR buf, int size)
 {
-	if (!IS_WINNT_V) return	EnumKeyV(cnt, buf, size);
-
 	Wstr	buf_w(size);
 
-	if (!EnumKeyV(cnt, buf_w.Buf(), size)) return FALSE;
+	if (!EnumKeyW(cnt, buf_w.Buf(), size)) return FALSE;
 
 	WtoS(buf_w, buf, size, strMode);
 	return	TRUE;
 }
 
-BOOL TRegistry::EnumKeyV(DWORD cnt, void *buf, int size)
+BOOL TRegistry::EnumKeyW(DWORD cnt, WCHAR *buf, int size)
 {
-	return	::RegEnumKeyExV(hKey[openCnt -1], cnt, buf, (DWORD *)&size, 0, 0, 0, 0)
+	return	::RegEnumKeyExW(hKey[openCnt -1], cnt, buf, (DWORD *)&size, 0, 0, 0, 0)
 			== ERROR_SUCCESS;
 }
 
 BOOL TRegistry::EnumValue(DWORD cnt, LPSTR buf, int size, DWORD *type)
 {
-	if (!IS_WINNT_V) return	EnumValueV(cnt, buf, size, type);
-
 	Wstr	buf_w(size);
 
-	if (!EnumValueV(cnt, buf_w.Buf(), size, type)) return FALSE;
+	if (!EnumValueW(cnt, buf_w.Buf(), size, type)) return FALSE;
 
 	WtoS(buf_w, buf, size, strMode);
 
 	return	TRUE;
 }
 
-BOOL TRegistry::EnumValueV(DWORD cnt, void *buf, int size, DWORD *type)
+BOOL TRegistry::EnumValueW(DWORD cnt, WCHAR *buf, int size, DWORD *type)
 {
-	return	::RegEnumValueV(hKey[openCnt -1], cnt, buf, (DWORD *)&size, 0, type, 0, 0)
+	return	::RegEnumValueW(hKey[openCnt -1], cnt, buf, (DWORD *)&size, 0, type, 0, 0)
 			== ERROR_SUCCESS;
 }
 
@@ -337,35 +313,33 @@ BOOL TRegistry::EnumValueV(DWORD cnt, void *buf, int size, DWORD *type)
 */
 BOOL TRegistry::DeleteChildTree(LPCSTR subKey)
 {
-	if (!IS_WINNT_V) return	DeleteChildTreeV(subKey);
-
 	Wstr	subKey_w(subKey, strMode);
-	return	DeleteChildTreeV(subKey_w);
+	return	DeleteChildTreeW(subKey_w);
 }
 
-BOOL TRegistry::DeleteChildTreeV(const void *subKey)
+BOOL TRegistry::DeleteChildTreeW(const WCHAR *subKey)
 {
 	WCHAR	wbuf[256];
 	BOOL	ret = TRUE;
 
-	if (subKey && !OpenKeyV(subKey)) {
+	if (subKey && !OpenKeyW(subKey)) {
 		return	FALSE;
 	}
 
-	while (EnumKeyV(0, wbuf, sizeof(wbuf) / CHAR_LEN_V))
+	while (EnumKeyW(0, wbuf, wsizeof(wbuf)))
 	{
-		if (!(ret = DeleteChildTreeV(wbuf)))
+		if (!(ret = DeleteChildTreeW(wbuf)))
 			break;
 	}
 	if (subKey)
 	{
 		CloseKey();
-		ret = DeleteKeyV(subKey) ? ret : FALSE;
+		ret = DeleteKeyW(subKey) ? ret : FALSE;
 	}
 	else {
-		while (EnumValueV(0, wbuf, sizeof(wbuf) / CHAR_LEN_V))
+		while (EnumValueW(0, wbuf, wsizeof(wbuf)))
 		{
-			if (!DeleteValueV(wbuf))
+			if (!DeleteValueW(wbuf))
 			{
 				ret = FALSE;
 				break;

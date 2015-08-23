@@ -1,6 +1,8 @@
 ﻿======================================================================
-                     FastCopy  ver2.11                 2012/06/18
+                     FastCopy  ver3.02                 2015/08/20
                                             H.Shirouzu（白水啓章）
+                     FastCopy-M branch              2015/08/23
+                                            Mapaler（枫谷剑仙）
 ======================================================================
 
 特徴：
@@ -30,30 +32,23 @@
 	MFC 等のフレームワークを使わず、Win32API だけで作っていますので、
 	軽量＆コンパクト＆軽快に動作します。
 
-	全ソースコードは BSD ライセンスで公開していますので、VC++ 等を
-	お持ちであれば、ご自由にカスタマイズしてのご利用も可能です。
+	FastCopy-M feature :
+	More complete multilanguage supports.
+
+	The main window icon displayed animation when runing copy process.
+	
+	Support use http url to replace "chm" help files.
 
 ライセンス：
-	---------------------------------------------------------------
-	 Copyright 2004-2012 SHIROUZU Hiroaki All rights reserved.
-
-	ソースコード形式であれバイナリ形式であれ、変更の有無に関わらず、
-	以下の条件を満たす限りにおいて、再配布および使用を許可します:
-
-	 1. ソースコード形式で再配布する場合、上記著作権表示、本条件書
-	    および下記免責表示を必ず含めてください。
-
-	 2. バイナリ形式で再配布する場合、上記著作権表示、本条件書及び
-	    下記免責表示を、配布物とともに提供される文書及び他の資料に
-	    必ず含めてください。
-
-	SHIROUZU Hiroaki および貢献者は、本ソフトウェアの使用/利用による
-	いかなる損失に対しても、責任を負いません。
-	---------------------------------------------------------------
+	全ソースコードは GPLv3 で公開しています。
+	VC++ 等をお持ちであれば、ご自由にカスタマイズしてのご利用も
+	可能です。（カスタマイズ版の配布をソースコード非公開で行いたい
+	場合は別途、お問い合わせください）
+	詳しくは同梱の license.txt をご覧ください。
 
 使用法等：
 	ヘルプ(fastcopy.chm) を参照してください。
 
 ソース・ビルドについて：
-	VS2005 以降でビルドできます。
-
+	VS2013 以降でビルドできます。
+	FastCopy-M used VS2015, if you want bulid on VS2013 or earlier you can replace the "*.sln", "*.vcxproj" to original version (or modify project version in these file) by your self.

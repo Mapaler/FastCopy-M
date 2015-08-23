@@ -1,13 +1,13 @@
 ﻿static char *install_id = 
-	"@(#)Copyright (C) 2005-2012 H.Shirouzu		install.cpp	Ver2.11";
+	"@(#)Copyright (C) 2005-2015 H.Shirouzu		install.cpp	Ver3.00";
 /* ========================================================================
 	Project  Name			: Installer for FastCopy
 	Module Name				: Installer Application Class
 	Create					: 2005-02-02(Wed)
-	Update					: 2012-06-18(Mon)
+	Update					: 2015-08-05(Wed)
 	Copyright				: H.Shirouzu
-	Reference				: 
-	Modify  				: Mapaler 2014-5-14
+	License					: GNU General Public License version 3
+	Modify  				: Mapaler 2015-8-06
 	======================================================================== */
 
 #include "../tlib/tlib.h"
@@ -17,86 +17,87 @@
 
 char *current_shell = TIsWow64() ? CURRENT_SHEXTDLL_EX : CURRENT_SHEXTDLL;
 char *SetupFiles [] = {
-	FASTCOPY_EXE, INSTALL_EXE, CURRENT_SHEXTDLL, CURRENT_SHEXTDLL_EX, README_TXT, HELP_CHM, NULL
+	FASTCOPY_EXE, INSTALL_EXE, CURRENT_SHEXTDLL, CURRENT_SHEXTDLL_EX,
+	README_TXT, README_ENG_TXT, GPL_TXT, HELP_CHM, NULL
 };
 
 /*
 	Vista以降
 */
 #ifdef _WIN64
-BOOL ConvertToX86Dir(void *target)
+BOOL ConvertToX86Dir(WCHAR *target)
 {
 	WCHAR	buf[MAX_PATH];
 	WCHAR	buf86[MAX_PATH];
-	int		len;
+	size_t	len;
 
-	if (!TSHGetSpecialFolderPathV(NULL, buf, CSIDL_PROGRAM_FILES, FALSE)) return FALSE;
-	len = strlenV(buf);
-	SetChar(buf, len++, '\\');
-	SetChar(buf, len, 0);
+	if (!::SHGetSpecialFolderPathW(NULL, buf, CSIDL_PROGRAM_FILES, FALSE)) return FALSE;
+	len = wcslen(buf);
+	buf[len++] = '\\';
+	buf[len]   = 0;
 
-	if (strnicmpV(buf, target, len)) return FALSE;
+	if (wcsnicmp(buf, target, len)) return FALSE;
 
-	if (!TSHGetSpecialFolderPathV(NULL, buf86, CSIDL_PROGRAM_FILESX86, FALSE)) return FALSE;
-	MakePathV(buf, buf86, MakeAddr(target, len));
-	strcpyV(target, buf);
+	if (!::SHGetSpecialFolderPathW(NULL, buf86, CSIDL_PROGRAM_FILESX86, FALSE)) return FALSE;
+	MakePathW(buf, buf86, target + len);
+	wcscpy(target, buf);
 
 	return	 TRUE;
 }
 #endif
 
-BOOL ConvertVirtualStoreConf(void *execDirV, void *userDirV, void *virtualDirV)
+BOOL ConvertVirtualStoreConf(WCHAR *execDir, WCHAR *userDir, WCHAR *virtualDir)
 {
 #define FASTCOPY_INI_W			L"FastCopy.ini"
 	WCHAR	buf[MAX_PATH];
 	WCHAR	org_ini[MAX_PATH], usr_ini[MAX_PATH], vs_ini[MAX_PATH];
-	BOOL	is_admin = TIsUserAnAdmin();
+	BOOL	is_admin = ::IsUserAnAdmin();
 	BOOL	is_exists;
 
-	MakePathV(usr_ini, userDirV, FASTCOPY_INI_W);
-	MakePathV(org_ini, execDirV, FASTCOPY_INI_W);
+	MakePathW(usr_ini, userDir, FASTCOPY_INI_W);
+	MakePathW(org_ini, execDir, FASTCOPY_INI_W);
 
 #ifdef _WIN64
 	ConvertToX86Dir(org_ini);
 #endif
 
-	is_exists = GetFileAttributesV(usr_ini) != 0xffffffff;
+	is_exists = ::GetFileAttributesW(usr_ini) != 0xffffffff;
 	 if (!is_exists) {
-		CreateDirectoryV(userDirV, NULL);
+		::CreateDirectoryW(userDir, NULL);
 	}
 
-	if (virtualDirV && GetChar(virtualDirV, 0)) {
-		MakePathV(vs_ini,  virtualDirV, FASTCOPY_INI_W);
-		if (GetFileAttributesV(vs_ini) != 0xffffffff) {
+	if (virtualDir && virtualDir[0]) {
+		MakePathW(vs_ini,  virtualDir, FASTCOPY_INI_W);
+		if (::GetFileAttributesW(vs_ini) != 0xffffffff) {
 			if (!is_exists) {
 				is_exists = ::CopyFileW(vs_ini, usr_ini, TRUE);
 			}
-			MakePathV(buf, userDirV, L"to_OldDir(VirtualStore).lnk");
-			SymLinkV(virtualDirV, buf);
-			sprintfV(buf, L"%s.obsolete", vs_ini);
-			MoveFileW(vs_ini, buf);
-			if (GetFileAttributesV(vs_ini) != 0xffffffff) {
-				DeleteFileV(vs_ini);
+			MakePathW(buf, userDir, L"to_OldDir(VirtualStore).lnk");
+			SymLinkW(virtualDir, buf);
+			swprintf(buf, L"%s.obsolete", vs_ini);
+			::MoveFileW(vs_ini, buf);
+			if (::GetFileAttributesW(vs_ini) != 0xffffffff) {
+				::DeleteFileW(vs_ini);
 			}
 		}
 	}
 
-	if ((is_admin || !is_exists) && GetFileAttributesV(org_ini) != 0xffffffff) {
+	if ((is_admin || !is_exists) && ::GetFileAttributesW(org_ini) != 0xffffffff) {
 		if (!is_exists) {
 			is_exists = ::CopyFileW(org_ini, usr_ini, TRUE);
 		}
 		if (is_admin) {
-			sprintfV(buf, L"%s.obsolete", org_ini);
-			MoveFileW(org_ini, buf);
-			if (GetFileAttributesV(org_ini) != 0xffffffff) {
-				DeleteFileV(org_ini);
+			swprintf(buf, L"%s.obsolete", org_ini);
+			::MoveFileW(org_ini, buf);
+			if (::GetFileAttributesW(org_ini) != 0xffffffff) {
+				::DeleteFileW(org_ini);
 			}
 		}
 	}
 
-	MakePathV(buf, userDirV, L"to_ExeDir.lnk");
-//	if (GetFileAttributesV(buf) == 0xffffffff) {
-		SymLinkV(execDirV, buf);
+	MakePathW(buf, userDir, L"to_ExeDir.lnk");
+//	if (GetFileAttributesW(buf) == 0xffffffff) {
+		SymLinkW(execDir, buf);
 //	}
 
 	return	TRUE;
@@ -151,8 +152,8 @@ TInstDlg::TInstDlg(char *cmdLine) : TDlg(INSTALL_DIALOG), staticText(this)
 	cfg.deskTop   = NULL;
 	cfg.virtualDir= NULL;
 
-	if (IS_WINNT_V && TIsUserAnAdmin()) {
-		WCHAR	*p = wcsstr((WCHAR *)GetCommandLineV(), L"/runas=");
+	if (::IsUserAnAdmin()) {
+		WCHAR	*p = wcsstr((WCHAR *)GetCommandLineW(), L"/runas=");
 
 		if (p) {
 			if (p && (p = wcstok(p+7,  L",")))  cfg.hOrgWnd		= (HWND)wcstoul(p, 0, 16);
@@ -204,9 +205,9 @@ BOOL GetShortcutPath(InstallCfg *cfg)
 	if (reg.OpenKey(REGSTR_SHELLFOLDERS)) {
 		char	buf[MAX_PATH] = "";
 		reg.GetStr(REGSTR_PROGRAMS, buf, MAX_PATH);
-		cfg->startMenu = toV(buf, TRUE);
+		cfg->startMenu = AtoWs(buf, TRUE);
 		reg.GetStr(REGSTR_DESKTOP,  buf, MAX_PATH);
-		cfg->deskTop   = toV(buf, TRUE);
+		cfg->deskTop   = AtoWs(buf, TRUE);
 		reg.CloseKey();
 		return	TRUE;
 	}
@@ -236,7 +237,7 @@ BOOL TInstDlg::EvCreate(LPARAM lParam)
 	TRegistry	reg(HKEY_LOCAL_MACHINE, BY_MBCS);
 
 // タイトル設定
-	if (IsWinVista() && TIsUserAnAdmin()) {
+	if (IsWinVista() && ::IsUserAnAdmin()) {
 		GetWindowText(buf, sizeof(buf));
 		strcat(buf, " (Admin)");
 		SetWindowText(buf);
@@ -264,7 +265,7 @@ BOOL TInstDlg::EvCreate(LPARAM lParam)
 		GetShortcutPath(&cfg);
 	}
 
-	SetDlgItemText(FILE_EDIT, cfg.setupDir ? toA(cfg.setupDir) : setupDir);
+	SetDlgItemText(FILE_EDIT, cfg.setupDir ? WtoAs(cfg.setupDir) : setupDir);
 
 	CheckDlgButton(cfg.mode == SETUP_MODE ? SETUP_RADIO : UNINSTALL_RADIO, 1);
 	ChangeMode();
@@ -330,11 +331,11 @@ BOOL IsSameFile(char *src, char *dst)
 		return	FALSE;
 
 	return
-		(*(_int64 *)&dst_dat.ftLastWriteTime == *(_int64 *)&src_dat.ftLastWriteTime)
-	||  ( (*(_int64 *)&src_dat.ftLastWriteTime % 10000000) == 0 ||
-		  (*(_int64 *)&dst_dat.ftLastWriteTime % 10000000) == 0 )
-	 &&	*(_int64 *)&dst_dat.ftLastWriteTime + 20000000 >= *(_int64 *)&src_dat.ftLastWriteTime
-	 &&	*(_int64 *)&dst_dat.ftLastWriteTime - 20000000 <= *(_int64 *)&src_dat.ftLastWriteTime;
+		(*(int64 *)&dst_dat.ftLastWriteTime == *(int64 *)&src_dat.ftLastWriteTime)
+	||  ( (*(int64 *)&src_dat.ftLastWriteTime % 10000000) == 0 ||
+		  (*(int64 *)&dst_dat.ftLastWriteTime % 10000000) == 0 )
+	 &&	*(int64 *)&dst_dat.ftLastWriteTime + 20000000 >= *(int64 *)&src_dat.ftLastWriteTime
+	 &&	*(int64 *)&dst_dat.ftLastWriteTime - 20000000 <= *(int64 *)&src_dat.ftLastWriteTime;
 }
 
 BOOL MiniCopy(char *src, char *dst)
@@ -410,20 +411,20 @@ BOOL TInstDlg::RunAsAdmin(BOOL is_imme)
 
 	::GetModuleFileNameW(NULL, exe_path, sizeof(exe_path));
 
-	if (!(len = GetDlgItemTextV(FILE_EDIT, setup_path, MAX_PATH))) return FALSE;
-	if (GetChar(setup_path, len-1) == '\\') SetChar(setup_path, len-1, 0);
-	if (!GetFullPathNameW(setup_path, MAX_PATH, fastcopy_dir, &fastcopy_dirname)) return FALSE;
+	if (!(len = GetDlgItemTextW(FILE_EDIT, setup_path, MAX_PATH))) return FALSE;
+	if (setup_path[len-1] == '\\') setup_path[len-1] = 0;
+	if (!::GetFullPathNameW(setup_path, MAX_PATH, fastcopy_dir, &fastcopy_dirname)) return FALSE;
 
-	if (!TSHGetSpecialFolderPathV(NULL, buf, CSIDL_APPDATA, FALSE)) return FALSE;
-	MakePathV(app_data, buf, fastcopy_dirname);
+	if (!::SHGetSpecialFolderPathW(NULL, buf, CSIDL_APPDATA, FALSE)) return FALSE;
+	MakePathW(app_data, buf, fastcopy_dirname);
 
-	strcpyV(buf, fastcopy_dir);
+	wcscpy(buf, fastcopy_dir);
 #ifdef _WIN64
 	ConvertToX86Dir(buf);
 #endif
-	if (!TMakeVirtualStorePathV(buf, virtual_store)) return FALSE;
+	if (!TMakeVirtualStorePathW(buf, virtual_store)) return FALSE;
 
-	sprintfV(buf, L"/runas=%p,%d,%d,%d,%d,\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"",
+	swprintf(buf, L"/runas=%p,%d,%d,%d,%d,\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"",
 		hWnd, cfg.mode, is_imme, cfg.programLink, cfg.desktopLink,
 		cfg.startMenu, cfg.deskTop,
 		setup_path, app_data, virtual_store);
@@ -450,14 +451,14 @@ BOOL TInstDlg::Install(void)
 
 // インストールパス設定
 	len = GetDlgItemText(FILE_EDIT, setupDir, sizeof(setupDir));
-	if (GetChar(setupDir, len-1) == '\\') SetChar(setupDir, len-1, 0);
+	if (setupDir[len-1] == '\\') setupDir[len-1] = 0;
 	Wstr	w_setup(setupDir);
 
-	if (IsWinVista() && TIsVirtualizedDirV(w_setup.Buf())) {
-		if (!TIsUserAnAdmin()) {
+	if (IsWinVista() && TIsVirtualizedDirW(w_setup.Buf())) {
+		if (!::IsUserAnAdmin()) {
 			return	RunAsAdmin(TRUE);
 		}
-		else if (cfg.runImme && cfg.setupDir && lstrcmpiV(w_setup.Buf(), cfg.setupDir)) {
+		else if (cfg.runImme && cfg.setupDir && lstrcmpiW(w_setup.Buf(), cfg.setupDir)) {
 			return	MessageBox(GetLoadStr(IDS_ADMINCHANGE)), FALSE;
 		}
 	}
@@ -496,8 +497,8 @@ BOOL TInstDlg::Install(void)
 	}
 
 // スタートメニュー＆デスクトップに登録
-	char	*linkPath[]	= { toA(cfg.startMenu, TRUE), toA(cfg.deskTop, TRUE), NULL };
-	BOOL	execFlg[]	= { cfg.programLink,          cfg.desktopLink,        NULL };
+	char	*linkPath[]	= { WtoA(cfg.startMenu), WtoA(cfg.deskTop), NULL };
+	BOOL	execFlg[]	= { cfg.programLink,     cfg.desktopLink,   NULL };
 
 	for (int cnt=0; linkPath[cnt]; cnt++) {
 		strcpy(buf, linkPath[cnt]);
@@ -505,23 +506,13 @@ BOOL TInstDlg::Install(void)
 			::wsprintf(buf + strlen(buf), "\\%s", FASTCOPY_SHORTCUT);
 		}
 		if (execFlg[cnt]) {
-			if (IS_WINNT_V) {
-				Wstr	w_setup(setupPath, BY_MBCS);
-				Wstr	w_buf(buf, BY_MBCS);
-				SymLinkV(w_setup.Buf(), w_buf.Buf());
-			}
-			else {
-				SymLinkV(setupPath, buf);
-			}
+			Wstr	w_setup(setupPath, BY_MBCS);
+			Wstr	w_buf(buf, BY_MBCS);
+			SymLinkW(w_setup.Buf(), w_buf.Buf());
 		}
 		else {
-			if (IS_WINNT_V) {
-				Wstr	w_buf(buf, BY_MBCS);
-				DeleteLinkV(w_buf.Buf());
-			}
-			else {
-				DeleteLinkV(buf);
-			}
+			Wstr	w_buf(buf, BY_MBCS);
+			DeleteLinkW(w_buf.Buf());
 		}
 	}
 
@@ -539,18 +530,18 @@ BOOL TInstDlg::Install(void)
 	}
 #endif
 
-	if (IsWinVista() && TIsVirtualizedDirV(w_setup.Buf())) {
+	if (IsWinVista() && TIsVirtualizedDirW(w_setup.Buf())) {
 		WCHAR	wbuf[MAX_PATH] = L"", old_path[MAX_PATH] = L"", usr_path[MAX_PATH] = L"";
 		WCHAR	fastcopy_dir[MAX_PATH], *fastcopy_dirname = NULL;
 
-		GetFullPathNameW(w_setup.Buf(), MAX_PATH, fastcopy_dir, &fastcopy_dirname);
+		::GetFullPathNameW(w_setup.Buf(), MAX_PATH, fastcopy_dir, &fastcopy_dirname);
 
 		if (cfg.appData) {
-			strcpyV(usr_path, cfg.appData);
+			wcscpy(usr_path, cfg.appData);
 		}
 		else {
-			TSHGetSpecialFolderPathV(NULL, wbuf, CSIDL_APPDATA, FALSE);
-			MakePathV(usr_path, wbuf, fastcopy_dirname);
+			::SHGetSpecialFolderPathW(NULL, wbuf, CSIDL_APPDATA, FALSE);
+			MakePathW(usr_path, wbuf, fastcopy_dirname);
 		}
 
 		ConvertVirtualStoreConf(w_setup.Buf(), usr_path, cfg.virtualDir);
@@ -560,16 +551,10 @@ BOOL TInstDlg::Install(void)
 	const char *msg = GetLoadStr(is_delay_copy ? IDS_DELAYSETUPCOMPLETE : IDS_SETUPCOMPLETE);
 	int			flg = MB_OKCANCEL|MB_ICONINFORMATION;
 
-	if (IsWin7()) {
-		msg = Fmt("%s%s", msg, GetLoadStr(IDS_COMPLETE_WIN7));
-	}
-
 	TLaunchDlg	dlg(msg, this);
-	UINT		id;
 
-	if ((id = dlg.Exec()) == IDOK || id == LAUNCH_BUTTON) {
-		char	*arg = (id == LAUNCH_BUTTON) ? "/install" : "";
-		ShellExecute(NULL, "open", setupPath, arg, setupDir, SW_SHOW);
+	if (dlg.Exec() == IDOK) {
+		ShellExecute(NULL, "open", setupPath, "", setupDir, SW_SHOW);
 	}
 
 	::PostQuitMessage(0);
@@ -620,7 +605,7 @@ BOOL TInstDlg::UnInstall(void)
 
 	is_shext = ShellExtFunc(setupDir, CHECK_SHELLEXT);
 
-	if (is_shext && IsWinVista() && !TIsUserAnAdmin()) {
+	if (is_shext && IsWinVista() && !::IsUserAnAdmin()) {
 		RunAsAdmin(TRUE);
 		return	TRUE;
 	}
@@ -638,13 +623,8 @@ BOOL TInstDlg::UnInstall(void)
 				if (cnt == 0)
 					RemoveSameLink(buf);
 				::wsprintf(buf + strlen(buf), "\\%s", FASTCOPY_SHORTCUT);
-				if (IS_WINNT_V) {
-					Wstr	w_buf(buf, BY_MBCS);
-					DeleteLinkV(w_buf.Buf());
-				}
-				else {
-					DeleteLinkV(buf);
-				}
+				Wstr	w_buf(buf, BY_MBCS);
+				DeleteLinkW(w_buf.Buf());
 			}
 		}
 		reg.CloseKey();
@@ -653,9 +633,9 @@ BOOL TInstDlg::UnInstall(void)
 	ShellExtFunc(setupDir, UNREGISTER_SHELLEXT);
 
 #ifdef _WIN64
-	if (IS_WINNT_V) {
+	if (1) {
 #else
-	if (IS_WINNT_V && TIsWow64()) {
+	if (TIsWow64()) {
 #endif
 		SHELLEXECUTEINFO	sei = { sizeof(sei) };
 		char	arg[1024];
@@ -691,12 +671,12 @@ BOOL TInstDlg::UnInstall(void)
 		WCHAR	fastcopy_dir[MAX_PATH] = L"", *fastcopy_dirname = NULL;
 		Wstr	w_setup(setupDir);
 
-		if (TIsVirtualizedDirV(w_setup.Buf())) {
-			if (TSHGetSpecialFolderPathV(NULL, wbuf, CSIDL_APPDATA, FALSE)) {
-				GetFullPathNameW(w_setup.Buf(), MAX_PATH, fastcopy_dir, &fastcopy_dirname);
-				MakePathV(upath, wbuf, fastcopy_dirname);
+		if (TIsVirtualizedDirW(w_setup.Buf())) {
+			if (::SHGetSpecialFolderPathW(NULL, wbuf, CSIDL_APPDATA, FALSE)) {
+				::GetFullPathNameW(w_setup.Buf(), MAX_PATH, fastcopy_dir, &fastcopy_dirname);
+				MakePathW(upath, wbuf, fastcopy_dirname);
 
-				if (GetFileAttributesV(upath) != 0xffffffff) {
+				if (::GetFileAttributesW(upath) != 0xffffffff) {
 					::ShellExecuteW(NULL, NULL, upath, 0, 0, SW_SHOW);
 				}
 			}
@@ -710,7 +690,7 @@ BOOL TInstDlg::UnInstall(void)
 
 BOOL ReadLink(char *src, char *dest, char *arg=NULL)
 {
-	IShellLink		*shellLink;		// 実際は IShellLinkA or IShellLinkW
+	IShellLink		*shellLink;
 	IPersistFile	*persistFile;
 	WCHAR			wbuf[MAX_PATH];
 	BOOL			ret = FALSE;
@@ -754,7 +734,7 @@ BOOL TInstDlg::RemoveSameLink(const char *dir, char *remove_path)
 			int		dest_len = (int)strlen(dest);
 			int		fastcopy_len = (int)strlen(FASTCOPY_EXE);
 			if (dest_len > fastcopy_len
-			&& strncmpi(dest + dest_len - fastcopy_len, FASTCOPY_EXE, fastcopy_len) == 0) {
+			&& strnicmp(dest + dest_len - fastcopy_len, FASTCOPY_EXE, fastcopy_len) == 0) {
 				ret = ::DeleteFile(path);
 				if (remove_path != NULL)
 					strcpy(remove_path, path);
@@ -1024,27 +1004,15 @@ TLaunchDlg::~TLaunchDlg()
 BOOL TLaunchDlg::EvCreate(LPARAM lParam)
 {
 	SetDlgItemText(MESSAGE_STATIC, msg);
-	if (IsWin7()) {
-		::ShowWindow(GetDlgItem(LAUNCH_BUTTON), SW_SHOW);
-	}
-
 	Show();
 	return	TRUE;
 }
-
-#define NOTIFY_SETTINGS	"shell32.dll,Options_RunDLL 5"
 
 BOOL TLaunchDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl)
 {
 	switch (wID)
 	{
 	case IDOK: case IDCANCEL:
-		EndDialog(wID);
-		return	TRUE;
-
-	case LAUNCH_BUTTON:
-		//ShellExecuteU8(NULL, NULL, GetLoadStr(IDS_TRAYURL), 0, 0, SW_SHOW);
-		ShellExecuteU8(NULL, "open", "rundll32.exe", NOTIFY_SETTINGS, 0, SW_SHOW);
 		EndDialog(wID);
 		return	TRUE;
 	}
