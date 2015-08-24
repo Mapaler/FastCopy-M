@@ -32,3 +32,7 @@
 *.ncb
 *.suo
 *.aps
+/Output
+/web
+/FastCopy.sdf
+/src/放弃修改代码
