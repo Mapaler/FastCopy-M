@@ -1,11 +1,12 @@
 ﻿static char *miscdlg_id = 
-	"@(#)Copyright (C) 2005-2015 H.Shirouzu		miscdlg.cpp	ver3.00";
+	"@(#)Copyright (C) 2005-2015 H.Shirouzu		miscdlg.cpp	ver3.02";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2005-01-23(Sun)
 	Update					: 2015-08-12(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
+	Modify					: Mapaler 2015-08-23
 	======================================================================== */
 
 #include "mainwin.h"
