@@ -32,3 +32,8 @@
 *.ncb
 *.suo
 *.aps
+/Output
+/web
+/*.sdf
+/*.opensdf
+/src/放弃修改代码

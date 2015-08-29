@@ -1,9 +1,9 @@
 ﻿static char *utility_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		utility.cpp	ver3.00";
+	"@(#)Copyright (C) 2004-2015 H.Shirouzu		utility.cpp	ver3.03";
 /* ========================================================================
 	Project  Name			: general routine
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-08-12(Wed)
+	Update					: 2015-08-30(Sun)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -837,7 +837,7 @@ END:
 	return	cur;
 }
 
-DataList::Head *DataList::Fetch(Head *prev)
+DataList::Head *DataList::Peek(Head *prev)
 {
 	Head	*cur = prev ? prev->next : end;
 
@@ -889,7 +889,7 @@ int comma_double(WCHAR *s, double val, int precision)
 	if (pos) len = pos - tmp;
 
 	for (WCHAR *p=tmp; *s++ = *p++; ) {
-		if (p < pos && (--len % 3) == 0) *s++ = ',';
+		if ((!pos || p < pos) && len > 2 && (--len % 3) == 0) *s++ = ',';
 	}
 	return	(int)(s - sv_s - 1);
 }
@@ -914,7 +914,7 @@ int comma_double(char *s, double val, int precision)
 	if (pos) len = pos - tmp;
 
 	for (char *p=tmp; *s++ = *p++; ) {
-		if (p < pos && (--len % 3) == 0) *s++ = ',';
+		if ((!pos || p < pos) && len > 2 && (--len % 3) == 0) *s++ = ',';
 	}
 	return	(int)(s - sv_s - 1);
 }

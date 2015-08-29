@@ -1,9 +1,9 @@
 ﻿static char *mainwin_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		mainwin.cpp	ver3.02";
+	"@(#)Copyright (C) 2004-2015 H.Shirouzu		mainwin.cpp	ver3.03";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-08-12(Wed)
+	Update					: 2015-08-30(Sun)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-08-23
@@ -342,12 +342,29 @@ BOOL TMainDlg::IsForeground()
 	return	hForeWnd && hWnd && (hForeWnd == hWnd || ::IsChild(hWnd, hForeWnd)) ? TRUE : FALSE;
 }
 
-void TMainDlg::SetFont()
+void TMainDlg::StatusEditSetup()
 {
-	if (statusFont || !*cfg.statusFont) return;
+	if (statusFont) return;
+
+	static bool once = false;
+	if (once) return;
+	once = true;
 
 	LOGFONTW lf = {};
 	HDC		hDc = ::GetDC(hWnd);
+
+	if (!*cfg.statusFont) {
+		if (WCHAR *font = GetLoadStrW(IDS_STATUS_FONT)) {
+			wcscpy(cfg.statusFont, font);
+		}
+		if (!*cfg.statusFont) return;
+	}
+	if (cfg.statusFontSize <= 0) {
+		if (char *font_size = GetLoadStr(IDS_STATUS_FONTSIZE)) {
+			cfg.statusFontSize = atoi(font_size);
+		}
+		if (cfg.statusFontSize <= 0) return;
+	}
 
 	wcscpy(lf.lfFaceName, cfg.statusFont);
 	lf.lfCharSet = DEFAULT_CHARSET;
@@ -360,6 +377,8 @@ void TMainDlg::SetFont()
 
 	statusFont = ::CreateFontIndirectW(&lf);
 	SendDlgItemMessage(STATUS_EDIT, WM_SETFONT, (WPARAM)statusFont, 0);
+	SendDlgItemMessage(STATUS_EDIT, EM_SETWORDBREAKPROC, 0, (LPARAM)EditWordBreakProcW);
+	SendDlgItemMessage(STATUS_EDIT, EM_SETTARGETDEVICE, 0, 0);		// 折り返し
 }
 
 BOOL TMainDlg::EvCreate(LPARAM lParam)
@@ -415,8 +434,6 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 	TaskBarCreateMsg = ::RegisterWindowMessage("TaskbarCreated");
 
 	// メッセージセット
-	//SetFont();	// STATUS_EDIT を Terminal Font に 去除设置字体
-	if (cfg.lcid == 0x409) SetFont(); //仅英文改字体
 	SetDlgItemText(STATUS_EDIT, GetLoadStr(IDS_BEHAVIOR));
 	SetDlgItemInt(BUFSIZE_EDIT, cfg.bufSize);
 
@@ -434,15 +451,12 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 	CheckDlgButton(ACL_CHECK, cfg.enableAcl);
 	CheckDlgButton(STREAM_CHECK, cfg.enableStream);
 
-	SendDlgItemMessage(STATUS_EDIT, EM_SETWORDBREAKPROC, 0, (LPARAM)EditWordBreakProcW);
 	SendDlgItemMessage(PATH_EDIT,   EM_SETWORDBREAKPROC, 0, (LPARAM)EditWordBreakProcW);
 	SendDlgItemMessage(ERR_EDIT,    EM_SETWORDBREAKPROC, 0, (LPARAM)EditWordBreakProcW);
 
-	SendDlgItemMessage(STATUS_EDIT, EM_SETTARGETDEVICE, 0, 0);		// 折り返し
 	SendDlgItemMessage(PATH_EDIT,   EM_SETTARGETDEVICE, 0, 0);		// 折り返し
 	SendDlgItemMessage(ERR_EDIT,    EM_SETTARGETDEVICE, 0, 0);		// 折り返し
 
-	SendDlgItemMessage(STATUS_EDIT, EM_LIMITTEXT, 0, 0);
 	SendDlgItemMessage(PATH_EDIT,   EM_LIMITTEXT, 0, 0);
 	SendDlgItemMessage(ERR_EDIT,    EM_LIMITTEXT, 0, 0);
 
@@ -614,8 +628,7 @@ BOOL TMainDlg::SwapTargetCore(const WCHAR *s, const WCHAR *d, WCHAR *out_s, WCHA
 
 	DWORD	attr;
 	BOOL	isSrcDir = isSrcLastBS || (attr = ::GetFileAttributesW(s)) == 0xffffffff
-			|| (attr & FILE_ATTRIBUTE_DIRECTORY)
-				&& (!cfg.isReparse || (attr & FILE_ATTRIBUTE_REPARSE_POINT) == 0);
+			|| (attr & FILE_ATTRIBUTE_DIRECTORY) && (!cfg.isReparse || !IsReparse(attr));
 
 	if (isSrcDir && !isDstLastBS) {	// dst に '\\' がない場合
 		wcscpy(out_d, s);
@@ -1391,7 +1404,7 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 		| (cfg.usingMD5 ? FastCopy::VERIFY_MD5 : 0)
 		| (skipEmptyDir && is_filter ? FastCopy::SKIP_EMPTYDIR : 0)
 		| (!isReparse && info.mode != FastCopy::MOVE_MODE && info.mode != FastCopy::DELETE_MODE ?
-			FastCopy::USE_REPARSE : 0)
+			FastCopy::REPARSE_AS_NORMAL : 0)
 		| ((is_listing && is_fore && is_ctrkey) ? FastCopy::VERIFY_FILE : 0)
 		| (info.mode == FastCopy::MOVE_MODE && cfg.serialMove ? FastCopy::SERIAL_MOVE : 0)
 		| (info.mode == FastCopy::MOVE_MODE && cfg.serialVerifyMove ?
@@ -1469,6 +1482,7 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 	SendDlgItemMessage(PATH_EDIT, WM_SETTEXT, 0, (LPARAM)"");
 	SendDlgItemMessage(STATUS_EDIT, WM_SETTEXT, 0, (LPARAM)"");
 	SendDlgItemMessage(ERRSTATUS_STATIC, WM_SETTEXT, 0, (LPARAM)"");
+	StatusEditSetup();
 
 	PathArray	srcArray, dstArray, incArray, excArray;
 	srcArray.RegisterMultiPath(src);
@@ -2049,13 +2063,13 @@ int TMainDlg::MessageBoxW(LPCWSTR msg, LPCWSTR title, UINT style)
 int TMainDlg::MessageBoxU8(LPCSTR msg, LPCSTR title, UINT style)
 {
 	Wstr	wmsg(msg), wtitle(title);
-	return MessageBoxW(wmsg, wtitle, style);
+	return MessageBoxW(wmsg.s(), wtitle.s(), style);
 }
 
 int TMainDlg::MessageBox(LPCSTR msg, LPCSTR title, UINT style)
 {
 	Wstr	wmsg(msg, BY_MBCS), wtitle(title, BY_MBCS);
-	return MessageBoxW(wmsg, wtitle, style);
+	return MessageBoxW(wmsg.s(), wtitle.s(), style);
 }
 
 DWORD TMainDlg::UpdateSpeedLevel(BOOL is_timer)
@@ -2819,9 +2833,9 @@ BOOL TMainDlg::SetWindowTitle()
 		p += swprintf(p, FMT_PERCENT, doneRatePercent);
 	}
 
-	WCHAR	_job[MAX_PATH] = L"";
-	WCHAR	*job = _job;
-	WCHAR	*fin = finActIdx > 0 ? cfg.finActArray[finActIdx]->title : L"";
+	WCHAR		_job[MAX_PATH] = L"";
+	WCHAR		*job = _job;
+	const WCHAR	*fin = finActIdx > 0 ? cfg.finActArray[finActIdx]->title : L"";
 
 	GetDlgItemTextW(JOBTITLE_STATIC, job, MAX_PATH);
 

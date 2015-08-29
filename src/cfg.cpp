@@ -1,9 +1,9 @@
 ﻿static char *cfg_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		cfg.cpp	ver3.02";
+	"@(#)Copyright (C) 2004-2015 H.Shirouzu		cfg.cpp	ver3.03";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-08-12(Wed)
+	Update					: 2015-08-30(Sun)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-08-23
@@ -150,8 +150,6 @@
 #define FINACT_MAX				1000
 #define DEFAULT_FASTCOPYLOG		"FastCopy.log"
 #define DEFAULT_INFOSPAN		0 //默认更新速度等级
-#define DEFAULT_STATUSFONT		"Terminal"
-#define DEFAULT_STATUSFONTSIZE	98
 
 /*
 	Vista以降
@@ -509,8 +507,8 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 	enableNSA		= ini.GetInt(NSA_KEY, FALSE);
 	delDirWithFilter= ini.GetInt(DELDIR_KEY, FALSE);
 	enableMoveAttr	= ini.GetInt(MOVEATTR_KEY, FALSE);
-	serialMove		= ini.GetInt(SERIALMOVE_KEY, FALSE);
-	serialVerifyMove = ini.GetInt(SERIALVERIFYMOVE_KEY, FALSE);
+	serialMove		= ini.GetInt(SERIALMOVE_KEY, TRUE);
+	serialVerifyMove = ini.GetInt(SERIALVERIFYMOVE_KEY, TRUE);
 	isReparse		= ini.GetInt(REPARSE_KEY, TRUE);
 	isLinkDest		= ini.GetInt(LINKDEST_KEY, FALSE);
 	maxLinkHash		= ini.GetInt(MAXLINKHASH_KEY, DEFAULT_LINKHASH);
@@ -529,18 +527,18 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 
 	ini.GetStr(DRIVEMAP_KEY, driveMap, sizeof(driveMap), "");
 
-	ini.GetStr(STATUSFONT_KEY, buf, MAX_HISTORY_CHAR_BUF, DEFAULT_STATUSFONT);
+	ini.GetStr(STATUSFONT_KEY, buf, MAX_HISTORY_CHAR_BUF, "");
 	IniStrToW(buf, statusFont);
-	statusFontSize = ini.GetInt(STATUSFONTSIZE_KEY, DEFAULT_STATUSFONTSIZE);
+	statusFontSize = ini.GetInt(STATUSFONTSIZE_KEY, 0);
 
 /* logfile */
 	ini.GetStr(LOGFILE_KEY, buf, MAX_PATH, DEFAULT_FASTCOPYLOG);
 	IniStrToW(buf, wbuf.Buf());
-	if (wcschr(wbuf, '\\') == NULL) {
+	if (wcschr(wbuf.s(), '\\') == NULL) {
 		Wstr	wname(wbuf);
-		MakePathW(wbuf.Buf(), userDir, wname);
+		MakePathW(wbuf.Buf(), userDir, wname.s());
 	}
-	errLogPath = wcsdup(wbuf);
+	errLogPath = wcsdup(wbuf.s());
 
 /* History */
 	for (i=0; i < sizeof(section_array) / sizeof(char *); i++) {
@@ -559,7 +557,7 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 					ini.GetStr(key, buf, MAX_HISTORY_CHAR_BUF);
 					IniStrToW(buf, wbuf.Buf());
 				}
-				history[j] = wcsdup(wbuf);
+				history[j] = wcsdup(wbuf.s());
 			}
 			else if (!ini.DelKey(key))
 				break;
@@ -576,38 +574,38 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 		if (ini.GetStr(TITLE_KEY, buf, MAX_HISTORY_CHAR_BUF) <= 0)
 			break;
 		IniStrToW(buf, wbuf.Buf());
-		job.title = wcsdup(wbuf);
+		job.title = wcsdup(wbuf.s());
 
 		ini.GetStr(SRC_KEY, buf, MAX_HISTORY_CHAR_BUF);
 		IniStrToW(buf, wbuf.Buf());
-		job.src = wcsdup(wbuf);
+		job.src = wcsdup(wbuf.s());
 
 		ini.GetStr(DST_KEY, buf, MAX_HISTORY_CHAR_BUF);
 		IniStrToW(buf, wbuf.Buf());
-		job.dst = wcsdup(wbuf);
+		job.dst = wcsdup(wbuf.s());
 
 		ini.GetStr(CMD_KEY, buf, MAX_HISTORY_CHAR_BUF);
 		IniStrToW(buf, wbuf.Buf());
-		job.cmd = wcsdup(wbuf);
+		job.cmd = wcsdup(wbuf.s());
 
 		GetFilterStr(INCLUDE_KEY, buf, wbuf.Buf());
-		job.includeFilter = wcsdup(wbuf);
+		job.includeFilter = wcsdup(wbuf.s());
 		GetFilterStr(EXCLUDE_KEY, buf, wbuf.Buf());
-		job.excludeFilter = wcsdup(wbuf);
+		job.excludeFilter = wcsdup(wbuf.s());
 
 		ini.GetStr(FROMDATE_KEY, buf, MAX_HISTORY_CHAR_BUF);
 		IniStrToW(buf, wbuf.Buf());
-		job.fromDateFilter = wcsdup(wbuf);
+		job.fromDateFilter = wcsdup(wbuf.s());
 		ini.GetStr(TODATE_KEY, buf, MAX_HISTORY_CHAR_BUF);
 		IniStrToW(buf, wbuf.Buf());
-		job.toDateFilter = wcsdup(wbuf);
+		job.toDateFilter = wcsdup(wbuf.s());
 
 		ini.GetStr(MINSIZE_KEY, buf, MAX_HISTORY_CHAR_BUF);
 		IniStrToW(buf, wbuf.Buf());
-		job.minSizeFilter = wcsdup(wbuf);
+		job.minSizeFilter = wcsdup(wbuf.s());
 		ini.GetStr(MAXSIZE_KEY, buf, MAX_HISTORY_CHAR_BUF);
 		IniStrToW(buf, wbuf.Buf());
-		job.maxSizeFilter = wcsdup(wbuf);
+		job.maxSizeFilter = wcsdup(wbuf.s());
 
 		job.estimateMode = ini.GetInt(ESTIMATE_KEY, 0);
 		job.diskMode = ini.GetInt(DISKMODE_KEY, 0);
@@ -639,11 +637,11 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 
 		ini.GetStr(SOUND_KEY, buf, MAX_HISTORY_CHAR_BUF);
 		IniStrToW(buf, wbuf.Buf());
-		act.sound = wcsdup(wbuf);
+		act.sound = wcsdup(wbuf.s());
 
 		ini.GetStr(CMD_KEY, buf, MAX_HISTORY_CHAR_BUF);
 		IniStrToW(buf, wbuf.Buf());
-		act.command = wcsdup(wbuf);
+		act.command = wcsdup(wbuf.s());
 
 		act.flags = ini.GetInt(FLAGS_KEY, 0);
 
@@ -943,7 +941,7 @@ BOOL Cfg::IniStrToW(char *str, WCHAR *wstr)
 	return	TRUE;
 }
 
-int Cfg::SearchJobW(WCHAR *title)
+int Cfg::SearchJobW(const WCHAR *title)
 {
 	for (int i=0; i < jobMax; i++) {
 		if (wcsicmp(jobArray[i]->title, title) == 0)
@@ -978,7 +976,7 @@ BOOL Cfg::AddJobW(const Job *job)
 	return	TRUE;
 }
 
-BOOL Cfg::DelJobW(WCHAR *title)
+BOOL Cfg::DelJobW(const WCHAR *title)
 {
 	int idx = SearchJobW(title);
 	if (idx == -1)
@@ -989,7 +987,7 @@ BOOL Cfg::DelJobW(WCHAR *title)
 	return	TRUE;
 }
 
-int Cfg::SearchFinActW(WCHAR *title, BOOL is_cmdline)
+int Cfg::SearchFinActW(const WCHAR *title, BOOL is_cmdline)
 {
 	for (int i=0; i < finActMax; i++) {
 		if (wcsicmp(finActArray[i]->title, title) == 0)
@@ -1030,7 +1028,7 @@ BOOL Cfg::AddFinActW(const FinAct *finAct)
 	return	TRUE;
 }
 
-BOOL Cfg::DelFinActW(WCHAR *title)
+BOOL Cfg::DelFinActW(const WCHAR *title)
 {
 	int idx = SearchFinActW(title);
 	if (idx == -1)

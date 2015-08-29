@@ -1,11 +1,12 @@
 ﻿static char *mainwinlog_id = 
-	"@(#)Copyright (C) 2015 H.Shirouzu		mainwinlog.cpp	ver3.00";
+	"@(#)Copyright (C) 2015 H.Shirouzu		mainwinlog.cpp	ver3.03";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2015-05-28(Thu)
-	Update					: 2015-08-12(Wed)
+	Update					: 2015-08-30(Sun)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
+	Modify					: Mapaler 2015-08-17
 	======================================================================== */
 
 #include "mainwin.h"
@@ -86,11 +87,11 @@ void TMainDlg::SetFileLogInfo()
 
 	if (isUtf8Log) {
 		U8str	str((WCHAR *)ti.listBuf->Buf());
-		::WriteFile(hFileLog, str, (int)strlen(str), &size, NULL);
+		::WriteFile(hFileLog, str.s(), (int)strlen(str.s()), &size, NULL);
 	}
 	else {
 		MBCSstr	str((WCHAR *)ti.listBuf->Buf());
-		::WriteFile(hFileLog, str, (int)strlen(str), &size, NULL);
+		::WriteFile(hFileLog, str.s(), (int)strlen(str.s()), &size, NULL);
 	}
 
 //	::UnlockFile(hFile, low, high, size, 0);
@@ -127,10 +128,10 @@ BOOL TMainDlg::WriteErrLogCore()
 
 	if (cfg.isUtf8Log) {
 		U8str	s(ti.errBuf->WBuf());
-		::WriteFile(hErrLog, s, (DWORD)strlen(s), &len, 0);
+		::WriteFile(hErrLog, s.s(), (DWORD)strlen(s.s()), &len, 0);
 	} else {
 		MBCSstr	s(ti.errBuf->WBuf());
-		::WriteFile(hErrLog, s, (DWORD)strlen(s), &len, 0);
+		::WriteFile(hErrLog, s.s(), (DWORD)strlen(s.s()), &len, 0);
 	}
 
 	return	TRUE;
@@ -180,7 +181,7 @@ void TMainDlg::WriteErrLogNoUI(const char *msg)
 		HANDLE	hStdErr = GetStdHandle(STD_ERROR_HANDLE);
 		Wstr	wmsg(msg);
 		::WriteConsoleW(hStdErr, L"FastCopy: ", 10, &size, 0);
-		::WriteConsoleW(hStdErr, wmsg, (DWORD)wcslen(wmsg), &size, 0);
+		::WriteConsoleW(hStdErr, wmsg.s(), (DWORD)wcslen(wmsg.s()), &size, 0);
 		::WriteConsoleW(hStdErr, L"\r\n\r\n", 4, &size, 0);
 	}
 
@@ -223,7 +224,7 @@ void TMainDlg::WriteLogHeader(HANDLE hFile, BOOL add_filelog)
 	}
 
 	if (finActIdx >= 1) {
-		WCHAR	*title = (WCHAR *)cfg.finActArray[finActIdx]->title;
+		const WCHAR	*title = cfg.finActArray[finActIdx]->title;
 		len = sprintf(buf, "<%s> %s\r\n%s\r\n"
 			, cfg.isUtf8Log ? AtoU8s(GetLoadStr(IDS_Log_PostPrc)) : GetLoadStr(IDS_Log_PostPrc) //PostPrc
 			, cfg.isUtf8Log ? WtoU8s(title) : WtoAs(title)

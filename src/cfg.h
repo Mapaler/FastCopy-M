@@ -1,9 +1,9 @@
 ﻿/* static char *cfg_id = 
-	"@(#)Copyright (C) 2005-2015 H.Shirouzu		cfg.h	Ver3.00"; */
+	"@(#)Copyright (C) 2005-2015 H.Shirouzu		cfg.h	Ver3.03"; */
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2005-01-23(Sun)
-	Update					: 2015-08-12(Wed)
+	Update					: 2015-08-30(Sun)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -230,13 +230,13 @@ public:
 	BOOL EntryDelPathHistory(WCHAR *del);
 	BOOL EntryFilterHistory(WCHAR *inc, WCHAR *exc, WCHAR *from, WCHAR *to, WCHAR *min, WCHAR *max);
 
-	int SearchJobW(WCHAR *title);
+	int SearchJobW(const WCHAR *title);
 	BOOL AddJobW(const Job *job);
-	BOOL DelJobW(WCHAR *title);
+	BOOL DelJobW(const WCHAR *title);
 
-	int SearchFinActW(WCHAR *title, BOOL cmd_line=FALSE);
+	int SearchFinActW(const WCHAR *title, BOOL cmd_line=FALSE);
 	BOOL AddFinActW(const FinAct *job);
-	BOOL DelFinActW(WCHAR *title);
+	BOOL DelFinActW(const WCHAR *title);
 };
 
 #define INVALID_POINTVAL	-10000

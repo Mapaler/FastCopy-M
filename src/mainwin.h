@@ -1,11 +1,12 @@
 ﻿/* static char *mainwin_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		mainwin.h	Ver3.00"; */
+	"@(#)Copyright (C) 2004-2015 H.Shirouzu		mainwin.h	Ver3.03"; */
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-08-12(Wed)
+	Update					: 2015-08-30(Sun)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
+	Modify					: Mapaler 2015-08-23
 	======================================================================== */
 
 #ifndef MAINWIN_H
@@ -192,7 +193,7 @@ protected:
 	BOOL	IsForeground();
 	BOOL	MoveCenter();
 	BOOL	SetupWindow();
-	void	SetFont();
+	void	StatusEditSetup();
 	BOOL	ExecCopy(DWORD exec_flags);
 	BOOL	ExecCopyCore(void);
 	BOOL	EndCopy(void);
@@ -262,7 +263,7 @@ public:
 
 	BOOL	RunAsAdmin(DWORD flg = 0);
 	BOOL	EnableErrLogFile(BOOL on);
-	int		CmdNameToComboIndex(WCHAR *cmd_name);
+	int		CmdNameToComboIndex(const WCHAR *cmd_name);
 
 	BOOL	GetRunasInfo(WCHAR **user_dir, WCHAR **virtual_dir);
 	BOOL	CommandLineExecW(int argc, WCHAR **argv);
