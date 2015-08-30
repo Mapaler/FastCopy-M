@@ -210,7 +210,7 @@ public:
 	VBVec() {}
 	BOOL Init(int min_num, int max_num, int grow_num=0) {
 		size_t min_size = ALIGN_SIZE(min_num * sizeof(T), PAGE_SIZE);
-		size_t max_size = ALIGN_SIZE(min_num * sizeof(T), PAGE_SIZE);
+		size_t max_size = ALIGN_SIZE(max_num * sizeof(T), PAGE_SIZE);
 		growSize = grow_num ? ALIGN_SIZE(grow_num * sizeof(T), PAGE_SIZE) : min_size;
 		usedNum  = 0;
 		return AllocBuf(min_size, max_size);

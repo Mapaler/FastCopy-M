@@ -181,7 +181,7 @@ BOOL TRegisterClassU8(LPCSTR class_name, UINT style, HICON hIcon, HCURSOR hCurso
 	Wstr	class_name_w(class_name, BY_UTF8);
 	Wstr	menu_str_w(menu_str, BY_UTF8);
 
-	return	TRegisterClassW(class_name_w, style, hIcon, hCursor, hbrBackground, classExtra,
-			wndExtra, menu_str_w);
+	return	TRegisterClassW(class_name_w.s(), style, hIcon, hCursor, hbrBackground, classExtra,
+			wndExtra, menu_str_w.s());
 }
 

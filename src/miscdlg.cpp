@@ -1,9 +1,9 @@
 ﻿static char *miscdlg_id = 
-	"@(#)Copyright (C) 2005-2015 H.Shirouzu		miscdlg.cpp	ver3.00";
+	"@(#)Copyright (C) 2005-2015 H.Shirouzu		miscdlg.cpp	ver3.03";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2005-01-23(Sun)
-	Update					: 2015-08-12(Wed)
+	Update					: 2015-08-30(Sun)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -1302,7 +1302,11 @@ BOOL TEditSub::AttachWnd(HWND _hWnd)
 #ifdef RICHED20A_TEST
 	char	cname[64];
 	if (::GetClassName(_hWnd, cname, sizeof(cname)) && stricmp(cname, "RICHEDIT20A") == 0) {
-		MessageBox("Change RichEdit20A to RichEdit20W in fastcopy.rc", "FastCopy Resource file problem");
+		static bool once = false;
+		if (!once) {
+			once = true;
+			MessageBox("Change RichEdit20A to RichEdit20W in fastcopy.rc", "FastCopy Resource file problem");
+		}
 	}
 #endif
 #endif

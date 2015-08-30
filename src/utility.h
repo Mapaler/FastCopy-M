@@ -1,9 +1,9 @@
 ﻿/* static char *utility_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		utility.h	Ver3.00"; */
+	"@(#)Copyright (C) 2004-2015 H.Shirouzu		utility.h	Ver3.03"; */
 /* ========================================================================
 	Project  Name			: Utility
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-08-12(Wed)
+	Update					: 2015-08-30(Sun)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -143,7 +143,7 @@ public:
 
 	Head *Alloc(void *data, int copy_size, int need_size);
 	Head *Get();
-	Head *Fetch(Head *prev=NULL);
+	Head *Peek(Head *prev=NULL);
 	void Clear();
 	int Num() { return num; }
 	int RemainSize();
