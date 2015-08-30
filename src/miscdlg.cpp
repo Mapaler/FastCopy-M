@@ -6,6 +6,7 @@
 	Update					: 2015-08-30(Sun)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
+	Modify					: Mapaler 2015-08-30
 	======================================================================== */
 
 #include "mainwin.h"
@@ -28,7 +29,7 @@ BOOL TAboutDlg::EvCreate(LPARAM lParam)
 	char	org[MAX_PATH], buf[MAX_PATH];
 
 	GetDlgItemText(ABOUT_STATIC, org, sizeof(org));
-	sprintf(buf, org, FASTCOPY_TITLE, GetVersionStr(), GetVerAdminStr(), GetCopyrightStr());
+	sprintf(buf, org, FASTCOPY_TITLE, GetVersionStr(), GetVerAdminStr(), GetCopyrightStr(), GetMenderStr());
 	SetDlgItemText(ABOUT_STATIC, buf);
 
 	if (rect.left == CW_USEDEFAULT)
