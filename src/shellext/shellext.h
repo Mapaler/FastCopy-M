@@ -71,6 +71,7 @@ protected:
 	PathArray	dstArray;
 	PathArray	clipArray;
 	BOOL		isCut;
+	HBITMAP		_bitmap;
 
 public:
 	ShellExt(void);
