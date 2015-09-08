@@ -1,11 +1,12 @@
 ﻿static char *shellext_id = 
-	"@(#)Copyright (C) 2005-2015 H.Shirouzu		shellext.cpp	Ver3.00";
+	"@(#)Copyright (C) 2005-2015 H.Shirouzu		shellext.cpp	Ver3.0.3.12";
 /* ========================================================================
 	Project  Name			: Shell Extension for Fast Copy
 	Create					: 2005-01-23(Sun)
 	Update					: 2015-06-22(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
+	Modify					: Mapaler 2015-09-09
 	======================================================================== */
 
 #include "../tlib/tlib.h"

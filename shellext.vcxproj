@@ -222,10 +222,6 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="..\..\压缩软件\7z1506-src\CPP\7zip\UI\Explorer\MenuLogo.bmp" />
-    <Image Include="MenuLogo.bmp" />
-    <Image Include="src\shellext\bitmap1.bmp" />
-    <Image Include="src\shellext\bitmap2.bmp" />
     <Image Include="src\shellext\MenuLogo.bmp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
