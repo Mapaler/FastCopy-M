@@ -70,6 +70,7 @@ public:
 	void Init(const char *_str) { str = (_str ? strdupNew(_str) : NULL); }
 	void UnInit() { delete [] str; str=NULL; }
 	U8str &operator =(const char *_str) { UnInit(); Init(_str); return *this; }
+	char &operator [](int idx) { return str[idx]; }
 	char	*Buf() { return str; }
 	const char *s() const { return str ? str : ""; }
 	bool IsEmpty() const { return !str || *str == 0; }
@@ -88,6 +89,7 @@ public:
 	void Init(const WCHAR *_str) { str = (_str ? wcsdupNew(_str) : NULL); }
 	void UnInit() { delete [] str; str = NULL; }
 	Wstr &operator =(const WCHAR *_str) { UnInit(); Init(_str); return *this; }
+	WCHAR &operator [](int idx) { return str[idx]; }
 	WCHAR	*Buf() { return str; }
 	const WCHAR *s() const { return str ? str : L""; }
 	bool IsEmpty() const { return !str || *str == 0; }
@@ -106,6 +108,7 @@ public:
 	void Init(const char *_str) { str = (_str ? strdupNew(_str) : NULL); }
 	void UnInit() { delete [] str; str = NULL; }
 	MBCSstr &operator =(const char *_str) { UnInit(); Init(_str); return *this; }
+	char &operator [](int idx) { return str[idx]; }
 	char	*Buf() { return str; }
 	const char *s() const { return str ? str : ""; }
 	bool IsEmpty() const { return !str || *str == 0; }

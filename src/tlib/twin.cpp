@@ -826,7 +826,7 @@ int TWin::GetWindowTextU8(char *text, int len)
 {
 	Wstr	wbuf(len);
 
-	wbuf.Buf()[0] = 0;
+	wbuf[0] = 0;
 	if (::GetWindowTextW(hWnd, wbuf.Buf(), len) < 0) return -1;
 
 	return	WtoU8(wbuf.s(), text, len);

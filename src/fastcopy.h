@@ -1,9 +1,9 @@
 ﻿/* static char *fastcopy_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		fastcopy.h	Ver3.02"; */
+	"@(#)Copyright (C) 2004-2015 H.Shirouzu		fastcopy.h	Ver3.04"; */
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-08-20(Thu)
+	Update					: 2015-09-09(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -288,6 +288,7 @@ public:
 	};
 	enum DebugFlags {
 		OVERWRITE_JUDGE_LOGGING	=	0x00000001,
+		OVL_LOGGING				=	0x00000002,
 	};
 
 	struct Info {
@@ -727,7 +728,7 @@ protected:
 	void FreeDstStat(void);
 	static int SortStatFunc(const void *stat1, const void *stat2);
 	BOOL WriteProc(int dir_len);
-	BOOL CaseAlignProc(int dir_len=-1);
+	BOOL CaseAlignProc(int dir_len=-1, BOOL need_log=FALSE);
 	BOOL WriteDirProc(int dir_len);
 	BOOL SetDirExtData(FileStat *stat);
 	DigestCalc *GetDigestCalc(DigestObj *obj, int require_size);
@@ -786,6 +787,7 @@ protected:
 #ifdef _DEBUG
 	BOOL TestWrite();
 #endif
+	void OvlLog(OverLap *ovl, const void *buf, const WCHAR *fmt,...); // for debug
 };
 
 // 1601年1月1日から1970年1月1日までの通算100ナノ秒
