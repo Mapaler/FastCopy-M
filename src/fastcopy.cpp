@@ -1,12 +1,12 @@
 ﻿static char *fastcopy_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		fastcopy.cpp	ver3.03";
+	"@(#)Copyright (C) 2004-2015 H.Shirouzu		fastcopy.cpp	ver3.04";
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-08-30(Sun)
+	Update					: 2015-09-09(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
-	Modify					: Mapaler 2015-08-23
+	Modify					: Mapaler 2015-09-09
 	======================================================================== */
 
 #include "fastcopy.h"
@@ -380,8 +380,31 @@ BOOL FastCopy::CleanRegFilter()
 
 int CountPathDepth(const WCHAR *path)
 {
+	bool	is_charclass = false;
+	bool	is_escape = false;
 	int		count = 0;
-	for ( ; *path; path++) if (*path == '/' || *path == '\\') count++;
+
+	for ( ; *path; path++) {
+		if (is_charclass) {
+			if (is_escape) {
+				is_escape = false;
+			} else {
+				if (*path == ']') {
+					is_charclass = false;
+				} else if (*path == '\\') {
+					is_escape = true;
+				}
+			}
+		}
+		else {
+			if (*path == '[') {
+				is_charclass = true;
+			}
+			else {
+				if (*path == '/' || *path == '\\') count++;
+			}
+		}
+	}
 	return	count;
 }
 
@@ -482,10 +505,6 @@ BOOL FastCopy::RegisterInfo(const PathArray *_srcArray, const PathArray *_dstArr
 
 	if ((info.flags & REPARSE_AS_NORMAL) && (info.mode == MOVE_MODE || info.mode == DELETE_MODE)) {
 		return	ConfirmErr(L"Illega Flags (junction/symlink)", NULL, CEF_STOP|CEF_NOAPI), FALSE;
-	}
-
-	if (info.flags & RESTORE_HARDLINK) {
-		return	ConfirmErr(L"Illega Flags (CreateHardLink)", NULL, CEF_STOP|CEF_NOAPI), FALSE;
 	}
 
 	driveMng.Init((DriveMng::NetDrvMode)info.netDrvMode);
@@ -2215,6 +2234,8 @@ WCHAR *FastCopy::RestorePath(WCHAR *path, int idx, int dir_len)
 //	return FALSE;
 //}
 
+#define OVL_LOG(...) if (info.debugFlags & OVL_LOGGING) { OvlLog(__VA_ARGS__); }
+
 BOOL FastCopy::ReadFileWithReduce(HANDLE hFile, void *buf, DWORD size, OverLap *ovl)
 {
 	DWORD	maxReadSizeSv = maxReadSize;
@@ -2228,6 +2249,8 @@ BOOL FastCopy::ReadFileWithReduce(HANDLE hFile, void *buf, DWORD size, OverLap *
 		ovl->orderSize = min(size, maxReadSize);
 		if (!::ReadFile(hFile, (BYTE *)buf, ovl->orderSize, &ovl->transSize, &ovl->ovl)) {
 			DWORD	err = ::GetLastError();
+			OVL_LOG(ovl, buf, L"read 1");
+
 			if (err == ERROR_NO_SYSTEM_RESOURCES) {
 				if (min(size, maxReadSize) <= REDUCE_SIZE) {
 					return FALSE;
@@ -2235,21 +2258,24 @@ BOOL FastCopy::ReadFileWithReduce(HANDLE hFile, void *buf, DWORD size, OverLap *
 				maxReadSize -= REDUCE_SIZE;
 				maxReadSize = ALIGN_SIZE(maxReadSize, REDUCE_SIZE);
 				wait_ovl = TRUE;
+				OVL_LOG(ovl, buf, L"read 2 maxReadSize=%d", maxReadSize);
 				continue;
 			}
 			if (err == ERROR_IO_PENDING) {
+				ovl->waiting = true;
 				if (wait_ovl) {
-					if (!WaitOverlapped(hFile, ovl)) return FALSE;
-				}
-				else {
-					ovl->waiting   = true;
-					break;	// success overlapped request
+					if (!WaitOverlapped(hFile, ovl)) {
+						OVL_LOG(ovl, buf, L"read wait err");
+						return FALSE;
+					}
+					OVL_LOG(ovl, buf, L"read manual wait OK");
 				}
 			}
 			else return FALSE;
 		}
 		break;	// 1回の転送で出来る範囲で終了
 	}
+	OVL_LOG(ovl, buf, L"read OK");
 
 	if (maxReadSize != maxReadSizeSv) {
 		WCHAR buf[128];
@@ -2394,6 +2420,7 @@ BOOL FastCopy::ReadFileProcCore(int cur_idx, int dir_len, Command cmd, FileStat 
 				sectorSize = max(srcSectorSize, dstSectorSize);
 				CancelReqBuf(ovl->req);
 				ovl->req = NULL;
+				OVL_LOG(ovl, ovl->req->buf, L"sectorSize reduce sector=%d", sectorSize);
 			}
 			else break;
 		}
@@ -2406,7 +2433,11 @@ BOOL FastCopy::ReadFileProcCore(int cur_idx, int dir_len, Command cmd, FileStat 
 
 		while (OverLap	*ovl_tmp = rOvl.GetObj(USED_LIST)) {
 			rOvl.PutObj(FREE_LIST, ovl_tmp);
+
+			OVL_LOG(ovl_tmp, ovl_tmp->req->buf, L"wait io start");
 			if (!(ret = WaitOvlIo(hIoFile, ovl_tmp, &total_size, &order_total))) break;
+			OVL_LOG(ovl_tmp, ovl_tmp->req->buf, L"wait io done data=%s",
+				AtoWs((char *)ovl_tmp->req->buf, 16));
 
 			total.readTrans += ovl_tmp->transSize; 
 			ovl_tmp->req->readSize = ovl_tmp->transSize;
@@ -2442,7 +2473,31 @@ BOOL FastCopy::ReadFileProc(int *open_idx, int dir_len)
 	FileStat *stat = openFiles[cur_idx];
 
 	if (stat->hFile != INVALID_HANDLE_VALUE /* && stat->isWriteShare */) {
+#ifdef _WIN64
+		static FileStat *sv_stat;
+		sv_stat = stat;
+#endif
 		::GetFileTime(stat->hFile, 0, 0, &stat->ftLastWriteTime);
+#ifdef _WIN64
+		if (stat != sv_stat) {
+			WCHAR wbuf[128];
+			swprintf(wbuf, L" rsi is changed(%p -> %p) idx=%d/%d stack=%p. recovered.",
+				sv_stat, stat, cur_idx, openFilesCnt, &cur_idx);
+			WriteErrLog(wbuf);
+			stat = sv_stat;
+//			static void    *stack[4];
+//			static WCHAR	buf[1024];
+//			memcpy(stack, (char *)&cur_idx - (0xb0 + 32), 32);
+//			swprintf(buf, L"Detect rsi changed. stat(s/sv/o)=%p/%p/%p cur_p=%p "
+//				L"(idx=%d/%d)\nv=%p/%p/%p/%p",
+//				stat, sv_stat, openFiles[cur_idx], &cur_idx, cur_idx, openFilesCnt,
+//				stack[0],stack[1],stack[2],stack[3]
+//				);
+//			ConfirmErr(buf, RestorePath(src, cur_idx, dir_len), CEF_STOP);
+//			*(char *)0 = 0;	// 意図的に例外を発生させる
+//			return FALSE;
+		}
+#endif
 		stat->nFileSizeLow = ::GetFileSize(stat->hFile, &stat->nFileSizeHigh);
 	}
 	int64	file_size = stat->FileSize();
@@ -3124,7 +3179,7 @@ BOOL FastCopy::WriteProc(int dir_len)
 			}
 		}
 		else if (writeReq->cmd == CASE_CHANGE) {
-			ret = CaseAlignProc(dir_len);
+			ret = CaseAlignProc(dir_len, true);
 		}
 		else if (writeReq->cmd == MKDIR || writeReq->cmd == INTODIR) {
 			PushDepth(dst, dir_len);
@@ -3160,13 +3215,13 @@ BOOL FastCopy::WriteProc(int dir_len)
 	return	ret && !isAbort;
 }
 
-BOOL FastCopy::CaseAlignProc(int dir_len)
+BOOL FastCopy::CaseAlignProc(int dir_len, BOOL need_log)
 {
 	if (dir_len >= 0) {
 		wcscpyz(dst + dir_len, writeReq->stat.cFileName);
 	}
 
-//	PutList(dst + dstPrefixLen, PL_CASECHANGE);
+//	if (need_log) PutList(dst + dstPrefixLen, PL_CASECHANGE);
 
 	if (isListingOnly) return TRUE;
 
@@ -4759,4 +4814,18 @@ BOOL FastCopy::TestWrite()
 }
 
 #endif
+
+void FastCopy::OvlLog(OverLap *ovl, const void *buf, const WCHAR *fmt,...)
+{
+	WCHAR	wbuf[512], *p = wbuf;
+	p += swprintf(wbuf, L"ovl(%10lld/%8d/%8d/%d) %p err=%d: ",
+		ovl->GetOvlOffset(), ovl->orderSize, ovl->transSize, ovl->waiting, buf, GetLastError());
+
+	va_list	va;
+	va_start(va, fmt);
+	vswprintf(p, fmt, va);
+	va_end(va);
+
+	WriteErrLog(wbuf);
+}
 

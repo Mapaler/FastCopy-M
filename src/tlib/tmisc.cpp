@@ -7,7 +7,7 @@
 	Update					: 2015-08-12(Wed)
 	Copyright				: H.Shirouzu
 	Reference				: 
-	Modify					: Mapaler 2015-08-23
+	Modify					: Mapaler 2015-09-09
 	======================================================================== */
 
 #include "tlib.h"
@@ -679,12 +679,42 @@ const WCHAR *FmtW(const WCHAR *fmt,...)
 static char *ExceptionTitle;
 static char *ExceptionLogFile;
 static char *ExceptionLogInfo;
-#define STACKDUMP_SIZE		256
-#define MAX_STACKDUMP_SIZE	8192
+#define STACKDUMP_SIZE			256
+#define MAX_STACKDUMP_SIZE		512
+#define MAX_DUMPBUF_SIZE		2048
+#define MAX_PRE_STACKDUMP_SIZE	256
+
+inline int reg_info_core(char *buf, const u_char *s, int size, const char *name)
+{
+	const u_char	*e = s + size;
+	int				len = strcpyz(buf, name);
+
+	for ( ; s < e; s+=4) {
+		if (!::IsBadReadPtr(s, 4)) {
+			len += sprintf(buf+len, " %02x%02x%02x%02x", s[0], s[1], s[2], s[3]);
+		}
+	}
+	if (len < 10) len += strcpyz(buf+len, " ........"); // nameしか出力がない場合
+
+	len += strcpyz(buf+len, "\r\n");
+	return	len;
+}
+
+inline int reg_info(char *buf, DWORD_PTR target, const char *name)
+{
+	int len = 0;
+
+	len += reg_info_core(buf+len, (const u_char *)target - 32, 32, "   ");
+	len += reg_info_core(buf+len, (const u_char *)target -  0, 32, name);
+	len += reg_info_core(buf+len, (const u_char *)target + 32, 32, "   ");
+	len += strcpyz(buf+len, "\r\n");
+
+	return	len < 50 ? 0 : len;	// target データがない場合は 0 に
+}
 
 LONG WINAPI Local_UnhandledExceptionFilter(struct _EXCEPTION_POINTERS *info)
 {
-	static char			buf[MAX_STACKDUMP_SIZE];
+	static char			buf[MAX_DUMPBUF_SIZE];
 	static HANDLE		hFile;
 	static SYSTEMTIME	tm;
 	static CONTEXT		*context;
@@ -705,7 +735,7 @@ LONG WINAPI Local_UnhandledExceptionFilter(struct _EXCEPTION_POINTERS *info)
 		" SI/DI/BP/SP : %p / %p / %p / %p\r\n"
 		" 08/09/10/11 : %p / %p / %p / %p\r\n"
 		" 12/13/14/15 : %p / %p / %p / %p\r\n"
-		"------- stack info -----\r\n"
+		"------- pre stack info -----\r\n"
 		, ExceptionTitle
 		, tm.wYear, tm.wMonth, tm.wDay, tm.wHour, tm.wMinute, tm.wSecond
 		, info->ExceptionRecord->ExceptionCode, info->ExceptionRecord->ExceptionAddress
@@ -719,7 +749,7 @@ LONG WINAPI Local_UnhandledExceptionFilter(struct _EXCEPTION_POINTERS *info)
 		" Code/Addr   : %X / %p\r\n"
 		" AX/BX/CX/DX : %08x / %08x / %08x / %08x\r\n"
 		" SI/DI/BP/SP : %08x / %08x / %08x / %08x\r\n"
-		"------- stack info -----\r\n"
+		"----- pre stack info ---\r\n"
 		, ExceptionTitle
 		, tm.wYear, tm.wMonth, tm.wDay, tm.wHour, tm.wMinute, tm.wSecond
 		, info->ExceptionRecord->ExceptionCode, info->ExceptionRecord->ExceptionAddress
@@ -735,6 +765,19 @@ LONG WINAPI Local_UnhandledExceptionFilter(struct _EXCEPTION_POINTERS *info)
 		esp = (char *)context->Esp;
 #endif
 
+	for (i=0; i < MAX_PRE_STACKDUMP_SIZE / STACKDUMP_SIZE; i++) {
+		stack = (esp - MAX_PRE_STACKDUMP_SIZE) + (i * STACKDUMP_SIZE);
+		if (::IsBadReadPtr(stack, STACKDUMP_SIZE)) continue;
+		len = 0;
+		for (j=0; j < STACKDUMP_SIZE / sizeof(DWORD_PTR); j++)
+			len += sprintf(buf + len, "%p%s", ((DWORD_PTR *)stack)[j],
+							((j+1)%(32/sizeof(DWORD_PTR))) ? " " : "\r\n");
+		::WriteFile(hFile, buf, len, &len, 0);
+	}
+
+	len = sprintf(buf, "------- stack info -----\r\n");
+	::WriteFile(hFile, buf, len, &len, 0);
+
 	for (i=0; i < MAX_STACKDUMP_SIZE / STACKDUMP_SIZE; i++) {
 		stack = esp + (i * STACKDUMP_SIZE);
 		if (::IsBadReadPtr(stack, STACKDUMP_SIZE))
@@ -746,7 +789,24 @@ LONG WINAPI Local_UnhandledExceptionFilter(struct _EXCEPTION_POINTERS *info)
 		::WriteFile(hFile, buf, len, &len, 0);
 	}
 
-	len = sprintf(buf, "------------------------\r\n\r\n");
+	len = sprintf(buf, "---- reg point info ----\r\n");
+#ifdef _WIN64
+	len += reg_info(buf+len, context->Rax, "Rax"); len += reg_info(buf+len, context->Rbx, "Rbx");
+	len += reg_info(buf+len, context->Rcx, "Rcx"); len += reg_info(buf+len, context->Rdx, "Rdx");
+	len += reg_info(buf+len, context->Rsi, "Rsi"); len += reg_info(buf+len, context->Rdi, "Rdi");
+	len += reg_info(buf+len, context->Rbp, "Rbp"); len += reg_info(buf+len, context->Rsp, "Rsp");
+	len += reg_info(buf+len, context->R8 , "R8 "); len += reg_info(buf+len, context->R9 , "R9 ");
+	len += reg_info(buf+len, context->R10, "R10"); len += reg_info(buf+len, context->R11, "R11");
+	len += reg_info(buf+len, context->R12, "R12"); len += reg_info(buf+len, context->R13, "R13");
+	len += reg_info(buf+len, context->R14, "R14"); len += reg_info(buf+len, context->R15, "R15");
+#else
+	len += reg_info(buf+len, context->Eax, "Eax"); len += reg_info(buf+len, context->Ebx, "Ebx");
+	len += reg_info(buf+len, context->Ecx, "Ecx"); len += reg_info(buf+len, context->Edx, "Edx");
+	len += reg_info(buf+len, context->Esi, "Esi"); len += reg_info(buf+len, context->Edi, "Edi");
+	len += reg_info(buf+len, context->Ebp, "Ebp"); len += reg_info(buf+len, context->Esp, "Esp");
+#endif
+
+	len += sprintf(buf+len, "------------------------\r\n\r\n");
 	::WriteFile(hFile, buf, len, &len, 0);
 	::CloseHandle(hFile);
 

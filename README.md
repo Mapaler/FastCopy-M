@@ -14,6 +14,9 @@ The main window icon displayed animation when runing copy process.
 支持调用网络URL作为帮助文件，资源文件内“IDS_FASTCOPYHELP”修改为网页url即可。<br />
 Support use http url to replace "chm" help files, change "IDS_FASTCOPYHELP" in resource to your URL.
 
+外壳扩展加入图标。<br />
+Shell Extension add icon.
+
 FastCopy-M采用VS2015，你可以自行替换工程到原始版本（或手动修改文件内版本号）以在VS2013或2012上编译。<br />
 FastCopy-M used VS2015, if you want bulid on VS2013 or earlier you can replace the "*.sln", "*.vcxproj" to original version (or modify project version in these file) by your self.
 
