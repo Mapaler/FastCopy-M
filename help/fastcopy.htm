@@ -72,11 +72,11 @@
 <body bgcolor="#eeffff">
 
 <div align="center">
-<h1 class="help_head1">FastCopy ver3.00</h1>
+<h1 class="help_head1">FastCopy ver3.04</h1>
 </div>
 <div class="help_all">
 
-<div align="right">2015/08/12 H.Shirouzu (白水啓章)</div>
+<div align="right">2015/09/09 H.Shirouzu (白水啓章)</div>
 
 <a name="index"/>
 <h2 class="help_head2">Index</h2>
@@ -370,7 +370,7 @@
 		<table class="help_table" border="4">
 		<tr><th>モード</th><th>動作内容</th>
 		<tr><td nowrap><strong>差分・コピー</strong></td>
-		  <td>デフォルトでは、ジャンクション・シンボリックリンク自体をコピーします。設定＆コマンドラインにより、指し示す先の配下をコピーする形にもできます（<a href="#junction_ps">注意</a>）。</td></tr>
+		  <td>デフォルトでは、ジャンクション・シンボリックリンク自体をコピーします。<a href="#setting_copyopt">設定</a>で指す先をコピーする挙動を変えることもできます（<a href="#junction_ps">注意</a>）。</td></tr>
 		<tr><td nowrap><strong>移動</strong></td>
 		  <td>常に、ジャンクション・シンボリックリンク自体を移動します。</td></tr>
 		<tr><td nowrap><strong>削除</strong></td>
@@ -402,8 +402,8 @@
 			<tr><td nowrap><strong>最終ファイルログ</strong></td>
 				<td>「<a href="#setting_log">ファイルログを記録する</a>」をチェックしている場合に最後に実行したファイルログを表示します</td></tr>
 			<tr><td nowrap><strong>FastCopyDir</strong></td><td>fastcopy.log や fastcopy2.ini が置かれているディレクトリを開きます</td></tr>
-			<tr><td nowrap><strong>位置固定</strong></td><td>起動時に、常に現在の位置で開くようにします</td></tr>
-			<tr><td nowrap><strong>サイズ固定</strong></td><td>起動時に、常に現在のサイズで開くようにします</td></tr>
+			<tr><td nowrap><strong>起動時位置にする</strong></td><td>起動時に、常に現在の位置で開くようにします</td></tr>
+			<tr><td nowrap><strong>起動時サイズにする</strong></td><td>起動時に、常に現在のサイズで開くようにします</td></tr>
 			<tr><td nowrap><strong>閉じる</strong></td><td>FastCopyを終了します</td></tr>
 			</table>
 		</div>
@@ -516,6 +516,7 @@
 			<tr><td><strong>Junction/Symlink は（実体/配下ではなく）それ自体をコピー</strong></td>
 			  <td>ジャンクション・シンボリックリンクはそのままジャンクション・シンボリックリンク自体を複製します（デフォルト）。
 					チェックを外すと指し示す先のファイルやディレクトリ配下をコピーします。（<a href="#junction_ps">注意 *1</a>）<br>
+					（移動・削除動作では設定に関わらず常にONとなります）<br>
 					なお、シンボリックリンクの作成には特権（管理者権限）が必要となります。</td></tr>
 			<tr><td><strong>「移動（全上書き）」を「移動（日付・サイズ）」 に変更</strong></td>
 			  <td>移動先に日付・サイズが同じファイルがあれば同一と見做して、コピーすることなく移動元から削除します</td></tr>
@@ -525,7 +526,7 @@
 			通常はファイルシステム種類に基づくタイムスタンプ精度（NTFS=100ns単位、FAT=2秒単位等）の差を自動補正して判定しますが、一部のNAS等で秒未満の更新日付が正確でない環境では手動で同一と見做す更新日付の許容範囲を設定してください。（msec単位）</td></tr>
 			</table>
 			<a name="junction_ps">
-			<strong>（*1）</strong>例えば C:\Users\(user)\AppData\Local\Applicatoin Data は C:\Users\(user)\AppData\Local を指しており、実体/配下コピーすると無限に再帰します（C:\Users\(user)\AppData\Local\Applicatoin Data\Applicatoin Data\Applicatoin Data\…）。従い、実体/配下コピーを有効にする場合は注意が必要です
+			<strong>（*1）</strong>例えば C:\Users\(user)\AppData\Local\Applicatoin Data は C:\Users\(user)\AppData\Local を指しており、実体/配下コピーすると無限に再帰します（C:\Users\(user)\AppData\Local\Applicatoin Data\Applicatoin Data\Applicatoin Data\…）。従い、実体/配下コピーを有効にする場合は注意が必要です。
 		</div>
 
 		<a name="setting_del"/>
@@ -796,6 +797,22 @@
 
 <table class="help_table" border="4">
 <tr><th>Version</th><th>説明</th></tr>
+<tr><td>v3.04</td><td>
+/linkdestを指定するとエラーになる問題を修正。<br>
+フィルタ指定でキャラクタクラス内にエスケープ文字があるとマッチしなくなる問題を修正<br>
+</td></tr>
+<tr><td>v3.03</td><td>
+32bit版はAthlonXP等の古い環境でも動作するように。<br>
+リパースファイルのベリファイ付移動が完了しない問題を修正。<br>
+新規インストール時の「移動」設定初期値を「逐次移動ON」に変更<br>
+その他リファイン（「実行」ボタンを初期フォーカスに。英語版UIフォント変更。英語ヘルプ改良）
+</td></tr>
+<tr><td>v3.02</td><td>
+DeDuplication機能（Windows Server 2008以降）でリパース化されたファイルに対応（/reparse に関わらず常に実体参照するように）。
+</td></tr>
+<tr><td>v3.01</td><td>
+１つのディレクトリ「直下」に多数のファイル（65,537ファイル(64bit版)/131,072ファイル(32bit版)以上）があった場合に、メモリ確保エラーで処理が中断することがあったのを修正
+</td></tr>
 <tr><td>v3.00</td><td>
 Read/Write に<a href="#setting_io">非同期I/Oを用いる</a>ことで（特にネットワークドライブ間の）転送速度を向上。<br>
 Include/Excludeフィルタ指定で最終パス要素以外に、<a href="#filter">相対パス＆開始パスを指定可能</a>に。<br>

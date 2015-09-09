@@ -1,9 +1,9 @@
 ﻿static char *mainwinopt_id = 
-	"@(#)Copyright (C) 2015 H.Shirouzu			mainwinopt.cpp	ver3.00";
+	"@(#)Copyright (C) 2015 H.Shirouzu			mainwinopt.cpp	ver3.03";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2015-05-27(Wed)
-	Update					: 2015-08-06(Thu)
+	Update					: 2015-08-30(Sun)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -403,7 +403,7 @@ BOOL TMainDlg::CommandLineExecW(int argc, WCHAR **argv)
 		TRUE : ExecCopy(CMDLINE_EXEC);
 }
 
-int TMainDlg::CmdNameToComboIndex(WCHAR *cmd_name)
+int TMainDlg::CmdNameToComboIndex(const WCHAR *cmd_name)
 {
 	for (int i=0; copyInfo[i].cmdline_name; i++) {
 		if (wcsicmp(cmd_name, copyInfo[i].cmdline_name) == 0)
@@ -451,7 +451,7 @@ BOOL MakeFileToPathArray(WCHAR *path_file, PathArray *path, BOOL is_ucs2)
 		}
 		else {
 			Wstr	wstr(buf, IsUTF8(buf) ? BY_UTF8 : BY_MBCS);
-			if (path->RegisterMultiPath(wstr, NEWLINE_STR) > 0) ret = TRUE;
+			if (path->RegisterMultiPath(wstr.s(), NEWLINE_STR) > 0) ret = TRUE;
 		}
 	}
 	::CloseHandle(hFile);

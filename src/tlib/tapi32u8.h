@@ -58,59 +58,71 @@ DWORD GetModuleFileNameU8(HMODULE hModule, char *buf, DWORD bufsize);
 UINT GetDriveTypeU8(const char *path);
 
 class U8str {
-	char	*s;
+	char	*str;
 public:
-	U8str(const WCHAR *_s=NULL) { s = _s ? WtoU8(_s) : NULL; }
-	U8str(const char *_s, StrMode mode=BY_UTF8) {
-		s = (_s ? mode == BY_UTF8 ? strdupNew(s) : AtoU8(_s) : NULL);
+	U8str(const WCHAR *_str=NULL) { Init(_str ? WtoU8(_str) : NULL); }
+	U8str(const char *_str, StrMode mode=BY_UTF8) {
+		Init(_str ? mode == BY_UTF8 ? strdupNew(_str) : AtoU8(_str) : NULL);
 	}
-	U8str(const U8str &u) { Init(u.s); }
-	U8str(int len) { if (len) { s = new char [len]; *s = 0; } else { s = NULL; } }
-	~U8str() { delete [] s; }
-	void Init(const char *_s) { s = (_s ? strdupNew(_s) : NULL); }
-	operator const char *() { return s; }
-	char	*Buf() { return s; }
+	U8str(const U8str &u) { Init(u.str); }
+	U8str(int len) { if (len) { str = new char [len]; *str = 0; } else { str = NULL; } }
+	~U8str() { UnInit(); }
+	void Init(const char *_str) { str = (_str ? strdupNew(_str) : NULL); }
+	void UnInit() { delete [] str; str=NULL; }
+	U8str &operator =(const char *_str) { UnInit(); Init(_str); return *this; }
+	char &operator [](int idx) { return str[idx]; }
+	char	*Buf() { return str; }
+	const char *s() const { return str ? str : ""; }
+	bool IsEmpty() const { return !str || *str == 0; }
 };
 
 class Wstr {
-	WCHAR	*s;
+	WCHAR	*str;
 public:
-	Wstr(const char *_s, StrMode mode=BY_UTF8) {
-		s = (_s ? mode == BY_UTF8 ? U8toW(_s) : AtoW(_s) : NULL);
+	Wstr(const char *_str=NULL, StrMode mode=BY_UTF8) {
+		Init(_str ? mode == BY_UTF8 ? U8toW(_str) : AtoW(_str) : NULL);
 	}
-	Wstr(const WCHAR *_s) { Init(_s); }
-	Wstr(const Wstr& w) { Init(w.s); }
-	Wstr(int len) { if (len) { s = new WCHAR [len]; *s = 0; } else { s = NULL; } }
-	~Wstr() { delete [] s; }
-	void Init(const WCHAR *_s) { s = (_s ? wcsdupNew(_s) : NULL); }
-	operator const WCHAR *() { return s; }
-	WCHAR	*Buf() { return s; }
+	Wstr(const WCHAR *_str) { Init(_str); }
+	Wstr(const Wstr& w) { Init(w.str); }
+	Wstr(int len) { if (len) { str = new WCHAR [len]; *str = 0; } else { str = NULL; } }
+	~Wstr() { UnInit(); }
+	void Init(const WCHAR *_str) { str = (_str ? wcsdupNew(_str) : NULL); }
+	void UnInit() { delete [] str; str = NULL; }
+	Wstr &operator =(const WCHAR *_str) { UnInit(); Init(_str); return *this; }
+	WCHAR &operator [](int idx) { return str[idx]; }
+	WCHAR	*Buf() { return str; }
+	const WCHAR *s() const { return str ? str : L""; }
+	bool IsEmpty() const { return !str || *str == 0; }
 };
 
 class MBCSstr {
-	char	*s;
+	char	*str;
 public:
-	MBCSstr(const WCHAR *_s=NULL) { s = _s ? WtoA(_s) : NULL; }
-	MBCSstr(const char *_s, StrMode mode=BY_UTF8) {
-		s = _s ? mode == BY_UTF8 ? U8toA(_s) : strdupNew(s) : NULL;
+	MBCSstr(const WCHAR *_str=NULL) { Init(_str ? WtoA(_str) : NULL); }
+	MBCSstr(const char *_str, StrMode mode=BY_UTF8) {
+		Init(_str ? mode == BY_UTF8 ? U8toA(_str) : strdupNew(_str) : NULL);
 	}
-	MBCSstr(int len) { if (len) { s = new char [len]; *s = 0; } else { s = NULL; } }
-	MBCSstr(const MBCSstr& m) { Init(m.s); }
-	~MBCSstr() { delete [] s; }
-	void Init(const char *_s) { s = (_s ? strdupNew(_s) : NULL); }
-	operator const char *() { return s; }
-	char	*Buf() { return s; }
+	MBCSstr(int len) { if (len) { str = new char [len]; *str = 0; } else { str = NULL; } }
+	MBCSstr(const MBCSstr& m) { Init(m.str); }
+	~MBCSstr() { UnInit(); }
+	void Init(const char *_str) { str = (_str ? strdupNew(_str) : NULL); }
+	void UnInit() { delete [] str; str = NULL; }
+	MBCSstr &operator =(const char *_str) { UnInit(); Init(_str); return *this; }
+	char &operator [](int idx) { return str[idx]; }
+	char	*Buf() { return str; }
+	const char *s() const { return str ? str : ""; }
+	bool IsEmpty() const { return !str || *str == 0; }
 };
 
 inline int U8toA(const char *src, char *dst, int bufsize) {
 	MBCSstr	ms(src, BY_UTF8);
-	strncpyz(dst, ms, bufsize);
+	strncpyz(dst, ms.s(), bufsize);
 	return	(int)strlen(dst);
 }
 
 inline int AtoU8(const char *src, char *dst, int bufsize) {
 	U8str	u8(src, BY_MBCS);
-	strncpyz(dst, u8, bufsize);
+	strncpyz(dst, u8.s(), bufsize);
 	return	(int)strlen(dst);
 }
 

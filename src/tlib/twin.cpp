@@ -38,7 +38,7 @@ BOOL TWin::Create(LPCSTR className, LPCSTR title, DWORD style, DWORD exStyle, HM
 	Wstr	className_w(className, BY_MBCS);
 	Wstr	title_w(title, BY_MBCS);
 
-	return	CreateW(className_w, title_w, style, exStyle, hMenu);
+	return	CreateW(className_w.s(), title_w.s(), style, exStyle, hMenu);
 }
 
 BOOL TWin::CreateW(const WCHAR *className, const WCHAR *title, DWORD style, DWORD exStyle,
@@ -793,7 +793,7 @@ BOOL TWin::CreateU8(LPCSTR className, LPCSTR title, DWORD style, DWORD exStyle, 
 	Wstr	className_w(className, BY_UTF8);
 	Wstr	title_w(title, BY_UTF8);
 
-	return	CreateW(className_w, title_w, style, exStyle, hMenu);
+	return	CreateW(className_w.s(), title_w.s(), style, exStyle, hMenu);
 }
 
 UINT TWin::GetDlgItemTextU8(int ctlId, char *buf, int len)
@@ -803,14 +803,14 @@ UINT TWin::GetDlgItemTextU8(int ctlId, char *buf, int len)
 	*buf = 0;
 	GetDlgItemTextW(ctlId, wbuf.Buf(), len);
 
-	return	WtoU8(wbuf, buf, len);
+	return	WtoU8(wbuf.s(), buf, len);
 }
 
 BOOL TWin::SetDlgItemTextU8(int ctlId, const char *buf)
 {
 	Wstr	wbuf(buf);
 
-	return	::SetDlgItemTextW(hWnd, ctlId, wbuf);
+	return	::SetDlgItemTextW(hWnd, ctlId, wbuf.s());
 }
 
 int TWin::MessageBoxU8(LPCSTR msg, LPCSTR title, UINT style)
@@ -819,24 +819,24 @@ int TWin::MessageBoxU8(LPCSTR msg, LPCSTR title, UINT style)
 	Wstr	wtitle(title);
 
 	
-	return	MessageBoxW(wmsg, wtitle, style);
+	return	MessageBoxW(wmsg.s(), wtitle.s(), style);
 }
 
 int TWin::GetWindowTextU8(char *text, int len)
 {
 	Wstr	wbuf(len);
 
-	wbuf.Buf()[0] = 0;
+	wbuf[0] = 0;
 	if (::GetWindowTextW(hWnd, wbuf.Buf(), len) < 0) return -1;
 
-	return	WtoU8(wbuf, text, len);
+	return	WtoU8(wbuf.s(), text, len);
 }
 
 BOOL TWin::SetWindowTextU8(const char *text)
 {
 	Wstr	wbuf(text);
 
-	return	::SetWindowTextW(hWnd, wbuf);
+	return	::SetWindowTextW(hWnd, wbuf.s());
 }
 
 int TWin::GetWindowTextLengthU8(void)
@@ -846,7 +846,7 @@ int TWin::GetWindowTextLengthU8(void)
 
 	if (::GetWindowTextW(hWnd, wbuf.Buf(), len + 1) <= 0) return 0;
 
-	return	WtoU8(wbuf, NULL, 0);
+	return	WtoU8(wbuf.s(), NULL, 0);
 }
 
 BOOL TWin::InvalidateRect(const RECT *rc, BOOL fErase)

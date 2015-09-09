@@ -21,7 +21,7 @@ HWND CreateWindowU8(const char *class_name, const char *window_name, DWORD style
 {
 	Wstr	class_name_w(class_name), window_name_w(window_name);
 
-	return	::CreateWindowW(class_name_w, window_name_w, style, x, y, width, height,
+	return	::CreateWindowW(class_name_w.s(), window_name_w.s(), style, x, y, width, height,
 			hParent, hMenu, hInst, param);
 }
 
@@ -29,25 +29,25 @@ HWND FindWindowU8(const char *class_name, const char *window_name)
 {
 	Wstr	class_name_w(class_name), window_name_w(window_name);
 
-	return	::FindWindowW(class_name_w, window_name_w);
+	return	::FindWindowW(class_name_w.s(), window_name_w.s());
 }
 
 BOOL AppendMenuU8(HMENU hMenu, UINT flags, UINT idItem, const char *item_str)
 {
 	Wstr	item_str_w(item_str);
-	return	::AppendMenuW(hMenu, flags, idItem, item_str_w);
+	return	::AppendMenuW(hMenu, flags, idItem, item_str_w.s());
 }
 
 BOOL InsertMenuU8(HMENU hMenu, UINT idItem, UINT flags, UINT idNewItem, const char *item_str)
 {
 	Wstr	item_str_w(item_str);
-	return	::InsertMenuW(hMenu, idItem, flags, idNewItem, item_str_w);
+	return	::InsertMenuW(hMenu, idItem, flags, idNewItem, item_str_w.s());
 }
 
 BOOL ModifyMenuU8(HMENU hMenu, UINT idItem, UINT flags, UINT idNewItem, const char *item_str)
 {
 	Wstr	item_str_w(item_str);
-	return	::ModifyMenuW(hMenu, idItem, flags, idNewItem, item_str_w);
+	return	::ModifyMenuW(hMenu, idItem, flags, idNewItem, item_str_w.s());
 }
 
 UINT DragQueryFileU8(HDROP hDrop, UINT iFile, char *buf, UINT cb)
@@ -57,7 +57,7 @@ UINT DragQueryFileU8(HDROP hDrop, UINT iFile, char *buf, UINT cb)
 	UINT	ret = ::DragQueryFileW(hDrop, iFile, wbuf.Buf(), cb);
 
 	if (ret > 0 && buf) {
-		ret = WtoU8(wbuf, buf, cb);
+		ret = WtoU8(wbuf.s(), buf, cb);
 	}
 	return	ret;
 }
@@ -79,7 +79,7 @@ HANDLE FindFirstFileU8(const char *path, WIN32_FIND_DATA_U8 *fdat)
 	WIN32_FIND_DATAW	fdat_w;
 	HANDLE				ret;
 
-	if ((ret = ::FindFirstFileW(wpath, &fdat_w)) != INVALID_HANDLE_VALUE) {
+	if ((ret = ::FindFirstFileW(wpath.s(), &fdat_w)) != INVALID_HANDLE_VALUE) {
 		WIN32_FIND_DATA_WtoU8(&fdat_w, fdat);
 	}
 
@@ -126,25 +126,25 @@ HANDLE CreateFileU8(const char *path, DWORD access_flg, DWORD share_flg, SECURIT
 	DWORD create_flg, DWORD attr_flg, HANDLE hTemplate)
 {
 	Wstr wpath(path);
-	return ::CreateFileW(wpath, access_flg, share_flg, sa, create_flg, attr_flg, hTemplate);
+	return ::CreateFileW(wpath.s(), access_flg, share_flg, sa, create_flg, attr_flg, hTemplate);
 }
 
 BOOL DeleteFileU8(const char *path)
 {
 	Wstr wpath(path);
-	return ::DeleteFileW(wpath);
+	return ::DeleteFileW(wpath.s());
 }
 
 BOOL CreateDirectoryU8(const char *path, SECURITY_ATTRIBUTES *lsa)
 {
 	Wstr wpath(path);
-	return ::CreateDirectoryW(wpath, lsa);
+	return ::CreateDirectoryW(wpath.s(), lsa);
 }
 
 BOOL RemoveDirectoryU8(const char *path)
 {
 	Wstr wpath(path);
-	return ::RemoveDirectoryW(wpath);
+	return ::RemoveDirectoryW(wpath.s());
 }
 
 DWORD GetFullPathNameU8(const char *path, DWORD size, char *buf, char **fname)
@@ -152,13 +152,13 @@ DWORD GetFullPathNameU8(const char *path, DWORD size, char *buf, char **fname)
 	Wstr	wpath(path), wbuf(size);
 	WCHAR	*wfname=NULL;
 
-	DWORD	ret = ::GetFullPathNameW(wpath, size, wbuf.Buf(), &wfname);
+	DWORD	ret = ::GetFullPathNameW(wpath.s(), size, wbuf.Buf(), &wfname);
 
 	if (ret == 0 || ret > size)
 		return	ret;
 
 	int fname_len = wfname ? WtoU8(wfname, buf, size) : 0;
-	int path_len  = WtoU8(wbuf, buf, size);
+	int path_len  = WtoU8(wbuf.s(), buf, size);
 	*fname = wfname ? (buf + path_len - fname_len) : NULL;
 
 	return	ret;
@@ -167,19 +167,19 @@ DWORD GetFullPathNameU8(const char *path, DWORD size, char *buf, char **fname)
 DWORD GetFileAttributesU8(const char *path)
 {
 	Wstr wpath(path);
-	return ::GetFileAttributesW(wpath);
+	return ::GetFileAttributesW(wpath.s());
 }
 
 BOOL SetFileAttributesU8(const char *path, DWORD attr)
 {
 	Wstr	wpath(path);
-	return	::SetFileAttributesW(wpath, attr);
+	return	::SetFileAttributesW(wpath.s(), attr);
 }
 
 HINSTANCE ShellExecuteU8(HWND hWnd, LPCSTR op, LPCSTR file, LPSTR params, LPCSTR dir, int nShow)
 {
 	Wstr	op_w(op), file_w(file), params_w(params), dir_w(dir);
-	return	::ShellExecuteW(hWnd, op_w, file_w, params_w, dir_w, nShow);
+	return	::ShellExecuteW(hWnd, op_w.s(), file_w.s(), params_w.s(), dir_w.s(), nShow);
 }
 
 BOOL ShellExecuteExU8(SHELLEXECUTEINFO *info)
@@ -189,11 +189,11 @@ BOOL ShellExecuteExU8(SHELLEXECUTEINFO *info)
 	Wstr	verb_w(info->lpVerb), file_w(info->lpFile), param_w(info->lpParameters),
 			dir_w(info->lpDirectory), class_w(info->lpClass);
 
-	info_w.lpVerb		= verb_w;
-	info_w.lpFile		= file_w;
-	info_w.lpParameters	= param_w;
-	info_w.lpDirectory	= dir_w;
-	info_w.lpClass		= class_w;
+	info_w.lpVerb		= verb_w.s();
+	info_w.lpFile		= file_w.s();
+	info_w.lpParameters	= param_w.s();
+	info_w.lpDirectory	= dir_w.s();
+	info_w.lpClass		= class_w.s();
 
 	BOOL	ret = ::ShellExecuteExW(&info_w);
 
@@ -211,7 +211,7 @@ DWORD GetCurrentDirectoryU8(DWORD size, char *dir)
 	Wstr	dir_w(size);
 	DWORD	ret = ::GetCurrentDirectoryW(size, dir_w.Buf());
 	if (ret > 0) {
-		ret = WtoU8(dir_w, dir, size);
+		ret = WtoU8(dir_w.s(), dir, size);
 	}
 	return	ret;
 }
@@ -221,7 +221,7 @@ DWORD GetWindowsDirectoryU8(char *dir, DWORD size)
 	Wstr	dir_w(size);
 	DWORD	ret = ::GetWindowsDirectoryW(dir_w.Buf(), size);
 	if (ret > 0) {
-		ret = WtoU8(dir_w, dir, size);
+		ret = WtoU8(dir_w.s(), dir, size);
 	}
 	return	ret;
 }
@@ -229,7 +229,7 @@ DWORD GetWindowsDirectoryU8(char *dir, DWORD size)
 BOOL SetCurrentDirectoryU8(char *dir)
 {
 	Wstr	dir_w(dir);
-	return	::SetCurrentDirectoryW(dir_w);
+	return	::SetCurrentDirectoryW(dir_w.s());
 }
 
 BOOL GetOpenFileNameU8Core(LPOPENFILENAME ofn, BOOL (WINAPI *ofn_func)(OPENFILENAMEW*))
@@ -254,22 +254,22 @@ BOOL GetOpenFileNameU8Core(LPOPENFILENAME ofn, BOOL (WINAPI *ofn_func)(OPENFILEN
 	U8toW(ofn->lpstrDefExt, defext_w.Buf(), MAX_PATH);
 	U8toW(ofn->lpTemplateName, template_w.Buf(), MAX_PATH);
 
-	if (ofn->lpstrFilter)		ofn_w.lpstrFilter		= filter_w;
+	if (ofn->lpstrFilter)		ofn_w.lpstrFilter		= filter_w.s();
 	if (ofn->lpstrCustomFilter)	ofn_w.lpstrCustomFilter	= cfilter_w.Buf();
 	if (ofn->lpstrFile)			ofn_w.lpstrFile			= file_w.Buf();
 	if (ofn->lpstrFileTitle)	ofn_w.lpstrFileTitle	= ftitle_w.Buf();
-	if (ofn->lpstrInitialDir)	ofn_w.lpstrInitialDir	= idir_w;
-	if (ofn->lpstrTitle)		ofn_w.lpstrTitle		= title_w;
-	if (ofn->lpstrDefExt)		ofn_w.lpstrDefExt		= defext_w;
-	if (ofn->lpTemplateName)	ofn_w.lpTemplateName	= template_w;
+	if (ofn->lpstrInitialDir)	ofn_w.lpstrInitialDir	= idir_w.s();
+	if (ofn->lpstrTitle)		ofn_w.lpstrTitle		= title_w.s();
+	if (ofn->lpstrDefExt)		ofn_w.lpstrDefExt		= defext_w.s();
+	if (ofn->lpTemplateName)	ofn_w.lpTemplateName	= template_w.s();
 
 	BOOL	ret = ofn_func(&ofn_w);
 
-	if (ofn->lpstrCustomFilter)	WtoU8(cfilter_w, ofn->lpstrCustomFilter, ofn->nMaxCustFilter);
-	if (ofn->lpstrFileTitle)	WtoU8(ftitle_w, ofn->lpstrFileTitle, ofn->nMaxFileTitle);
+	if (ofn->lpstrCustomFilter)	WtoU8(cfilter_w.s(), ofn->lpstrCustomFilter, ofn->nMaxCustFilter);
+	if (ofn->lpstrFileTitle)	WtoU8(ftitle_w.s(), ofn->lpstrFileTitle, ofn->nMaxFileTitle);
 	if (ofn->lpstrFile) {
 		if (ofn_w.Flags & OFN_ALLOWMULTISELECT) {
-			const WCHAR *wp=file_w;
+			const WCHAR *wp=file_w.s();
 			char *p;
 			for (p=ofn->lpstrFile; wp && *wp; wp+=wcslen(wp)+1) {
 				p += WtoU8(wp, p, (int)(ofn->nMaxFile - (p - ofn->lpstrFile)));
@@ -277,7 +277,7 @@ BOOL GetOpenFileNameU8Core(LPOPENFILENAME ofn, BOOL (WINAPI *ofn_func)(OPENFILEN
 			*p = 0;
 		}
 		else {
-			WtoU8(file_w, ofn->lpstrFile, ofn->nMaxFile);
+			WtoU8(file_w.s(), ofn->lpstrFile, ofn->nMaxFile);
 		}
 	}
 //	if (ofn_w.lpstrFile[ofn_w.nFileOffset])
@@ -335,7 +335,7 @@ BOOL ReadLinkU8(LPCSTR src, LPSTR dest, LPSTR arg)
 BOOL PlaySoundU8(const char *path, HMODULE hmod, DWORD flg)
 {
 	Wstr	path_w(path);
-	return	::PlaySoundW(path_w, hmod, flg);
+	return	::PlaySoundW(path_w.s(), hmod, flg);
 }
 
 /*=========================================================================
@@ -367,7 +367,7 @@ UINT GetDriveTypeU8(const char *path)
 {
 	Wstr	wpath(path);
 
-	return	::GetDriveTypeW(wpath);
+	return	::GetDriveTypeW(wpath.s());
 }
 
 LPSTR GetLoadStrU8(UINT resId, HINSTANCE hI)
@@ -387,7 +387,7 @@ LPSTR GetLoadStrU8(UINT resId, HINSTANCE hI)
 		if (::LoadStringW(hI ? hI : defaultStrInstance, resId, buf, sizeof(buf) / sizeof(WCHAR))
 				>= 0) {
 			U8str	buf_u8(buf);
-			obj = new TResHashObj(resId, strdup(buf_u8));
+			obj = new TResHashObj(resId, strdup(buf_u8.s()));
 			hash->Register(obj);
 		}
 	}

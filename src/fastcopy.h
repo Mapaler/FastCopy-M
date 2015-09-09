@@ -1,9 +1,9 @@
 ﻿/* static char *fastcopy_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		fastcopy.h	Ver3.00"; */
+	"@(#)Copyright (C) 2004-2015 H.Shirouzu		fastcopy.h	Ver3.04"; */
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-08-12(Wed)
+	Update					: 2015-09-09(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -36,6 +36,7 @@
 #define IsReparse(attr) ((attr) & FILE_ATTRIBUTE_REPARSE_POINT)
 #define IsNoReparseDir(attr) (IsDir(attr) && !IsReparse(attr))
 #define Attr(d) ((d)->dwFileAttributes)
+#define IsSymlink(d) (IsReparse((d)->dwFileAttributes) && (d)->dwReserved0==IO_REPARSE_TAG_SYMLINK)
 
 #define FASTCOPY			"FastCopy"
 #define FASTCOPYW			L"FastCopy"
@@ -143,10 +144,12 @@ struct FileStat {
 	DWORD		nFileSizeLow;	// WIN32_FIND_DATA の nFileSizeLow/High
 	DWORD		nFileSizeHigh;	// とは逆順（int64 用）
 	DWORD		dwFileAttributes;	// 0 == ALTSTREAM
+	DWORD		dwReserved0; 		// WIN32_FIND_DATA の dwReserved0 (reparse tag)
 	DWORD		lastError;
 	bool		isExists;
 	bool		isCaseChanged;
 	bool		isWriteShare;
+	bool		isNeedDel;
 	FilterRes	filterRes;
 	int			renameCount;
 	int			size;
@@ -261,7 +264,7 @@ public:
 		OVERWRITE_DELETE	=	0x00000800,
 		OVERWRITE_DELETE_NSA=	0x00001000,
 		OVERWRITE_PARANOIA	=	0x00002000,
-		USE_REPARSE			=	0x00004000,
+		REPARSE_AS_NORMAL	=	0x00004000,
 		COMPARE_CREATETIME	=	0x00008000,
 		SERIAL_MOVE			=	0x00010000,
 		SERIAL_VERIFY_MOVE	=	0x00020000,
@@ -285,6 +288,7 @@ public:
 	};
 	enum DebugFlags {
 		OVERWRITE_JUDGE_LOGGING	=	0x00000001,
+		OVL_LOGGING				=	0x00000002,
 	};
 
 	struct Info {
@@ -420,6 +424,7 @@ protected:
 		int64		fileSize;
 		int64		wTime;
 		DWORD		dwAttr;
+		enum		Status { OK, NG, PASS } status;
 		BYTE		digest[SHA1_SIZE];
 		int			pathLen;
 		WCHAR		path[1];
@@ -428,8 +433,8 @@ protected:
 		int64		fileID;
 		int64		fileSize;
 		int64		wTime;
-		enum		Status { INIT, CONT, DONE, ERR, PASS, FIN };
-		DWORD		status;
+		DWORD		dwAttr;
+		enum		Status { INIT, CONT, DONE, PRE_ERR, ERR, PASS, FIN } status;
 		int			dataSize;
 		BYTE		digest[SHA1_SIZE];
 		BYTE		*data;
@@ -586,9 +591,9 @@ protected:
 	BOOL	isSameVol;
 	BOOL	isRename;
 	enum	DstReqKind { DSTREQ_NONE=0, DSTREQ_READSTAT=1, DSTREQ_DIGEST=2 } dstAsyncRequest;
-	FileStat *dstAsyncStat;	// for MakeAsyncDigest
+	void	*dstAsyncInfo;
 	BOOL	dstRequestResult;
-	enum	RunMode { RUN_NORMAL, RUN_DIGESTREQ } runMode;
+	enum	RunMode { RUN_NORMAL, RUN_DIGESTREQ, RUN_FINISH } runMode;
 
 	// ダイジェスト関連
 	class DigestBuf : public TDigest {	// List-V モード用
@@ -606,14 +611,23 @@ protected:
 		bool	is_reparse;
 		bool	is_hardlink;
 		bool	is_stream;
-		bool	is_digest;
-		bool	is_require_del;
 		bool	is_nonbuf;
 	};
 
 	DataList	digestList;	// ハッシュ/Open記録（WriteThread のみ利用）
-	BOOL IsUsingDigestList() {
+	bool IsUsingDigestList() {
 		return (info.flags & VERIFY_FILE) && (info.flags & LISTING_ONLY) == 0;
+	}
+	bool IsReparseEx(DWORD attr) {
+		return IsReparse(attr) && (info.flags & REPARSE_AS_NORMAL) == 0;
+	}
+	bool NeedSymlinkDeref(const WIN32_FIND_DATAW *fdat) {	// symlink の実体参照が必要かどうか
+		return (info.flags & REPARSE_AS_NORMAL) && !IsDir(fdat->dwFileAttributes)
+				&& IsSymlink(fdat);
+	}
+	bool NeedSymlinkDeref(const FileStat *stat) {
+		return (info.flags & REPARSE_AS_NORMAL) && !IsDir(stat->dwFileAttributes)
+				&& IsSymlink(stat);
 	}
 	enum		CheckDigestMode { CD_NOWAIT, CD_WAIT, CD_FINISH };
 	DataList	wDigestList; // ダイジェスト算出用（Read用バッファ含む）
@@ -649,6 +663,7 @@ protected:
 
 	BOOL CheckAndCreateDestDir(int dst_len);
 	BOOL FinishNotify(void);
+	BOOL ClearNonSurrogateReparse(WIN32_FIND_DATAW *fdat);
 	BOOL PreSearch(void);
 	BOOL PreSearchProc(WCHAR *path, int prefix_len, int dir_len, FilterRes fr);
 	BOOL PutMoveList(WCHAR *path, int path_len, FileStat *stat, MoveObj::Status status);
@@ -706,14 +721,14 @@ protected:
 	BOOL IsSameContents(FileStat *srcStat, FileStat *dstStat);
 	BOOL MakeDigest(WCHAR *path, DigestBuf *dbuf, FileStat *stat);
 
-	void DstRequest(DstReqKind kind, FileStat *stat=NULL);
+	void DstRequest(DstReqKind kind, void *info=NULL);
 	BOOL WaitDstRequest(void);
 	BOOL CheckDstRequest(void);
-	BOOL ReadDstStat(void);
+	BOOL ReadDstStat(int dir_len);
 	void FreeDstStat(void);
 	static int SortStatFunc(const void *stat1, const void *stat2);
 	BOOL WriteProc(int dir_len);
-	BOOL CaseAlignProc(int dir_len=-1);
+	BOOL CaseAlignProc(int dir_len=-1, BOOL need_log=FALSE);
 	BOOL WriteDirProc(int dir_len);
 	BOOL SetDirExtData(FileStat *stat);
 	DigestCalc *GetDigestCalc(DigestObj *obj, int require_size);
@@ -721,7 +736,7 @@ protected:
 	BOOL MakeDigestAsync(DigestObj *obj);
 	BOOL CheckDigests(CheckDigestMode mode);
 	BOOL WriteFileWithReduce(HANDLE hFile, void *buf, DWORD size, OverLap *ovl);
-	BOOL WriteDigestProc(int dst_len, FileStat *stat);
+	BOOL WriteDigestProc(int dst_len, FileStat *stat, DigestObj::Status status);
 	BOOL WriteFileProc(int dst_len);
 	BOOL WriteFileProcCore(HANDLE *_fh, int dst_len, FileStat *stat, WInfo *wi);
 	BOOL WriteFileCore(HANDLE fh, FileStat *stat, WInfo *wi, DWORD mode, DWORD share, DWORD flg);
@@ -772,6 +787,7 @@ protected:
 #ifdef _DEBUG
 	BOOL TestWrite();
 #endif
+	void OvlLog(OverLap *ovl, const void *buf, const WCHAR *fmt,...); // for debug
 };
 
 // 1601年1月1日から1970年1月1日までの通算100ナノ秒
