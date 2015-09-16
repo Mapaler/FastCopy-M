@@ -6,7 +6,7 @@
 	Update					: 2015-08-30(Sun)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
-	Modify					: Mapaler 2015-08-23
+	Modify					: Mapaler 2015-09-16
 	======================================================================== */
 
 #include "mainwin.h"
@@ -422,6 +422,13 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 	pathEdit.AttachWnd(GetDlgItem(PATH_EDIT));
 	errEdit.AttachWnd(GetDlgItem(ERR_EDIT));
 
+	int		len;
+	MAX_NORMAL_FASTCOPY_ICON = atoi((char *)GetLoadStr(IDS_Animation_Icon_Num));
+	len = MAX_NORMAL_FASTCOPY_ICON;
+	//用指针hMainIcon指向new动态分配的长度为len*sizeof(HICON)的内存空间 
+	hMainIcon = new HICON[len];
+
+	//初始化图标
 	int		i;
 	for (i=0; i < MAX_FASTCOPY_ICON; i++) {
 		hMainIcon[i] = ::LoadIcon(TApp::GetInstance(), (LPCSTR)(FASTCOPY_ICON + i));

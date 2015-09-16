@@ -7,7 +7,7 @@
 	Update					: 2015-08-05(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
-	Modify  				: Mapaler 2015-8-06
+	Modify  				: Mapaler 2015-09-15
 	======================================================================== */
 
 #include "../tlib/tlib.h"

@@ -6,7 +6,7 @@
 	Update					: 2015-08-30(Sun)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
-	Modify					: Mapaler 2015-08-23
+	Modify					: Mapaler 2015-09-16
 	======================================================================== */
 
 #ifndef MAINWIN_H
@@ -62,7 +62,8 @@ struct CopyInfo {
 	FastCopy::OverWrite	overWrite;
 };
 
-#define MAX_NORMAL_FASTCOPY_ICON	6 //动态图标个数
+//#define MAX_NORMAL_FASTCOPY_ICON	6 //动态图标个数
+//因为define的意义是编译时替换代码中文字而非产生const常量，因此不需要修改也可以使用。
 #define FCNORMAL_ICON_IDX			0
 #define FCWAIT_ICON_IDX				MAX_NORMAL_FASTCOPY_ICON
 #define MAX_FASTCOPY_ICON			MAX_NORMAL_FASTCOPY_ICON + 1
@@ -85,7 +86,9 @@ protected:
 	int				orgArgc;
 	WCHAR			**orgArgv;
 	Cfg				cfg;
-	HICON			hMainIcon[MAX_FASTCOPY_ICON];
+	int				MAX_NORMAL_FASTCOPY_ICON; //动态图标个数
+	HICON			*hMainIcon;
+	//HICON			hMainIcon[MAX_FASTCOPY_ICON];
 	CopyInfo		*copyInfo;
 	int				finActIdx;
 	int				doneRatePercent;
