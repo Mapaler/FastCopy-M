@@ -38,7 +38,8 @@ FastCopy-M特點：
 
 許可:
 -------------------------------------------------------------------------
-FastCopy ver3.02 Copyright(C) 2004-2015 by SHIROUZU Hiroaki
+FastCopy ver3.0
+Copyright(C) 2004-2015 SHIROUZU Hiroaki All rights reserved.
 
 此程式是免費軟體。你可以將它根據GNU通用公共許可證第三版重新分發和/或修改。
 
