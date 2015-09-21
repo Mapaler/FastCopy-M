@@ -361,7 +361,7 @@ BOOL BrowseDirDlgW(TWin *parentWin, UINT editCtl, WCHAR *title, int flg)
 				// Set the title of the dialog.
 				if (SUCCEEDED(hr))
 				{
-					hr = pfd->SetTitle(GetLoadStrW(IDS_SRC_SELECT));
+					hr = pfd->SetTitle(title);
 				}
 
 
@@ -378,7 +378,7 @@ BOOL BrowseDirDlgW(TWin *parentWin, UINT editCtl, WCHAR *title, int flg)
 						// Set up the customization.
 						IFileDialogCustomize *pfdc = NULL;
 						hr = pfd->QueryInterface(IID_PPV_ARGS(&pfdc));
-						if (SUCCEEDED(hr))
+						if (SUCCEEDED(hr) && !(flg & BRDIR_BACKSLASH))
 						{
 							// Create a visual group.
 							hr = pfdc->StartVisualGroup(CONTROL_GROUP, L"Test function: \r\n(Not work)");
@@ -687,7 +687,6 @@ BOOL TBrowseDirDlgW::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl)
 		return	TRUE;
 
 	case FILESELECT_BUTTON:
-		MessageBox(0, "test");
 		mode = FILESELECT;
 		PostMessage(WM_CLOSE, 0, 0);
 		return	TRUE;
