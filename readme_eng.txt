@@ -1,7 +1,7 @@
 ﻿======================================================================
                    FastCopy  ver3.04                   2015/09/09
                                                  SHIROUZU Hiroaki
-                   FastCopy-M branch                2015/09/09
+                   FastCopy-M branch                2015/09/22
                                                  Mapaler
 ======================================================================
 
@@ -16,13 +16,15 @@
 	FastCopy is GPLv3 license, you can modify and use under GPLv3
 	
 	FastCopy-M feature :
-	More complete multilanguage supports.
+    More complete multilanguage supports.
+    
+    After Vista support new Shell common file dialog (Easy-to-use, and can select folder multiple)
 
-	The main window icon displayed animation when runing copy process.
-	
-	Support use http url to replace "chm" help files.
-	
-	Shell Extension add icon.
+    The main window icon displayed animation when runing copy process. And allows to modify the total number of animation frames.
+    
+    Support use http url to replace "chm" help files.
+    
+    Shell Extension add icon.
 
 License:
 	-------------------------------------------------------------------------
@@ -43,4 +45,4 @@ Usage：
 
 Build:
 	VS2013 or later
-	FastCopy-M used VS2015, if you want bulid on VS2013 or earlier you can replace the "*.sln", "*.vcxproj" to original version (or modify project version in these file) by your self.
+	FastCopy-M used VS2015, if you want bulid on VS2013 or earlier you can replace the "*.sln", "*.vcxproj" to original version (or modify project version in these file) by your self. Additional Dependencies need include "shlwapi.lib" after ver3.0.4.20.

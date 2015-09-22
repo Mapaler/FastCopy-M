@@ -1,5 +1,5 @@
 ﻿static char *install_id = 
-	"@(#)Copyright (C) 2005-2015 H.Shirouzu		install.cpp	Ver3.00";
+	"@(#)Copyright (C) 2005-2015 H.Shirouzu		install.cpp	Ver3.0.4.20";
 /* ========================================================================
 	Project  Name			: Installer for FastCopy
 	Module Name				: Installer Application Class
@@ -7,7 +7,7 @@
 	Update					: 2015-08-05(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
-	Modify  				: Mapaler 2015-09-15
+	Modify  				: Mapaler 2015-09-22
 	======================================================================== */
 
 #include "../tlib/tlib.h"

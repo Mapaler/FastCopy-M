@@ -1,12 +1,12 @@
 ﻿static char *miscdlg_id = 
-	"@(#)Copyright (C) 2005-2015 H.Shirouzu		miscdlg.cpp	ver3.03";
+	"@(#)Copyright (C) 2005-2015 H.Shirouzu		miscdlg.cpp	ver3.04";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2005-01-23(Sun)
 	Update					: 2015-08-30(Sun)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
-	Modify					: Mapaler 2015-09-21
+	Modify					: Mapaler 2015-09-22
 	======================================================================== */
 
 #include "mainwin.h"
@@ -14,17 +14,12 @@
 
 #include "shellext/shelldef.h"
 
-
-#include <strsafe.h>
-#include <new>
 #include <shlwapi.h>
 
-#define CONTROL_GROUP           2000
-#define CONTROL_PushButton		3
-#define CONTROL_RADIOBUTTONLIST 2
-#define CONTROL_RADIOBUTTON1    1
-#define CONTROL_RADIOBUTTON2    2
-
+#define CONTROL_GROUP				2000
+#define CONTROL_RADIOBUTTONLIST		2
+#define CONTROL_RADIOBUTTON_Folder	1
+#define CONTROL_RADIOBUTTON_File	2
 
 /*
 	About Dialog初期化処理
@@ -162,7 +157,7 @@ BOOL TExecConfirmDlg::EvSize(UINT fwSizeType, WORD nWidth, WORD nHeight)
 	return	FALSE;;
 }
 
-/*
+
 //
 //   CLASS: CFileDialogEventHandler
 //
@@ -246,14 +241,19 @@ public:
 		{
 			if (dwIDCtl == CONTROL_RADIOBUTTONLIST)
 			{
+				DWORD dwOptions;
 				switch (dwIDItem)
 				{
-				case CONTROL_RADIOBUTTON1:
-					hr = pfd->SetTitle(L"Windows Vista");
+				case CONTROL_RADIOBUTTON_Folder:
+					hr = pfd->GetOptions(&dwOptions);
+					if(!(dwOptions & FOS_PICKFOLDERS))
+						hr = pfd->Close(hr);
 					break;
 
-				case CONTROL_RADIOBUTTON2:
-					hr = pfd->SetTitle(L"Windows 7");
+				case CONTROL_RADIOBUTTON_File:
+					hr = pfd->GetOptions(&dwOptions);
+					if (dwOptions & FOS_PICKFOLDERS)
+						hr = pfd->Close(hr);
 					break;
 				}
 			}
@@ -262,20 +262,12 @@ public:
 		return hr;
 	}
 
-	IFACEMETHODIMP OnButtonClicked(IFileDialogCustomize*pfdc, DWORD dwIDItem)
-	{
-		if (dwIDItem == FILESELECT_BUTTON)
-			MessageBox(0, "按下按钮", "按下按钮", 0);
-		return S_OK;
-	}
+	IFACEMETHODIMP OnButtonClicked(IFileDialogCustomize*, DWORD)
+	{ return S_OK; }
 	IFACEMETHODIMP OnControlActivating(IFileDialogCustomize*, DWORD)
-	{
-		return S_OK;
-	}
+	{ return S_OK; }
 	IFACEMETHODIMP OnCheckButtonToggled(IFileDialogCustomize*, DWORD, BOOL)
-	{
-		return S_OK;
-	}
+	{ return S_OK; }
 
 	CFileDialogEventHandler() : m_cRef(1) { }
 
@@ -304,7 +296,7 @@ HRESULT CFileDialogEventHandler_CreateInstance(REFIID riid, void **ppv)
 	}
 	return hr;
 }
-*/
+
 
 /*=========================================================================
   クラス ： BrowseDirDlgW
@@ -364,15 +356,14 @@ BOOL BrowseDirDlgW(TWin *parentWin, UINT editCtl, WCHAR *title, int flg)
 					hr = pfd->SetTitle(title);
 				}
 
-
 				// Create an event handling object, and hook it up to the dialog.
 				IFileDialogEvents *pfde = NULL;
-				//hr = CFileDialogEventHandler_CreateInstance(IID_PPV_ARGS(&pfde));
+				hr = CFileDialogEventHandler_CreateInstance(IID_PPV_ARGS(&pfde));
 				if (SUCCEEDED(hr))
 				{
 					// Hook up the event handler.
 					DWORD dwCookie = 0;
-					//hr = pfd->Advise(pfde, &dwCookie);
+					hr = pfd->Advise(pfde, &dwCookie);
 					if (SUCCEEDED(hr))
 					{
 						// Set up the customization.
@@ -381,11 +372,9 @@ BOOL BrowseDirDlgW(TWin *parentWin, UINT editCtl, WCHAR *title, int flg)
 						if (SUCCEEDED(hr) && !(flg & BRDIR_BACKSLASH))
 						{
 							// Create a visual group.
-							hr = pfdc->StartVisualGroup(CONTROL_GROUP, L"Test function: \r\n(Not work)");
+							hr = pfdc->StartVisualGroup(CONTROL_GROUP, GetLoadStrW(IDS_IFD_GROUP));
 							if (SUCCEEDED(hr))
 							{
-								// Add a button.
-								hr = pfdc->AddPushButton(FILESELECT_BUTTON, GetLoadStrW(IDS_FILESELECT));
 
 								// Add a radio-button list.
 								hr = pfdc->AddRadioButtonList(CONTROL_RADIOBUTTONLIST);
@@ -400,19 +389,19 @@ BOOL BrowseDirDlgW(TWin *parentWin, UINT editCtl, WCHAR *title, int flg)
 								if (SUCCEEDED(hr))
 								{
 									hr = pfdc->AddControlItem(CONTROL_RADIOBUTTONLIST,
-										CONTROL_RADIOBUTTON1, L"Windows Vista");
+										CONTROL_RADIOBUTTON_Folder, GetLoadStrW(IDS_DIRSELECT));
 								}
 								if (SUCCEEDED(hr))
 								{
 									hr = pfdc->AddControlItem(CONTROL_RADIOBUTTONLIST,
-										CONTROL_RADIOBUTTON2, L"Windows 7");
+										CONTROL_RADIOBUTTON_File, GetLoadStrW(IDS_FILESELECT));
 								}
 
 								// Set the default selection to option 1.
 								if (SUCCEEDED(hr))
 								{
 									hr = pfdc->SetSelectedControlItem(
-										CONTROL_RADIOBUTTONLIST, CONTROL_RADIOBUTTON1);
+										CONTROL_RADIOBUTTONLIST, CONTROL_RADIOBUTTON_Folder);
 								}
 
 								// End the visual group
@@ -465,15 +454,11 @@ BOOL BrowseDirDlgW(TWin *parentWin, UINT editCtl, WCHAR *title, int flg)
 												psi->Release();
 											}
 										}
-
 										parentWin->SetDlgItemTextW(editCtl, fileBuf);
 										ret = TRUE;
-
 									}
+									psiaResults->Release();
 								}
-
-								psiaResults->Release();
-
 							}
 							else
 							{
@@ -484,10 +469,29 @@ BOOL BrowseDirDlgW(TWin *parentWin, UINT editCtl, WCHAR *title, int flg)
 							}
 						}
 
+						if (pfdc && !(flg & BRDIR_BACKSLASH))
+						{
+							// Determine which item in the combo box was selected.
+							DWORD dwSelItem;
+
+							hr = pfdc->GetSelectedControlItem(CONTROL_RADIOBUTTONLIST, &dwSelItem);
+
+							if (SUCCEEDED(hr))
+							{
+								//if (CONTROL_RADIOBUTTON1 == dwSelItem)
+									//MessageBox(0, "选择目录", NULL, 0);
+								if (CONTROL_RADIOBUTTON_File == dwSelItem)
+								{
+									mode = FILESELECT;
+									continue;
+								}
+							}
+						}
+
 						// Unhook the event handler
 						pfd->Unadvise(dwCookie);
 					}
-					//pfde->Release();
+					pfde->Release();
 				}
 				pfd->Release();
 
@@ -498,7 +502,6 @@ BOOL BrowseDirDlgW(TWin *parentWin, UINT editCtl, WCHAR *title, int flg)
 			{
 				// If it's not that the user cancelled the dialog, report the error in a 
 				// message box.
-				//The original sorce code at : https://code.msdn.microsoft.com/CppShellCommonFileDialog-c18192c7
 				if (hr != HRESULT_FROM_WIN32(ERROR_CANCELLED))
 				{
 					//XP不支持的情况
@@ -524,18 +527,180 @@ BOOL BrowseDirDlgW(TWin *parentWin, UINT editCtl, WCHAR *title, int flg)
 					}
 				}
 			}
-
-
 			mode = SELECT_EXIT;
 			break;
 
 		case FILESELECT:
-			buf[wcscpyz(buf, GetLoadStrW(IDS_ALLFILES_FILTER)) + 1] =  0;
-			fileDlg.Exec(editCtl, NULL, buf, fileBuf, fileBuf);
-			if (fileDlg.GetMode() == DIRSELECT)
-				mode = DIRSELECT;
-			else
-				mode = SELECT_EXIT;
+
+			hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_INPROC_SERVER,
+				IID_PPV_ARGS(&pfd));
+			if (SUCCEEDED(hr))
+			{
+				// Set the dialog as a folder picker.
+				DWORD dwOptions;
+				hr = pfd->GetOptions(&dwOptions);
+				if (SUCCEEDED(hr))
+				{
+					hr = pfd->SetOptions(dwOptions | FOS_ALLOWMULTISELECT);
+				}
+
+				// Create an event handling object, and hook it up to the dialog.
+				IFileDialogEvents *pfde = NULL;
+				hr = CFileDialogEventHandler_CreateInstance(IID_PPV_ARGS(&pfde));
+				if (SUCCEEDED(hr))
+				{
+					// Hook up the event handler.
+					DWORD dwCookie = 0;
+					hr = pfd->Advise(pfde, &dwCookie);
+					if (SUCCEEDED(hr))
+					{
+						// Set up the customization.
+						IFileDialogCustomize *pfdc = NULL;
+						hr = pfd->QueryInterface(IID_PPV_ARGS(&pfdc));
+						if (SUCCEEDED(hr) && !(flg & BRDIR_BACKSLASH))
+						{
+							// Create a visual group.
+							hr = pfdc->StartVisualGroup(CONTROL_GROUP, GetLoadStrW(IDS_IFD_GROUP));
+							if (SUCCEEDED(hr))
+							{
+
+								// Add a radio-button list.
+								hr = pfdc->AddRadioButtonList(CONTROL_RADIOBUTTONLIST);
+								if (SUCCEEDED(hr))
+								{
+									// Set the state of the added radio-button list.
+									hr = pfdc->SetControlState(CONTROL_RADIOBUTTONLIST,
+										CDCS_VISIBLE | CDCS_ENABLED);
+								}
+
+								// Add individual buttons to the radio-button list.
+								if (SUCCEEDED(hr))
+								{
+									hr = pfdc->AddControlItem(CONTROL_RADIOBUTTONLIST,
+										CONTROL_RADIOBUTTON_Folder, GetLoadStrW(IDS_DIRSELECT));
+								}
+								if (SUCCEEDED(hr))
+								{
+									hr = pfdc->AddControlItem(CONTROL_RADIOBUTTONLIST,
+										CONTROL_RADIOBUTTON_File, GetLoadStrW(IDS_FILESELECT));
+								}
+
+								// Set the default selection to option 1.
+								if (SUCCEEDED(hr))
+								{
+									hr = pfdc->SetSelectedControlItem(
+										CONTROL_RADIOBUTTONLIST, CONTROL_RADIOBUTTON_File);
+								}
+
+								// End the visual group
+								pfdc->EndVisualGroup();
+							}
+							pfdc->Release();
+						}
+
+						// Show the open file dialog.
+						if (SUCCEEDED(hr))
+						{
+							hr = pfd->Show(parentWin->hWnd);
+							if (SUCCEEDED(hr))
+							{
+								// Obtain the results of the user interaction.
+								IShellItemArray *psiaResults = NULL;
+								hr = pfd->GetResults(&psiaResults);
+								if (SUCCEEDED(hr))
+								{
+									// Get the number of files being selected.
+									DWORD dwFolderCount;
+									hr = psiaResults->GetCount(&dwFolderCount);
+									if (SUCCEEDED(hr))
+									{
+
+										// 处理选择多个文件夹
+										if ((flg & BRDIR_CTRLADD) == 0 ||
+											(::GetAsyncKeyState(VK_CONTROL) & 0x8000) == 0) {
+											pathArray.Init();
+										}
+										for (DWORD i = 0; i < dwFolderCount; i++)
+										{
+											IShellItem *psi = NULL;
+											if (SUCCEEDED(psiaResults->GetItemAt(i, &psi)))
+											{
+												// Retrieve the file path.
+												PWSTR pszPath = NULL;
+												if (SUCCEEDED(psi->GetDisplayName(SIGDN_FILESYSPATH,
+													&pszPath)))
+												{
+													wcscpy(fileBuf, pszPath);
+													if (flg & BRDIR_BACKSLASH) {
+														MakePathW(buf, fileBuf, L"");
+														wcscpy(fileBuf, buf);
+													}
+													pathArray.RegisterPath(fileBuf);
+													pathArray.GetMultiPath(fileBuf, MAX_PATH_EX);
+													CoTaskMemFree(pszPath);
+												}
+												psi->Release();
+											}
+										}
+										parentWin->SetDlgItemTextW(editCtl, fileBuf);
+										ret = TRUE;
+									}
+									psiaResults->Release();
+								}
+							}
+							else
+							{
+								if (hr == HRESULT_FROM_WIN32(ERROR_CANCELLED))
+								{
+									// User cancelled the dialog...
+								}
+							}
+						}
+
+						if (pfdc && !(flg & BRDIR_BACKSLASH))
+						{
+							// Determine which item in the combo box was selected.
+							DWORD dwSelItem;
+
+							hr = pfdc->GetSelectedControlItem(CONTROL_RADIOBUTTONLIST, &dwSelItem);
+
+							if (SUCCEEDED(hr))
+							{
+								if (CONTROL_RADIOBUTTON_Folder == dwSelItem)
+								{
+									mode = DIRSELECT;
+									continue;
+								}
+							}
+						}
+
+						// Unhook the event handler
+						pfd->Unadvise(dwCookie);
+					}
+					pfde->Release();
+				}
+				pfd->Release();
+
+			}
+
+			// Report the error.
+			if (FAILED(hr))
+			{
+				// If it's not that the user cancelled the dialog, report the error in a 
+				// message box.
+				if (hr != HRESULT_FROM_WIN32(ERROR_CANCELLED))
+				{
+					//XP不支持的情况
+					buf[wcscpyz(buf, GetLoadStrW(IDS_ALLFILES_FILTER)) + 1] = 0;
+					fileDlg.Exec(editCtl, NULL, buf, fileBuf, fileBuf);
+					if (fileDlg.GetMode() == DIRSELECT)
+						mode = DIRSELECT;
+					else
+						mode = SELECT_EXIT;
+					break;
+				}
+			}
+			mode = SELECT_EXIT;
 			break;
 		}
 	}
