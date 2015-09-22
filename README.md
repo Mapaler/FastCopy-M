@@ -2,8 +2,7 @@ FastCopy-M
 ===========
 "M" is Multilanguage
 
-FastCopy-M特点：<br />
-FastCopy-M feature:
+## FastCopy-M feature | FastCopy-M特点
 
 汉化并支持更加完整的多国语言显示，添加语言只需要修改资源文件即可。<br />
 FastCopy Chinesization and modify to support other language more overall, add language only need add new resources
@@ -32,11 +31,32 @@ FastCopy-M used VS2015, if you want bulid on VS2013 or earlier you can replace t
 
 http://www.mapaler.com/fastcopy-m/
 
-## Official website
+## Auto Change Icon | 自动更换图标 
+
+* 解压“FastCopy-M Resources Rebuild & Replace Tools.zip”基本工具。
+Unzip "FastCopy-M Resources Rebuild & Replace Tools.zip" basic tools.
+* 将“Auto Change Icon Tools.zip”解压到上述解压出来的文件夹中。
+Unzip this "Auto Change Icon Tools.zip" to previous folder.
+* 在“My New Icon”文件夹内按照1、2、3……的顺序命名图标，最后一个图标是等待图标。
+Put your customize icon animate group, and rename to "1.ico","2.ico","3.ico"... Attention: The final icon file as wait icon.
+![Rename Icon](http://ww2.sinaimg.cn/large/6c84b2d6jw1ewbqj5xriyj20oa0cugoj.jpg)
+* 然后将“FastCopy.exe”拖到“Change Icon.vbs”上即可。
+Then drag original "FastCopy.exe" and put on "Change Icon.vbs" . 
+![Drag](http://ww4.sinaimg.cn/large/6c84b2d6jw1ewbqkhud8aj20hx0b6ace.jpg)
+* 会自动编译和替换资源，并保存到“output\FastCopy.exe”。
+Then will auto begin rebuild and replace resources.  And generate to "output\FastCopy.exe".
+![New Icon](http://ww2.sinaimg.cn/large/6c84b2d6jw1ewbqkq4qh9j20f4089wfa.jpg)
+
+### Download Tools
+
+* [FastCopy-M Resources Rebuild & Replace Tools.zip](https://github.com/Mapaler/FastCopy-M/releases/download/v3.0.4.20/FastCopy-M.Resources.Rebuild.Replace.Tools.zip)
+* [Auto Change Icon Tools.zip](https://github.com/Mapaler/FastCopy-M/releases/download/v3.0.4.20/Auto.Change.Icon.Tools.zip)
+
+## Official website | FastCopy官方网站
 
 http://ipmsg.org/tools/fastcopy.html
  
-##Official License
+##Official License | FastCopy官方许可
 <div class="help_license">
 	FastCopy ver3.0 Copyright(C) 2004-2015 by SHIROUZU Hiroaki
 	<br />
