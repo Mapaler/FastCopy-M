@@ -21,6 +21,8 @@
 #define CONTROL_RADIOBUTTON_Folder	1
 #define CONTROL_RADIOBUTTON_File	2
 
+IShellItem *defaultFolder = NULL;
+
 /*
 	About Dialog初期化処理
 */
@@ -242,16 +244,26 @@ public:
 			if (dwIDCtl == CONTROL_RADIOBUTTONLIST)
 			{
 				DWORD dwOptions;
+				//IShellItem *dwFolder = NULL;
+				//PWSTR folderShellItemName = NULL;
 				switch (dwIDItem)
 				{
 				case CONTROL_RADIOBUTTON_Folder:
 					hr = pfd->GetOptions(&dwOptions);
+					hr = pfd->GetFolder(&defaultFolder);
+					//defaultFolder->GetDisplayName(SIGDN_FILESYSPATH, & folderShellItemName);
+					//MessageBoxW(0, folderShellItemName, L"The selected folder is", MB_OK);
+
 					if(!(dwOptions & FOS_PICKFOLDERS))
 						hr = pfd->Close(hr);
 					break;
 
 				case CONTROL_RADIOBUTTON_File:
 					hr = pfd->GetOptions(&dwOptions);
+					hr = pfd->GetFolder(&defaultFolder);
+					//defaultFolder->GetDisplayName(SIGDN_FILESYSPATH, &folderShellItemName);
+					//MessageBoxW(0, folderShellItemName, L"The selected folder is", MB_OK);
+
 					if (dwOptions & FOS_PICKFOLDERS)
 						hr = pfd->Close(hr);
 					break;
@@ -331,7 +343,6 @@ BOOL BrowseDirDlgW(TWin *parentWin, UINT editCtl, WCHAR *title, int flg)
 
 	// Create a new common open file dialog.
 	IFileOpenDialog *pfd = NULL;
-
 	while (mode != SELECT_EXIT) {
 		switch (mode) {
 		case DIRSELECT:
@@ -348,6 +359,11 @@ BOOL BrowseDirDlgW(TWin *parentWin, UINT editCtl, WCHAR *title, int flg)
 						hr = pfd->SetOptions(dwOptions | FOS_PICKFOLDERS); //目标目录
 					else
 						hr = pfd->SetOptions(dwOptions | FOS_PICKFOLDERS | FOS_ALLOWMULTISELECT);
+				}
+
+				if (SUCCEEDED(hr) && defaultFolder)
+				{
+					hr = pfd->SetFolder(defaultFolder);
 				}
 
 				// Set the title of the dialog.
@@ -482,6 +498,12 @@ BOOL BrowseDirDlgW(TWin *parentWin, UINT editCtl, WCHAR *title, int flg)
 									//MessageBox(0, "选择目录", NULL, 0);
 								if (CONTROL_RADIOBUTTON_File == dwSelItem)
 								{
+									//PWSTR folderShellItemName = NULL;
+									////hr = pfd->GetFolder(&defaultFolder);
+									//if (defaultFolder) {
+									//	defaultFolder->GetDisplayName(SIGDN_FILESYSPATH, &folderShellItemName);
+									//	MessageBoxW(0, folderShellItemName, L"The selected folder is", MB_OK);
+									//}
 									mode = FILESELECT;
 									continue;
 								}
@@ -542,6 +564,11 @@ BOOL BrowseDirDlgW(TWin *parentWin, UINT editCtl, WCHAR *title, int flg)
 				if (SUCCEEDED(hr))
 				{
 					hr = pfd->SetOptions(dwOptions | FOS_ALLOWMULTISELECT);
+				}
+
+				if (SUCCEEDED(hr) && defaultFolder)
+				{
+					hr = pfd->SetFolder(defaultFolder);
 				}
 
 				// Create an event handling object, and hook it up to the dialog.
@@ -668,6 +695,12 @@ BOOL BrowseDirDlgW(TWin *parentWin, UINT editCtl, WCHAR *title, int flg)
 							{
 								if (CONTROL_RADIOBUTTON_Folder == dwSelItem)
 								{
+									//PWSTR folderShellItemName = NULL;
+									//hr = pfd->GetFolder(&defaultFolder);
+									//if (defaultFolder) {
+									//	defaultFolder->GetDisplayName(SIGDN_FILESYSPATH, &folderShellItemName);
+									//	MessageBoxW(0, folderShellItemName, L"The selected folder is", MB_OK);
+									//}
 									mode = DIRSELECT;
 									continue;
 								}

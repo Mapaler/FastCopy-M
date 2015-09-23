@@ -270,7 +270,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\cfg.cpp" />
-    <ClCompile Include="src\FastCopy.cpp" />
+    <ClCompile Include="src\fastcopy.cpp" />
     <ClCompile Include="src\mainwin.cpp" />
     <ClCompile Include="src\mainwinlog.cpp" />
     <ClCompile Include="src\mainwinopt.cpp" />
