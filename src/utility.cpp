@@ -1,9 +1,9 @@
 ﻿static char *utility_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		utility.cpp	ver3.03";
+	"@(#)Copyright (C) 2004-2015 H.Shirouzu		utility.cpp	ver3.05";
 /* ========================================================================
 	Project  Name			: general routine
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-08-30(Sun)
+	Update					: 2015-09-23(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -725,7 +725,8 @@ HANDLE ForceCreateFileW(const WCHAR *path, DWORD mode, DWORD share, SECURITY_ATT
 /*
  DataList ...  List with data(hash/fileID...)
 */
-DataList::DataList(int size, int max_size, int _grow_size, VBuf *_borrowBuf, int _min_margin)
+DataList::DataList(ssize_t size, ssize_t max_size, ssize_t _grow_size, VBuf *_borrowBuf,
+	ssize_t _min_margin)
 {
 	num = 0;
 	top = end = NULL;
@@ -738,7 +739,8 @@ DataList::~DataList()
 	UnInit();
 }
 
-BOOL DataList::Init(int size, int max_size, int _grow_size, VBuf *_borrowBuf, int _min_margin)
+BOOL DataList::Init(ssize_t size, ssize_t max_size, ssize_t _grow_size, VBuf *_borrowBuf,
+	ssize_t _min_margin)
 {
 	grow_size = _grow_size;
 	min_margin = _min_margin;
@@ -763,10 +765,10 @@ void DataList::Clear()
 	num = 0;
 }
 
-DataList::Head *DataList::Alloc(void *data, int data_size, int need_size)
+DataList::Head *DataList::Alloc(void *data, ssize_t data_size, ssize_t need_size)
 {
 	Head	*cur = NULL;
-	int		alloc_size = need_size + sizeof(Head);
+	ssize_t	alloc_size = need_size + sizeof(Head);
 
 	alloc_size = ALIGN_SIZE(alloc_size, 8);
 
@@ -778,7 +780,7 @@ DataList::Head *DataList::Alloc(void *data, int data_size, int need_size)
 		if (top >= end) {
 			cur = (Head *)((BYTE *)top + top->alloc_size);
 			if ((BYTE *)cur + alloc_size < buf.Buf() + buf.MaxSize()) {
-				int need_grow = (int)(((BYTE *)cur + alloc_size) - (buf.Buf() + buf.Size()));
+				ssize_t need_grow = ((BYTE *)cur + alloc_size) - (buf.Buf() + buf.Size());
 				if (need_grow > 0) {
 					if (!buf.Grow(ALIGN_SIZE(need_grow, PAGE_SIZE))) {
 						//MessageBox(0, "can't alloc mem", "", MB_OK);
@@ -844,24 +846,24 @@ DataList::Head *DataList::Peek(Head *prev)
 	return	cur;
 }
 
-int DataList::RemainSize()
+ssize_t DataList::RemainSize()
 {
-	int ret = 0;
+	ssize_t ret = 0;
 
 	if (top) {
 		BYTE *top_end = (BYTE *)top + top->alloc_size;
 
 		if (top >= end) {
-			int size1 = (int)(buf.MaxSize() - (top_end - buf.Buf()));
-			int size2 = (int)((BYTE *)end - buf.Buf());
+			ssize_t size1 = buf.MaxSize() - (top_end - buf.Buf());
+			ssize_t size2 = (BYTE *)end - buf.Buf();
 			ret = max(size1, size2);
 		}
 		else {
-			ret = (int)((BYTE *)end - top_end);
+			ret = (BYTE *)end - top_end;
 		}
 	}
 	else {
-		ret = (int)buf.MaxSize();
+		ret = buf.MaxSize();
 	}
 
 	if (ret > 0) ret -= sizeof(Head);
@@ -869,21 +871,21 @@ int DataList::RemainSize()
 	return	ret;
 }
 
-int comma_int64(WCHAR *s, int64 val)
+ssize_t comma_int64(WCHAR *s, int64 val)
 {
 	WCHAR	tmp[40], *sv_s = s;
-	size_t	len = swprintf(tmp, L"%lld", val);
+	ssize_t	len = swprintf(tmp, L"%lld", val);
 
 	for (WCHAR *p=tmp; *s++ = *p++; ) {
 		if (len > 2 && (--len % 3) == 0) *s++ = ',';
 	}
-	return	(int)(s - sv_s - 1);
+	return	s - sv_s - 1;
 }
 
-int comma_double(WCHAR *s, double val, int precision)
+ssize_t comma_double(WCHAR *s, double val, int precision)
 {
 	WCHAR	tmp[40], *sv_s = s;
-	size_t	len = swprintf(tmp, L"%.*f", precision, val);
+	ssize_t	len = swprintf(tmp, L"%.*f", precision, val);
 	WCHAR	*pos = precision ? wcschr(tmp, '.') : NULL;
 
 	if (pos) len = pos - tmp;
@@ -891,24 +893,24 @@ int comma_double(WCHAR *s, double val, int precision)
 	for (WCHAR *p=tmp; *s++ = *p++; ) {
 		if ((!pos || p < pos) && len > 2 && (--len % 3) == 0) *s++ = ',';
 	}
-	return	(int)(s - sv_s - 1);
+	return	s - sv_s - 1;
 }
 
-int comma_int64(char *s, int64 val)
+ssize_t comma_int64(char *s, int64 val)
 {
 	char	tmp[40], *sv_s = s;
-	size_t	len = sprintf(tmp, "%lld", val);
+	ssize_t	len = sprintf(tmp, "%lld", val);
 
 	for (char *p=tmp; *s++ = *p++; ) {
 		if (len > 2 && (--len % 3) == 0) *s++ = ',';
 	}
-	return	(int)(s - sv_s - 1);
+	return	s - sv_s - 1;
 }
 
-int comma_double(char *s, double val, int precision)
+ssize_t comma_double(char *s, double val, int precision)
 {
 	char	tmp[40], *sv_s = s;
-	size_t	len = sprintf(tmp, "%.*f", precision, val);
+	ssize_t	len = sprintf(tmp, "%.*f", precision, val);
 	char	*pos = precision ? strchr(tmp, '.') : NULL;
 
 	if (pos) len = pos - tmp;
@@ -916,7 +918,7 @@ int comma_double(char *s, double val, int precision)
 	for (char *p=tmp; *s++ = *p++; ) {
 		if ((!pos || p < pos) && len > 2 && (--len % 3) == 0) *s++ = ',';
 	}
-	return	(int)(s - sv_s - 1);
+	return	s - sv_s - 1;
 }
 
 

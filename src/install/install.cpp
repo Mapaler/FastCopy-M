@@ -28,7 +28,7 @@ BOOL ConvertToX86Dir(WCHAR *target)
 {
 	WCHAR	buf[MAX_PATH];
 	WCHAR	buf86[MAX_PATH];
-	size_t	len;
+	ssize_t	len;
 
 	if (!::SHGetSpecialFolderPathW(NULL, buf, CSIDL_PROGRAM_FILES, FALSE)) return FALSE;
 	len = wcslen(buf);
@@ -204,9 +204,9 @@ BOOL GetShortcutPath(InstallCfg *cfg)
 	if (reg.OpenKey(REGSTR_SHELLFOLDERS)) {
 		char	buf[MAX_PATH] = "";
 		reg.GetStr(REGSTR_PROGRAMS, buf, MAX_PATH);
-		cfg->startMenu = AtoWs(buf, TRUE);
+		cfg->startMenu = AtoWs(buf);
 		reg.GetStr(REGSTR_DESKTOP,  buf, MAX_PATH);
-		cfg->deskTop   = AtoWs(buf, TRUE);
+		cfg->deskTop   = AtoWs(buf);
 		reg.CloseKey();
 		return	TRUE;
 	}

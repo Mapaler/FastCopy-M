@@ -294,7 +294,9 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <Manifest Include="src\fastcopy.exe.manifest" />
+    <Manifest Include="src\fastcopy.exe.manifest">
+      <SubType>Designer</SubType>
+    </Manifest>
   </ItemGroup>
   <ItemGroup>
     <Image Include="src\fastcopy.ico" />

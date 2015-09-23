@@ -159,7 +159,7 @@
     </ResourceCompile>
     <Link>
       <AdditionalDependencies>comctl32.lib;crypt32.lib;winmm.lib;x64\lib\tlib_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>x64\Debug\setup.exe</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>

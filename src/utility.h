@@ -1,9 +1,9 @@
 ﻿/* static char *utility_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		utility.h	Ver3.03"; */
+	"@(#)Copyright (C) 2004-2015 H.Shirouzu		utility.h	Ver3.05"; */
 /* ========================================================================
 	Project  Name			: Utility
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-08-30(Sun)
+	Update					: 2015-09-23(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -112,8 +112,8 @@ public:
 	struct Head {
 		Head	*prev;
 		Head	*next;
-		int		alloc_size;
-		int		data_size;
+		ssize_t	alloc_size;
+		ssize_t	data_size;
 		BYTE	data[1];	// opaque
 	};
 
@@ -121,18 +121,18 @@ protected:
 	VBuf		buf;
 	Head		*top;
 	Head		*end;
-	int			num;
-	int			grow_size;
-	int			min_margin;
+	ssize_t		num;
+	ssize_t		grow_size;
+	ssize_t		min_margin;
 	Condition	cv;
 
 public:
-	DataList(int size=0, int max_size=0, int _grow_size=0, VBuf *_borrowBuf=NULL,
-		int _min_margin=65536);
+	DataList(ssize_t size=0, ssize_t max_size=0, ssize_t _grow_size=0, VBuf *_borrowBuf=NULL,
+		ssize_t _min_margin=65536);
 	~DataList();
 
-	BOOL Init(int size, int max_size, int _grow_size, VBuf *_borrowBuf=NULL,
-		int _min_margin=65536);
+	BOOL Init(ssize_t size, ssize_t max_size, ssize_t _grow_size, VBuf *_borrowBuf=NULL,
+		ssize_t _min_margin=65536);
 	void UnInit();
 
 	void Lock() { cv.Lock(); }
@@ -141,16 +141,16 @@ public:
 	BOOL IsWait() { return cv.IsWait(); }
 	void Notify() { cv.Notify(); }
 
-	Head *Alloc(void *data, int copy_size, int need_size);
+	Head *Alloc(void *data, ssize_t copy_size, ssize_t need_size);
 	Head *Get();
 	Head *Peek(Head *prev=NULL);
 	void Clear();
-	int Num() { return num; }
-	int RemainSize();
-	int MaxSize() { return (int)buf.MaxSize(); }
-	int Size() { return (int)buf.Size(); }
-	int Grow(int grow_size) { return (int)buf.Grow(grow_size); }
-	int MinMargin() { return min_margin; }
+	ssize_t Num() { return num; }
+	ssize_t RemainSize();
+	ssize_t MaxSize() { return	buf.MaxSize(); }
+	ssize_t Size() { return buf.Size(); }
+	ssize_t Grow(ssize_t grow_size) { return buf.Grow(grow_size); }
+	ssize_t MinMargin() { return min_margin; }
 };
 
 
@@ -187,10 +187,10 @@ HANDLE ForceCreateFileW(const WCHAR *path, DWORD mode, DWORD share, SECURITY_ATT
 void DBGWrite(char *fmt,...);
 void DBGWriteW(WCHAR *fmt,...);
 
-int comma_int64(WCHAR *s, int64);
-int comma_double(WCHAR *s, double, int precision);
-int comma_int64(char *s, int64);
-int comma_double(char *s, double, int precision);
+ssize_t comma_int64(WCHAR *s, int64);
+ssize_t comma_double(WCHAR *s, double, int precision);
+ssize_t comma_int64(char *s, int64);
+ssize_t comma_double(char *s, double, int precision);
 
 #endif
 

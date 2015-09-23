@@ -192,10 +192,10 @@ void TInifile::InitCore(WCHAR *_ini_file)
 	UnLock();
 }
 
-char *NextBuf(VBuf *vbuf, int len, int require_min, int chunk_size)
+char *NextBuf(VBuf *vbuf, ssize_t len, ssize_t require_min, ssize_t chunk_size)
 {
 	vbuf->AddUsedSize(len);
-	if ((int)vbuf->RemainSize() < require_min) {
+	if (vbuf->RemainSize() < require_min) {
 		if (!vbuf->Grow(chunk_size)) return NULL;
 	}
 	return (char *)vbuf->Buf() + vbuf->UsedSize();
