@@ -1166,10 +1166,10 @@ END:
 
 void MakeVerifyStr(WCHAR *buf, BYTE *digest1, BYTE *digest2, DWORD digest_len)
 {
-	WCHAR	*p = buf + wcscpyz(buf, L"Verify Error src:");
+	WCHAR	*p = buf + wcscpyz(buf, GetLoadStrW(IDS_Err_VerifySrc)); //Verify Error src:
 
 	p += bin2hexstrW(digest1, digest_len, p);
-	p += wcscpyz(p, L" dst:");
+	p += wcscpyz(p, GetLoadStrW(IDS_Err_VerifyDst)); // dst:
 	p += bin2hexstrW(digest2, digest_len, p);
 	p += wcscpyz(p, L" ");
 }
