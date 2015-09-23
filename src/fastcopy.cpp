@@ -1,9 +1,9 @@
 ﻿static char *fastcopy_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		fastcopy.cpp	ver3.04";
+	"@(#)Copyright (C) 2004-2015 H.Shirouzu		fastcopy.cpp	ver3.0.5.21";
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-09-09(Wed)
+	Update					: 2015-09-23(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-09
@@ -266,7 +266,7 @@ BOOL FastCopy::InitSrcPath(int idx)
 	wcscpy(src_root, src_root_cur);
 
 	// 最大転送サイズ
-	size_t tmpSize = size_t(isSameDrv ? info.bufSize : info.bufSize / 4);
+	ssize_t tmpSize = ssize_t(isSameDrv ? info.bufSize : info.bufSize / 4);
 	if (tmpSize < maxReadSize) maxReadSize = (DWORD)tmpSize;
 	maxReadSize = max(MIN_BUF, maxReadSize);
 	maxReadSize = maxReadSize / BIGTRANS_ALIGN * BIGTRANS_ALIGN;
@@ -538,7 +538,7 @@ BOOL FastCopy::RegisterInfo(const PathArray *_srcArray, const PathArray *_dstArr
 
 BOOL FastCopy::AllocBuf(void)
 {
-	size_t	allocSize = size_t(isListingOnly ? MAX_LIST_BUF : info.bufSize + PAGE_SIZE * 4);
+	ssize_t	allocSize = ssize_t(isListingOnly ? MAX_LIST_BUF : info.bufSize + PAGE_SIZE * 4);
 	BOOL	need_mainbuf = info.mode != DELETE_MODE ||
 					((info.flags & (OVERWRITE_DELETE|OVERWRITE_DELETE_NSA)) && !isListingOnly);
 
@@ -1677,7 +1677,7 @@ FastCopy::ReqHead *FastCopy::GetDirExtData(FileStat *stat)
 
 	if (is_reparse) {
 		size = MAXIMUM_REPARSE_DATA_BUFFER_SIZE;
-		if (dirStatBuf.RemainSize() <= (int)size + maxStatSize
+		if (dirStatBuf.RemainSize() <= (ssize_t)size + maxStatSize
 		&& dirStatBuf.Grow(ALIGN_SIZE(size + maxStatSize, MIN_ATTR_BUF)) == FALSE) {
 			ret = FALSE;
 			ConfirmErr(L"Can't alloc memory(dirStatBuf)", NULL, CEF_STOP);
@@ -1720,13 +1720,13 @@ FastCopy::ReqHead *FastCopy::GetDirExtData(FileStat *stat)
 			}
 			data = dirStatBuf.Buf() + dirStatBuf.UsedSize();
 			data_size = sid.Size.LowPart + STRMID_OFFSET;
-			dirStatBuf.AddUsedSize(data_size);
-			if (dirStatBuf.RemainSize() <= maxStatSize
+			if (dirStatBuf.RemainSize() <= maxStatSize + data_size
 			&& !dirStatBuf.Grow(ALIGN_SIZE(maxStatSize + data_size, MIN_ATTR_BUF))) {
 				ConfirmErr(L"Can't alloc memory(dirStat(ACL/EADATA))",
 					src + srcPrefixLen, FALSE);
 				break;
 			}
+			dirStatBuf.AddUsedSize(data_size);
 			memcpy(data, &sid, STRMID_OFFSET);
 			if (!(ret = ::BackupRead(stat->hFile, data + STRMID_OFFSET, sid.Size.LowPart, &size,
 						FALSE, TRUE, &context)) || size <= 0) {
@@ -2052,13 +2052,13 @@ BOOL FastCopy::OpenFileBackupProc(FileStat *stat, int src_len)
 			}
 			data = fileStatBuf.Buf() + fileStatBuf.UsedSize();
 			data_size = sid.Size.LowPart + STRMID_OFFSET;
-			fileStatBuf.AddUsedSize(data_size);
-			if (fileStatBuf.RemainSize() <= maxStatSize
+			if (fileStatBuf.RemainSize() <= maxStatSize + data_size
 			&& !fileStatBuf.Grow(ALIGN_SIZE(maxStatSize + data_size, MIN_ATTR_BUF))) {
 				ConfirmErr(L"Can't alloc memory(fileStat(ACL/EADATA))",
 					src + srcPrefixLen, CEF_STOP);
 				break;
 			}
+			fileStatBuf.AddUsedSize(data_size);
 			memcpy(data, &sid, STRMID_OFFSET);
 			if (!(ret = ::BackupRead(stat->hFile, data + STRMID_OFFSET, sid.Size.LowPart,
 							&size, FALSE, TRUE, &context)) || size <= 0) {
@@ -2678,8 +2678,8 @@ BOOL StatHash::Init(VBVec<FileStat *> *statIdxVec)
 	hashNum = data_num | 7;
 
 	// hash table を Used の直後に確保
-	int	require_size = hashNum * sizeof(FileStat *);
-	int	grow_size    = int(require_size - statIdxVec->RemainSize());
+	ssize_t	require_size = hashNum * sizeof(FileStat *);
+	ssize_t	grow_size    = require_size - statIdxVec->RemainSize();
 
 	if (grow_size > 0 && !statIdxVec->Grow(ALIGN_SIZE(grow_size, MIN_ATTRIDX_BUF))) return FALSE;
 
@@ -3056,11 +3056,11 @@ BOOL FastCopy::WriteRandomData(WCHAR *path, FileStat *stat, BOOL skip_hardlink)
 			int	max_trans = waitTick && (info.flags & AUTOSLOW_IOLIMIT) ?
 							MIN_BUF : (int)maxWriteSize;
 			max_trans = min(max_trans, data->buf_size);
-			DWORD	io_size = (DWORD)(file_size - total_trans);
+			int64	io_size = file_size - total_trans;
 			io_size = (io_size > max_trans) ? max_trans : ALIGN_SIZE(io_size, dstSectorSize);
 
 			ovl->SetOvlOffset(total_trans);
-			if (!(ret = WriteFileWithReduce(hFile, data->buf[i], io_size, ovl))) break;
+			if (!(ret = WriteFileWithReduce(hFile, data->buf[i], (DWORD)io_size, ovl))) break;
 
 			total.writeTrans += ovl->transSize;
 			if (waitTick) Wait();
@@ -3246,12 +3246,12 @@ BOOL FastCopy::WriteDirProc(int dir_len)
 								writeReq->stat.renameCount, writeReq->stat.cFileName, TRUE);
 
 	if (buf_size) {
-		dstDirExtBuf.AddUsedSize(buf_size);
-		if (dstDirExtBuf.RemainSize() < MIN_DSTDIREXT_BUF
-		&& !dstDirExtBuf.Grow(MIN_DSTDIREXT_BUF)) {
+		if (dstDirExtBuf.RemainSize() < buf_size
+		&& !dstDirExtBuf.Grow(ALIGN_SIZE(buf_size, MIN_DSTDIREXT_BUF))) {
 			ConfirmErr(L"Can't alloc memory(dstDirExtBuf)", NULL, CEF_STOP);
 			goto END;
 		}
+		dstDirExtBuf.AddUsedSize(buf_size);
 		memcpy(dstDirExtBuf.Buf() + dstDirExtBuf.UsedSize(), writeReq->buf, buf_size);
 		sv_stat.acl = dstDirExtBuf.Buf() + dstDirExtBuf.UsedSize();
 		sv_stat.ead = sv_stat.acl + sv_stat.aclSize;
@@ -4157,18 +4157,18 @@ BOOL FastCopy::ChangeToWriteMode(BOOL is_finish)
 FastCopy::ReqHead *FastCopy::AllocReqBuf(int req_size, int64 _data_size)
 {
 	ReqHead	*req = NULL;
-	size_t	max_trans  = (waitTick && (info.flags & AUTOSLOW_IOLIMIT)) ? MIN_BUF :
+	ssize_t	max_trans  = (waitTick && (info.flags & AUTOSLOW_IOLIMIT)) ? MIN_BUF :
 						 (flagOvl ? info.maxOvlSize : maxReadSize);
-	size_t	data_size  = (_data_size > max_trans) ? max_trans : (size_t)_data_size;
+	ssize_t	data_size  = (_data_size > max_trans) ? max_trans : (ssize_t)_data_size;
 
-	size_t	used_size        = usedOffset - mainBuf.Buf();
+	ssize_t	used_size        = usedOffset - mainBuf.Buf();
 	if (data_size) used_size = ALIGN_SIZE(used_size, sectorSize);
 
-	size_t	sector_data_size = ALIGN_SIZE(data_size, sectorSize);
-	size_t	max_free         = mainBuf.Size() - used_size;
-	size_t	align_req_size   = ALIGN_SIZE(req_size, 8);
-	size_t	require_size     = sector_data_size + align_req_size;
-	size_t	align_offset     = used_size;
+	ssize_t	sector_data_size = ALIGN_SIZE(data_size, sectorSize);
+	ssize_t	max_free         = mainBuf.Size() - used_size;
+	ssize_t	align_req_size   = ALIGN_SIZE(req_size, 8);
+	ssize_t	require_size     = sector_data_size + align_req_size;
+	ssize_t	align_offset     = used_size;
 
 	if (data_size && require_size < sector_data_size)
 		require_size = sector_data_size;

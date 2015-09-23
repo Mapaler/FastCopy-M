@@ -202,7 +202,7 @@ void Condition::Notify(void)	// 現状では、眠っているスレッド全員
   説  明 ： 
   注  意 ： 
 =========================================================================*/
-VBuf::VBuf(size_t _size, size_t _max_size, VBuf *_borrowBuf)
+VBuf::VBuf(ssize_t _size, ssize_t _max_size, VBuf *_borrowBuf)
 {
 	Init();
 
@@ -222,7 +222,7 @@ void VBuf::Init(void)
 	size = usedSize = maxSize = 0;
 }
 
-BOOL VBuf::AllocBuf(size_t _size, size_t _max_size, VBuf *_borrowBuf)
+BOOL VBuf::AllocBuf(ssize_t _size, ssize_t _max_size, VBuf *_borrowBuf)
 {
 	if (_max_size == 0)
 		_max_size = _size;
@@ -263,7 +263,7 @@ void VBuf::FreeBuf(void)
 	Init();
 }
 
-BOOL VBuf::Grow(size_t grow_size)
+BOOL VBuf::Grow(ssize_t grow_size)
 {
 	if (size + grow_size > maxSize)
 		return	FALSE;
@@ -359,7 +359,7 @@ HMODULE TLoadLibraryW(WCHAR *dllname)
 int MakePath(char *dest, const char *dir, const char *file)
 {
 	BOOL	separetor = TRUE;
-	size_t	len;
+	ssize_t	len;
 
 	if ((len = strlen(dir)) == 0)
 		return	wsprintf(dest, "%s", file);
@@ -384,7 +384,7 @@ int MakePath(char *dest, const char *dir, const char *file)
 =========================================================================*/
 int MakePathW(WCHAR *dest, const WCHAR *dir, const WCHAR *file)
 {
-	size_t	len;
+	ssize_t	len;
 
 	if ((len = wcslen(dir)) == 0)
 		return	wsprintfW(dest, L"%s", file);
@@ -550,7 +550,7 @@ int bin2urlstr(const BYTE *bindata, int len, char *str)
 
 BOOL urlstr2bin(const char *str, BYTE *bindata, int maxlen, int *len)
 {
-	size_t	size = strlen(str);
+	ssize_t	size = strlen(str);
 	char	*b64 = new char [size + 4];
 
 	strcpy(b64, str);
@@ -680,8 +680,13 @@ static char *ExceptionTitle;
 static char *ExceptionLogFile;
 static char *ExceptionLogInfo;
 #define STACKDUMP_SIZE			256
-#define MAX_STACKDUMP_SIZE		512
+#ifdef _WIN64
+#define MAX_STACKDUMP_SIZE		2048
+#define MAX_DUMPBUF_SIZE		4096
+#else
+#define MAX_STACKDUMP_SIZE		1024
 #define MAX_DUMPBUF_SIZE		2048
+#endif
 #define MAX_PRE_STACKDUMP_SIZE	256
 
 inline int reg_info_core(char *buf, const u_char *s, int size, const char *name)
@@ -799,11 +804,13 @@ LONG WINAPI Local_UnhandledExceptionFilter(struct _EXCEPTION_POINTERS *info)
 	len += reg_info(buf+len, context->R10, "R10"); len += reg_info(buf+len, context->R11, "R11");
 	len += reg_info(buf+len, context->R12, "R12"); len += reg_info(buf+len, context->R13, "R13");
 	len += reg_info(buf+len, context->R14, "R14"); len += reg_info(buf+len, context->R15, "R15");
+	len += reg_info(buf+len, context->Rip, "Rip");
 #else
 	len += reg_info(buf+len, context->Eax, "Eax"); len += reg_info(buf+len, context->Ebx, "Ebx");
 	len += reg_info(buf+len, context->Ecx, "Ecx"); len += reg_info(buf+len, context->Edx, "Edx");
 	len += reg_info(buf+len, context->Esi, "Esi"); len += reg_info(buf+len, context->Edi, "Edi");
 	len += reg_info(buf+len, context->Ebp, "Ebp"); len += reg_info(buf+len, context->Esp, "Esp");
+	len += reg_info(buf+len, context->Eip, "Eip");
 #endif
 
 	len += sprintf(buf+len, "------------------------\r\n\r\n");
@@ -1045,7 +1052,7 @@ BOOL TIsVirtualizedDirW(WCHAR *path)
 
 	for (int i=0; csidl[i] != 0xffffffff; i++) {
 		if (SHGetSpecialFolderPathW(NULL, buf, csidl[i], FALSE)) {
-			size_t	len = wcslen(buf);
+			ssize_t	len = wcslen(buf);
 			if (wcsnicmp(buf, path, len) == 0) {
 				WCHAR	ch = path[len];
 				if (ch == 0 || ch == '\\' || ch == '/') {
@@ -1147,6 +1154,17 @@ void TSwitchToThisWindow(HWND hWnd, BOOL flg)
 		pSwitchToThisWindow(hWnd, flg);
 	}
 }
+/*
+float GetMonitorScaleFactor()
+{
+	MONITORINFOEX mie = { sizeof(MONITORINFOEX) };
+
+	GetMonitorInfo(hMonitor, &LogicalMonitorInfo);
+	LogicalMonitorWidth = LogicalMonitorInfo.rcMonitor.right – LogicalMonitorInfo.rcMonitor.left;
+	LogicalDesktopWidth = GetSystemMetrics(SM_CXVIRTUALSCREEN);
+
+}*/
+
 
 /*
 	リンク
@@ -1349,16 +1367,16 @@ HWND ShowHelpU8(HWND hOwner, const char *help_dir, const char *help_file, const 
 #undef free
 
 extern "C" {
-void *malloc(size_t);
-void *realloc(void *, size_t);
+void *malloc(ssize_t);
+void *realloc(void *, ssize_t);
 void free(void *);
 }
 
-inline size_t align_size(size_t size, size_t grain) {
+inline ssize_t align_size(ssize_t size, ssize_t grain) {
 	return (size + grain -1) / grain * grain;
 }
 
-inline size_t alloc_size(size_t size) {
+inline ssize_t alloc_size(ssize_t size) {
 	return	align_size((align_size(size, ALLOC_ALIGN) + 16 + PAGE_SIZE), PAGE_SIZE);
 }
 inline void *valloc_base(void *d)
@@ -1370,20 +1388,20 @@ inline void *valloc_base(void *d)
 
 	return	(void *)base;
 }
-inline size_t valloc_size(void *d)
+inline ssize_t valloc_size(void *d)
 {
 	d = valloc_base(d);
 
 	if (((DWORD *)d)[0] != VALLOC_SIG) {
-		return	(size_t)-1;
+		return	(ssize_t)-1;
 	}
-	return	((size_t *)d)[1];
+	return	((ssize_t *)d)[1];
 }
 
 
-void *valloc(size_t size)
+void *valloc(ssize_t size)
 {
-	size_t	s = alloc_size(size);
+	ssize_t	s = alloc_size(size);
 	void	*d = VirtualAlloc(0, s, MEM_RESERVE, PAGE_NOACCESS);
 
 	if (!d || !VirtualAlloc(d, s - PAGE_SIZE, MEM_COMMIT, PAGE_READWRITE)) {
@@ -1392,16 +1410,16 @@ void *valloc(size_t size)
 	}
 
 	((DWORD *)d)[0]  = VALLOC_SIG;
-	((size_t *)d)[1] = size;
+	((ssize_t *)d)[1] = size;
 
 	Debug("valloc (%x %d %d)\n", d, s, size);
 
 	return (void *)((u_char *)d + s - PAGE_SIZE - align_size(size, ALLOC_ALIGN));
 }
 
-void *vcalloc(size_t num, size_t ele)
+void *vcalloc(ssize_t num, ssize_t ele)
 {
-	size_t	size = num * ele;
+	ssize_t	size = num * ele;
 	void	*d = valloc(size);
 
 	if (d) {
@@ -1410,9 +1428,9 @@ void *vcalloc(size_t num, size_t ele)
 	return	d;
 }
 
-void *vrealloc(void *d, size_t size)
+void *vrealloc(void *d, ssize_t size)
 {
-	size_t	old_size = 0;
+	ssize_t	old_size = 0;
 
 	if (d) {
 		if ((old_size = valloc_size(d)) == -1) {
@@ -1437,7 +1455,7 @@ void vfree(void *d)
 {
 	if (!d) return;
 
-	size_t	size = valloc_size(d);
+	ssize_t	size = valloc_size(d);
 
 	if (size == -1) {
 		Debug("vfree non vfree (%x)\n", d);
@@ -1455,7 +1473,7 @@ void vfree(void *d)
 
 char *vstrdup(const char *s)
 {
-	size_t	size = strlen(s) + 1;
+	ssize_t	size = strlen(s) + 1;
 	void	*d = valloc(size);
 	if (d) {
 		memcpy(d, s, size);
@@ -1465,7 +1483,7 @@ char *vstrdup(const char *s)
 
 WCHAR *vwcsdup(const WCHAR *s)
 {
-	size_t	size = (wcslen(s) + 1) * sizeof(WCHAR);
+	ssize_t	size = (wcslen(s) + 1) * sizeof(WCHAR);
 	void	*d = valloc(size);
 	if (d) {
 		memcpy(d, s, size);
@@ -1473,7 +1491,7 @@ WCHAR *vwcsdup(const WCHAR *s)
 	return	(WCHAR *)d;
 }
 
-void *operator new(size_t size)
+void *operator new(ssize_t size)
 {
 	return	valloc(size);
 }
@@ -1484,7 +1502,7 @@ void operator delete(void *d)
 }
 
 #if _MSC_VER >= 1200
-void *operator new [](size_t size)
+void *operator new [](ssize_t size)
 {
 	return	valloc(size);
 }

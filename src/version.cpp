@@ -1,13 +1,13 @@
 ﻿static char *version_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu	Version.cpp ver3.0.4.20";
+	"@(#)Copyright (C) 2004-2015 H.Shirouzu	Version.cpp ver3.0.5.21";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Module Name				: Version
 	Create					: 2010-06-13(Sun)
-	Update					: 2015-09-09(Wed)
+	Update					: 2015-09-23(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
-	Modify					: Mapaler 2015-09-22
+	Modify					: Mapaler 2015-09-23
 	======================================================================== */
 
 #include "tlib/tlib.h"

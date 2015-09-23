@@ -25,9 +25,9 @@
 #define strdup  vstrdup
 #define wcsdup  vwcsdup
 extern "C" {
-void *valloc(size_t size);
-void *vcalloc(size_t num, size_t ele);
-void *vrealloc(void *d, size_t size);
+void *valloc(ssize_t size);
+void *vcalloc(ssize_t num, ssize_t ele);
+void *vrealloc(void *d, ssize_t size);
 void vfree(void *d);
 char *vstrdup(const char *s);
 //unsigned short *vwcsdup(const unsigned short *s);

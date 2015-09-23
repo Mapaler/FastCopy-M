@@ -1,9 +1,9 @@
 ﻿static char *mainwin_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		mainwin.cpp	ver3.03";
+	"@(#)Copyright (C) 2004-2015 H.Shirouzu		mainwin.cpp	ver3.0.5.21";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-08-30(Sun)
+	Update					: 2015-09-23(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-16
@@ -350,11 +350,19 @@ void TMainDlg::StatusEditSetup()
 	if (once) return;
 	once = true;
 
-	LOGFONTW lf = {};
-	HDC		hDc = ::GetDC(hWnd);
+	LOGFONTW	lf = {};
+	HDC			hDc = ::GetDC(hWnd);
+	int			logPixY = ::GetDeviceCaps(hDc, LOGPIXELSY);
+	DWORD		font_id		= IDS_STATUS_FONT;
+	DWORD		fontsize_id	= IDS_STATUS_FONTSIZE;
+
+	if (logPixY != 96) {	// enable display font scaling
+		font_id		= IDS_STATUS_ALTFONT;
+		fontsize_id	= IDS_STATUS_ALTFONTSIZE;
+	}
 
 	if (!*cfg.statusFont) {
-		if (WCHAR *font = GetLoadStrW(IDS_STATUS_FONT)) {
+		if (WCHAR *font = GetLoadStrW(font_id)) {
 			wcscpy(cfg.statusFont, font);
 		}
 		if (!*cfg.statusFont) return;
@@ -369,7 +377,7 @@ void TMainDlg::StatusEditSetup()
 	wcscpy(lf.lfFaceName, cfg.statusFont);
 	lf.lfCharSet = DEFAULT_CHARSET;
 	POINT pt={}, pt2={};
-	pt.y = (int)((int64)::GetDeviceCaps(hDc, LOGPIXELSY) * cfg.statusFontSize / 720);
+	pt.y = (int)((int64)logPixY * cfg.statusFontSize / 720);
 	::DPtoLP(hDc, &pt,  1);
 	::DPtoLP(hDc, &pt2, 1);
 	lf.lfHeight = -abs(pt.y - pt2.y);
@@ -2309,7 +2317,7 @@ void TMainDlg::SetListInfo()
 	ti.listBuf->SetUsedSize(0);
 }
 
-int mega_str(char *buf, int64 val)
+ssize_t mega_str(char *buf, int64 val)
 {
 	if (val >= (10 * 1024 * 1024)) {
 		return	comma_int64(buf, val / 1024 / 1024);
@@ -2317,12 +2325,12 @@ int mega_str(char *buf, int64 val)
 	return	comma_double(buf, (double)val / 1024 / 1024, 1);
 }
 
-int double_str(char *buf, double val)
+ssize_t double_str(char *buf, double val)
 {
 	return	comma_double(buf, val, val < 10.0 ? 2 : val < 1000.0 ? 1 : 0);
 }
 
-int time_str(char *buf, DWORD sec)
+ssize_t time_str(char *buf, DWORD sec)
 {
 	DWORD	h = sec / 3600;
 	DWORD	m = (sec % 3600) / 60;
@@ -2333,7 +2341,7 @@ int time_str(char *buf, DWORD sec)
 	return	sprintf(buf, "%02u:%02u:%02u", h, m, s);
 }
 
-int ticktime_str(char *buf, DWORD tick)
+ssize_t ticktime_str(char *buf, DWORD tick)
 {
 	if (tick < 60000) return sprintf(buf, "%.1f %s"
 		, (double)tick / 1000

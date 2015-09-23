@@ -28,7 +28,7 @@ Shell Extension add icon.<br />
 FastCopy-M采用VS2015，你可以自行替换工程到原始版本（或手动修改文件内版本号）以在VS2013或2012上编译。目前比官方多需要引用“shlwapi.lib”。<br />
 FastCopy-M used VS2015, if you want bulid on VS2013 or earlier you can replace the "*.sln", "*.vcxproj" to original version (or modify project version in these file) by your self. Additional Dependencies need include "shlwapi.lib" after ver3.0.4.20.
 
-## Release Download
+## Website
 
 http://www.mapaler.com/fastcopy-m/
 
@@ -50,7 +50,9 @@ Then will auto begin rebuild and replace resources.  And generate to "output\Fas
 
 ### Download Tools
 
-* [FastCopy-M Resources Rebuild & Replace Tools.zip](https://github.com/Mapaler/FastCopy-M/releases/download/v3.0.4.20/FastCopy-M.Resources.Rebuild.Replace.Tools.zip)
+* [FastCopy-M Resources Rebuild & Replace Tools.zip](https://github.com/Mapaler/FastCopy-M/releases/download/v3.0.4.20/FastCopy-M.Resources.Rebuild.Replace.Tools.zip)<br />
+资源源代码已改变，请先执行“Update resources source file.vbs”更新源代码。<br />
+Resource source files has changed, please run "Update resources source file.vbs" update source at first.
 * [Auto Change Icon Tools.zip](https://github.com/Mapaler/FastCopy-M/releases/download/v3.0.4.20/Auto.Change.Icon.Tools.zip)
 
 ## Official website | FastCopy官方网站
