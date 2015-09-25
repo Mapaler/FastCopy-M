@@ -9,8 +9,8 @@ FastCopy Chinesization and modify to support other language more overall, add la
 
 * Vista以后支持新版文件/文件夹选择框（可多选）<br />
 After Vista support new Shell common file dialog (Easy-to-use, and can select folder multiple)<br />
-![Folder select](http://ww3.sinaimg.cn/large/6c84b2d6gw1ewb4gmu1hij20mc0gjjwt.jpg)
-![File select](http://ww1.sinaimg.cn/large/6c84b2d6gw1ewb4guswqvj20lo0g4gqz.jpg)
+![Folder select](http://ww3.sinaimg.cn/large/6c84b2d6gw1ewei65dy7bj20li0g8tdj.jpg)
+![File select](http://ww3.sinaimg.cn/large/6c84b2d6gw1ewei561xzhj20kv0fu0wz.jpg)
 
 * 主界面复制时图标也显示动画，并允许修改动画总帧数<br />
 The main window icon displayed animation when runing copy process. And allows to modify the total number of animation frames.<br />
