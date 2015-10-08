@@ -6,6 +6,7 @@
 	Update					: 2015-06-22(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
+	Modify  				: Mapaler 2015-10-08
 	======================================================================== */
 
 enum InstMode { SETUP_MODE, UNINSTALL_MODE };
@@ -112,7 +113,7 @@ public:
 #define FASTCOPY			"FastCopy"
 #define FASTCOPY_EXE		"FastCopy.exe"
 #define INSTALL_EXE			"setup.exe"
-#define README_TXT			"readme.txt"
+#define README_TXT			"readme_chs.txt"
 #define README_ENG_TXT		"readme_eng.txt"
 #define GPL_TXT				"license-gpl3.txt"
 #define HELP_CHM			"FastCopy.chm"
