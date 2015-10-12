@@ -1,9 +1,9 @@
 ﻿/* static char *fastcopy_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		fastcopy.h	Ver3.04"; */
+	"@(#)Copyright (C) 2004-2015 H.Shirouzu		fastcopy.h	Ver3.06"; */
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-09-09(Wed)
+	Update					: 2015-10-12(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-09
@@ -739,7 +739,7 @@ protected:
 	BOOL WriteFileWithReduce(HANDLE hFile, void *buf, DWORD size, OverLap *ovl);
 	BOOL WriteDigestProc(int dst_len, FileStat *stat, DigestObj::Status status);
 	BOOL WriteFileProc(int dst_len);
-	BOOL WriteFileProcCore(HANDLE *_fh, int dst_len, FileStat *stat, WInfo *wi);
+	BOOL WriteFileProcCore(HANDLE *_fh, FileStat *stat, WInfo *wi);
 	BOOL WriteFileCore(HANDLE fh, FileStat *stat, WInfo *wi, DWORD mode, DWORD share, DWORD flg);
 	BOOL WriteFileBackupProc(HANDLE fh, int dst_len);
 	BOOL ChangeToWriteModeCore(BOOL is_finish=FALSE);

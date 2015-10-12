@@ -339,7 +339,7 @@ public:
 	virtual BOOL	EnableWindow(BOOL is_enable);
 
 	virtual	int		MessageBox(LPCSTR msg, LPCSTR title="msg", UINT style=MB_OK);
-	virtual	int		MessageBoxW(LPCWSTR msg, LPCWSTR title=L"", UINT style=MB_OK);
+	virtual	int		MessageBoxW(LPCWSTR msg, LPCWSTR title=L"msg", UINT style=MB_OK);
 	virtual	int		MessageBoxU8(LPCSTR msg, LPCSTR title="msg", UINT style=MB_OK);
 	virtual BOOL	BringWindowToTop(void);
 	virtual BOOL	SetForegroundWindow(void);

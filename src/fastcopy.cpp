@@ -1,9 +1,9 @@
 ﻿static char *fastcopy_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		fastcopy.cpp	ver3.0.5.21";
+	"@(#)Copyright (C) 2004-2015 H.Shirouzu		fastcopy.cpp	ver3.06";
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-09-23(Wed)
+	Update					: 2015-10-12(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-09
@@ -1096,9 +1096,9 @@ BOOL FastCopy::MakeDigest(WCHAR *path, DigestBuf *dbuf, FileStat *stat)
 {
 	int64	file_size = stat->FileSize();
 	bool	is_src = (dbuf == &srcDigest);
-	bool	is_ovl = (flagOvl && file_size > info.maxOvlSize);
+	bool	useOvl = (flagOvl && file_size > info.maxOvlSize);
 	DWORD	flg = ((info.flags & USE_OSCACHE_READ) ? 0 : FILE_FLAG_NO_BUFFERING)
-				| FILE_FLAG_SEQUENTIAL_SCAN | (is_ovl ? flagOvl : 0);
+				| FILE_FLAG_SEQUENTIAL_SCAN | (useOvl ? flagOvl : 0);
 	DWORD	share = FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE;
 	BOOL	ret = FALSE;
 	OvlList	&ovl_list = is_src ? rOvl : wOvl;
@@ -1116,7 +1116,7 @@ BOOL FastCopy::MakeDigest(WCHAR *path, DigestBuf *dbuf, FileStat *stat)
 
 	HANDLE	hFile = CreateFileWithRetry(path, GENERIC_READ, share, 0, OPEN_EXISTING, flg, 0, 5);
 	if (hFile == INVALID_HANDLE_VALUE) return FALSE;
-	if (is_ovl) DisableLocalBuffering(hFile);
+	if (useOvl) DisableLocalBuffering(hFile);
 
 	if ((DWORD)dbuf->buf.Size() < MaxReadDigestBuf() && !dbuf->buf.Grow(MaxReadDigestBuf()))
 		goto END;
@@ -1944,7 +1944,7 @@ BOOL FastCopy::OpenFileProc(FileStat *stat, int dir_len)
 	BOOL	is_backup = enableAcl || enableStream;
 	BOOL	is_reparse = IsReparseEx(stat->dwFileAttributes);
 	BOOL	is_open = is_backup || is_reparse || stat->FileSize() > 0;
-	BOOL	is_ovl = (is_open && !is_reparse && flagOvl && stat->FileSize() > info.maxOvlSize);
+	BOOL	useOvl = (is_open && !is_reparse && flagOvl && stat->FileSize() > info.maxOvlSize);
 	BOOL	ret = TRUE;
 
 	if (is_open) {
@@ -1960,7 +1960,7 @@ BOOL FastCopy::OpenFileProc(FileStat *stat, int dir_len)
 			mode |= READ_CONTROL;
 			flg  |= FILE_FLAG_BACKUP_SEMANTICS;
 		}
-		else if (is_ovl) {
+		else if (useOvl) {
 			flg |= flagOvl;
 		}
 		if (is_reparse) {
@@ -1981,7 +1981,7 @@ BOOL FastCopy::OpenFileProc(FileStat *stat, int dir_len)
 			stat->isWriteShare = true;
 		}
 
-		if (ret && is_ovl) {
+		if (ret && useOvl) {
 			if (is_backup) {	// エラーの場合は hFile が使われる
 				stat->hOvlFile = ::CreateFileW(src, mode, share, 0, OPEN_EXISTING, flg|flagOvl, 0);
 			} else {
@@ -2129,11 +2129,11 @@ BOOL FastCopy::OpenFileBackupStreamCore(int src_len, int64 size, WCHAR *altname,
 	}
 
 	FileStat	*subStat = (FileStat *)(fileStatBuf.Buf() + fileStatBuf.UsedSize());
-	bool		is_ovl = (size > info.maxOvlSize) && flagOvl;
+	bool		useOvl = (size > info.maxOvlSize) && flagOvl && srcFsType != FSTYPE_NETWORK;
 	DWORD		share = FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE;
 	DWORD		flg = ((info.flags & USE_OSCACHE_READ) ? 0 : FILE_FLAG_NO_BUFFERING)
 					| FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_BACKUP_SEMANTICS
-					| (is_ovl ? flagOvl : 0);
+					| (useOvl ? flagOvl : 0);
 
 	openFiles[openFilesCnt++] = subStat;
 	subStat->fileID = nextFileID++;
@@ -2160,7 +2160,7 @@ BOOL FastCopy::OpenFileBackupStreamCore(int src_len, int64 size, WCHAR *altname,
 		subStat->lastError = ::GetLastError();
 		return	FALSE;
 	}
-	else if (is_ovl) {
+	else if (useOvl) {
 		subStat->hOvlFile = subStat->hFile;
 		DisableLocalBuffering(subStat->hFile);
 	}
@@ -3165,7 +3165,8 @@ BOOL FastCopy::WriteProc(int dir_len)
 					total.linkFiles++;
 				}
 				else {
-					PutList(dst + dstPrefixLen, PL_NORMAL, 0, writeReq->stat.WriteTime(),
+					PutList(dst + dstPrefixLen, IsReparseEx(writeReq->stat.dwFileAttributes) ?
+						PL_REPARSE : PL_NORMAL, 0, writeReq->stat.WriteTime(),
 						writeReq->stat.FileSize());
 					total.writeFiles++;
 					total.writeTrans += writeReq->stat.FileSize();
@@ -3795,14 +3796,15 @@ BOOL FastCopy::WriteDigestProc(int dst_len, FileStat *stat, DigestObj::Status st
 	return TRUE;
 }
 
-BOOL FastCopy::WriteFileProcCore(HANDLE *_fh, int dst_len, FileStat *stat, WInfo *_wi)
+BOOL FastCopy::WriteFileProcCore(HANDLE *_fh, FileStat *stat, WInfo *_wi)
 {
 	HANDLE	&fh = *_fh;
 	WInfo	&wi = *_wi;
 	DWORD	mode = GENERIC_WRITE;
 	DWORD	share = FILE_SHARE_READ|FILE_SHARE_WRITE;
 	DWORD	flg = (wi.is_nonbuf ? FILE_FLAG_NO_BUFFERING : 0) | FILE_FLAG_SEQUENTIAL_SCAN;
-	BOOL	useOvl = (flagOvl && wi.file_size > info.maxOvlSize);
+	BOOL	useOvl = (flagOvl && wi.file_size > info.maxOvlSize) && (dstFsType != FSTYPE_NETWORK
+		|| wi.cmd == WRITE_FILE);
 
 	if (wi.cmd == WRITE_BACKUP_FILE || wi.cmd == WRITE_BACKUP_ALTSTREAM) {
 		if (stat->acl && stat->aclSize && enableAcl) mode |= WRITE_OWNER|WRITE_DAC;
@@ -3886,7 +3888,7 @@ BOOL FastCopy::WriteFileProc(int dst_len)
 		}
 	}
 	else {
-		ret = WriteFileProcCore(&fh, dst_len, stat, &wi);
+		ret = WriteFileProcCore(&fh, stat, &wi);
 		if (!ret) SetErrWFileID(stat->fileID);
 	}
 	if (IsUsingDigestList() && !wi.is_stream && !isAbort) {	// digestList に error を含めて登録
@@ -4065,7 +4067,7 @@ BOOL FastCopy::WriteFileBackupProc(HANDLE fh, int dst_len)
 	void	*backupContent = NULL;	// for BackupWrite
 
 	while (!isAbort && is_continue) {
-		if (RecvRequest() == FALSE) {
+		if (!RecvRequest()) {
 			ret = FALSE;
 			if (!isAbort) {
 				WCHAR cmd[2] = { writeReq->cmd + '0', 0 };
@@ -4077,8 +4079,8 @@ BOOL FastCopy::WriteFileBackupProc(HANDLE fh, int dst_len)
 		case WRITE_BACKUP_ACL: case WRITE_BACKUP_EADATA:
 			SetLastError(0);
 			if (!(ret = ::BackupWrite(fh, writeReq->buf, writeReq->cmd == WRITE_BACKUP_ACL ?
-					writeReq->stat.aclSize : writeReq->stat.eadSize, &size, FALSE, TRUE,
-					&backupContent))) {
+				writeReq->stat.aclSize : writeReq->stat.eadSize, &size, FALSE, TRUE,
+				&backupContent))) {
 				if (info.flags & REPORT_ACL_ERROR)
 					ConfirmErr(L"BackupWrite(ACL/EADATA)", dst + dstPrefixLen);
 			}

@@ -397,9 +397,11 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 		SetVersionStr(is_elevated_admin, isNoUI);
 	}
 
+#ifndef _WinXP
 	MAX_NORMAL_FASTCOPY_ICON = atoi((char *)GetLoadStr(IDS_Animation_Icon_Num));
 	//用指针hMainIcon指向new动态分配的长度为len*sizeof(HICON)的内存空间 
 	hMainIcon = new HICON[MAX_NORMAL_FASTCOPY_ICON];
+#endif
 
 	char	title[100];
 	sprintf(title, "%s %s%s", FASTCOPY_TITLE, GetVersionStr(), GetVerAdminStr());
@@ -1471,14 +1473,18 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 
 	WCHAR	*src = new WCHAR [src_len], dst[MAX_PATH_EX] = L"";
 	BOOL	ret = TRUE;
-	BOOL	exec_confirm = (!isNoUI && (cfg.execConfirm ||
-										(is_fore && (::GetAsyncKeyState(VK_CONTROL) & 0x8000))));
+	BOOL	exec_confirm = FALSE;
 
-	if (!exec_confirm) {
-		if (isShellExt && (exec_flags & CMDLINE_EXEC))
-			exec_confirm = is_delete_mode ? !shextNoConfirmDel : !shextNoConfirm;
-		else
-			exec_confirm = is_delete_mode ? !noConfirmDel : cfg.execConfirm;
+	if (!isNoUI) {
+		if (cfg.execConfirm || (is_fore && (::GetAsyncKeyState(VK_CONTROL) & 0x8000))) {
+			exec_confirm = TRUE;
+		} else {
+			if (isShellExt && (exec_flags & CMDLINE_EXEC)) {
+				exec_confirm = is_delete_mode ? !shextNoConfirmDel : !shextNoConfirm;
+			} else {
+				exec_confirm = is_delete_mode ? !noConfirmDel : cfg.execConfirm;
+			}
+		}
 	}
 
 	if (GetDlgItemTextW(SRC_COMBO, src, src_len) == 0
@@ -1904,19 +1910,19 @@ BOOL TMainDlg::CheckVerifyExtension()
 {
 	if (fastCopy.IsStarting()) return FALSE;
 
-	char	buf[128];
-	DWORD	len = GetDlgItemText(LIST_BUTTON, buf, sizeof(buf));
+	WCHAR	buf[128];
+	DWORD	len = GetDlgItemTextW(LIST_BUTTON, buf, wsizeof(buf));
 	BOOL	is_set = GetCopyMode() != FastCopy::DELETE_MODE && IsForeground()
 						&& (::GetAsyncKeyState(VK_CONTROL) & 0x8000) ? TRUE : FALSE;
 
 	if (len <= 0) return FALSE;
 
-	char	end_ch = buf[len-1];
-	if      ( is_set && end_ch != 'V') strcpy(buf + len, "+V");
+	WCHAR	end_ch = buf[len-1];
+	if      ( is_set && end_ch != 'V') wcscpy(buf + len, L"+V");
 	else if (!is_set && end_ch == 'V') buf[len-2] = 0;
 	else return FALSE;
 
-	SetDlgItemText(LIST_BUTTON, buf);
+	SetDlgItemTextW(LIST_BUTTON, buf);
 	return	TRUE;
 }
 

@@ -57,6 +57,7 @@ BOOL Condition::Initialize()
 	if (!isInit) {
 		::InitializeCriticalSection(&cs);
 		waitBits = 0;
+		isInit = TRUE;
 	}
 	return	TRUE;
 }
