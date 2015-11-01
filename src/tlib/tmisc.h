@@ -334,6 +334,7 @@ public:
 		if ((size = _size) <= 0) return NULL;
 		return	(buf = (char *)malloc(size));
 	}
+	void Free() 		{ Alloc(0); }
 	operator char*()	{ return (char *)buf; }
 	operator BYTE*()	{ return (BYTE *)buf; }
 	operator WCHAR*()	{ return (WCHAR *)buf; }
@@ -349,6 +350,7 @@ void TSetDefaultLCID(LCID id=0);
 HMODULE TLoadLibrary(LPSTR dllname);
 HMODULE TLoadLibraryW(WCHAR *dllname);
 int MakePath(char *dest, const char *dir, const char *file);
+int MakePathU8(char *dest, const char *dir, const char *file);
 int MakePathW(WCHAR *dest, const WCHAR *dir, const WCHAR *file);
 
 int64 hex2ll(char *buf);
@@ -375,7 +377,9 @@ WCHAR *wcsdupNew(const WCHAR *_s, int max_len=-1);
 int strcpyz(char *dest, const char *src);
 int wcscpyz(WCHAR *dest, const WCHAR *src);
 int strncpyz(char *dest, const char *src, int num);
+int strncatz(char *dest, const char *src, int num);
 int wcsncpyz(WCHAR *dest, const WCHAR *src, int num);
+int wcsncatz(WCHAR *dest, const WCHAR *src, int num);
 
 inline int get_ntz64(uint64 val) {
 #ifdef _WIN64
@@ -427,6 +431,7 @@ BOOL SymLinkW(WCHAR *src, WCHAR *dest, WCHAR *arg=L"");
 BOOL ReadLinkW(WCHAR *src, WCHAR *dest, WCHAR *arg=NULL);
 BOOL DeleteLinkW(WCHAR *path);
 BOOL GetParentDirW(const WCHAR *srcfile, WCHAR *dir);
+BOOL GetParentDirU8(const char *srcfile, char *dir);
 HWND ShowHelpW(HWND hOwner, WCHAR *help_dir, WCHAR *help_file, WCHAR *section=NULL);
 HWND ShowHelpU8(HWND hOwner, const char *help_dir, const char *help_file, const char *section=NULL);
 HWND CloseHelpAll();

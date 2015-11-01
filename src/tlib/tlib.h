@@ -245,8 +245,14 @@ struct TRect : public RECT {
 	void	set_cy(long v) { bottom = top + v; }
 	void	Regular() { if (left > right) { long t=left; left=right; right=t; }
 	                    if (top > bottom) { long t=top; top=bottom; bottom=t; } }
-	void	Infrate(long cx, long cy) { left-=cx; right+=cx; top-=cy; bottom+=cy; }
+	void	Inflate(long cx, long cy) { left-=cx; right+=cx; top-=cy; bottom+=cy; }
 	void	Size(long cx, long cy) { right = left + cx; bottom = top + cy; }
+};
+
+struct TSize : public SIZE {
+	TSize(long _cx=0, long _cy=0) { cx=_cx; cy=_cy; }
+	TSize(const SIZE &sz) { *this = sz; }
+	void	Inflate(long x, long y) { cx += x; cy += y; }
 };
 
 class TWin : public THashObj {

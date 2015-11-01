@@ -33,6 +33,7 @@ int WtoA(const WCHAR *src, char *dst, int bufsize, int max_len=-1);
 
 /* dynamic allocation */
 WCHAR *U8toW(const char *src, int max_len=-1);
+WCHAR *WtoW(const char *src, int max_len=-1);
 char *WtoU8(const WCHAR *src, int max_len=-1);
 char *WtoA(const WCHAR *src, int max_len=-1);
 char *AtoU8(const char *src, int max_len=-1);
@@ -41,6 +42,7 @@ WCHAR *AtoW(const char *src, int max_len=-1);
 
 /* use static buffer */
 WCHAR *U8toWs(const char *src, int max_len=-1);
+WCHAR *WtoWs(const WCHAR *src, int max_len=-1);
 char *WtoU8s(const WCHAR *src, int max_len=-1);
 char *WtoAs(const WCHAR *src, int max_len=-1);
 char *AtoU8s(const char *src, int max_len=-1);
@@ -60,14 +62,15 @@ UINT GetDriveTypeU8(const char *path);
 class U8str {
 	char	*str;
 public:
-	U8str(const WCHAR *_str=NULL) { Init(_str ? WtoU8(_str) : NULL); }
+	U8str(const WCHAR *_str=NULL) { Init(_str ? WtoU8(_str) : NULL, FALSE); }
 	U8str(const char *_str, StrMode mode=BY_UTF8) {
-		Init(_str ? mode == BY_UTF8 ? strdupNew(_str) : AtoU8(_str) : NULL);
+		Init(_str ? mode == BY_UTF8 ? strdupNew(_str) : AtoU8(_str) : NULL, FALSE);
 	}
 	U8str(const U8str &u) { Init(u.str); }
 	U8str(int len) { if (len) { str = new char [len]; *str = 0; } else { str = NULL; } }
 	~U8str() { UnInit(); }
-	void Init(const char *_str) { str = (_str ? strdupNew(_str) : NULL); }
+	void Init(const char *_str) { str = (_str) ? strdupNew(_str) : NULL; }
+	void Init(char *_str, BOOL is_new) { str = (_str && is_new) ? strdupNew(_str) : _str; }
 	void UnInit() { delete [] str; str=NULL; }
 	U8str &operator =(const char *_str) { UnInit(); Init(_str); return *this; }
 	char &operator [](int idx) { return str[idx]; }
@@ -77,22 +80,70 @@ public:
 };
 
 class Wstr {
-	WCHAR	*str;
+	WCHAR		*str;
+	mutable int	len;
 public:
 	Wstr(const char *_str=NULL, StrMode mode=BY_UTF8) {
-		Init(_str ? mode == BY_UTF8 ? U8toW(_str) : AtoW(_str) : NULL);
+		Init(_str ? mode == BY_UTF8 ? U8toW(_str) : AtoW(_str) : NULL, FALSE);
 	}
 	Wstr(const WCHAR *_str) { Init(_str); }
-	Wstr(const Wstr& w) { Init(w.str); }
-	Wstr(int len) { if (len) { str = new WCHAR [len]; *str = 0; } else { str = NULL; } }
+	Wstr(const Wstr& w) { Init(w); }
+	Wstr(int len) { Init(len); }
 	~Wstr() { UnInit(); }
-	void Init(const WCHAR *_str) { str = (_str ? wcsdupNew(_str) : NULL); }
-	void UnInit() { delete [] str; str = NULL; }
-	Wstr &operator =(const WCHAR *_str) { UnInit(); Init(_str); return *this; }
+
+	void Init(const Wstr &w) {
+		Init(w.str);
+		len = w.len;
+	}
+	void Init(const WCHAR *_str) {
+		str = (_str) ? wcsdupNew(_str) : NULL;
+		len = -1;
+	}
+	void Init(WCHAR *_str, BOOL is_new) {
+		str = (_str && is_new) ? wcsdupNew(_str) : _str;
+		len = -1;
+	}
+	void Init(int _len) {
+		if (_len) {
+			str = new WCHAR [_len];
+			*str=0;
+		} else {
+			str=NULL;
+		}
+		len = -1;
+	}
+	void UnInit() {
+		delete [] str;
+		str = NULL;
+		len = -1;
+	}
+	Wstr &operator =(const WCHAR *_str) {
+		UnInit();
+		Init(_str);
+		return *this;
+	}
+	Wstr &operator =(const Wstr &w) {
+		UnInit();
+		Init(w);
+		return *this;
+	}
+	bool operator ==(const WCHAR *_str) const {
+		if (!str || !_str) return str == _str;
+		return	wcscmp(str, _str) == 0;
+	}
+	bool operator ==(const Wstr &_w) const { return _w == str; }
+	bool operator !=(const WCHAR *_str) const { return !(*this == _str); }
+	bool operator !=(const Wstr &_w) const { return !(_w == str); }
 	WCHAR &operator [](int idx) { return str[idx]; }
-	WCHAR	*Buf() { return str; }
+	WCHAR	*Buf() { len = -1; return str; }
+	void UnBuf() { len = -1; }
 	const WCHAR *s() const { return str ? str : L""; }
 	bool IsEmpty() const { return !str || *str == 0; }
+	int	Len() const {
+		if (len >= 0) return len;
+		if (!str) return 0;
+		return (len = (int)wcslen(str));
+	}
 };
 
 class MBCSstr {
@@ -100,12 +151,13 @@ class MBCSstr {
 public:
 	MBCSstr(const WCHAR *_str=NULL) { Init(_str ? WtoA(_str) : NULL); }
 	MBCSstr(const char *_str, StrMode mode=BY_UTF8) {
-		Init(_str ? mode == BY_UTF8 ? U8toA(_str) : strdupNew(_str) : NULL);
+		Init(_str ? mode == BY_UTF8 ? U8toA(_str) : strdupNew(_str) : NULL, FALSE);
 	}
 	MBCSstr(int len) { if (len) { str = new char [len]; *str = 0; } else { str = NULL; } }
 	MBCSstr(const MBCSstr& m) { Init(m.str); }
 	~MBCSstr() { UnInit(); }
-	void Init(const char *_str) { str = (_str ? strdupNew(_str) : NULL); }
+	void Init(const char *_str) { str = (_str) ? strdupNew(_str) : NULL; }
+	void Init(char *_str, BOOL is_new) { str = (_str && is_new) ? strdupNew(_str) : _str; }
 	void UnInit() { delete [] str; str = NULL; }
 	MBCSstr &operator =(const char *_str) { UnInit(); Init(_str); return *this; }
 	char &operator [](int idx) { return str[idx]; }
@@ -161,5 +213,16 @@ BOOL GetSaveFileNameU8(LPOPENFILENAME ofn);
 BOOL ReadLinkU8(LPCSTR src, LPSTR dest, LPSTR arg);
 BOOL PlaySoundU8(const char *path, HMODULE hmod, DWORD flg);
 
+inline int TMessageBox(LPCSTR msg, LPCSTR title="msg", UINT style=MB_OK) {
+	return	::MessageBox(0, msg, title, style);
+}
+inline int TMessageBoxW(LPCWSTR msg, LPCWSTR title=L"msg", UINT style=MB_OK) {
+	return	::MessageBoxW(0, msg, title, style);
+}
+inline int TMessageBoxU8(LPCSTR msg, LPCSTR title="msg", UINT style=MB_OK) {
+	Wstr	wmsg(msg);
+	Wstr	wtitle(title);
+	return	::MessageBoxW(0, wmsg.s(), wtitle.s(), style);
+}
 
 #endif

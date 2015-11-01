@@ -22,8 +22,9 @@ DEFINE_GUID(IID_IShellLinkW, 0x000214F9, \
 #define MD5_SIZE  16
 
 #ifndef REGSTR_SHELLFOLDERS
-#define REGSTR_SHELLFOLDERS			REGSTR_PATH_EXPLORER "\\Shell Folders"
-#define REGSTR_MYDOCUMENT			"Personal"
+#define REGSTR_SHELLFOLDERS		REGSTR_PATH_EXPLORER "\\Shell Folders"
+#define REGSTR_MYDOCUMENT		"Personal"
+#define REGSTR_MYDOCUMENT_W		L"Personal"
 #endif
 
 /* NTDLL */

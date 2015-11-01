@@ -225,6 +225,8 @@ void VBuf::Init(void)
 
 BOOL VBuf::AllocBuf(ssize_t _size, ssize_t _max_size, VBuf *_borrowBuf)
 {
+	if (buf) FreeBuf();
+
 	if (_max_size == 0)
 		_max_size = _size;
 	maxSize = _max_size;
@@ -378,6 +380,19 @@ int MakePath(char *dest, const char *dir, const char *file)
 		}
 	}
 	return	wsprintf(dest, "%s%s%s", dir, separetor ? "\\" : "", file);
+}
+
+/*=========================================================================
+	パス合成（UTF-8 版）
+=========================================================================*/
+int MakePathU8(char *dest, const char *dir, const char *file)
+{
+	ssize_t	len;
+
+	if ((len = strlen(dir)) == 0)
+		return	wsprintf(dest, "%s", file);
+
+	return	wsprintf(dest, "%s%s%s", dir, dir[len -1] ? "\\" : "", file);
 }
 
 /*=========================================================================
@@ -884,6 +899,13 @@ int strncpyz(char *dest, const char *src, int num)
 	return	(int)(dest - sv_dest);
 }
 
+int strncatz(char *dest, const char *src, int num)
+{
+	for ( ; *dest; dest++, num--)
+		;
+	return strncpyz(dest, src, num);
+}
+
 int wcsncpyz(WCHAR *dest, const WCHAR *src, int num)
 {
 	WCHAR	*sv_dest = dest;
@@ -895,6 +917,13 @@ int wcsncpyz(WCHAR *dest, const WCHAR *src, int num)
 	}
 	*dest = 0;
 	return	(int)(dest - sv_dest);
+}
+
+int wcsncatz(WCHAR *dest, const WCHAR *src, int num)
+{
+	for ( ; *dest; dest++, num--)
+		;
+	return wcsncpyz(dest, src, num);
 }
 
 char *strdupNew(const char *_s, int max_len)
@@ -1259,6 +1288,25 @@ BOOL GetParentDirW(const WCHAR *srcfile, WCHAR *dir)
 	return	TRUE;
 }
 
+/*
+	2byte文字系でもきちんと動作させるためのルーチン
+	 (*strrchr(path, "\\")=0 だと '表'などで問題を起すため)
+*/
+BOOL GetParentDirU8(const char *org_path, char *target_dir)
+{
+	char	path[MAX_PATH_U8], *fname=NULL;
+
+	if (GetFullPathNameU8(org_path, sizeof(path), path, &fname) == 0 || fname == NULL)
+		return	strncpyz(target_dir, org_path, MAX_PATH_U8), FALSE;
+
+	if (fname - path > 3 || path[1] != ':')
+		*(fname - 1) = 0;
+	else
+		*fname = 0;		// C:\ の場合
+
+	strncpyz(target_dir, path, MAX_PATH_U8);
+	return	TRUE;
+}
 
 
 // HtmlHelp WorkShop をインストールして、htmlhelp.h を include path に

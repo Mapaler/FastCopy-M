@@ -492,6 +492,19 @@ WCHAR *U8toWs(const char *src, int max_len) {
 	return	(cur_buf = U8toW(src, max_len));
 }
 
+WCHAR *WtoWs(const WCHAR *src, int max_len) {
+	static	WCHAR	*wbuf[MAX_STATIC_ARRAY];
+	static	u_long	idx;
+
+	WCHAR	*&cur_buf = wbuf[idx++ % MAX_STATIC_ARRAY];
+	if (cur_buf) delete [] cur_buf;
+	if (max_len == -1) max_len = (int)wcslen(src);
+	cur_buf = new WCHAR [max_len + 1];
+	memcpy(cur_buf, src, max_len * sizeof(WCHAR));
+	cur_buf[max_len] = 0;
+	return	cur_buf;
+}
+
 char *WtoU8(const WCHAR *src, int max_len) {
 	char	*buf = NULL;
 	int		len = WtoU8(src, NULL, 0, max_len) + 1;
