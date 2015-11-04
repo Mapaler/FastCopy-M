@@ -56,8 +56,8 @@ You can edit the source and rebuild executable.<br />
 Or more simple:
 * Unzip "FastCopy-M Resources Rebuild & Replace Tools.zip".
 * Use "Update resources source file.vbs" to update the newest source. Attention: Backup your edited file before use update.
-* Use "Visual Studio" or "free and lightweight soft [ResEdit](http://www.resedit.net/)" for IDE (VS2005 or erlier not support 32bit icon, recommend VS2010 or later),or any Notepad to to edit "fastcopy.rc" directly.
-* Visual Studio is Easy-to-use,ResEdit you need setting include some head file in options (include in my Rebuild Tools), but If you use Notepad edit manually. For example, open "fastcopy.rc" find and copy English part and past at the end.
+* Use "Visual Studio" or "free soft [ResEdit](http://www.resedit.net/)" for IDE (VS2005 or erlier not support 32bit icon, recommend VS2010 or later),or any Notepad to to edit "fastcopy.rc" directly.
+* Visual Studio is Easy-to-use,ResEdit you need setting include some head file in options (the basic include in my Rebuild Tools, you can edit, but after it saved, need more files, so not recommad), but If you use Notepad edit manually. For example, open "fastcopy.rc" find and copy English part and past at the end.
 ```C
 /////////////////////////////////////////////////////////////////////////////
 // English (United States) [or 英語 (米国)] resources [about line 2391]
