@@ -57,7 +57,7 @@ Or more simple:
 * Unzip "FastCopy-M Resources Rebuild & Replace Tools.zip".
 * Use "Update resources source file.vbs" to update the newest source. Attention: Backup your edited file before use update.
 * Use "Visual Studio" or "free soft [ResEdit](http://www.resedit.net/)" for IDE (VS2005 or erlier not support 32bit icon, recommend VS2010 or later),or any Notepad to to edit "fastcopy.rc" directly.
-* Visual Studio is Easy-to-use,ResEdit is not recommand (rc file saved by the soft , can't open in VS, and can't rebuild by my tools), If you use Notepad edit manually. For example, open "fastcopy.rc" find and copy English part and past at the end.
+* Visual Studio is Easy-to-use,ResEdit is not recommand (rc file saved by the soft , can't open in VS, and can't rebuild by my tools.Use it requir some processing), If you use Notepad edit manually. For example, open "fastcopy.rc" find and copy English part and past at the end.
 ```C
 /////////////////////////////////////////////////////////////////////////////
 // English (United States) [or 英語 (米国)] resources [about line 2391]
