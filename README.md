@@ -56,18 +56,18 @@ You can edit the source and rebuild executable.<br />
 Or more simple:
 * Unzip "FastCopy-M Resources Rebuild & Replace Tools.zip".
 * Use "Update resources source file.vbs" to update the newest source. Attention: Backup your edited file before use update.
-* Use Visual Studio for IDE or Notepad to to edit "fastcopy.rc".(VS2005 or erlier not support 32bit icon, recommend VS2010 or later)
-* Visual Studio is Easy-to-use, but If you use Notepad edit manually. For example, open "fastcopy.rc" find and copy English part and past at the end.
+* Use "Visual Studio" or "free and lightweight soft [ResEdit](http://www.resedit.net/)" for IDE (VS2005 or erlier not support 32bit icon, recommend VS2010 or later),or any Notepad to to edit "fastcopy.rc" directly.
+* Visual Studio is Easy-to-use,ResEdit you need setting include some head file in options (include in my Rebuild Tools), but If you use Notepad edit manually. For example, open "fastcopy.rc" find and copy English part and past at the end.
 ```C
 /////////////////////////////////////////////////////////////////////////////
-// 英語 (米国) resources
+// English (United States) [or 英語 (米国)] resources [about line 2391]
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
 LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 
 ...
 
-#endif    // 英語 (米国) resources
+#endif    // English (United States) [or 英語 (米国)] resources [about line 3137]
 /////////////////////////////////////////////////////////////////////////////
 ```
 * Change "LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US" to your language and sub-language id. You can find them at "include\winnt.rh". No need to edit "defined(AFX_TARG_ENU)" (I don't know where can find it.)
