@@ -62,9 +62,9 @@ struct CopyInfo {
 	FastCopy::OverWrite	overWrite;
 };
 
-#ifdef _WinXP
-#define MAX_NORMAL_FASTCOPY_ICON	6 //动态图标个数
-#endif
+//#ifdef _WinXP
+//#define MAX_NORMAL_FASTCOPY_ICON	6 //动态图标个数
+//#endif
 //因为define的意义是编译时替换代码中文字而非产生const常量，因此不需要修改也可以使用。
 #define FCNORMAL_ICON_IDX			0
 #define FCWAIT_ICON_IDX				MAX_NORMAL_FASTCOPY_ICON
@@ -88,12 +88,12 @@ protected:
 	int				orgArgc;
 	WCHAR			**orgArgv;
 	Cfg				cfg;
-#ifdef _WinXP
-	HICON			hMainIcon[MAX_FASTCOPY_ICON];
-#else
+//#ifdef _WinXP
+//	HICON			hMainIcon[MAX_FASTCOPY_ICON];
+//#else
 	int				MAX_NORMAL_FASTCOPY_ICON; //动态图标个数
 	HICON			*hMainIcon;
-#endif
+//#endif
 	CopyInfo		*copyInfo;
 	int				finActIdx;
 	int				doneRatePercent;

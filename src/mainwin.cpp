@@ -397,11 +397,11 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 		SetVersionStr(is_elevated_admin, isNoUI);
 	}
 
-#ifndef _WinXP
+//#ifndef _WinXP
 	MAX_NORMAL_FASTCOPY_ICON = atoi((char *)GetLoadStr(IDS_Animation_Icon_Num));
 	//用指针hMainIcon指向new动态分配的长度为len*sizeof(HICON)的内存空间 
 	hMainIcon = new HICON[MAX_NORMAL_FASTCOPY_ICON];
-#endif
+//#endif
 
 	char	title[100];
 	sprintf(title, "%s %s%s", FASTCOPY_TITLE, GetVersionStr(), GetVerAdminStr());

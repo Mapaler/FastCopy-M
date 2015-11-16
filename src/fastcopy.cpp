@@ -1,9 +1,9 @@
 ﻿static char *fastcopy_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		fastcopy.cpp	ver3.06";
+	"@(#)Copyright (C) 2004-2015 H.Shirouzu		fastcopy.cpp	ver3.08";
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-10-12(Mon)
+	Update					: 2015-11-15(Sun)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-09
@@ -2397,7 +2397,10 @@ BOOL FastCopy::ReadFileProcCore(int cur_idx, int dir_len, Command cmd, FileStat 
 	HANDLE	hIoFile = (stat->hOvlFile != INVALID_HANDLE_VALUE) ? stat->hOvlFile : stat->hFile;
 	BOOL	ret = TRUE;
 
-	::SetFilePointer(hIoFile, 0, NULL, FILE_BEGIN);
+	// 同期I/Oの場合も、ReadFile で OverLapped構造体でシーク位置指定するようになったため
+	// BackupRead等の副作用に備えたシークセットは不要となった。
+	// （これを呼び出すと非同期I/O + MediaProtectモードで、何故か書き込み警告が出る Win7-8.1）
+	// ::SetFilePointer(hIoFile, 0, NULL, FILE_BEGIN);
 
 	while (total_size < file_size && !isAbort) {
 		OverLap	*ovl   = rOvl.GetObj(FREE_LIST);

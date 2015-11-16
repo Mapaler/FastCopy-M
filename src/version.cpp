@@ -1,10 +1,10 @@
 ﻿static char *version_id =
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu	Version.cpp ver3.0.7.25";
+	"@(#)Copyright (C) 2004-2015 H.Shirouzu	Version.cpp ver3.0.8.26";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Module Name				: Version
 	Create					: 2010-06-13(Sun)
-	Update					: 2015-10-31(Sat)
+	Update					: 2015-11-15(Sun)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-23
@@ -25,9 +25,9 @@ static char admin_str[32];
 void SetVersionStr(BOOL is_admin, BOOL is_noui)
 {
 	sprintf(version_str, "%.20s", strstr(version_id, "ver"));
-#ifdef _WinXP
-	sprintf(version_str, "%.20s%s", strstr(version_id, "ver"), " (XP Test)");
-#endif
+//#ifdef _WinXP
+//	sprintf(version_str, "%.20s%s", strstr(version_id, "ver"), " (XP Test)");
+//#endif
 	if (is_admin) strcpy(admin_str, " (Admin)");
 	if (is_noui) strcpy(admin_str, " (NoUI)");
 }

@@ -3,7 +3,7 @@
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Main Header
 	Create					: 1996-06-01(Sat)
-	Update					: 2015-08-12(Wed)
+	Update					: 2015-11-01(Sun)
 	Copyright				: H.Shirouzu
 	Reference				: 
 	======================================================================== */

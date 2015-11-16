@@ -4,7 +4,7 @@
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Application Frame Class
 	Create					: 1996-06-01(Sat)
-	Update					: 2015-08-12(Wed)
+	Update					: 2015-11-01(Sun)
 	Copyright				: H.Shirouzu
 	Reference				: 
 	Modify					: Mapaler 2015-09-09
@@ -1137,10 +1137,10 @@ BOOL TSetThreadLocale(int lcid)
 	static LANGID (WINAPI *pSetThreadUILanguage)(LANGID LangId);
 
 	if (!once) {
-		if (IsWinVista()) {	// ignore if XP
+//		if (IsWinVista()) {	// ignore if XP
 			pSetThreadUILanguage = (LANGID (WINAPI *)(LANGID LangId))
 				GetProcAddress(::GetModuleHandle("kernel32"), "SetThreadUILanguage");
-		}
+//		}
 		once = TRUE;
 	}
 
@@ -1576,6 +1576,7 @@ struct NOTIFYITEM {
 	DWORD	pref;
 	UINT	id;
 	GUID	guid;
+	BYTE	dummy[16];	// for Win10(x86)...why?
 };
 
 class __declspec(uuid("D782CCBA-AFB0-43F1-94DB-FDA3779EACCB")) INotificationCB : public IUnknown {
