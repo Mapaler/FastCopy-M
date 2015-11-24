@@ -1122,7 +1122,7 @@ BOOL FastCopy::MakeDigest(WCHAR *path, DigestBuf *dbuf, FileStat *stat)
 		goto END;
 
 	int64	total_size = 0;
-	int64	order_total = 0, dummy;
+	int64	order_total = 0, dummy = 0;
 	int64	&verifyTrans = is_src ? total.verifyTrans : dummy;	// src/dstダブルカウント避け
 	DWORD	count = 0;
 
@@ -1659,7 +1659,7 @@ FastCopy::ReqHead *FastCopy::GetDirExtData(FileStat *stat)
 	DWORD	mode = GENERIC_READ|READ_CONTROL;
 	DWORD	share = FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE;
 	DWORD	flg = FILE_FLAG_BACKUP_SEMANTICS | (is_reparse ? FILE_FLAG_OPEN_REPARSE_POINT : 0);
-	ReqHead	*req;
+	ReqHead	*req=NULL;
 
 	fh = ::CreateFileW(src, mode, share, 0, OPEN_EXISTING, flg , 0);
 	if (fh == INVALID_HANDLE_VALUE) {
@@ -2899,7 +2899,7 @@ unsigned WINAPI FastCopy::RDigestThread(void *fastCopyObj)
 BOOL FastCopy::RDigestThreadCore(void)
 {
 	int64	fileID = 0;
-	int64	remain_size;
+	int64	remain_size = 0;
 
 	cv.Lock();
 
@@ -4187,7 +4187,7 @@ FastCopy::ReqHead *FastCopy::AllocReqBuf(int req_size, int64 _data_size)
 		}
 		else {
 			data_size = ((max_free - align_req_size) / BIGTRANS_ALIGN) * BIGTRANS_ALIGN;
-			sector_data_size = sector_data_size = data_size;
+			sector_data_size = data_size;
 			require_size = data_size + align_req_size;
 		}
 	}

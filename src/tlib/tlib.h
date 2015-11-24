@@ -456,7 +456,7 @@ public:
 	TWinHashTbl(int _hashNum) : THashTbl(_hashNum) {}
 	virtual ~TWinHashTbl() {}
 
-	u_int	MakeHashId(HWND hWnd) { return (u_int)hWnd * 0xf3f77d13; }
+	u_int	MakeHashId(HWND hWnd) { return (u_int)(DWORD_PTR)hWnd * 0xf3f77d13; }
 };
 
 class TApp {

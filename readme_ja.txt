@@ -1,5 +1,5 @@
 ﻿======================================================================
-                     FastCopy  ver3.08                 2015/11/15
+                     FastCopy  ver3.09                 2015/11/24
                                             H.Shirouzu（白水啓章）
                      FastCopy-M branch              2015/09/22
                                             Mapaler（枫谷剑仙）
@@ -54,5 +54,5 @@
 	ヘルプ(fastcopy.chm) を参照してください。
 
 ソース・ビルドについて：
-	VS2013 以降でビルドできます。
-	FastCopy-M used VS2015, if you want bulid on VS2013 or earlier you can replace the "*.sln", "*.vcxproj" to original version (or modify project version in these file) by your self. Additional Dependencies need include "shlwapi.lib" after ver3.0.4.20.
+	VS2015 以降でビルドできます。
+	FastCopy-M additional dependencies need include "shlwapi.lib" after ver3.0.4.20.

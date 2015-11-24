@@ -577,7 +577,7 @@ BOOL urlstr2bin(const char *str, BYTE *bindata, int maxlen, int *len)
 		}
 	}
 	if (b64[size-1] != '\n' && (size % 4) && b64[size-1] != '=') {
-		sprintf(b64 + size -1, "%.*s", 4 - (size % 4), "===");
+		sprintf(b64 + size -1, "%.*s", int(4 - (size % 4)), "===");
 	}
 
 	b64str2bin(b64, bindata, maxlen, len);
@@ -759,11 +759,11 @@ LONG WINAPI Local_UnhandledExceptionFilter(struct _EXCEPTION_POINTERS *info)
 		"------- pre stack info -----\r\n"
 		, ExceptionTitle
 		, tm.wYear, tm.wMonth, tm.wDay, tm.wHour, tm.wMinute, tm.wSecond
-		, info->ExceptionRecord->ExceptionCode, info->ExceptionRecord->ExceptionAddress
-		, context->Rax, context->Rbx, context->Rcx, context->Rdx
-		, context->Rsi, context->Rdi, context->Rbp, context->Rsp
-		, context->R8,  context->R9,  context->R10, context->R11
-		, context->R12, context->R13, context->R14, context->R15
+		, info->ExceptionRecord->ExceptionCode, (void *)info->ExceptionRecord->ExceptionAddress
+		, (void *)context->Rax, (void *)context->Rbx, (void *)context->Rcx, (void *)context->Rdx
+		, (void *)context->Rsi, (void *)context->Rdi, (void *)context->Rbp, (void *)context->Rsp
+		, (void *)context->R8,  (void *)context->R9,  (void *)context->R10, (void *)context->R11
+		, (void *)context->R12, (void *)context->R13, (void *)context->R14, (void *)context->R15
 #else
 		"------ %s -----\r\n"
 		" Date        : %d/%02d/%02d %02d:%02d:%02d\r\n"
@@ -790,9 +790,9 @@ LONG WINAPI Local_UnhandledExceptionFilter(struct _EXCEPTION_POINTERS *info)
 		stack = (esp - MAX_PRE_STACKDUMP_SIZE) + (i * STACKDUMP_SIZE);
 		if (::IsBadReadPtr(stack, STACKDUMP_SIZE)) continue;
 		len = 0;
-		for (j=0; j < STACKDUMP_SIZE / sizeof(DWORD_PTR); j++)
-			len += sprintf(buf + len, "%p%s", ((DWORD_PTR *)stack)[j],
-							((j+1)%(32/sizeof(DWORD_PTR))) ? " " : "\r\n");
+		for (j=0; j < STACKDUMP_SIZE / sizeof(void *); j++)
+			len += sprintf(buf + len, "%p%s", ((void **)stack)[j],
+							((j+1)%(32/sizeof(void *))) ? " " : "\r\n");
 		::WriteFile(hFile, buf, len, &len, 0);
 	}
 
@@ -804,9 +804,9 @@ LONG WINAPI Local_UnhandledExceptionFilter(struct _EXCEPTION_POINTERS *info)
 		if (::IsBadReadPtr(stack, STACKDUMP_SIZE))
 			break;
 		len = 0;
-		for (j=0; j < STACKDUMP_SIZE / sizeof(DWORD_PTR); j++)
-			len += sprintf(buf + len, "%p%s", ((DWORD_PTR *)stack)[j],
-							((j+1)%(32/sizeof(DWORD_PTR))) ? " " : "\r\n");
+		for (j=0; j < STACKDUMP_SIZE / sizeof(void *); j++)
+			len += sprintf(buf + len, "%p%s", ((void **)stack)[j],
+							((j+1)%(32/sizeof(void *))) ? " " : "\r\n");
 		::WriteFile(hFile, buf, len, &len, 0);
 	}
 
@@ -1324,7 +1324,7 @@ BOOL InitHtmlHelpCore()
 		pHtmlHelpW = (HWND (WINAPI *)(HWND, WCHAR *, UINT, DWORD_PTR))
 					::GetProcAddress(hHtmlHelp, "HtmlHelpW");
 	if (pHtmlHelpW)
-		pHtmlHelpW(NULL, NULL, HH_INITIALIZE, (DWORD)&cookie);
+		pHtmlHelpW(NULL, NULL, HH_INITIALIZE, (DWORD_PTR)&cookie);
 
 	return	pHtmlHelpW ? TRUE : FALSE;;
 }
@@ -1576,7 +1576,7 @@ struct NOTIFYITEM {
 	DWORD	pref;
 	UINT	id;
 	GUID	guid;
-	BYTE	dummy[16];	// for Win10(x86)...why?
+	void*	dummy[8];	// for Win10(x86)...why?
 };
 
 class __declspec(uuid("D782CCBA-AFB0-43F1-94DB-FDA3779EACCB")) INotificationCB : public IUnknown {

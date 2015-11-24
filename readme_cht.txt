@@ -55,5 +55,5 @@ Copyright(C) 2004-2015 SHIROUZU Hiroaki All rights reserved.
 請參閱 fastcopy.chm
 
 生成:
-VS2013 或更高版本
-FastCopy-M採用VS2015，你可以自行替換工程到原始版本（或手動修改檔內版本號）以在VS2013或2012上編譯。目前比官方多需要引用“shlwapi.lib”。
+VS2015 或更高版本
+FastCopy-M比官方多需要引用“shlwapi.lib”。

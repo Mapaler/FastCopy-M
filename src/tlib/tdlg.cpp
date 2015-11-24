@@ -29,7 +29,7 @@ BOOL TDlg::Create(HINSTANCE hInstance)
 {
 	TApp::GetApp()->AddWin(this);
 
-	hWnd = ::CreateDialogW(hInstance ? hInstance : TApp::GetInstance(), (WCHAR *)resId,
+	hWnd = ::CreateDialogW(hInstance ? hInstance : TApp::GetInstance(), (WCHAR *)(DWORD_PTR)resId,
 				parent ? parent->hWnd : NULL, (DLGPROC)TApp::WinProc);
 
 	if (hWnd)
@@ -44,7 +44,7 @@ int TDlg::Exec(void)
 	modalFlg = TRUE;
 	if (parent) parent->modalCount++;
 
-	int result = (int)::DialogBoxW(TApp::GetInstance(), (WCHAR *)resId,
+	int result = (int)::DialogBoxW(TApp::GetInstance(), (WCHAR *)(DWORD_PTR)resId,
 							parent ? parent->hWnd : NULL, (DLGPROC)TApp::WinProc);
 
 	if (parent) parent->modalCount--;

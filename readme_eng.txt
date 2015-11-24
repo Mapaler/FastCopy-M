@@ -1,7 +1,7 @@
 ﻿======================================================================
-                   FastCopy  ver3.08                   2015/11/15
+                   FastCopy  ver3.09                   2015/11/24
                                                  SHIROUZU Hiroaki
-                   FastCopy-M branch                2015/09/22
+                   FastCopy-M branch                2015/11/24
                                                  Mapaler
 ======================================================================
 
@@ -44,5 +44,5 @@ Usage：
 	Please see fastcopy.chm
 
 Build:
-	VS2013 or later
-	FastCopy-M used VS2015, if you want bulid on VS2013 or earlier you can replace the "*.sln", "*.vcxproj" to original version (or modify project version in these file) by your self. Additional Dependencies need include "shlwapi.lib" after ver3.0.4.20.
+	VS2015 or later
+	FastCopy-M additional dependencies need include "shlwapi.lib" after ver3.0.4.20.
