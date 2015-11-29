@@ -198,7 +198,7 @@ char *NextBuf(VBuf *vbuf, ssize_t len, ssize_t require_min, ssize_t chunk_size)
 	if (vbuf->RemainSize() < require_min) {
 		if (!vbuf->Grow(chunk_size)) return NULL;
 	}
-	return (char *)vbuf->Buf() + vbuf->UsedSize();
+	return (char *)vbuf->UsedEnd();
 }
 
 BOOL TInifile::WriteIni()

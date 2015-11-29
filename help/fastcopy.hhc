@@ -88,7 +88,7 @@
 				<param name="ImageNumber" value="9">
 				</OBJECT>
 			<LI> <OBJECT type="text/sitemap">
-				<param name="Name" value="2) シェル拡張設定・他">
+				<param name="Name" value="2) 拡張設定（シェル拡張・フォント）">
 				<param name="Local" value="fastcopy.htm#shell">
 				<param name="ImageNumber" value="9">
 				</OBJECT>
@@ -201,7 +201,7 @@
 				<param name="ImageNumber" value="9">
 				</OBJECT>
 			<LI> <OBJECT type="text/sitemap">
-				<param name="Name" value="2) Shell Extension & Misc">
+				<param name="Name" value="2) Extensions (Shell & Font)">
 				<param name="Local" value="fastcopy_eng.htm#shell">
 				<param name="ImageNumber" value="9">
 				</OBJECT>

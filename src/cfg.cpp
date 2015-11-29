@@ -1,9 +1,9 @@
 ﻿static char *cfg_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		cfg.cpp	ver3.03";
+	"@(#)Copyright (C) 2004-2015 H.Shirouzu		cfg.cpp	ver3.10";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-08-30(Sun)
+	Update					: 2015-11-29(Sun)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-08-23
@@ -765,6 +765,10 @@ BOOL Cfg::WriteIni(void)
 	sprintf(val, "%d,%d,%d,%d", winpos.x, winpos.y, winsize.cx, winsize.cy);
 	ini.SetStr(WINPOS_KEY, val);
 	ini.SetStr(DRIVEMAP_KEY, driveMap);
+
+	WtoU8(statusFont, val, sizeof(val));
+	ini.SetStr(STATUSFONT_KEY, val);
+	ini.SetInt(STATUSFONTSIZE_KEY, statusFontSize);
 
 	char	*section_array[] = {	SRC_HISTORY, DST_HISTORY, DEL_HISTORY,
 									INC_HISTORY, EXC_HISTORY,

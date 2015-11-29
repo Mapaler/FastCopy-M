@@ -72,11 +72,11 @@
 <body bgcolor="#eeffff">
 
 <div align="center">
-<h1 class="help_head1">FastCopy ver3.09</h1>
+<h1 class="help_head1">FastCopy ver3.10</h1>
 </div>
 <div class="help_all">
 
-<div align="right">2015/11/24 H.Shirouzu (白水啓章)</div>
+<div align="right">2015/11/30 H.Shirouzu (白水啓章)</div>
 
 <a name="index"/>
 <h2 class="help_head2">Index</h2>
@@ -97,7 +97,7 @@
 	<a href="#settings">6. 設定</a><br>
 		<div class="help_sub_section">
 		<a href="#gen_settings">1) 一般設定</a><br>
-		<a href="#shell">2) シェル拡張設定・他</a><br>
+		<a href="#shell">2) 拡張設定（シェル拡張・フォント等）</a><br>
 		<a href="#finact">3) 終了時処理</a><br>
 		<a href="#job">4) ジョブ管理</a>
 		</div>
@@ -575,10 +575,16 @@
 	</div>
 
 	<a name="shell"/>
-	<h3 class="help_head3">設定 → シェル拡張設定</h3>
+	<h3 class="help_head3">設定 → 拡張設定 → シェル拡張設定</h3>
 	<div class="help_sub_section">
 		Explorer の右クリックメニューに、FastCopy のコピー・削除メニューを登録/解除します。<br>
 		（管理者権限が必要です。メニュー右端の「特権」で昇格してください）
+	</div>
+
+	<h3 class="help_head3">設定 → 拡張設定 → メインフォント変更＆リセット</h3>
+	<div class="help_sub_section">
+		メインウィンドウ中央の情報枠のフォントを変更します。<br>
+		各桁を揃えて表示したい場合は、固定ピッチフォントの利用をお勧めします。
 	</div>
 
 	<h3 class="help_head3">設定 → 自動/同一/別HDDモード</h3>
@@ -797,6 +803,10 @@
 
 <table class="help_table" border="4">
 <tr><th>Version</th><th>説明</th></tr>
+<tr><td>v3.10</td><td>
+メイン情報枠のフォントを変更可能に。<br>
+ACLエントリが多く＆階層が深い場合に、稀に例外が発生（or ACLコピーに失敗）することがあったのを修正。
+</td></tr>
 <tr><td>v3.09</td><td>
 Win10(x64)アップデート版で、タスクトレイ格納時に例外が発生することがあったのを修正。<br>
 </td></tr>

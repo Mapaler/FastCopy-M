@@ -273,7 +273,7 @@ BOOL TMainDlg::CommandLineExecW(int argc, WCHAR **argv)
 		}
 		else if (wcsicmpEx(*argv, RUNAS_STR, &len) == 0) {
 			WCHAR	*p = *argv + len;
-			HWND	hRunasParent = (HWND)wcstoul(p, 0, 16);
+			HWND	hRunasParent = (HWND)(LONG_PTR)wcstoull(p, 0, 16);
 			runas_flg = wcstoul(wcschr(p, ',') + 1, 0, 16);
 			if (!::IsUserAnAdmin() || RunasSync(hRunasParent) == FALSE) {
 				MessageBoxW(L"Not Admin or Failed to read parent window info", L"Option error");
@@ -299,12 +299,12 @@ BOOL TMainDlg::CommandLineExecW(int argc, WCHAR **argv)
 			BOOL	convertErr = FALSE;
 
 			shellExtBuf.AllocBuf(SHELLEXT_MIN_ALLOC, SHELLEXT_MAX_ALLOC);
-			while (::ReadFile(hStdInput, shellExtBuf.Buf() + shellExtBuf.UsedSize(),
+			while (::ReadFile(hStdInput, shellExtBuf.UsedEnd(),
 					(DWORD)shellExtBuf.RemainSize(), &read_size, 0) && read_size > 0) {
 				if (shellExtBuf.AddUsedSize(read_size) == shellExtBuf.Size())
 					shellExtBuf.Grow(SHELLEXT_MIN_ALLOC);
 			}
-			shellExtBuf.Buf()[shellExtBuf.UsedSize()] = 0;
+			shellExtBuf.UsedEnd()[0] = 0;
 
 			if (convertErr)
 				return	FALSE;

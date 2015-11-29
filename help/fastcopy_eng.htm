@@ -72,11 +72,11 @@
 <body bgcolor="#eeffff">
 
 <div align="center">
-<h1 class="help_head1">FastCopy ver3.09</h1>
+<h1 class="help_head1">FastCopy ver3.10</h1>
 </div>
 <div class="help_all">
 
-<div align="right">2015/11/24 H.Shirouzu</div>
+<div align="right">2015/11/30 H.Shirouzu</div>
 
 <center>
 <strong>Warning :</strong> This document was made with the Japanese-English translation software. <br>
@@ -103,7 +103,7 @@ I want to correct this document. (If you made corrections, please send to <a hre
 	<a href="#settings">6. Settings</a><br>
 		<div class="help_sub_section">
 		<a href="#gen_settings">1) General Settings</a><br>
-		<a href="#shell">2) Shell Extension & Misc</a><br>
+		<a href="#shell">2) Extension (Shell & Misc)</a><br>
 		<a href="#finact">3) Post-Process</a><br>
 		<a href="#job">4) Job Management</a>
 		</div>
@@ -581,9 +581,15 @@ demerit points are same as read, but sometimes many head seeks occur in writing 
 	</div>
 
 	<a name="shell"/>
-	<h3 class="help_head3">Shell Extension & Misc</h3>
+	<h3 class="help_head3">Option -> Extensions -> Shell Extension</h3>
 	<div class="help_sub_section">
 		Register copy/delete menu items with Explorer's right click menu and right drag&drop menu.<br>
+	</div>
+
+	<h3 class="help_head3">Option -> Extensions -> Change/Reset Main Font</h3>
+	<div class="help_sub_section">
+		Change/Reset Main information font in Main Window.<br>
+		It is recomended to use fixed pitch font.
 	</div>
 
 	<h3 class="help_head3">Option -> Auto/Same/Diff HDD mode</h3>
@@ -806,6 +812,10 @@ demerit points are same as read, but sometimes many head seeks occur in writing 
 
 <table class="help_table" border="4">
 <tr><th>Version</th><th>Detail</th></tr>
+<tr><td>v3.10</td><td>
+Add changing main information font.<br>
+Fix an exception(or ACL copy failure) when using many ACL entry with deep path.
+</td></tr>
 <tr><td>v3.09</td><td>
 Fix an exception when using tasktray in Win10(x64) update version.
 </td></tr>

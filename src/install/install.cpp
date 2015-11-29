@@ -1,5 +1,5 @@
 ﻿static char *install_id = 
-	"@(#)Copyright (C) 2005-2015 H.Shirouzu		install.cpp	Ver3.0.5.21";
+	"@(#)Copyright (C) 2005-2015 H.Shirouzu		install.cpp	Ver3.1.0.28";
 /* ========================================================================
 	Project  Name			: Installer for FastCopy
 	Module Name				: Installer Application Class
@@ -156,7 +156,7 @@ TInstDlg::TInstDlg(char *cmdLine) : TDlg(INSTALL_DIALOG), staticText(this)
 		WCHAR	*p = wcsstr((WCHAR *)GetCommandLineW(), L"/runas=");
 
 		if (p) {
-			if (p && (p = wcstok(p+7,  L",")))  cfg.hOrgWnd		= (HWND)wcstoul(p, 0, 16);
+			if (p && (p = wcstok(p+7,  L",")))  cfg.hOrgWnd		= (HWND)(LONG_PTR)wcstoull(p, 0, 16);
 			if (p && (p = wcstok(NULL, L",")))  cfg.mode		= (InstMode)wcstoul(p, 0, 10);
 			if (p && (p = wcstok(NULL, L",")))  cfg.runImme		= wcstoul(p, 0, 10);
 			if (p && (p = wcstok(NULL, L",")))  cfg.programLink	= wcstoul(p, 0, 10);
@@ -968,8 +968,8 @@ BOOL TBrowseDirDlg::AttachWnd(HWND _hWnd)
 
 	HFONT	hDlgFont = (HFONT)SendDlgItemMessage(IDOK, WM_GETFONT, 0, 0L);
 	if (hDlgFont) {
-		SendDlgItemMessage(MKDIR_BUTTON, WM_SETFONT, (UINT)hDlgFont, 0L);
-		SendDlgItemMessage(RMDIR_BUTTON, WM_SETFONT, (UINT)hDlgFont, 0L);
+		SendDlgItemMessage(MKDIR_BUTTON, WM_SETFONT, (LPARAM)hDlgFont, 0L);
+		SendDlgItemMessage(RMDIR_BUTTON, WM_SETFONT, (LPARAM)hDlgFont, 0L);
 	}
 
 	return	ret;

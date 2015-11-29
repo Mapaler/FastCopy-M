@@ -235,7 +235,7 @@ BOOL VBuf::AllocBuf(ssize_t _size, ssize_t _max_size, VBuf *_borrowBuf)
 	if (borrowBuf) {
 		if (!borrowBuf->Buf() || borrowBuf->MaxSize() < borrowBuf->UsedSize() + maxSize)
 			return	FALSE;
-		buf = borrowBuf->Buf() + borrowBuf->UsedSize();
+		buf = borrowBuf->UsedEnd();
 		borrowBuf->AddUsedSize(maxSize + PAGE_SIZE);
 	}
 	else {
@@ -582,7 +582,7 @@ BOOL urlstr2bin(const char *str, BYTE *bindata, int maxlen, int *len)
 
 	b64str2bin(b64, bindata, maxlen, len);
 
-	free(b64);
+	delete [] b64;
 	return	TRUE;
 }
 
@@ -942,39 +942,6 @@ WCHAR *wcsdupNew(const WCHAR *_s, int max_len)
 	memcpy(s, _s, len * sizeof(WCHAR));
 	s[len] = 0;
 	return	s;
-}
-
-
-/* UNIX - Windows 文字コード変換 */
-int LocalNewLineToUnix(const char *src, char *dest, int maxlen)
-{
-	char	*sv_dest = dest;
-	char	*max_dest = dest + maxlen - 1;
-	int		len = 0;
-
-	while (*src && dest < max_dest) {
-		if ((*dest = *src++) != '\r') dest++;
-	}
-	*dest = 0;
-
-	return	int(dest - sv_dest);
-}
-
-int UnixNewLineToLocal(const char *src, char *dest, int maxlen)
-{
-	char	*sv_dest = dest;
-	char	*max_dest = dest + maxlen - 1;
-
-	while (*src && dest < max_dest) {
-		if ((*dest = *src++) == '\n' && dest + 1 < max_dest) {
-			*dest++ = '\r';
-			*dest++ = '\n';
-		}
-		else dest++;
-	}
-	*dest = 0;
-
-	return	int(dest - sv_dest);
 }
 
 

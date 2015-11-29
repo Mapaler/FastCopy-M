@@ -33,7 +33,7 @@ int WtoA(const WCHAR *src, char *dst, int bufsize, int max_len=-1);
 
 /* dynamic allocation */
 WCHAR *U8toW(const char *src, int max_len=-1);
-WCHAR *WtoW(const char *src, int max_len=-1);
+//WCHAR *WtoW(const WCHAR *src, int max_len=-1) { return wcsdupNew(src, max_len); }
 char *WtoU8(const WCHAR *src, int max_len=-1);
 char *WtoA(const WCHAR *src, int max_len=-1);
 char *AtoU8(const char *src, int max_len=-1);
@@ -59,51 +59,46 @@ BOOL GetMenuStringU8(HMENU hMenu, UINT uItem, char *buf, int bufsize, UINT flags
 DWORD GetModuleFileNameU8(HMODULE hModule, char *buf, DWORD bufsize);
 UINT GetDriveTypeU8(const char *path);
 
-class U8str {
-	char	*str;
-public:
-	U8str(const WCHAR *_str=NULL) { Init(_str ? WtoU8(_str) : NULL, FALSE); }
-	U8str(const char *_str, StrMode mode=BY_UTF8) {
-		Init(_str ? mode == BY_UTF8 ? strdupNew(_str) : AtoU8(_str) : NULL, FALSE);
-	}
-	U8str(const U8str &u) { Init(u.str); }
-	U8str(int len) { if (len) { str = new char [len]; *str = 0; } else { str = NULL; } }
-	~U8str() { UnInit(); }
-	void Init(const char *_str) { str = (_str) ? strdupNew(_str) : NULL; }
-	void Init(char *_str, BOOL is_new) { str = (_str && is_new) ? strdupNew(_str) : _str; }
-	void UnInit() { delete [] str; str=NULL; }
-	U8str &operator =(const char *_str) { UnInit(); Init(_str); return *this; }
-	char &operator [](int idx) { return str[idx]; }
-	char	*Buf() { return str; }
-	const char *s() const { return str ? str : ""; }
-	bool IsEmpty() const { return !str || *str == 0; }
-};
-
 class Wstr {
 	WCHAR		*str;
 	mutable int	len;
+	void FirstInit() { str=NULL; len=-1; }
+
 public:
 	Wstr(const char *_str=NULL, StrMode mode=BY_UTF8) {
-		Init(_str ? mode == BY_UTF8 ? U8toW(_str) : AtoW(_str) : NULL, FALSE);
+		FirstInit();
+		Init(_str, mode);
 	}
-	Wstr(const WCHAR *_str) { Init(_str); }
-	Wstr(const Wstr& w) { Init(w); }
-	Wstr(int len) { Init(len); }
+	Wstr(const WCHAR *_str, int _len=-1) {
+		FirstInit();
+		Init(_str, _len);
+	}
+	Wstr(const Wstr& w) {
+		FirstInit();
+		Init(w);
+	}
+	Wstr(int len) {
+		FirstInit();
+		Init(len);
+	}
 	~Wstr() { UnInit(); }
 
 	void Init(const Wstr &w) {
 		Init(w.str);
 		len = w.len;
 	}
-	void Init(const WCHAR *_str) {
-		str = (_str) ? wcsdupNew(_str) : NULL;
+	void Init(const WCHAR *_str, int len=-1) {
+		UnInit();
+		str = (_str ? wcsdupNew(_str, len) : NULL);
 		len = -1;
 	}
-	void Init(WCHAR *_str, BOOL is_new) {
-		str = (_str && is_new) ? wcsdupNew(_str) : _str;
+	void Init(const char *_str, StrMode mode=BY_UTF8) {
+		UnInit();
+		str = _str ? mode == BY_UTF8 ? U8toW(_str) : AtoW(_str) : NULL;
 		len = -1;
 	}
 	void Init(int _len) {
+		UnInit();
 		if (_len) {
 			str = new WCHAR [_len];
 			*str=0;
@@ -113,25 +108,26 @@ public:
 		len = -1;
 	}
 	void UnInit() {
-		delete [] str;
-		str = NULL;
+		if (str) {
+			delete [] str;
+			str = NULL;
+		}
 		len = -1;
 	}
 	Wstr &operator =(const WCHAR *_str) {
-		UnInit();
 		Init(_str);
 		return *this;
 	}
 	Wstr &operator =(const Wstr &w) {
-		UnInit();
 		Init(w);
 		return *this;
 	}
 	bool operator ==(const WCHAR *_str) const {
-		if (!str || !_str) return str == _str;
-		return	wcscmp(str, _str) == 0;
+		if (!_str) return IsEmpty();
+		return	wcscmp(s(), _str) == 0;
 	}
-	bool operator ==(const Wstr &_w) const { return _w == str; }
+	operator bool() { return !IsEmpty(); }
+	bool operator ==(const Wstr &_w) const { return _w == s(); }
 	bool operator !=(const WCHAR *_str) const { return !(*this == _str); }
 	bool operator !=(const Wstr &_w) const { return !(_w == str); }
 	WCHAR &operator [](int idx) { return str[idx]; }
@@ -146,24 +142,178 @@ public:
 	}
 };
 
-class MBCSstr {
+class U8str {
 	char	*str;
+	mutable int	len;
+	void FirstInit() { str=NULL; len=-1; }
+
 public:
-	MBCSstr(const WCHAR *_str=NULL) { Init(_str ? WtoA(_str) : NULL); }
-	MBCSstr(const char *_str, StrMode mode=BY_UTF8) {
-		Init(_str ? mode == BY_UTF8 ? U8toA(_str) : strdupNew(_str) : NULL, FALSE);
+	U8str(const char *_str=NULL, StrMode mode=BY_UTF8) {
+		FirstInit();
+		Init(_str, mode);
 	}
-	MBCSstr(int len) { if (len) { str = new char [len]; *str = 0; } else { str = NULL; } }
-	MBCSstr(const MBCSstr& m) { Init(m.str); }
-	~MBCSstr() { UnInit(); }
-	void Init(const char *_str) { str = (_str) ? strdupNew(_str) : NULL; }
-	void Init(char *_str, BOOL is_new) { str = (_str && is_new) ? strdupNew(_str) : _str; }
-	void UnInit() { delete [] str; str = NULL; }
-	MBCSstr &operator =(const char *_str) { UnInit(); Init(_str); return *this; }
+	U8str(const WCHAR *_str, int _len=-1) {
+		FirstInit();
+		Init(_str, _len);
+	}
+	U8str(const U8str& u) {
+		FirstInit();
+		Init(u.str);
+	}
+	U8str(int len) {
+		FirstInit();
+		Init(len);
+	}
+	~U8str() { UnInit(); }
+
+	void Init(const Wstr &w) {
+		Init(w.s());
+		len = w.Len();
+	}
+	void Init(const WCHAR *_str, int len=-1) {
+		UnInit();
+		str = _str ? WtoU8(_str) : NULL;
+		len = -1;
+	}
+	void Init(const char *_str, StrMode mode=BY_UTF8) {
+		UnInit();
+		str = _str ? (mode == BY_UTF8) ? strdupNew(_str) : AtoU8(_str) : NULL;
+		len = -1;
+	}
+	void Init(int _len) {
+		UnInit();
+		if (_len) {
+			str = new char [_len];
+			*str=0;
+		} else {
+			str=NULL;
+		}
+		len = -1;
+	}
+	void UnInit() {
+		if (str) {
+			delete [] str;
+			str = NULL;
+		}
+		len = -1;
+	}
+	U8str &operator =(const char *_str) {
+		Init(_str);
+		return *this;
+	}
+	U8str &operator =(const U8str &u) {
+		Init(u.str);
+		return *this;
+	}
+	U8str &operator =(const WCHAR *w) {
+		Init(w);
+		return *this;
+	}
+	bool operator ==(const char *_str) const {
+		if (!str || !_str) return str == _str;
+		return	strcmp(str, _str) == 0;
+	}
+	operator bool() { return !IsEmpty(); }
+	bool operator ==(const U8str &_u) const { return _u == str; }
+	bool operator !=(const char *_str) const { return !(*this == _str); }
+	bool operator !=(const U8str &_u) const { return !(_u == str); }
 	char &operator [](int idx) { return str[idx]; }
-	char	*Buf() { return str; }
+	char *Buf() { len = -1; return str; }
+	void UnBuf() { len = -1; }
 	const char *s() const { return str ? str : ""; }
 	bool IsEmpty() const { return !str || *str == 0; }
+	int	Len() const {
+		if (len >= 0) return len;
+		if (!str) return 0;
+		return (len = (int)strlen(str));
+	}
+};
+
+class MBCSstr {
+	char	*str;
+	mutable int	len;
+	void FirstInit() { str=NULL; len=-1; }
+
+public:
+	MBCSstr(const char *_str=NULL, StrMode mode=BY_MBCS) {
+		FirstInit();
+		Init(_str, mode);
+	}
+	MBCSstr(const WCHAR *_str, int _len=-1) {
+		FirstInit();
+		Init(_str, _len);
+	}
+	MBCSstr(const MBCSstr& u) {
+		FirstInit();
+		Init(u.str);
+	}
+	MBCSstr(int len) {
+		FirstInit();
+		Init(len);
+	}
+	~MBCSstr() { UnInit(); }
+
+	void Init(const Wstr &w) {
+		Init(w.s());
+		len = w.Len();
+	}
+	void Init(const WCHAR *_str, int len=-1) {
+		UnInit();
+		str = _str ? WtoU8(_str) : NULL;
+		len = -1;
+	}
+	void Init(const char *_str, StrMode mode=BY_MBCS) {
+		UnInit();
+		str = _str ? (mode == BY_MBCS) ? strdupNew(_str) : U8toA(_str) : NULL;
+		len = -1;
+	}
+	void Init(int _len) {
+		UnInit();
+		if (_len) {
+			str = new char [_len];
+			*str=0;
+		} else {
+			str=NULL;
+		}
+		len = -1;
+	}
+	void UnInit() {
+		if (str) {
+			delete [] str;
+			str = NULL;
+		}
+		len = -1;
+	}
+	MBCSstr &operator =(const char *_str) {
+		Init(_str);
+		return *this;
+	}
+	MBCSstr &operator =(const MBCSstr &u) {
+		Init(u.str);
+		return *this;
+	}
+	MBCSstr &operator =(const WCHAR *w) {
+		Init(w);
+		return *this;
+	}
+	bool operator ==(const char *_str) const {
+		if (!str || !_str) return str == _str;
+		return	strcmp(str, _str) == 0;
+	}
+	operator bool() { return !IsEmpty(); }
+	bool operator ==(const MBCSstr &_u) const { return _u == str; }
+	bool operator !=(const char *_str) const { return !(*this == _str); }
+	bool operator !=(const MBCSstr &_u) const { return !(_u == str); }
+	char &operator [](int idx) { return str[idx]; }
+	char *Buf() { len = -1; return str; }
+	void UnBuf() { len = -1; }
+	const char *s() const { return str ? str : ""; }
+	bool IsEmpty() const { return !str || *str == 0; }
+	int	Len() const {
+		if (len >= 0) return len;
+		if (!str) return 0;
+		return (len = (int)strlen(str));
+	}
 };
 
 inline int U8toA(const char *src, char *dst, int bufsize) {
@@ -184,9 +334,9 @@ BOOL StrictUTF8(char *s);
 HWND CreateWindowU8(const char *class_name, const char *window_name, DWORD style,
 	int x, int y, int width, int height, HWND hParent, HMENU hMenu, HINSTANCE hInst, void *param);
 HWND FindWindowU8(const char *class_name, const char *window_name=NULL);
-BOOL AppendMenuU8(HMENU hMenu, UINT flags, UINT idItem, const char *item_str);
-BOOL InsertMenuU8(HMENU hMenu, UINT idItem, UINT flags, UINT idNewItem, const char *item_str);
-BOOL ModifyMenuU8(HMENU hMenu, UINT idItem, UINT flags, UINT idNewItem, const char *item_str);
+BOOL AppendMenuU8(HMENU hMenu, UINT flags, UINT_PTR idItem, const char *item_str);
+BOOL InsertMenuU8(HMENU hMenu, UINT idItem, UINT flags, UINT_PTR idNewItem, const char *item_str);
+BOOL ModifyMenuU8(HMENU hMenu, UINT idItem, UINT flags, UINT_PTR idNewItem, const char *item_str);
 DWORD GetFileAttributesU8(const char *path);
 BOOL SetFileAttributesU8(const char *path, DWORD attr);
 

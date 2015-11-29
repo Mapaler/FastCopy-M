@@ -198,9 +198,10 @@ public:
 	ssize_t	Size() { return size; }
 	ssize_t	MaxSize() { return maxSize; }
 	ssize_t	UsedSize() { return usedSize; }
+	BYTE	*UsedEnd() { return	buf + usedSize; }
 	void	SetUsedSize(ssize_t _used_size) { usedSize = _used_size; }
 	ssize_t	AddUsedSize(ssize_t _used_size) { return usedSize += _used_size; }
-	ssize_t	RemainSize(void) { return	size - usedSize; }
+	ssize_t	RemainSize(void) { return size - usedSize; }
 };
 
 template <class T>
@@ -209,16 +210,23 @@ class VBVec : public VBuf {
 	int		usedNum;
 
 public:
-	VBVec() {}
+	VBVec() {
+		growSize = 0;
+		usedNum = 0;
+	}
 	BOOL Init(int min_num, int max_num, int grow_num=0) {
 		ssize_t min_size = ALIGN_SIZE(min_num * sizeof(T), PAGE_SIZE);
 		ssize_t max_size = ALIGN_SIZE(max_num * sizeof(T), PAGE_SIZE);
 		growSize = grow_num ? ALIGN_SIZE(grow_num * sizeof(T), PAGE_SIZE) : min_size;
+		if (growSize == 0) growSize = ALIGN_SIZE(sizeof(T), PAGE_SIZE);
 		usedNum  = 0;
 		return AllocBuf(min_size, max_size);
 	}
 	T& operator [](int idx) {
 		Aquire(idx);
+		return	Get(idx);
+	}
+	const T& operator [](int idx) const {
 		return	Get(idx);
 	}
 	bool Aquire(int idx) {
@@ -242,7 +250,10 @@ public:
 	T& Get(int idx) {
 		return *(T *)(buf + (sizeof(T) * idx));
 	}
-	int UsedNum() {
+	const T& Get(int idx) const {
+		return *(T *)(buf + (sizeof(T) * idx));
+	}
+	int UsedNum() const {
 		return usedNum;
 	}
 	int SetUsedNum(int num) {
@@ -261,6 +272,8 @@ public:
 	}
 	T& Top()  { return Get(0); }
 	T& Last() { return Get(UsedNum()-1); }
+	const T& Top() const { return Get(0); }
+	const T& Last() const { return Get(UsedNum()-1); }
 };
 
 class GBuf {
@@ -403,9 +416,56 @@ inline int get_ntz(u_int val) {
 	return	ret;
 }
 
+class TTick {
+	DWORD	tick;
+public:
+	TTick() { start(); }
+	DWORD start() { return (tick = ::GetTickCount()); }
+	DWORD elaps(BOOL overwrite=TRUE) {
+		DWORD	cur = ::GetTickCount();
+		DWORD	diff = cur - tick;
+		if (overwrite) tick = cur;
+		return	diff;
+	}
+};
 
-int LocalNewLineToUnix(const char *src, char *dest, int maxlen);
-int UnixNewLineToLocal(const char *src, char *dest, int maxlen);
+/* UNIX - Windows 文字コード変換 */
+template<class T> int LocalNewLineToUnixT(const T *src, T *dest, int maxlen) {
+	T	*sv_dest = dest;
+	T	*max_dest = dest + maxlen - 1;
+	int	len = 0;
+
+	while (*src && dest < max_dest) {
+		if ((*dest = *src++) != '\r') dest++;
+	}
+	*dest = 0;
+
+	return	int(dest - sv_dest);
+}
+
+template<class T> int UnixNewLineToLocalT(const T *src, T *dest, int maxlen) {
+	T	*sv_dest = dest;
+	T	*max_dest = dest + maxlen - 1;
+
+	while (*src && dest < max_dest) {
+		if ((*dest = *src++) == '\n' && dest + 1 < max_dest) {
+			*dest++ = '\r';
+			*dest++ = '\n';
+		}
+		else dest++;
+	}
+	*dest = 0;
+
+	return	int(dest - sv_dest);
+}
+
+#define LocalNewLineToUnix  LocalNewLineToUnixT<char>
+#define UnixNewLineToLocal  UnixNewLineToLocalT<char>
+#define LocalNewLineToUnixW LocalNewLineToUnixT<WCHAR>
+#define UnixNewLineToLocalW UnixNewLineToLocalT<WCHAR>
+
+//int LocalNewLineToUnix(const char *src, char *dest, int maxlen);
+//int UnixNewLineToLocal(const char *src, char *dest, int maxlen);
 
 BOOL TIsWow64();
 BOOL TRegEnableReflectionKey(HKEY hBase);

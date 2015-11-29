@@ -21,6 +21,7 @@ TApp::TApp(HINSTANCE _hI, LPSTR _cmdLine, int _nCmdShow)
 	cmdLine			= _cmdLine;
 	nCmdShow		= _nCmdShow;
 	mainWnd			= NULL;
+	preWnd			= NULL;
 	defaultClass	= "tapp";
 	defaultClassW	= L"tapp";
 	tapp			= this;

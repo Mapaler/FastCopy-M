@@ -1,9 +1,9 @@
 ﻿static char *mainwin_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		mainwin.cpp	ver3.0.5.23";
+	"@(#)Copyright (C) 2004-2015 H.Shirouzu		mainwin.cpp	ver3.10";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-09-23(Wed)
+	Update					: 2015-11-29(Sun)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-29
@@ -157,7 +157,9 @@ TMainDlg::TMainDlg() : TDlg(MAIN_DIALOG), aboutDlg(this), setupDlg(&cfg, this),
 	listBufOffset = 0;
 	timerCnt = 0;
 	timerLast = 0;
+
 	statusFont = NULL;
+	memset(&statusLogFont, 0, sizeof(statusLogFont));
 
 	curPriority = ::GetPriorityClass(::GetCurrentProcess());
 
@@ -342,17 +344,24 @@ BOOL TMainDlg::IsForeground()
 	return	hForeWnd && hWnd && (hForeWnd == hWnd || ::IsChild(hWnd, hForeWnd)) ? TRUE : FALSE;
 }
 
-void TMainDlg::StatusEditSetup()
+void TMainDlg::StatusEditSetup(BOOL reset)
 {
-	if (statusFont) return;
-
 	static bool once = false;
-	if (once) return;
+
+	if (!reset) {
+		if (statusFont || once) return;
+	}
+	if (statusFont) {
+		::DeleteObject(statusFont);
+		statusFont = NULL;
+	}
 	once = true;
 
-	LOGFONTW	lf = {};
-	HDC			hDc = ::GetDC(hWnd);
-	int			logPixY = ::GetDeviceCaps(hDc, LOGPIXELSY);
+	LOGFONTW	&lf = statusLogFont;
+	memset(&lf, 0, sizeof(lf));
+	int			font_size = 0;
+	HDC			hDc			= ::GetDC(hWnd);
+	int			logPixY		= ::GetDeviceCaps(hDc, LOGPIXELSY);
 	DWORD		font_id		= IDS_STATUS_FONT;
 	DWORD		fontsize_id	= IDS_STATUS_FONTSIZE;
 
@@ -360,33 +369,67 @@ void TMainDlg::StatusEditSetup()
 		font_id		= IDS_STATUS_ALTFONT;
 		fontsize_id	= IDS_STATUS_ALTFONTSIZE;
 	}
-
-	if (!*cfg.statusFont) {
-		if (WCHAR *font = GetLoadStrW(font_id)) {
-			wcscpy(cfg.statusFont, font);
-		}
-		if (!*cfg.statusFont) return;
+	if (*cfg.statusFont) {
+		wcscpy(lf.lfFaceName, cfg.statusFont);
 	}
-	if (cfg.statusFontSize <= 0) {
-		if (char *font_size = GetLoadStr(IDS_STATUS_FONTSIZE)) {
-			cfg.statusFontSize = atoi(font_size);
+	else {
+		if (WCHAR *s = GetLoadStrW(font_id)) {
+			wcscpy(lf.lfFaceName, s);
 		}
-		if (cfg.statusFontSize <= 0) return;
+		if (!*lf.lfFaceName) return;
+	}
+	if ((font_size = cfg.statusFontSize) <= 0) {
+		if (char *s = GetLoadStr(fontsize_id)) {
+			font_size = atoi(s);
+		}
+		if (font_size <= 0) return;
 	}
 
-	wcscpy(lf.lfFaceName, cfg.statusFont);
 	lf.lfCharSet = DEFAULT_CHARSET;
-	POINT pt={}, pt2={};
-	pt.y = (int)((int64)logPixY * cfg.statusFontSize / 720);
-	::DPtoLP(hDc, &pt,  1);
-	::DPtoLP(hDc, &pt2, 1);
-	lf.lfHeight = -abs(pt.y - pt2.y);
+	POINT	pt[2]={};
+	pt[0].y = (int)((int64)logPixY * font_size / 720);
+	::DPtoLP(hDc, pt,  2);
+	lf.lfHeight = -abs(pt[0].y - pt[1].y);
 	::ReleaseDC(hWnd, hDc);
 
 	statusFont = ::CreateFontIndirectW(&lf);
 	SendDlgItemMessage(STATUS_EDIT, WM_SETFONT, (WPARAM)statusFont, 0);
 	SendDlgItemMessage(STATUS_EDIT, EM_SETWORDBREAKPROC, 0, (LPARAM)EditWordBreakProcW);
 	SendDlgItemMessage(STATUS_EDIT, EM_SETTARGETDEVICE, 0, 0);		// 折り返し
+	InvalidateRect(0, 0);
+}
+
+void TMainDlg::ChooseFont()
+{
+	if (!*cfg.statusFont) {
+		StatusEditSetup();
+	}
+
+	HDC		hDc = ::GetDC(hWnd);
+	int		logPixY = ::GetDeviceCaps(hDc, LOGPIXELSY);
+
+	LOGFONTW	tmpFont = statusLogFont;
+	CHOOSEFONTW	cf = { sizeof(cf) };
+	cf.hwndOwner	= hWnd;
+	cf.lpLogFont	= &tmpFont;
+	cf.Flags		= CF_SCREENFONTS | CF_INITTOLOGFONTSTRUCT | CF_SHOWHELP
+		| CF_LIMITSIZE | CF_NOVERTFONTS;
+	cf.nFontType	= SCREEN_FONTTYPE;
+	cf.nSizeMax		= 15;
+
+	if (::ChooseFontW(&cf)) {
+		POINT	pt[2] = {};
+		pt[0].y = abs(tmpFont.lfHeight);
+		::LPtoDP(hDc, pt, 2);
+		cfg.statusFontSize = int(ceil((double)abs(pt[0].y - pt[1].y) * 720 / logPixY));
+		wcscpy(cfg.statusFont, tmpFont.lfFaceName);
+
+		StatusEditSetup(TRUE);
+		SetInfo(TRUE);
+		cfg.WriteIni();
+	}
+
+	::ReleaseDC(hWnd, hDc);
 }
 
 BOOL TMainDlg::EvCreate(LPARAM lParam)
@@ -439,9 +482,9 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 	//初始化图标
 	int		i;
 	for (i=0; i < MAX_FASTCOPY_ICON; i++) {
-		hMainIcon[i] = ::LoadIcon(TApp::GetInstance(), (LPCSTR)(FASTCOPY_ICON + i));
+		hMainIcon[i] = ::LoadIcon(TApp::GetInstance(), (LPCSTR)(LONG_PTR)(FASTCOPY_ICON + i));
 	}
-	::SetClassLong(hWnd, GCL_HICON, (LONG)hMainIcon[FCNORMAL_ICON_IDX]);
+	::SetClassLong(hWnd, GCL_HICON, LONG_RDC(hMainIcon[FCNORMAL_ICON_IDX]));
 
 	hAccel = LoadAccelerators(TApp::GetInstance(), (LPCSTR)IDR_ACCEL);
 	SetSize();
@@ -481,44 +524,6 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 
 #ifdef USE_LISTVIEW
 	// リストビュー関連
-	listView.AttachWnd(GetDlgItem(MAIN_LIST));
-	listHead.AttachWnd((HWND)listView.SendMessage(LVM_GETHEADER, 0, 0));
-
-	DWORD style = listView.SendMessage(LVM_GETEXTENDEDLISTVIEWSTYLE, 0, 0) | LVS_EX_GRIDLINES
-		| LVS_EX_FULLROWSELECT;
-	listView.SendMessage(LVM_SETEXTENDEDLISTVIEWSTYLE, 0, style);
-
-	char	*column[] = { "", "size(MB)", "files (dirs)", NULL };
-	LV_COLUMN	lvC;
-	memset(&lvC, 0, sizeof(lvC));
-	lvC.fmt = LVCFMT_RIGHT;
-	lvC.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT;
-
-	for (i=0; column[i]; i++) {
-		lvC.pszText = column[i];
-		lvC.cx = i==0 ? 40 : i == 1 ? 65 : 80;
-		listView.SendMessage(LVM_INSERTCOLUMN, i, (LPARAM)&lvC);
-	}
-
-	char	*item[] = { "Read", "Write", "Verify", "Skip", "Del"/*, "OW"*/, NULL };
-	LV_ITEM	lvi;
-	memset(&lvi, 0, sizeof(lvi));
-	lvi.mask = LVIF_TEXT|LVIF_PARAM;
-
-	for (i=0; item[i]; i++) {
-		lvi.iItem = i;
-		lvi.pszText = item[i];
-		lvi.iSubItem = 0;
-		listView.SendMessage(LVM_INSERTITEM, 0, (LPARAM)&lvi);
-
-		for (int j=1; j < 3; j++) {
-			lvi.pszText = j == 1 ? "8,888,888" : "8,888,888 (99,999)";
-			lvi.iSubItem = j;
-			listView.SendMessage(LVM_SETITEMTEXT, i, (LPARAM)&lvi);
-		}
-	}
-	listView.SendMessage(LVM_SETBKCOLOR, 0, (LPARAM)::GetSysColor(COLOR_3DFACE));
-	listView.SendMessage(LVM_SETTEXTBKCOLOR, 0, (LPARAM)::GetSysColor(COLOR_3DFACE));
 #endif
 
 	// 履歴セット
@@ -550,6 +555,8 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 		TaskTray(NIM_DELETE);
 		isInstaller = FALSE;
 	}
+
+	if (*cfg.statusFont) StatusEditSetup();
 
 	// command line mode
 	if (orgArgc > 1) {
@@ -894,6 +901,17 @@ BOOL TMainDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl)
 		}
 		SetExtendFilter();
 		return	TRUE;
+
+	case FONT_MENUITEM:
+		ChooseFont();
+		return TRUE;
+
+	case RESETFONT_MENUITEM:
+		*cfg.statusFont = 0;
+		cfg.statusFontSize = 0;
+		StatusEditSetup(TRUE);
+		cfg.WriteIni();
+		return TRUE;
 
 	case EXTENDFILTER_MENUITEM:
 		isExtendFilter = !isExtendFilter;
@@ -1501,7 +1519,7 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 	SendDlgItemMessage(PATH_EDIT, WM_SETTEXT, 0, (LPARAM)"");
 	SendDlgItemMessage(STATUS_EDIT, WM_SETTEXT, 0, (LPARAM)"");
 	SendDlgItemMessage(ERRSTATUS_STATIC, WM_SETTEXT, 0, (LPARAM)"");
-	StatusEditSetup();
+	if (!*cfg.statusFont) StatusEditSetup();
 
 	PathArray	srcArray, dstArray, incArray, excArray;
 	srcArray.RegisterMultiPath(src);
@@ -2239,6 +2257,7 @@ BOOL TMainDlg::RunasSync(HWND hOrg)
 	SetSpeedLevelLabel(this, speedLevel);
 	UpdateMenu();
 	SetItemEnable(GetCopyMode() == FastCopy::DELETE_MODE);
+	SetExtendFilter();
 
 	isRunAsStart = TRUE;
 
