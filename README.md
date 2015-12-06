@@ -25,8 +25,8 @@ Shell Extension add icon.<br />
 ![Shell Extension icon](http://ww3.sinaimg.cn/large/6c84b2d6gw1ewbd5egv8jj20rj0hpjxc.jpg)
 
 ### Build | 编译
-FastCopy-M采用[VS2015](https://www.visualstudio.com/zh-cn/downloads/download-visual-studio-vs.aspx)，你可以自行替换工程到原始版本（或手动修改文件内版本号）以在VS2013或2012上编译。目前比官方多需要引用“shlwapi.lib”。<br />
-FastCopy-M used [VS2015](https://www.visualstudio.com/en-us/downloads/download-visual-studio-vs.aspx), if you want bulid on VS2013 or earlier you can replace the "*.sln", "*.vcxproj" to original version (or modify project version in these file) by your self. Additional Dependencies need include "shlwapi.lib" after ver3.0.4.20.
+FastCopy-M采用[VS2015](https://www.visualstudio.com/zh-cn/downloads/download-visual-studio-vs.aspx)，目前比官方多需要引用“shlwapi.lib”。<br />
+FastCopy-M used [VS2015](https://www.visualstudio.com/en-us/downloads/download-visual-studio-vs.aspx). Additional Dependencies need include "shlwapi.lib" after ver3.0.4.20.
 
 ## Auto Change Icon | 自动更换图标 
 

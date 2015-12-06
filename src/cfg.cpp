@@ -93,6 +93,8 @@
 #define EXTENDFILTER_KEY		"extend_filter"
 #define WINPOS_KEY				"win_pos"
 #define TASKBARMODE_KEY			"taskbarMode"
+#define FINISHNOTIFY_KEY		"finish_notify"
+#define FINISHNOTIFYTOUT_KEY	"finish_notify_tout"
 #define INFOSPAN_KEY			"infoSpan"
 #define STATUSFONT_KEY			"status_font"
 #define STATUSFONTSIZE_KEY		"status_fontsize"
@@ -516,6 +518,9 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 	isReCreate		= ini.GetInt(RECREATE_KEY, FALSE);
 	isExtendFilter	= ini.GetInt(EXTENDFILTER_KEY, FALSE);
 	taskbarMode		= ini.GetInt(TASKBARMODE_KEY, 0);
+	finishNotify	= ini.GetInt(FINISHNOTIFY_KEY, 1);
+	finishNotifyTout = ini.GetInt(FINISHNOTIFYTOUT_KEY, FINISH_NOTIFY_DEFAULT);
+
 	infoSpan		= ini.GetInt(INFOSPAN_KEY, DEFAULT_INFOSPAN);
 	if (infoSpan < 0 || infoSpan > 2) infoSpan = DEFAULT_INFOSPAN;
 
@@ -759,6 +764,8 @@ BOOL Cfg::WriteIni(void)
 //	ini.SetInt(RECREATE_KEY, isReCreate);
 	ini.SetInt(EXTENDFILTER_KEY, isExtendFilter);
 	ini.SetInt(TASKBARMODE_KEY, taskbarMode);
+	ini.SetInt(FINISHNOTIFY_KEY, finishNotify);
+//	ini.SetInt(FINISHNOTIFYTOUT_KEY, finishNotifyTout);
 	ini.SetInt(INFOSPAN_KEY, infoSpan);
 
 	char	val[256];

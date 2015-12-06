@@ -181,6 +181,7 @@ BOOL TSetupSheet::SetData()
 	else if (resId == MISC_SHEET) {
 		CheckDlgButton(EXECCONFIRM_CHECK, cfg->execConfirm);
 		CheckDlgButton(TASKBAR_CHECK, cfg->taskbarMode);
+		CheckDlgButton(FINISH_CHECK, (cfg->finishNotify & 1));
 		CheckDlgButton(SPAN1_RADIO + cfg->infoSpan, 1);
 
 		if ((cfg->lcid != -1 || GetSystemDefaultLCID() != 0x409)) { // == 0x411 改成 != 0x409 让所有语言都可以切换到英文
@@ -289,6 +290,12 @@ BOOL TSetupSheet::GetData()
 	else if (resId == MISC_SHEET) {
 		cfg->execConfirm = IsDlgButtonChecked(EXECCONFIRM_CHECK);
 		cfg->taskbarMode = IsDlgButtonChecked(TASKBAR_CHECK);
+		if (IsDlgButtonChecked(FINISH_CHECK)) {
+			cfg->finishNotify |= 1;
+		}
+		else {
+			cfg->finishNotify &= ~1;
+		}
 		cfg->infoSpan    =	IsDlgButtonChecked(SPAN1_RADIO) ? 0 :
 							IsDlgButtonChecked(SPAN2_RADIO) ? 1 : 2;
 

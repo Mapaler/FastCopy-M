@@ -1,9 +1,9 @@
 ﻿/* static char *fastcopy_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		fastcopy.h	Ver3.06"; */
+	"@(#)Copyright (C) 2004-2015 H.Shirouzu		fastcopy.h	Ver3.11"; */
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-10-12(Mon)
+	Update					: 2015-12-05(Sa)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-09
@@ -652,6 +652,7 @@ protected:
 	BOOL WriteThreadCore(void);
 	BOOL RDigestThreadCore(void);
 	BOOL WDigestThreadCore(void);
+	BOOL VerifyErrPostProc(DigestCalc *calc);
 
 	LinkStatus CheckHardLink(WCHAR *path, int len=-1, HANDLE hFileOrg=INVALID_HANDLE_VALUE,
 				DWORD *data=NULL);

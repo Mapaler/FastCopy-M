@@ -1204,6 +1204,10 @@ BOOL TJobDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hWndCtl)
 		DelJob();
 		return	TRUE;
 
+	case TASKSCHE_BUTTON:
+		::ShellExecuteW(NULL, NULL, L"taskschd.msc", NULL, NULL, SW_SHOW);
+		return	TRUE;
+
 	case IDCANCEL:
 		EndDialog(wID);
 		return	TRUE;

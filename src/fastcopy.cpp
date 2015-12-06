@@ -1,9 +1,9 @@
 ﻿static char *fastcopy_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		fastcopy.cpp	ver3.10";
+	"@(#)Copyright (C) 2004-2015 H.Shirouzu		fastcopy.cpp	ver3.11";
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-11-30(Mon)
+	Update					: 2015-12-05(Sat)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-09
@@ -63,7 +63,7 @@ FastCopy::FastCopy()
 	memset(&total, 0, sizeof(total));
 
 	maxStatSize = (MAX_PATH * sizeof(WCHAR)) * 2 + offsetof(FileStat, cFileName) + 8;
-	startTick = suspendTick = endTick = waitTick - 0;
+	startTick = suspendTick = endTick = waitTick = 0;
 	hardLinkDst = NULL;
 }
 
@@ -3462,10 +3462,8 @@ BOOL FastCopy::WDigestThreadCore(void)
 					// compare OK
 				}
 				else {
-					WCHAR	buf[512];
-					MakeVerifyStr(buf, calc->digest, dstDigest.val, dstDigest.GetDigestSize());
-					ConfirmErr(buf, calc->path + dstPrefixLen, CEF_NOAPI);
 					calc->status = DigestCalc::ERR;
+					VerifyErrPostProc(calc);
 				}
 			}
 			else if (isListing) {
@@ -3509,6 +3507,33 @@ BOOL FastCopy::WDigestThreadCore(void)
 	return	isAbort;
 }
 
+BOOL FastCopy::VerifyErrPostProc(DigestCalc *calc)
+{
+	int		len = (int)wcslen(calc->path);
+	Wstr	wbuf((len + 20) + 1024); // path + digest_msg + misc_msg
+	Wstr	wname(len + 20);
+
+	wcscpy(wname.Buf(), calc->path);
+	wcscpy(wname.Buf() + len, L".fc_verify_err");
+
+	BOOL	ret = ::MoveFileExW(calc->path, wname.s(), MOVEFILE_REPLACE_EXISTING);
+
+	MakeVerifyStr(wbuf.Buf(), calc->digest, dstDigest.val, dstDigest.GetDigestSize());
+
+	if (ret) {
+		swprintf(wbuf.Buf() + wcslen(wbuf.s()),
+			L"in %s and it was renamed.\r\n Please check later", calc->path + dstPrefixLen);
+		ConfirmErr(wbuf.s(), wname.s() + dstPrefixLen, CEF_NOAPI);
+	}
+	else {
+		swprintf(wbuf.Buf() + wcslen(wbuf.s()),
+			L"in %s and it was tried to rename, but it was failed.\r\n Please check later",
+			calc->path + dstPrefixLen);
+		ConfirmErr(wbuf.s(), calc->path + dstPrefixLen);
+	}
+
+	return	ret;
+}
 
 FastCopy::DigestCalc *FastCopy::GetDigestCalc(DigestObj *obj, int io_size)
 {

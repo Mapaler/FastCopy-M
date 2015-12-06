@@ -72,11 +72,11 @@
 <body bgcolor="#eeffff">
 
 <div align="center">
-<h1 class="help_head1">FastCopy ver3.10</h1>
+<h1 class="help_head1">FastCopy ver3.11</h1>
 </div>
 <div class="help_all">
 
-<div align="right">2015/11/30 H.Shirouzu</div>
+<div align="right">2015/12/06 H.Shirouzu</div>
 
 <center>
 <strong>Warning :</strong> This document was made with the Japanese-English translation software. <br>
@@ -575,6 +575,7 @@ demerit points are same as read, but sometimes many head seeks occur in writing 
 			<tr><td nowrap><strong>Confirm before executing</strong></td><td>Confirming</td></tr>
 			<tr><td><strong>Use taskbar instead of tasktray at minimizing</strong></td><td>using taskbar</td></tr>
 			<tr><td nowrap><strong>Info Update span</strong></td><td>It can be specified information update span.</td></tr>
+			<tr><td><strong>Balloon Notification at the finish</td><td>Enable balloon notification at the finish, if it is minimized.</td></tr>
 			<tr><td nowrap><strong>English UI</strong></td><td>(Meaningless in English OS) It requires restarting FastCopy.</td></tr>
 			</table>
 		</div>
@@ -643,6 +644,8 @@ demerit points are same as read, but sometimes many head seeks occur in writing 
 		<td>Add/Modify parameters in main window(Source/DestDir, Operation mode, Buffer size, Nonstop/Verify/Estimate/ACL/AltStream/Wipe&Delete/Filter checkboxes, Filter strings, HDD mode) as named job.</td></tr>
 		<tr><td nowrap><strong>Delete</strong></td>
 		<td>Delete registered job.</td></tr>
+		<tr><td nowrap><strong>Open "Windows Task Scheduler"</strong></td>
+		<td>Open "Windows Task Scheduler". <br>(Only shortcut. FastCopy doesn't have any function for windows task scheduler)</td></tr>
 		</table>
 	</div>
 </div>
@@ -812,6 +815,12 @@ demerit points are same as read, but sometimes many head seeks occur in writing 
 
 <table class="help_table" border="4">
 <tr><th>Version</th><th>Detail</th></tr>
+
+<tr><td>v3.11</td><td>
+Support balloon notification at the finish.<br>
+Add the shortcut button of "Windows Task Scheduler" in Job Settings.<br>
+In the verify mode, if the hash values are different, target files are renamed to (fname).fc_verify_err.
+</td></tr>
 <tr><td>v3.10</td><td>
 Add changing main information font.<br>
 Fix an exception(or ACL copy failure) when using many ACL entry with deep path.

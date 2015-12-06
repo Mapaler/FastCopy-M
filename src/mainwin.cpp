@@ -1991,7 +1991,10 @@ BOOL TMainDlg::EventApp(UINT uMsg, WPARAM wParam, LPARAM lParam)
 			Show();
 			break;
 
-		case WM_LBUTTONUP: case WM_RBUTTONUP:
+		case WM_LBUTTONUP: case WM_RBUTTONUP: case NIN_BALLOONUSERCLICK:
+			if (lParam == NIN_BALLOONUSERCLICK) {
+				SetForceForegroundWindow();
+			}
 			Show();
 			if (isErrEditHide && (ti.errBuf && ti.errBuf->UsedSize() || errBufOffset)) {
 				SetNormalWindow();
@@ -2288,15 +2291,31 @@ BOOL TMainDlg::TaskTray(int nimMode, HICON hSetIcon, LPCSTR tip, BOOL balloon)
 		tn.uFlags = NIF_MESSAGE|(hSetIcon ? NIF_ICON : 0)|(tip ? NIF_TIP : 0);
 		tn.uCallbackMessage = WM_FASTCOPY_NOTIFY;
 		tn.hIcon = hSetIcon;
-		if (tip) sprintf(tn.szTip, "%.127s", tip);
+		if (tip) {
+			sprintf(tn.szTip, "%.127s", tip);
+		}
+		DWORD	sv_tout = 0;
 
 		if (balloon && tip) {
 			tn.uFlags |= NIF_INFO;
 			strncpyz(tn.szInfo, tip, sizeof(tn.szInfo));
 			strncpyz(tn.szInfoTitle, FASTCOPY, sizeof(tn.szInfoTitle));
+			tn.uTimeout		= cfg.finishNotifyTout * 1000;
+			tn.dwInfoFlags	= NIIF_INFO | NIIF_NOSOUND;
+
+			if (IsWinVista()) {	// Vista以降では uTimeout ではなく SPI_SETMESSAGEDURATION
+				::SystemParametersInfo(SPI_GETMESSAGEDURATION, 0, (void *)&sv_tout, 0);
+				::SystemParametersInfo(SPI_SETMESSAGEDURATION, 0, (void *)(INT_PTR)tn.uTimeout, 0);
+			}
 		}
 
 		ret = ::Shell_NotifyIcon(nimMode, &tn);
+
+		if (balloon && tip) {
+			if (IsWinVista() && sv_tout) {
+				::SystemParametersInfo(SPI_SETMESSAGEDURATION, 0, (void *)(INT_PTR)sv_tout, 0);
+			}
+		}
 
 		if (isTaskTray) {
 			static BOOL once_result = ForceSetTrayIcon(hWnd, FASTCOPY_NIM_ID);
@@ -2446,7 +2465,8 @@ BOOL TMainDlg::SetTaskTrayInfo(BOOL is_finish_status, double doneRate, int remai
 	}
 
 	curIconIndex = is_finish_status ? 0 : (curIconIndex + 1) % MAX_NORMAL_FASTCOPY_ICON;
-	TaskTray(NIM_MODIFY, hMainIcon[curIconIndex], buf/*, is_finish_status*/);
+	TaskTray(NIM_MODIFY, hMainIcon[curIconIndex], buf,
+		(cfg.finishNotify & 1) && is_finish_status);
 	return	TRUE;
 }
 
@@ -2538,7 +2558,7 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 {
 	char	buf[1024], s1[64], s2[64], s3[64], s4[64], s5[64], s6[64];
 	int		len = 0;
-	double	doneRate;
+	double	doneRate = 0.0;
 	int		remain_sec, total_sec;
 
 	doneRatePercent = -1;
@@ -2553,8 +2573,12 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 	if (IsListing() && ti.listBuf->UsedSize() > 0
 	|| (info.flags & FastCopy::LISTING) && ti.listBuf->UsedSize() >= FILELOG_MINSIZE) {
 		::EnterCriticalSection(ti.listCs);
-		if (IsListing()) SetListInfo();
-		else			 SetFileLogInfo();
+		if (IsListing()) {
+			SetListInfo();
+		}
+		else {
+			SetFileLogInfo();
+		}
 		::LeaveCriticalSection(ti.listCs);
 	}
 
@@ -2566,7 +2590,9 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 
 	if (isTaskTray) {
 		SetTaskTrayInfo(is_finish_status, doneRate, remain_sec);
-		if (isTaskTray && !is_finish_status) return TRUE;
+		if (isTaskTray && !is_finish_status) {
+			return TRUE;
+		}
 	}
 
 	if ((info.flags & FastCopy::PRE_SEARCH) && !ti.total.isPreSearch && !is_finish_status
@@ -2844,6 +2870,13 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 			, s2);
 		SetDlgItemText(ERRSTATUS_STATIC, buf);
 	}
+
+	if (!isTaskTray && is_finish_status && (cfg.finishNotify & 2)) {
+		if (::GetForegroundWindow() != hWnd) {
+			::FlashWindow(hWnd, TRUE);
+		}
+	}
+
 	return	TRUE;
 }
 
