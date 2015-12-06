@@ -1,9 +1,9 @@
 ﻿static char *cfg_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		cfg.cpp	ver3.03";
+	"@(#)Copyright (C) 2004-2015 H.Shirouzu		cfg.cpp	ver3.10";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-08-30(Sun)
+	Update					: 2015-11-29(Sun)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -92,6 +92,8 @@
 #define EXTENDFILTER_KEY		"extend_filter"
 #define WINPOS_KEY				"win_pos"
 #define TASKBARMODE_KEY			"taskbarMode"
+#define FINISHNOTIFY_KEY		"finish_notify"
+#define FINISHNOTIFYTOUT_KEY	"finish_notify_tout"
 #define INFOSPAN_KEY			"infoSpan"
 #define STATUSFONT_KEY			"status_font"
 #define STATUSFONTSIZE_KEY		"status_fontsize"
@@ -515,6 +517,9 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 	isReCreate		= ini.GetInt(RECREATE_KEY, FALSE);
 	isExtendFilter	= ini.GetInt(EXTENDFILTER_KEY, FALSE);
 	taskbarMode		= ini.GetInt(TASKBARMODE_KEY, 0);
+	finishNotify	= ini.GetInt(FINISHNOTIFY_KEY, 1);
+	finishNotifyTout = ini.GetInt(FINISHNOTIFYTOUT_KEY, FINISH_NOTIFY_DEFAULT);
+
 	infoSpan		= ini.GetInt(INFOSPAN_KEY, DEFAULT_INFOSPAN);
 	if (infoSpan < 0 || infoSpan > 2) infoSpan = DEFAULT_INFOSPAN;
 
@@ -758,12 +763,18 @@ BOOL Cfg::WriteIni(void)
 //	ini.SetInt(RECREATE_KEY, isReCreate);
 	ini.SetInt(EXTENDFILTER_KEY, isExtendFilter);
 	ini.SetInt(TASKBARMODE_KEY, taskbarMode);
+	ini.SetInt(FINISHNOTIFY_KEY, finishNotify);
+//	ini.SetInt(FINISHNOTIFYTOUT_KEY, finishNotifyTout);
 	ini.SetInt(INFOSPAN_KEY, infoSpan);
 
 	char	val[256];
 	sprintf(val, "%d,%d,%d,%d", winpos.x, winpos.y, winsize.cx, winsize.cy);
 	ini.SetStr(WINPOS_KEY, val);
 	ini.SetStr(DRIVEMAP_KEY, driveMap);
+
+	WtoU8(statusFont, val, sizeof(val));
+	ini.SetStr(STATUSFONT_KEY, val);
+	ini.SetInt(STATUSFONTSIZE_KEY, statusFontSize);
 
 	char	*section_array[] = {	SRC_HISTORY, DST_HISTORY, DEL_HISTORY,
 									INC_HISTORY, EXC_HISTORY,

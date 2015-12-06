@@ -43,6 +43,7 @@ TDigest::TDigest()
 	hHash	= NULL;
 	used	= false;
 	updated	= false;
+	type	= MD5;
 }
 
 TDigest::~TDigest()

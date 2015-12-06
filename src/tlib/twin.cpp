@@ -689,7 +689,7 @@ BOOL TWin::SetForceForegroundWindow(void)
 	::SystemParametersInfo(SPI_GETFOREGROUNDLOCKTIMEOUT, 0, (void *)&svTmOut, 0);
 	::SystemParametersInfo(SPI_SETFOREGROUNDLOCKTIMEOUT, 0, 0, 0);
 	BOOL	ret = ::SetForegroundWindow(hWnd);
-	::SystemParametersInfo(SPI_SETFOREGROUNDLOCKTIMEOUT, 0, (void *)svTmOut, 0);
+	::SystemParametersInfo(SPI_SETFOREGROUNDLOCKTIMEOUT, 0, (void *)(DWORD_PTR)svTmOut, 0);
 	if (foreId != targId)
 		::AttachThreadInput(targId, foreId, FALSE);
 

@@ -1,9 +1,9 @@
 ﻿static char *miscdlg_id = 
-	"@(#)Copyright (C) 2005-2015 H.Shirouzu		miscdlg.cpp	ver3.03";
+	"@(#)Copyright (C) 2005-2015 H.Shirouzu		miscdlg.cpp	ver3.10";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2005-01-23(Sun)
-	Update					: 2015-08-30(Sun)
+	Update					: 2015-11-28(Sat)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -322,7 +322,7 @@ BOOL TBrowseDirDlgW::AttachWnd(HWND _hWnd)
 //		SendDlgItemMessage(MKDIR_BUTTON, WM_SETFONT, (UINT)hDlgFont, 0L);
 //		SendDlgItemMessage(RMDIR_BUTTON, WM_SETFONT, (UINT)hDlgFont, 0L);
 		if (flg & BRDIR_FILESELECT) {
-			SendDlgItemMessage(FILESELECT_BUTTON, WM_SETFONT, (UINT)hDlgFont, 0L);
+			SendDlgItemMessage(FILESELECT_BUTTON, WM_SETFONT, (LPARAM)hDlgFont, 0L);
 		}
 	}
 
@@ -608,7 +608,7 @@ BOOL TOpenFileDlg::AttachWnd(HWND _hWnd)
 
 	HFONT	hDlgFont = (HFONT)SendDlgItemMessage(IDOK, WM_GETFONT, 0, 0L);
 	if (hDlgFont)
-		SendDlgItemMessage(DIRSELECT_BUTTON, WM_SETFONT, (UINT)hDlgFont, 0L);
+		SendDlgItemMessage(DIRSELECT_BUTTON, WM_SETFONT, (LPARAM)hDlgFont, 0L);
 
 	return	ret;
 }
@@ -679,6 +679,10 @@ BOOL TJobDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hWndCtl)
 
 	case JOBDEL_BUTTON:
 		DelJob();
+		return	TRUE;
+
+	case TASKSCHE_BUTTON:
+		::ShellExecuteW(NULL, NULL, L"taskschd.msc", NULL, NULL, SW_SHOW);
 		return	TRUE;
 
 	case IDCANCEL:

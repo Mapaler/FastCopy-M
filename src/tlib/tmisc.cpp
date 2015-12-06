@@ -4,7 +4,7 @@
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Application Frame Class
 	Create					: 1996-06-01(Sat)
-	Update					: 2015-08-12(Wed)
+	Update					: 2015-11-01(Sun)
 	Copyright				: H.Shirouzu
 	Reference				: 
 	======================================================================== */
@@ -56,6 +56,7 @@ BOOL Condition::Initialize()
 	if (!isInit) {
 		::InitializeCriticalSection(&cs);
 		waitBits = 0;
+		isInit = TRUE;
 	}
 	return	TRUE;
 }
@@ -223,6 +224,8 @@ void VBuf::Init(void)
 
 BOOL VBuf::AllocBuf(ssize_t _size, ssize_t _max_size, VBuf *_borrowBuf)
 {
+	if (buf) FreeBuf();
+
 	if (_max_size == 0)
 		_max_size = _size;
 	maxSize = _max_size;
@@ -231,7 +234,7 @@ BOOL VBuf::AllocBuf(ssize_t _size, ssize_t _max_size, VBuf *_borrowBuf)
 	if (borrowBuf) {
 		if (!borrowBuf->Buf() || borrowBuf->MaxSize() < borrowBuf->UsedSize() + maxSize)
 			return	FALSE;
-		buf = borrowBuf->Buf() + borrowBuf->UsedSize();
+		buf = borrowBuf->UsedEnd();
 		borrowBuf->AddUsedSize(maxSize + PAGE_SIZE);
 	}
 	else {
@@ -376,6 +379,19 @@ int MakePath(char *dest, const char *dir, const char *file)
 		}
 	}
 	return	wsprintf(dest, "%s%s%s", dir, separetor ? "\\" : "", file);
+}
+
+/*=========================================================================
+	パス合成（UTF-8 版）
+=========================================================================*/
+int MakePathU8(char *dest, const char *dir, const char *file)
+{
+	ssize_t	len;
+
+	if ((len = strlen(dir)) == 0)
+		return	wsprintf(dest, "%s", file);
+
+	return	wsprintf(dest, "%s%s%s", dir, dir[len -1] ? "\\" : "", file);
 }
 
 /*=========================================================================
@@ -560,12 +576,12 @@ BOOL urlstr2bin(const char *str, BYTE *bindata, int maxlen, int *len)
 		}
 	}
 	if (b64[size-1] != '\n' && (size % 4) && b64[size-1] != '=') {
-		sprintf(b64 + size -1, "%.*s", 4 - (size % 4), "===");
+		sprintf(b64 + size -1, "%.*s", int(4 - (size % 4)), "===");
 	}
 
 	b64str2bin(b64, bindata, maxlen, len);
 
-	free(b64);
+	delete [] b64;
 	return	TRUE;
 }
 
@@ -742,11 +758,11 @@ LONG WINAPI Local_UnhandledExceptionFilter(struct _EXCEPTION_POINTERS *info)
 		"------- pre stack info -----\r\n"
 		, ExceptionTitle
 		, tm.wYear, tm.wMonth, tm.wDay, tm.wHour, tm.wMinute, tm.wSecond
-		, info->ExceptionRecord->ExceptionCode, info->ExceptionRecord->ExceptionAddress
-		, context->Rax, context->Rbx, context->Rcx, context->Rdx
-		, context->Rsi, context->Rdi, context->Rbp, context->Rsp
-		, context->R8,  context->R9,  context->R10, context->R11
-		, context->R12, context->R13, context->R14, context->R15
+		, info->ExceptionRecord->ExceptionCode, (void *)info->ExceptionRecord->ExceptionAddress
+		, (void *)context->Rax, (void *)context->Rbx, (void *)context->Rcx, (void *)context->Rdx
+		, (void *)context->Rsi, (void *)context->Rdi, (void *)context->Rbp, (void *)context->Rsp
+		, (void *)context->R8,  (void *)context->R9,  (void *)context->R10, (void *)context->R11
+		, (void *)context->R12, (void *)context->R13, (void *)context->R14, (void *)context->R15
 #else
 		"------ %s -----\r\n"
 		" Date        : %d/%02d/%02d %02d:%02d:%02d\r\n"
@@ -773,9 +789,9 @@ LONG WINAPI Local_UnhandledExceptionFilter(struct _EXCEPTION_POINTERS *info)
 		stack = (esp - MAX_PRE_STACKDUMP_SIZE) + (i * STACKDUMP_SIZE);
 		if (::IsBadReadPtr(stack, STACKDUMP_SIZE)) continue;
 		len = 0;
-		for (j=0; j < STACKDUMP_SIZE / sizeof(DWORD_PTR); j++)
-			len += sprintf(buf + len, "%p%s", ((DWORD_PTR *)stack)[j],
-							((j+1)%(32/sizeof(DWORD_PTR))) ? " " : "\r\n");
+		for (j=0; j < STACKDUMP_SIZE / sizeof(void *); j++)
+			len += sprintf(buf + len, "%p%s", ((void **)stack)[j],
+							((j+1)%(32/sizeof(void *))) ? " " : "\r\n");
 		::WriteFile(hFile, buf, len, &len, 0);
 	}
 
@@ -787,9 +803,9 @@ LONG WINAPI Local_UnhandledExceptionFilter(struct _EXCEPTION_POINTERS *info)
 		if (::IsBadReadPtr(stack, STACKDUMP_SIZE))
 			break;
 		len = 0;
-		for (j=0; j < STACKDUMP_SIZE / sizeof(DWORD_PTR); j++)
-			len += sprintf(buf + len, "%p%s", ((DWORD_PTR *)stack)[j],
-							((j+1)%(32/sizeof(DWORD_PTR))) ? " " : "\r\n");
+		for (j=0; j < STACKDUMP_SIZE / sizeof(void *); j++)
+			len += sprintf(buf + len, "%p%s", ((void **)stack)[j],
+							((j+1)%(32/sizeof(void *))) ? " " : "\r\n");
 		::WriteFile(hFile, buf, len, &len, 0);
 	}
 
@@ -882,6 +898,13 @@ int strncpyz(char *dest, const char *src, int num)
 	return	(int)(dest - sv_dest);
 }
 
+int strncatz(char *dest, const char *src, int num)
+{
+	for ( ; *dest; dest++, num--)
+		;
+	return strncpyz(dest, src, num);
+}
+
 int wcsncpyz(WCHAR *dest, const WCHAR *src, int num)
 {
 	WCHAR	*sv_dest = dest;
@@ -893,6 +916,13 @@ int wcsncpyz(WCHAR *dest, const WCHAR *src, int num)
 	}
 	*dest = 0;
 	return	(int)(dest - sv_dest);
+}
+
+int wcsncatz(WCHAR *dest, const WCHAR *src, int num)
+{
+	for ( ; *dest; dest++, num--)
+		;
+	return wcsncpyz(dest, src, num);
 }
 
 char *strdupNew(const char *_s, int max_len)
@@ -911,39 +941,6 @@ WCHAR *wcsdupNew(const WCHAR *_s, int max_len)
 	memcpy(s, _s, len * sizeof(WCHAR));
 	s[len] = 0;
 	return	s;
-}
-
-
-/* UNIX - Windows 文字コード変換 */
-int LocalNewLineToUnix(const char *src, char *dest, int maxlen)
-{
-	char	*sv_dest = dest;
-	char	*max_dest = dest + maxlen - 1;
-	int		len = 0;
-
-	while (*src && dest < max_dest) {
-		if ((*dest = *src++) != '\r') dest++;
-	}
-	*dest = 0;
-
-	return	int(dest - sv_dest);
-}
-
-int UnixNewLineToLocal(const char *src, char *dest, int maxlen)
-{
-	char	*sv_dest = dest;
-	char	*max_dest = dest + maxlen - 1;
-
-	while (*src && dest < max_dest) {
-		if ((*dest = *src++) == '\n' && dest + 1 < max_dest) {
-			*dest++ = '\r';
-			*dest++ = '\n';
-		}
-		else dest++;
-	}
-	*dest = 0;
-
-	return	int(dest - sv_dest);
 }
 
 
@@ -1106,10 +1103,10 @@ BOOL TSetThreadLocale(int lcid)
 	static LANGID (WINAPI *pSetThreadUILanguage)(LANGID LangId);
 
 	if (!once) {
-		if (IsWinVista()) {	// ignore if XP
+//		if (IsWinVista()) {	// ignore if XP
 			pSetThreadUILanguage = (LANGID (WINAPI *)(LANGID LangId))
 				GetProcAddress(::GetModuleHandle("kernel32"), "SetThreadUILanguage");
-		}
+//		}
 		once = TRUE;
 	}
 
@@ -1257,6 +1254,25 @@ BOOL GetParentDirW(const WCHAR *srcfile, WCHAR *dir)
 	return	TRUE;
 }
 
+/*
+	2byte文字系でもきちんと動作させるためのルーチン
+	 (*strrchr(path, "\\")=0 だと '表'などで問題を起すため)
+*/
+BOOL GetParentDirU8(const char *org_path, char *target_dir)
+{
+	char	path[MAX_PATH_U8], *fname=NULL;
+
+	if (GetFullPathNameU8(org_path, sizeof(path), path, &fname) == 0 || fname == NULL)
+		return	strncpyz(target_dir, org_path, MAX_PATH_U8), FALSE;
+
+	if (fname - path > 3 || path[1] != ':')
+		*(fname - 1) = 0;
+	else
+		*fname = 0;		// C:\ の場合
+
+	strncpyz(target_dir, path, MAX_PATH_U8);
+	return	TRUE;
+}
 
 
 // HtmlHelp WorkShop をインストールして、htmlhelp.h を include path に
@@ -1274,7 +1290,7 @@ BOOL InitHtmlHelpCore()
 		pHtmlHelpW = (HWND (WINAPI *)(HWND, WCHAR *, UINT, DWORD_PTR))
 					::GetProcAddress(hHtmlHelp, "HtmlHelpW");
 	if (pHtmlHelpW)
-		pHtmlHelpW(NULL, NULL, HH_INITIALIZE, (DWORD)&cookie);
+		pHtmlHelpW(NULL, NULL, HH_INITIALIZE, (DWORD_PTR)&cookie);
 
 	return	pHtmlHelpW ? TRUE : FALSE;;
 }
@@ -1509,6 +1525,7 @@ struct NOTIFYITEM {
 	DWORD	pref;
 	UINT	id;
 	GUID	guid;
+	void*	dummy[8];	// for Win10(x86)...why?
 };
 
 class __declspec(uuid("D782CCBA-AFB0-43F1-94DB-FDA3779EACCB")) INotificationCB : public IUnknown {

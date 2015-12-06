@@ -179,6 +179,9 @@ public:
 	BOOL	isReCreate;
 	BOOL	isExtendFilter;
 	int		taskbarMode; // 0: use tray, 1: use taskbar
+	BOOL	finishNotify;
+	int		finishNotifyTout;
+
 	int		infoSpan;	// information update timing (0:250msec, 1:500msec, 2:1000sec)
 	BOOL	isTopLevel;
 	BOOL	isErrLog;
@@ -245,5 +248,8 @@ public:
 #define IS_INVALID_POINT(pt) (pt.x == INVALID_POINTVAL && pt.y == INVALID_POINTVAL)
 #define IS_INVALID_SIZE(sz) (sz.cx == INVALID_SIZEVAL  && sz.cy == INVALID_SIZEVAL)
 
+
+// default param for cfg.cpp and setup.cpp
+#define FINISH_NOTIFY_DEFAULT	20
 
 #endif

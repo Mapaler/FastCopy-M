@@ -1,9 +1,9 @@
 ﻿static char *regexp_id = 
-	"@(#)Copyright (C) 2005-2015 H.Shirouzu		regexp.cpp	ver3.00";
+	"@(#)Copyright (C) 2005-2015 H.Shirouzu		regexp.cpp	ver3.10";
 /* ========================================================================
 	Project  Name			: Regular Expression / Wild Card Match Library
 	Create					: 2005-11-03(The)
-	Update					: 2015-06-22(Mon)
+	Update					: 2015-11-28(Sat)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -113,8 +113,8 @@ void RegExp::AddRegStateEx(StatesType type, WCHAR ch, int state, RegExp::CaseSen
 	if (cs == CASE_SENSE)
 		AddRegState(type, ch, state);
 	else {
-		AddRegState(type, (WCHAR)::CharLowerW((WCHAR *)ch), state);
-		AddRegState(type, (WCHAR)::CharUpperW((WCHAR *)ch), state);
+		AddRegState(type, (WCHAR)(INT_PTR)::CharLowerW((WCHAR *)ch), state);
+		AddRegState(type, (WCHAR)(INT_PTR)::CharUpperW((WCHAR *)ch), state);
 
 		// CASE_INSENSE_SLASH mode では '/' 入力で '\\' も受理するように
 		if (cs == CASE_INSENSE_SLASH && (ch == '/' || ch == '\\')) {

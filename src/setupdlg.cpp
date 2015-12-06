@@ -1,9 +1,9 @@
 ﻿static char *setuplg_id = 
-	"@(#)Copyright (C) 2015 H.Shirouzu		setupdlg.cpp	ver3.00";
+	"@(#)Copyright (C) 2015 H.Shirouzu		setupdlg.cpp	ver3.10";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2015-07-17(Fri)
-	Update					: 2015-08-12(Wed)
+	Update					: 2015-11-29(Sun)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -180,9 +180,10 @@ BOOL TSetupSheet::SetData()
 	else if (resId == MISC_SHEET) {
 		CheckDlgButton(EXECCONFIRM_CHECK, cfg->execConfirm);
 		CheckDlgButton(TASKBAR_CHECK, cfg->taskbarMode);
+		CheckDlgButton(FINISH_CHECK, (cfg->finishNotify & 1));
 		CheckDlgButton(SPAN1_RADIO + cfg->infoSpan, 1);
 
-		if ((cfg->lcid != -1 || GetSystemDefaultLCID() == 0x411)) {
+		if ((cfg->lcid == 0x409 || GetSystemDefaultLCID() == 0x411)) {
 			::ShowWindow(GetDlgItem(LCID_CHECK), SW_SHOW);
 			::EnableWindow(GetDlgItem(LCID_CHECK), TRUE);
 			CheckDlgButton(LCID_CHECK, cfg->lcid == -1 || cfg->lcid == 0x411 ? FALSE : TRUE);
@@ -288,6 +289,12 @@ BOOL TSetupSheet::GetData()
 	else if (resId == MISC_SHEET) {
 		cfg->execConfirm = IsDlgButtonChecked(EXECCONFIRM_CHECK);
 		cfg->taskbarMode = IsDlgButtonChecked(TASKBAR_CHECK);
+		if (IsDlgButtonChecked(FINISH_CHECK)) {
+			cfg->finishNotify |= 1;
+		}
+		else {
+			cfg->finishNotify &= ~1;
+		}
 		cfg->infoSpan    =	IsDlgButtonChecked(SPAN1_RADIO) ? 0 :
 							IsDlgButtonChecked(SPAN2_RADIO) ? 1 : 2;
 

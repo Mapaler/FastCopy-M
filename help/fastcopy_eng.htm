@@ -72,11 +72,11 @@
 <body bgcolor="#eeffff">
 
 <div align="center">
-<h1 class="help_head1">FastCopy ver3.05</h1>
+<h1 class="help_head1">FastCopy ver3.11</h1>
 </div>
 <div class="help_all">
 
-<div align="right">2015/09/23 H.Shirouzu</div>
+<div align="right">2015/12/06 H.Shirouzu</div>
 
 <center>
 <strong>Warning :</strong> This document was made with the Japanese-English translation software. <br>
@@ -103,7 +103,7 @@ I want to correct this document. (If you made corrections, please send to <a hre
 	<a href="#settings">6. Settings</a><br>
 		<div class="help_sub_section">
 		<a href="#gen_settings">1) General Settings</a><br>
-		<a href="#shell">2) Shell Extension & Misc</a><br>
+		<a href="#shell">2) Extension (Shell & Misc)</a><br>
 		<a href="#finact">3) Post-Process</a><br>
 		<a href="#job">4) Job Management</a>
 		</div>
@@ -575,15 +575,22 @@ demerit points are same as read, but sometimes many head seeks occur in writing 
 			<tr><td nowrap><strong>Confirm before executing</strong></td><td>Confirming</td></tr>
 			<tr><td><strong>Use taskbar instead of tasktray at minimizing</strong></td><td>using taskbar</td></tr>
 			<tr><td nowrap><strong>Info Update span</strong></td><td>It can be specified information update span.</td></tr>
+			<tr><td><strong>Balloon Notification at the finish</td><td>Enable balloon notification at the finish, if it is minimized.</td></tr>
 			<tr><td nowrap><strong>English UI</strong></td><td>(Meaningless in English OS) It requires restarting FastCopy.</td></tr>
 			</table>
 		</div>
 	</div>
 
 	<a name="shell"/>
-	<h3 class="help_head3">Shell Extension & Misc</h3>
+	<h3 class="help_head3">Option -> Extensions -> Shell Extension</h3>
 	<div class="help_sub_section">
 		Register copy/delete menu items with Explorer's right click menu and right drag&drop menu.<br>
+	</div>
+
+	<h3 class="help_head3">Option -> Extensions -> Change/Reset Main Font</h3>
+	<div class="help_sub_section">
+		Change/Reset Main information font in Main Window.<br>
+		It is recomended to use fixed pitch font.
 	</div>
 
 	<h3 class="help_head3">Option -> Auto/Same/Diff HDD mode</h3>
@@ -637,6 +644,8 @@ demerit points are same as read, but sometimes many head seeks occur in writing 
 		<td>Add/Modify parameters in main window(Source/DestDir, Operation mode, Buffer size, Nonstop/Verify/Estimate/ACL/AltStream/Wipe&Delete/Filter checkboxes, Filter strings, HDD mode) as named job.</td></tr>
 		<tr><td nowrap><strong>Delete</strong></td>
 		<td>Delete registered job.</td></tr>
+		<tr><td nowrap><strong>Open "Windows Task Scheduler"</strong></td>
+		<td>Open "Windows Task Scheduler". <br>(Only shortcut. FastCopy doesn't have any function for windows task scheduler)</td></tr>
 		</table>
 	</div>
 </div>
@@ -806,6 +815,30 @@ demerit points are same as read, but sometimes many head seeks occur in writing 
 
 <table class="help_table" border="4">
 <tr><th>Version</th><th>Detail</th></tr>
+
+<tr><td>v3.11</td><td>
+Support balloon notification at the finish.<br>
+Add the shortcut button of "Windows Task Scheduler" in Job Settings.<br>
+In the verify mode, if the hash values are different, target files are renamed to (fname).fc_verify_err.
+</td></tr>
+<tr><td>v3.10</td><td>
+Add changing main information font.<br>
+Fix an exception(or ACL copy failure) when using many ACL entry with deep path.
+</td></tr>
+<tr><td>v3.09</td><td>
+Fix an exception when using tasktray in Win10(x64) update version.
+</td></tr>
+<tr><td>v3.08</td><td>
+Fix an exception when using tasktray in Win10(x86) update version.
+</td></tr>
+<tr><td>v3.07</td><td>
+Fix memory leak problem when file-logging enabled. (about 1MB per 10,000 file)
+</td></tr>
+<tr><td>v3.06</td><td>
+Fix reparse type indicator(->) in listing mode.<br>
+Prevent to show confirm dialog in NoUI mode.<br>
+Fix an exception when using ACL/AltStream + Network DestDir.
+</td></tr>
 <tr><td>v3.05</td><td>
 Improve text label in large text OS environment.<br>
 Fix stopping Wipe/Delete mode with 4GB over files.<br>

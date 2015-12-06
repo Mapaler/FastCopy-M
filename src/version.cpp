@@ -1,10 +1,10 @@
 ﻿static char *version_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu	Version.cpp ver3.05";
+	"@(#)Copyright (C) 2004-2015 H.Shirouzu	Version.cpp ver3.11";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Module Name				: Version
 	Create					: 2010-06-13(Sun)
-	Update					: 2015-09-23(Wed)
+	Update					: 2015-12-05(Sat)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -47,7 +47,7 @@ const char *GetCopyrightStr(void)
 		char *s = strchr(version_id, 'C');
 		char *e = strchr(version_id, '\t');
 		if (s && e && s < e) {
-			sprintf(copyright_str, "%.*s", e-s, s);
+			sprintf(copyright_str, "%.*s", int(e-s), s);
 		}
 	}
 	return	copyright_str;

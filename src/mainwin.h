@@ -1,9 +1,9 @@
 ﻿/* static char *mainwin_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		mainwin.h	Ver3.03"; */
+	"@(#)Copyright (C) 2004-2015 H.Shirouzu		mainwin.h	Ver3.10"; */
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-08-30(Sun)
+	Update					: 2015-11-29(Sun)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -186,13 +186,15 @@ protected:
 	TEditSub		pathEdit;
 	TEditSub		errEdit;
 	HFONT			statusFont;
+	LOGFONTW		statusLogFont;
 
 protected:
 	BOOL	SetCopyModeList(void);
 	BOOL	IsForeground();
 	BOOL	MoveCenter();
 	BOOL	SetupWindow();
-	void	StatusEditSetup();
+	void	StatusEditSetup(BOOL reset=FALSE);
+	void	ChooseFont();
 	BOOL	ExecCopy(DWORD exec_flags);
 	BOOL	ExecCopyCore(void);
 	BOOL	EndCopy(void);
