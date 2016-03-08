@@ -1,9 +1,9 @@
 ﻿static char *mainwin_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		mainwin.cpp	ver3.10";
+	"@(#)Copyright (C) 2004-2016 H.Shirouzu		mainwin.cpp	ver3.12";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-11-29(Sun)
+	Update					: 2016-01-02(Sat)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-29
@@ -558,6 +558,18 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 
 	if (*cfg.statusFont) StatusEditSetup();
 
+	taskbarList = NULL;
+
+	if (IsWin7()) {
+		SetWinAppId(hWnd, L"FastCopy");
+		::CoCreateInstance(CLSID_TaskbarList, 0, CLSCTX_INPROC_SERVER, IID_ITaskbarList,
+			(void **)&taskbarList);
+		if (taskbarList) {
+			taskbarList->SetProgressValue(hWnd, 0, 100);
+			taskbarList->SetProgressState(hWnd, TBPF_NORMAL);
+		}
+	}
+
 	// command line mode
 	if (orgArgc > 1) {
 		// isRunAsParent の場合は、Child側からの CLOSE を待つため、自主終了しない
@@ -934,6 +946,10 @@ BOOL TMainDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl)
 		::ShellExecuteW(NULL, NULL, GetLoadStrW(IDS_FASTCOPYURL), NULL, NULL, SW_SHOW);
 		return	TRUE;
 
+	case FCSUPPORTURL_MENUITEM:
+		::ShellExecuteW(NULL, NULL, GetLoadStrW(IDS_FCSUPPORTURL), NULL, NULL, SW_SHOW);
+		return	TRUE;
+
 	case AUTODISK_MENUITEM: case SAMEDISK_MENUITEM: case DIFFDISK_MENUITEM:
 		diskMode = wID - AUTODISK_MENUITEM;
 		UpdateMenu();
@@ -994,7 +1010,9 @@ BOOL TMainDlg::EvSysCommand(WPARAM uCmdType, POINTS pos)
 	switch (uCmdType)
 	{
 	case SC_RESTORE: case SC_MAXIMIZE:
-		if (cfg.taskbarMode) TaskTray(NIM_DELETE);
+		if (cfg.taskbarMode) {
+			TaskTray(NIM_DELETE);
+		}
 		return	TRUE;
 
 	case SC_MINIMIZE:
@@ -2074,7 +2092,9 @@ BOOL TMainDlg::EvTimer(WPARAM timerID, TIMERPROC proc)
 		}
 	}
 	else {
-		if (timerCnt & 0x1) UpdateSpeedLevel(TRUE); // check 500msec
+		if (timerCnt & 0x1) {
+			UpdateSpeedLevel(TRUE); // check 500msec
+		}
 
 		if (timerCnt == 1 || ((timerCnt >> cfg.infoSpan) << cfg.infoSpan) == timerCnt) {
 			SetInfo();
@@ -2281,7 +2301,9 @@ BOOL TMainDlg::TaskTray(int nimMode, HICON hSetIcon, LPCSTR tip, BOOL balloon)
 	BOOL	ret = FALSE;
 
 	if (cfg.taskbarMode) {
-		if (!hSetIcon) hSetIcon = hMainIcon[FCNORMAL_ICON_IDX];
+		if (!hSetIcon) {
+			hSetIcon = hMainIcon[FCNORMAL_ICON_IDX];
+		}
 		ret = (BOOL)SendMessage(WM_SETICON, ICON_BIG, (LPARAM)hSetIcon);
 	}
 	else {
@@ -2902,6 +2924,10 @@ BOOL TMainDlg::SetWindowTitle()
 	if ((info.flags & FastCopy::PRE_SEARCH) && !ti.total.isPreSearch && doneRatePercent >= 0
 	&& fastCopy.IsStarting()) {
 		p += swprintf(p, FMT_PERCENT, doneRatePercent);
+	}
+	if (taskbarList) {
+		taskbarList->SetProgressValue(hWnd, int(doneRatePercent >= 0 && fastCopy.IsStarting() ?
+		doneRatePercent : 0), 100);
 	}
 
 	WCHAR		_job[MAX_PATH] = L"";

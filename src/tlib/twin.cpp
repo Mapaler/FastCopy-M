@@ -136,6 +136,11 @@ LRESULT TWin::WinProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		done = EvNcPaint((HRGN)wParam);
 		break;
 
+	case WM_PRINT:
+	case WM_PRINTCLIENT:
+		done = EventPrint(uMsg, (HDC)wParam, (DWORD)lParam);
+		return	0;
+
 	case WM_SIZE:
 		done = EvSize((UINT)wParam, LOWORD(lParam), HIWORD(lParam));
 		break;
@@ -206,6 +211,11 @@ LRESULT TWin::WinProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	case WM_WINDOWPOSCHANGED:
 		done = EvWindowPosChanged((WINDOWPOS *)lParam);
+		break;
+
+	case WM_MOUSEWHEEL:
+		done = EvMouseWheel(GET_KEYSTATE_WPARAM(wParam), GET_WHEEL_DELTA_WPARAM(wParam),
+			GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 		break;
 
 	case WM_LBUTTONUP:
@@ -391,6 +401,11 @@ BOOL TWin::EvNcPaint(HRGN hRgn)
 	return	FALSE;
 }
 
+BOOL TWin::EventPrint(UINT uMsg, HDC hDc, DWORD opt)
+{
+	return	FALSE;
+}
+
 BOOL TWin::EvSize(UINT fwSizeType, WORD nWidth, WORD nHeight)
 {
 	return	FALSE;
@@ -457,6 +472,11 @@ BOOL TWin::EvWindowPosChanging(WINDOWPOS *pos)
 }
 
 BOOL TWin::EvWindowPosChanged(WINDOWPOS *pos)
+{
+	return	FALSE;
+}
+
+BOOL TWin::EvMouseWheel(WORD fwKeys, short zDelta, short xPos, short yPos)
 {
 	return	FALSE;
 }
@@ -891,13 +911,23 @@ TSubClassCtl::TSubClassCtl(TWin *_parent) : TSubClass(_parent)
 
 BOOL TSubClassCtl::PreProcMsg(MSG *msg)
 {
-	if (parent)
+	if (parent) {
 		return	parent->PreProcMsg(msg);
+	}
 
 	return	FALSE;
 }
 
-LRESULT TSubClassCtl::WinProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
+TCtl::TCtl(TWin *_parent) : TWin(_parent)
 {
-	return	TWin::WinProc(uMsg, wParam, lParam);
 }
+
+BOOL TCtl::PreProcMsg(MSG *msg)
+{
+	if (parent) {
+		return	parent->PreProcMsg(msg);
+	}
+
+	return	FALSE;
+}
+

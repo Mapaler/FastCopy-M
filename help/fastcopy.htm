@@ -72,11 +72,11 @@
 <body bgcolor="#eeffff">
 
 <div align="center">
-<h1 class="help_head1">FastCopy ver3.11</h1>
+<h1 class="help_head1">FastCopy ver3.12</h1>
 </div>
 <div class="help_all">
 
-<div align="right">2015/12/06 H.Shirouzu (白水啓章)</div>
+<div align="right">2016/03/06 H.Shirouzu (白水啓章)</div>
 
 <a name="index"/>
 <h2 class="help_head2">Index</h2>
@@ -142,7 +142,7 @@
 <h2 class="help_head2">2. ライセンス</h2>
 <div class="help_section">
 	<div class="help_license">
-	FastCopy ver3.0 Copyright(C) 2004-2015 by SHIROUZU Hiroaki<br>
+	FastCopy ver3.0 Copyright(C) 2004-2016 by SHIROUZU Hiroaki<br>
 	<br>
 	FastCopy ver3.0 は GNU Public License ver3 のオープンソースソフトウェアです。<br>
 	詳細は同梱の <a href="license-gpl3.txt">license-gpl3.txt</a> をご覧ください。<br>
@@ -155,7 +155,7 @@
 <h2 class="help_head2">3. 動作環境</h2>
 <div class="help_section">
 	Windows XP/Vista/7/8/8.1/10<br>
-	Windows Server 2003/2008/2012
+	Windows Server 2003(&R2)/2008(&R2)/2012(&R2)
 </div>
 
 <a name="install"/>
@@ -180,9 +180,8 @@
 <h2 class="help_head2">5. 使用法＆画面説明</h2>
 <div class="help_section">
 	ウィンドウの最小化で、タスクトレイに格納します。<br>
-	（さらに、コピー動作中は、アイコンが回転します）<br>
-	画面説明は、以下の通りです。
-
+	動作中は、各種ステータスが表示されます。<br>
+	（ファイル数の括弧内はディレクトリ数を表します）<br>
 	<a name="source_dst"/>
 	<h3 class="help_head3">Source / DestDir</h3>
 	<div class="help_sub_section">
@@ -631,7 +630,7 @@
 	</div>
 
 	<a name="job"/>
-	<h3 class="help_head3">ジョブ管理 → ジョブ追加・削除</h3>
+	<h3 class="help_head3">ジョブ管理 → ジョブ登録・削除</h3>
 	<div class="help_sub_section">
 		メインウィンドウの記述内容を、ジョブという単位で、保存＆呼び出しできるようにします。
 		<table class="help_table" border="4">
@@ -658,11 +657,20 @@
 	</table><br>
 	指定可能なオプションは、以下の通りです。（なお、'=' の前後には空白を入れないで下さい）<br><br>
 
-	<strong>/cmd=(noexist_only|diff|update|sync|force_copy|move|delete) </strong>... 動作モード指定。<br>
-	　（cmd 指定省略時は diff モード。delete 指定時は、/to=dest_dir は使いません）
 	<div class="help_sub_section">
 
-		<table class="help_table" border="4">
+	<table class="help_table" border="2">
+	<tr><td nowarp><strong>/cmd=<br>
+		&nbsp;&nbsp;(noexist_only<br>
+		&nbsp;&nbsp;|&nbsp;diff<br>
+		&nbsp;&nbsp;|&nbsp;update<br>
+		&nbsp;&nbsp;|&nbsp;force_copy<br>
+		&nbsp;&nbsp;|&nbsp;sync<br>
+		&nbsp;&nbsp;|&nbsp;move<br>
+		&nbsp;&nbsp;|&nbsp;delete)
+		</strong></td>
+		<td>動作モード指定。（cmd 指定省略時は diff モード。delete 指定時は、/to=dest_dir は使いません）
+		<table class="help_table" border="1">
 		<tr><th nowrap>cmdline</th><th>GUIでの表記</th>
 		<tr><td nowrap><strong>noexist_only</strong></td><td>差分（上書きなし）</td></tr>
 		<tr class="tr_default"><td nowrap><strong>diff</strong></td><td>差分（サイズ・日付）</td></tr>
@@ -672,80 +680,47 @@
 		<tr><td nowrap><strong>move</strong></td><td>移動（全上書き）</td></tr>
 		<tr><td nowrap><strong>delete</strong></td><td>全削除</td></tr>
 		</table>
-	</div>
-	<strong>/auto_close</strong> ... コピー終了後、自動的に終了します
-	<br><br>
-	<strong>/force_close</strong> ... コピー終了後、エラーが発生していた場合も、強制的に終了します
-	<br><br>
-	<strong>/open_window</strong> ... タスクトレイに格納しません（直ちに実行開始しない場合は指定不要）
-	<br><br>
-	<strong>/estimate</strong> ... コピー完了時間予測を行います
-	<br><br>
-	<a name="#no_ui"/>
-	<strong>/no_ui</strong> ... 原則として問い合わせダイアログを出しません。（バックグラウンド動作用。内部的に /no_confirm_del と /no_confirm_stop と /force_close もセットされます。セッション０分離（主にタスクスケジューラ起動）では自動的に/no_uiがセットされます。ただし終了時アクションでのカウントダウンは実スクリーンの有無に関わらず行われます）
-	<br><br>
-	<strong>/no_confirm_del</strong> ... /delete 時に、動作開始の問い合わせをしません
-	<br><br>
-	<strong>/no_confirm_stop</strong> ... 継続不能エラー発生時にも、エラーを出しません
-	<br><br>
-	<strong>/no_exec</strong> ... パラメータをメインウィンドウにセットしますが、実行はしません
-	<br><br>
-	<strong>/error_stop</strong> ... エラー発生時にダイアログを出し、続行するかを問い合わせます（/error_stop=FALSE で抑止）
-	<br><br>
-	<strong>/bufsize=N(MB)</strong> ... バッファサイズを MB 単位で指定します
-	<br><br>
-	<strong>/log</strong> ... ログファイル(fastcopy.log) にログを出力します（/log=FALSE で抑止）
-	<br><br>
-	<strong>/logfile=ログファイル名</strong> ... ログファイル名を指定します
-	<br><br>
-	<strong>/filelog</strong> ... 詳細ファイルログを記録します。FastCopy/Log ディレクトリ配下に、日付.log という形式で保存されます。ベリファイ時はハッシュ値（通常 MD5、設定によって SHA1）も記録されます。（/filelog=filename で指定ファイルに保存可能。ただし、同じファイルを指定して、同時に複数の FastCopy を実行した場合、ログ出力が交互に混じる可能性があります）
-	<br><br>
-	<strong>/utf8</strong> ... UTF-8でログを記録します
-	<br><br>
-	<strong>/skip_empty_dir</strong> ... フィルタ指定時、空ディレクトリをコピーしません（/skip_empty_dir=FALSE で抑止）
-	<br><br>
-	<strong>/job=ジョブ名</strong> ... 事前に登録してあるジョブを指定します
-	<br><br>
-	<strong>/force_start</strong> ... 他の FastCopy がコピー実行中の場合も直ちに実行します（/force_start=FALSE で抑止）
-	<br><br>
-	<strong>/disk_mode=(auto|same|diff)</strong> ... <a href="#disk_mode">自動/同一/別HDDモード</a>を指定します。（デフォルト: auto）
-	<br><br>
-	<strong>/speed=(full|autoslow|9-1(90%-10%)|suspend) </strong> ... 速度コントロールを行います。
-	<br><br>
-	<strong>/srcfile="files.txt"</strong> ... Source内容をファイルで指定します。１行に１ファイルを記述します。（なお、大量のファイルを指定すると、Sourceコンボボックスの表示/再描画に非常に時間が掛かります）
-	<br><br>
-	<strong>/srcfile_w="files.txt"</strong> ... /srcfile= と同様ですが、UNICODE で記述します。
-	<br><br>
-	<strong>/include="..."</strong> ... Include フィルタを指定します（<a href="#filter">詳細</a>）
-	<br><br>
-	<strong>/exclude="..."</strong> ... Exclude フィルタを指定します（<a href="#filter">詳細</a>）
-	<br><br>
-	<strong>/from_date="..."</strong> ... 更新日付フィルタ（最古）を指定します（<a href="#filter">詳細</a>）
-	<br><br>
-	<strong>/to_date="..."</strong> ... 更新日付フィルタ（最新）を指定します（<a href="#filter">詳細</a>）
-	<br><br>
-	<strong>/min_size="..."</strong> ... サイズフィルタ（最小）を指定します（<a href="#filter">詳細</a>）
-	<br><br>
-	<strong>/max_size="..."</strong> ... サイズフィルタ（最大）を指定します（<a href="#filter">詳細</a>）
-	<br><br>
-	<strong>/wipe_del</strong> ... 削除モード時に、ファイルを削除する前に上書き＆リネームして、復元を無効にします（/wipe_del=FALSE で抑止）
-	<br><br>
-	<strong>/acl</strong> ... アクセスコントロールリスト(ACL)をコピーします（NTFSのみ有効）（/acl=FALSE で抑止）
-	<br><br>
-	<strong>/stream</strong> ... 副次ストリームをコピーします（NTFSのみ有効）（/stream=FALSE で抑止）
-	<br><br>
-	<strong>/reparse</strong> ... ジャンクション・マウントポイント・シンボリックリンクを（配下ではなく）それ自体をコピーします（/reparse=FALSE で配下をコピー）（<a href="#reparse">詳細</a> および <a href="#junction_ps">注意</a>）
-	<br><br>
-	<strong>/verify</strong> ... MD5(or SHA-1) による書き込みデータのベリファイを行います（/verify=FALSE で抑止）
-	<br><br>
-	<a name="linkdest"/>
-	<strong>/linkdest</strong> ... ハードリンクを可能な限り再現します。詳細は <a href="#hardlink">こちらを参照</a> ください。
-	<br><br>
-	<a name="recreate"/>
-	<strong>/recreate</strong> ... ファイル更新の挙動を、既存ファイルの上書きから、既存ファイル削除＆再生成に変更します。（/linkdest 指定時には、/recreate指定の有無に関わらず、この動作を行います）常時、この動作を有効にしたい場合、fastcopy2.ini [main] recreate=1 にします。
-	<br><br>
-	<strong>/postproc=終了時処理名</strong> ... 事前に登録してある終了時処理名を指定します。（/postproc=FALSE で抑止）
-	<br><br>
+	</td></tr>
+	<!--
+	/cmd_opt=date_size/newer/noexist/always (cmd=diff/sync/move only)
+	-->
+	<tr><td nowrap><strong>/auto_close</strong></td><td>コピー終了後、自動的に終了します</td></tr>
+	<tr><td nowrap><strong>/force_close</strong></td><td>コピー終了後、エラーが発生していた場合も、強制的に終了します</td></tr>
+	<tr><td nowrap><strong>/open_window</strong></td><td>タスクトレイに格納しません（直ちに実行開始しない場合は指定不要）</td></tr>
+	<tr><td nowrap><strong>/estimate</strong></td><td>コピー完了時間予測を行います</td></tr>
+	<tr><td nowrap><strong>/no_ui</strong></td><td><a name="no_ui"/>原則として問い合わせダイアログを出しません。（バックグラウンド動作用。内部的に /no_confirm_del と /no_confirm_stop と /force_close もセットされます。セッション０分離（主にタスクスケジューラ起動）では自動的に/no_uiがセットされます。ただし終了時アクションでのカウントダウンは実スクリーンの有無に関わらず行われます）</td></tr>
+	<tr><td nowrap><strong>/no_confirm_del</strong></td><td>/delete 時に、動作開始の問い合わせをしません</td></tr>
+	<tr><td nowrap><strong>/no_confirm_stop</strong></td><td>継続不能エラー発生時にも、エラーを出しません</td></tr>
+	<tr><td nowrap><strong>/no_exec</strong></td><td>パラメータをメインウィンドウにセットしますが、実行はしません</td></tr>
+	<tr><td nowrap><strong>/error_stop</strong></td><td>エラー発生時にダイアログを出し、続行するかを問い合わせます（/error_stop=FALSE で抑止）</td></tr>
+	<tr><td nowrap><strong>/bufsize=N(MB)</strong></td><td>バッファサイズを MB 単位で指定します</td></tr>
+	<tr><td nowrap><strong>/log</strong></td><td>ログファイル(fastcopy.log) にログを出力します（/log=FALSE で抑止）</td></tr>
+	<tr><td nowrap><strong>/logfile=ログファイル名</strong></td><td>ログファイル名を指定します</td></tr>
+	<tr><td nowrap><strong>/filelog</strong></td><td>詳細ファイルログを記録します。FastCopy/Log ディレクトリ配下に、日付.log という形式で保存されます。ベリファイ時はハッシュ値（通常 MD5、設定によって SHA1）も記録されます。（/filelog=filename で指定ファイルに保存可能。ただし、同じファイルを指定して、同時に複数の FastCopy を実行した場合、ログ出力が交互に混じる可能性があります）</td></tr>
+	<tr><td nowrap><strong>/utf8</strong></td><td>UTF-8でログを記録します</td></tr>
+	<tr><td nowrap><strong>/skip_empty_dir</strong></td><td>フィルタ指定時、空ディレクトリをコピーしません（/skip_empty_dir=FALSE で抑止）</td></tr>
+	<tr><td nowrap><strong>/job=ジョブ名</strong></td><td>事前に登録してあるジョブを指定します</td></tr>
+	<tr><td nowrap><strong>/force_start</strong></td><td>他の FastCopy がコピー実行中の場合も直ちに実行します（/force_start=FALSE で抑止）</td></tr>
+	<tr><td nowrap><strong>/disk_mode=<br>&nbsp;&nbsp;(auto|same|diff)</strong></td><td><a href="#disk_mode">自動/同一/別HDDモード</a>を指定します。（デフォルト: auto）</td></tr>
+	<tr><td nowrap><strong>/speed=(full|autoslow|<br>&nbsp;&nbsp;9-1(90%-10%)|suspend)</strong></td><td>速度コントロールを行います</td></tr>
+	<tr><td nowrap><strong>/srcfile="files.txt</strong></td><td>Source内容をファイルで指定します。１行に１ファイルを記述します。（なお、大量のファイルを指定すると、Sourceコンボボックスの表示/再描画に非常に時間が掛かります）</td></tr>
+	<tr><td nowrap><strong>/srcfile_w="files.txt"</strong></td><td>/srcfile= と同様ですが、UNICODE で記述します</td></tr>
+	<tr><td nowrap><strong>/include="..."</strong></td><td>Include フィルタを指定します（<a href="#filter">詳細</a>）</td></tr>
+	<tr><td nowrap><strong>/exclude="..."</strong></td><td>Exclude フィルタを指定します（<a href="#filter">詳細</a>）</td></tr>
+	<tr><td nowrap><strong>/from_date="..."</strong></td><td>更新日付フィルタ（最古）を指定します（<a href="#filter">詳細</a>）</td></tr>
+	<tr><td nowrap><strong>/to_date="..."</strong></td><td>更新日付フィルタ（最新）を指定します（<a href="#filter">詳細</a>）</td></tr>
+	<tr><td nowrap><strong>/min_size="..."</strong></td><td>サイズフィルタ（最小）を指定します（<a href="#filter">詳細</a>）</td></tr>
+	<tr><td nowrap><strong>/max_size="..."</strong></td><td>サイズフィルタ（最大）を指定します（<a href="#filter">詳細</a>）</td></tr>
+	<tr><td nowrap><strong>/wipe_del</strong></td><td>削除モード時に、ファイルを削除する前に上書き＆リネームして、復元を無効にします（/wipe_del=FALSE で抑止）</td></tr>
+	<tr><td nowrap><strong>/acl</strong></td><td>アクセスコントロールリスト(ACL)をコピーします（NTFSのみ有効）（/acl=FALSE で抑止）</td></tr>
+	<tr><td nowrap><strong>/stream</strong></td><td>副次ストリームをコピーします（NTFSのみ有効）（/stream=FALSE で抑止）</td></tr>
+	<tr><td nowrap><strong>/reparse</strong></td><td>ジャンクション・マウントポイント・シンボリックリンクを（配下ではなく）それ自体をコピーします（/reparse=FALSE で配下をコピー）（<a href="#reparse">詳細</a> および <a href="#junction_ps">注意</a>）</td></tr>
+	<tr><td nowrap><strong>/verify</strong></td><td>MD5(or SHA-1) による書き込みデータのベリファイを行います（/verify=FALSE で抑止）</td></tr>
+	<tr><td nowrap><strong>/linkdest</strong></td><td><a name="linkdest"/>ハードリンクを可能な限り再現します。詳細は <a href="#hardlink">こちらを参照</a> ください。</td></tr>
+	<tr><td nowrap><strong>/recreate</strong></td><td><a name="recreate"/>ファイル更新の挙動を、既存ファイルの上書きから、既存ファイル削除＆再生成に変更します。（/linkdest 指定時には、/recreate指定の有無に関わらず、この動作を行います）常時、この動作を有効にしたい場合、fastcopy2.ini [main] recreate=1 にします。</td></tr>
+	<tr><td nowrap><strong>/postproc=終了時処理名</strong></td><td>事前に登録してある終了時処理名を指定します。（/postproc=FALSE で抑止）</td></tr>
+	</table>
+	<br>
 	<strong>例）</strong> C:\test 配下を D:\Backup Folder に差分コピーする場合<br>
 		　fastcopy.exe /cmd=diff C:\test /to="D:\Backup Folder\"
 </div>
@@ -806,6 +781,11 @@
 
 <table class="help_table" border="4">
 <tr><th>Version</th><th>説明</th></tr>
+<tr><td>v3.12</td><td>
+通常表示（非アイコン）＋予測ON時にタスクバーにプログレス表示<br>
+ログ記録で「UTF-8で記録」OFFでもUTF-8記録されていた問題を修正<br>
+サポートBBSへのリンク追加
+</td></tr>
 <tr><td>v3.11</td><td>
 タスクトレイで動作完了した時にバルーン通知できるように。<br>
 ジョブ設定から Windowsタスクスケジューラを起動できるように。<br>

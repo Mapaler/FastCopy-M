@@ -1,5 +1,5 @@
 ﻿======================================================================
-                   FastCopy  ver3.11                   2015/12/06
+                   FastCopy  ver3.12                   2016/03/06
                                                  SHIROUZU Hiroaki
                    FastCopy-M branch                2015/11/24
                                                  Mapaler
@@ -29,7 +29,7 @@
 License:
 	-------------------------------------------------------------------------
 	 FastCopy ver3.0
-	 Copyright(C) 2004-2015 SHIROUZU Hiroaki All rights reserved.
+	 Copyright(C) 2004-2016 SHIROUZU Hiroaki All rights reserved.
 
 	 This program is free software. You can redistribute it and/or modify
 	 it under the GNU General Public License version 3.
@@ -45,4 +45,3 @@ Usage：
 
 Build:
 	VS2015 or later
-	FastCopy-M additional dependencies need include "shlwapi.lib" after ver3.0.4.20.

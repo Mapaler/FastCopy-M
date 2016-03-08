@@ -45,7 +45,7 @@ BOOL TRegistry::ChangeApp(LPCSTR company, LPSTR appName)
 	Wstr	company_w(company, strMode);
 	Wstr	appName_w(appName, strMode);
 
-	return	ChangeAppW(company_w.s(), appName_w.s());
+	return	ChangeAppW(company ? company_w.s() : NULL, appName ? appName_w.s() : NULL);
 }
 
 BOOL TRegistry::ChangeAppW(const WCHAR *company, const WCHAR *appName)
@@ -77,7 +77,7 @@ void TRegistry::ChangeTopKey(HKEY top_key)
 BOOL TRegistry::OpenKey(LPCSTR subKey, BOOL createFlg)
 {
 	Wstr	subkey_w(subKey, strMode);
-	return	OpenKeyW(subkey_w.s(), createFlg);
+	return	OpenKeyW(subKey ? subkey_w.s() : NULL, createFlg);
 }
 
 BOOL TRegistry::OpenKeyW(const WCHAR *subKey, BOOL createFlg)
@@ -133,13 +133,42 @@ BOOL TRegistry::SetInt(LPCSTR subKey, int val)
 
 BOOL TRegistry::SetIntW(const WCHAR *subKey, int val)
 {
-	return	SetLongW(subKey, (long)val);
+	return	SetLongW(subKey ? subKey : NULL, (long)val);
+}
+
+BOOL TRegistry::GetInt64(LPCSTR subKey, int64 *val)
+{
+	Wstr	subKey_w(subKey, strMode);
+
+	return	GetInt64W(subKey ? subKey_w.s() : NULL, val);
+}
+
+BOOL TRegistry::GetInt64W(const WCHAR *subKey, int64 *val)
+{
+	DWORD	type = REG_QWORD;
+	DWORD	dw_size = sizeof(int64);
+
+	return	::RegQueryValueExW(hKey[openCnt -1], subKey, 0, &type, (BYTE *)val, &dw_size)
+				== ERROR_SUCCESS;
+}
+
+BOOL TRegistry::SetInt64(LPCSTR subKey, int64 val)
+{
+	Wstr	subKey_w(subKey, strMode);
+
+	return	SetInt64W(subKey ? subKey_w.s() : NULL, val);
+}
+
+BOOL TRegistry::SetInt64W(const WCHAR *subKey, int64 val)
+{
+	return	::RegSetValueExW(hKey[openCnt -1], subKey, 0, REG_QWORD,
+			(const BYTE *)&val, sizeof(val)) == ERROR_SUCCESS;
 }
 
 BOOL TRegistry::GetLong(LPCSTR subKey, long *val)
 {
 	Wstr	subKey_w(subKey, strMode);
-	return	GetLongW(subKey_w.s(), val);
+	return	GetLongW(subKey ? subKey_w.s() : NULL, val);
 }
 
 BOOL TRegistry::GetLongW(const WCHAR *subKey, long *val)
@@ -163,7 +192,7 @@ BOOL TRegistry::GetLongW(const WCHAR *subKey, long *val)
 BOOL TRegistry::SetLong(LPCSTR subKey, long val)
 {
 	Wstr	subKey_w(subKey, strMode);
-	return	SetLongW(subKey_w.s(), val);
+	return	SetLongW(subKey ? subKey_w.s() : NULL, val);
 }
 
 BOOL TRegistry::SetLongW(const WCHAR *subKey, long val)
@@ -177,7 +206,7 @@ BOOL TRegistry::GetStr(LPCSTR subKey, LPSTR str, int size_byte)
 	Wstr	subKey_w(subKey, strMode);
 	Wstr	str_w(size_byte);
 
-	if (!GetStrW(subKey_w.s(), str_w.Buf(), size_byte * 2)) {
+	if (!GetStrW(subKey ? subKey_w.s() : NULL, str_w.Buf(), size_byte * 2)) {
 		return	FALSE;
 	}
 	WtoS(str_w.s(), str, size_byte, strMode);
@@ -211,7 +240,7 @@ BOOL TRegistry::SetStr(LPCSTR subKey, LPCSTR str)
 {
 	Wstr	subKey_w(subKey, strMode), str_w(str, strMode);
 
-	return	SetStrW(subKey_w.s(), str_w.s());
+	return	SetStrW(subKey ? subKey_w.s() : NULL, str_w.s());
 }
 
 BOOL TRegistry::SetStrA(LPCSTR subKey, LPCSTR str)
@@ -229,7 +258,7 @@ BOOL TRegistry::GetByte(LPCSTR subKey, BYTE *data, int *size)
 {
 	Wstr	subKey_w(subKey, strMode);
 
-	return	GetByteW(subKey_w.s(), data, size);
+	return	GetByteW(subKey ? subKey_w.s() : NULL, data, size);
 }
 
 BOOL TRegistry::GetByteW(const WCHAR *subKey, BYTE *data, int *size)
@@ -243,7 +272,7 @@ BOOL TRegistry::GetByteW(const WCHAR *subKey, BYTE *data, int *size)
 BOOL TRegistry::SetByte(LPCSTR subKey, const BYTE *data, int size)
 {
 	Wstr	subKey_w(subKey, strMode);
-	return	SetByteW(subKey_w.s(), data, size);
+	return	SetByteW(subKey ? subKey_w.s() : NULL, data, size);
 }
 
 BOOL TRegistry::SetByteW(const WCHAR *subKey, const BYTE *data, int size)
@@ -255,7 +284,7 @@ BOOL TRegistry::SetByteW(const WCHAR *subKey, const BYTE *data, int size)
 BOOL TRegistry::DeleteKey(LPCSTR subKey)
 {
 	Wstr	subKey_w(subKey, strMode);
-	return	DeleteKeyW(subKey_w.s());
+	return	DeleteKeyW(subKey ? subKey_w.s() : NULL);
 }
 
 BOOL TRegistry::DeleteKeyW(const WCHAR *subKey)
@@ -266,7 +295,7 @@ BOOL TRegistry::DeleteKeyW(const WCHAR *subKey)
 BOOL TRegistry::DeleteValue(LPCSTR subValue)
 {
 	Wstr	subValue_w(subValue, strMode);
-	return	DeleteValueW(subValue_w.s());
+	return	DeleteValueW(subValue ? subValue_w.s() : NULL);
 }
 
 BOOL TRegistry::DeleteValueW(const WCHAR *subValue)
@@ -314,7 +343,7 @@ BOOL TRegistry::EnumValueW(DWORD cnt, WCHAR *buf, int size, DWORD *type)
 BOOL TRegistry::DeleteChildTree(LPCSTR subKey)
 {
 	Wstr	subKey_w(subKey, strMode);
-	return	DeleteChildTreeW(subKey_w.s());
+	return	DeleteChildTreeW(subKey ? subKey_w.s() : NULL);
 }
 
 BOOL TRegistry::DeleteChildTreeW(const WCHAR *subKey)

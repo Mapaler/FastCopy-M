@@ -19,7 +19,8 @@
 HWND CreateWindowU8(const char *class_name, const char *window_name, DWORD style,
 	int x, int y, int width, int height, HWND hParent, HMENU hMenu, HINSTANCE hInst, void *param)
 {
-	Wstr	class_name_w(class_name), window_name_w(window_name);
+	Wstr	class_name_w(class_name);
+	Wstr	window_name_w(window_name);
 
 	return	::CreateWindowW(class_name_w.s(), window_name_w.s(), style, x, y, width, height,
 			hParent, hMenu, hInst, param);
@@ -27,9 +28,11 @@ HWND CreateWindowU8(const char *class_name, const char *window_name, DWORD style
 
 HWND FindWindowU8(const char *class_name, const char *window_name)
 {
-	Wstr	class_name_w(class_name), window_name_w(window_name);
+	Wstr	class_name_w(class_name);
+	Wstr	window_name_w(window_name);
 
-	return	::FindWindowW(class_name_w.s(), window_name_w.s());
+	return	::FindWindowW(class_name  ? class_name_w.s()  : NULL,
+						  window_name ? window_name_w.s() : NULL);
 }
 
 BOOL AppendMenuU8(HMENU hMenu, UINT flags, UINT_PTR idItem, const char *item_str)
@@ -108,7 +111,8 @@ BOOL GetFileInfomationU8(const char *path, WIN32_FIND_DATA_U8 *fdata)
 		return	TRUE;
 	}
 
-	if ((fh = CreateFileU8(path, GENERIC_WRITE, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, 0)) != INVALID_HANDLE_VALUE)
+	if ((fh = CreateFileU8(path, GENERIC_WRITE, FILE_SHARE_READ, 0, OPEN_EXISTING,
+		FILE_FLAG_BACKUP_SEMANTICS, 0)) != INVALID_HANDLE_VALUE)
 	{
 		BY_HANDLE_FILE_INFORMATION	info;
 		BOOL	info_ret = ::GetFileInformationByHandle(fh, &info);
@@ -149,7 +153,8 @@ BOOL RemoveDirectoryU8(const char *path)
 
 DWORD GetFullPathNameU8(const char *path, DWORD size, char *buf, char **fname)
 {
-	Wstr	wpath(path), wbuf(size);
+	Wstr	wpath(path);
+	Wstr	wbuf(size);
 	WCHAR	*wfname=NULL;
 
 	DWORD	ret = ::GetFullPathNameW(wpath.s(), size, wbuf.Buf(), &wfname);
@@ -166,7 +171,7 @@ DWORD GetFullPathNameU8(const char *path, DWORD size, char *buf, char **fname)
 
 DWORD GetFileAttributesU8(const char *path)
 {
-	Wstr wpath(path);
+	Wstr	wpath(path);
 	return ::GetFileAttributesW(wpath.s());
 }
 
@@ -243,7 +248,7 @@ BOOL GetOpenFileNameU8Core(LPOPENFILENAME ofn, BOOL (WINAPI *ofn_func)(OPENFILEN
 
 	WCHAR *wp=filter_w.Buf();
 	for (const char *p=ofn->lpstrFilter; p && *p; p+=strlen(p)+1) {
-		wp += U8toW(p, wp, (int)(MAX_PATH - (wp - filter_w.Buf())));
+		wp += U8toW(p, wp, (int)(MAX_PATH - (wp - filter_w.Buf()))) + 1;
 	}
 	*wp = 0;
 	U8toW(ofn->lpstrCustomFilter, cfilter_w.Buf(), ofn->nMaxCustFilter);
@@ -265,14 +270,18 @@ BOOL GetOpenFileNameU8Core(LPOPENFILENAME ofn, BOOL (WINAPI *ofn_func)(OPENFILEN
 
 	BOOL	ret = ofn_func(&ofn_w);
 
-	if (ofn->lpstrCustomFilter)	WtoU8(cfilter_w.s(), ofn->lpstrCustomFilter, ofn->nMaxCustFilter);
-	if (ofn->lpstrFileTitle)	WtoU8(ftitle_w.s(), ofn->lpstrFileTitle, ofn->nMaxFileTitle);
+	if (ofn->lpstrCustomFilter) {
+		WtoU8(cfilter_w.s(), ofn->lpstrCustomFilter, ofn->nMaxCustFilter);
+	}
+	if (ofn->lpstrFileTitle) {
+		WtoU8(ftitle_w.s(), ofn->lpstrFileTitle, ofn->nMaxFileTitle);
+	}
 	if (ofn->lpstrFile) {
 		if (ofn_w.Flags & OFN_ALLOWMULTISELECT) {
 			const WCHAR *wp=file_w.s();
 			char *p;
 			for (p=ofn->lpstrFile; wp && *wp; wp+=wcslen(wp)+1) {
-				p += WtoU8(wp, p, (int)(ofn->nMaxFile - (p - ofn->lpstrFile)));
+				p += WtoU8(wp, p, (int)(ofn->nMaxFile - (p - ofn->lpstrFile))) + 1;
 			}
 			*p = 0;
 		}
@@ -313,7 +322,7 @@ BOOL ReadLinkU8(LPCSTR src, LPSTR dest, LPSTR arg)
 	{
 		if (SUCCEEDED(shellLink->QueryInterface(IID_IPersistFile, (void **)&persistFile)))
 		{
-			U8toW(src, wbuf, MAX_PATH);
+			U8toW(src, wbuf, wsizeof(wbuf));
 			if (SUCCEEDED(persistFile->Load(wbuf, STGM_READ)))
 			{
 				if (SUCCEEDED(shellLink->GetPath((char *)wbuf, MAX_PATH, NULL, SLGP_SHORTPATH)))
@@ -337,6 +346,18 @@ BOOL PlaySoundU8(const char *path, HMODULE hmod, DWORD flg)
 	Wstr	path_w(path);
 	return	::PlaySoundW(path_w.s(), hmod, flg);
 }
+
+BOOL SHGetSpecialFolderPathU8(HWND hWnd, char *path, int csidl, BOOL fCreate)
+{
+	Wstr	path_w(MAX_PATH);
+
+	if (!::SHGetSpecialFolderPathW(hWnd, path_w.Buf(), csidl, fCreate)) {
+		return	FALSE;
+	}
+	WtoU8(path_w.s(), path, MAX_PATH_U8);
+	return	TRUE;
+}
+
 
 /*=========================================================================
 	Win32(W) API UTF8 wrapper
@@ -377,7 +398,7 @@ LPSTR GetLoadStrU8(UINT resId, HINSTANCE hI)
 	static TResHash	*hash;
 
 	if (hash == NULL) {
-		hash = new TResHash(100);
+		hash = new TResHash(1000);
 	}
 
 	WCHAR		buf[1024];
@@ -399,32 +420,64 @@ LPSTR GetLoadStrU8(UINT resId, HINSTANCE hI)
 =========================================================================*/
 int WtoU8(const WCHAR *src, char *dst, int bufsize, int max_len)
 {
-	if (bufsize == 1) {
-		*dst = 0;
-		return	0;
-	}
-	else if (bufsize >= 2) { // clear for UTF8
-		int len = min(bufsize, 3);
-		memset(dst + bufsize - len, 0, len);
+	if (bufsize >= 1) {
+		if (dst) {
+			*dst = 0;
+		}
+		if (bufsize == 1) {
+			return	0;
+		}
 	}
 
 	int affect_len = bufsize ? bufsize - 1 : 0;
 	int len = ::WideCharToMultiByte(CP_UTF8, 0, src, max_len, dst, affect_len, 0, 0);
-	if (len < bufsize && dst) dst[len] = 0;
 
+	if (dst && bufsize > 0 && max_len != 0) {
+		if (len == 0) {
+			int	min_len = min(4, bufsize);
+			memset(dst + bufsize - min_len, 0, min_len);
+
+			::WideCharToMultiByte(CP_UTF8, 0, src, max_len, dst, affect_len, 0, 0);
+			if ((len = (int)strnlen(dst, affect_len)) == affect_len) {
+				dst[len] = 0;
+			}
+		}
+		else if (dst[len-1] == 0) {
+			len--;
+		}
+		else if (dst[len]) {
+			dst[len] = 0;
+		}
+	}
 	return	len;
 }
 
 int U8toW(const char *src, WCHAR *dst, int bufsize, int max_len)
 {
-	int len = ::MultiByteToWideChar(CP_UTF8, 0, src, max_len, dst, bufsize);
-
-	if (len == 0 && max_len != 0) {
-		if (dst && bufsize > 0) {
-			if ((len = (int)wcsnlen(dst, bufsize)) == bufsize) dst[--len] = 0;
+	if (bufsize >= 1) {
+		if (dst) {
+			*dst = 0;
 		}
-	} else if (len < bufsize) {
-		dst[len] = 0;
+		if (bufsize == 1) {
+			return	0;
+		}
+	}
+
+	int affect_len = bufsize ? bufsize - 1 : 0;
+	int len = ::MultiByteToWideChar(CP_UTF8, 0, src, max_len, dst, affect_len);
+
+	if (dst && bufsize > 0 && max_len != 0) {
+		if (len == 0) {
+			if ((len = (int)wcsnlen(dst, affect_len)) == affect_len) {
+				dst[len] = 0;
+			}
+		}
+		else if (dst[len-1] == 0) {
+			len--;
+		}
+		else if (dst[len]) {
+			dst[len] = 0;
+		}
 	}
 
 	return	len;
@@ -432,16 +485,30 @@ int U8toW(const char *src, WCHAR *dst, int bufsize, int max_len)
 
 int AtoW(const char *src, WCHAR *dst, int bufsize, int max_len)
 {
-	int len = ::MultiByteToWideChar(CP_ACP, 0, src, max_len, dst, bufsize);
+	if (bufsize >= 1) {
+		if (dst) {
+			*dst = 0;
+		}
+		if (bufsize == 1) {
+			return	0;
+		}
+	}
 
-	if (len == 0 && max_len != 0) {
-		if (dst && bufsize > 0) {
-			if ((len = (int)wcsnlen(dst, bufsize)) == bufsize) {
-				dst[--len] = 0;
+	int affect_len = bufsize ? bufsize - 1 : 0;
+	int len = ::MultiByteToWideChar(CP_ACP, 0, src, max_len, dst, affect_len);
+
+	if (dst && bufsize > 0 && max_len != 0) {
+		if (len == 0) {
+			if ((len = (int)wcsnlen(dst, affect_len)) == affect_len) {
+				dst[len] = 0;
 			}
 		}
-	} else if (len < bufsize) {
-		dst[len] = 0;
+		else if (dst[len-1] == 0) {
+			len--;
+		}
+		else if (dst[len]) {
+			dst[len] = 0;
+		}
 	}
 
 	return	len;
@@ -449,22 +516,34 @@ int AtoW(const char *src, WCHAR *dst, int bufsize, int max_len)
 
 int WtoA(const WCHAR *src, char *dst, int bufsize, int max_len)
 {
-	if (bufsize == 1) {
-		*dst = 0;
-		return	0;
+	if (bufsize >= 1) {
+		if (dst) {
+			*dst = 0;
+		}
+		if (bufsize == 1) {
+			return	0;
+		}
 	}
 
 	int affect_len = bufsize ? bufsize - 1 : 0;
 	int len = ::WideCharToMultiByte(CP_ACP, 0, src, max_len, dst, affect_len, 0, 0);
 
-	if (len == 0 && max_len != 0) {
-		if (dst && bufsize > 0) {
+	if (dst && bufsize > 0 && max_len != 0) {
+		if (len == 0) {
+			int	min_len = min(2, bufsize);
+			memset(dst + bufsize - min_len, 0, min_len);
+
+			::WideCharToMultiByte(CP_ACP, 0, src, max_len, dst, affect_len, 0, 0);
 			if ((len = (int)strnlen(dst, affect_len)) == affect_len) {
 				dst[len] = 0;
 			}
 		}
-	} else if (len < bufsize) {
-		dst[len] = 0;
+		else if (dst[len-1] == 0) {
+			len--;
+		}
+		else if (dst[len]) {
+			dst[len] = 0;
+		}
 	}
 
 	return	len;
@@ -488,7 +567,9 @@ WCHAR *U8toWs(const char *src, int max_len) {
 	static	u_long	idx;
 
 	WCHAR	*&cur_buf = wbuf[idx++ % MAX_STATIC_ARRAY];
-	if (cur_buf) delete [] cur_buf;
+	if (cur_buf) {
+		delete [] cur_buf;
+	}
 	return	(cur_buf = U8toW(src, max_len));
 }
 
@@ -497,11 +578,17 @@ WCHAR *WtoWs(const WCHAR *src, int max_len) {
 	static	u_long	idx;
 
 	WCHAR	*&cur_buf = wbuf[idx++ % MAX_STATIC_ARRAY];
-	if (cur_buf) delete [] cur_buf;
-	if (max_len == -1) max_len = (int)wcslen(src);
+
+	if (cur_buf) {
+		delete [] cur_buf;
+	}
+	if (max_len == -1) {
+		max_len = (int)wcslen(src);
+	}
 	cur_buf = new WCHAR [max_len + 1];
 	memcpy(cur_buf, src, max_len * sizeof(WCHAR));
 	cur_buf[max_len] = 0;
+
 	return	cur_buf;
 }
 
@@ -521,7 +608,10 @@ char *WtoU8s(const WCHAR *src, int max_len) {
 	static	u_long	idx;
 
 	char	*&cur_buf = buf[idx++ % MAX_STATIC_ARRAY];
-	if (cur_buf) delete [] cur_buf;
+	if (cur_buf) {
+		delete [] cur_buf;
+	}
+
 	return	(cur_buf = WtoU8(src, max_len));
 }
 
@@ -541,7 +631,9 @@ WCHAR *AtoWs(const char *src, int max_len) {
 	static	u_long	idx;
 
 	WCHAR	*&cur_buf = wbuf[idx++ % MAX_STATIC_ARRAY];
-	if (cur_buf) delete [] cur_buf;
+	if (cur_buf) {
+		delete [] cur_buf;
+	}
 	return	(cur_buf = AtoW(src, max_len));
 }
 
@@ -561,7 +653,9 @@ char *WtoAs(const WCHAR *src, int max_len) {
 	static	u_long	idx;
 
 	char	*&cur_buf = buf[idx++ % MAX_STATIC_ARRAY];
-	if (cur_buf) delete [] cur_buf;
+	if (cur_buf) {
+		delete [] cur_buf;
+	}
 	return	(cur_buf = WtoA(src, max_len));
 }
 
@@ -569,8 +663,11 @@ char *AtoU8(const char *src, int max_len) {
 	WCHAR	*wsrc = AtoW(src, max_len);
 	char	*buf = NULL;
 
-	if (wsrc) buf = WtoU8(wsrc, max_len);
+	if (wsrc) {
+		buf = WtoU8(wsrc, max_len);
+	}
 	delete [] wsrc;
+
 	return	buf;
 }
 
@@ -579,7 +676,10 @@ char *AtoU8s(const char *src, int max_len) {
 	static	u_long	idx;
 
 	char	*&cur_buf = buf[idx++ % MAX_STATIC_ARRAY];
-	if (cur_buf) delete [] cur_buf;
+	if (cur_buf) {
+		delete [] cur_buf;
+	}
+
 	return	(cur_buf = AtoU8(src, max_len));
 }
 
@@ -587,8 +687,11 @@ char *U8toA(const char *src, int max_len) {
 	char	*buf = NULL;
 
 	WCHAR	*wsrc = U8toW(src, max_len);
-	if (wsrc) buf = WtoA(wsrc, max_len);
+	if (wsrc) {
+		buf = WtoA(wsrc, max_len);
+	}
 	delete [] wsrc;
+
 	return	buf;
 }
 
@@ -597,7 +700,10 @@ char *U8toAs(const char *src, int max_len) {
 	static	u_long	idx;
 
 	char	*&cur_buf = buf[idx++ % MAX_STATIC_ARRAY];
-	if (cur_buf) delete [] cur_buf;
+	if (cur_buf) {
+		delete [] cur_buf;
+	}
+
 	return	(cur_buf = U8toA(src, max_len));
 }
 
@@ -608,8 +714,12 @@ BOOL IsUTF8(const char *_s, BOOL *is_ascii, char **invalid_point)
 	char 			*_invalid_point;
 	BOOL			tmp;
 
-	if (!is_ascii)      is_ascii = &tmp;
-	if (!invalid_point) invalid_point = &_invalid_point;
+	if (!is_ascii) {
+		is_ascii = &tmp;
+	}
+	if (!invalid_point) {
+		invalid_point = &_invalid_point;
+	}
 
 	*is_ascii = TRUE;
 
@@ -660,5 +770,57 @@ BOOL StrictUTF8(char *s)
 		return	TRUE;
 	}
 	return	FALSE;
+}
+
+int U8Len(const char *s, int max_size)
+{
+	if (max_size == -1) {
+		max_size = INT_MAX;
+	}
+	if (max_size == 0) {
+		return	0;
+	}
+
+	const char	*sv_s = s;
+	int			len;
+	int			cur_size = 0;
+
+	for (len=0; *s; len++) {
+		if (*s <= 0x7f) {
+			if ((cur_size += 1) > max_size) break;
+		}
+		else if (*s <= 0xdf) {
+			if ((cur_size += 2) > max_size) break;
+			if ((*++s & 0xc0) != 0x80) return -1;
+		}
+		else if (*s <= 0xef) {
+			if ((cur_size += 3) > max_size) break;
+			if ((*++s & 0xc0) != 0x80) return -1;
+			if ((*++s & 0xc0) != 0x80) return -1;
+		}
+		else if (*s <= 0xf7) {
+			if ((cur_size += 4) > max_size) break;
+			if ((*++s & 0xc0) != 0x80) return -1;
+			if ((*++s & 0xc0) != 0x80) return -1;
+			if ((*++s & 0xc0) != 0x80) return -1;
+		}
+		else if (*s <= 0xfb) {
+			if ((cur_size += 5) > max_size) break;
+			if ((*++s & 0xc0) != 0x80) return -1;
+			if ((*++s & 0xc0) != 0x80) return -1;
+			if ((*++s & 0xc0) != 0x80) return -1;
+			if ((*++s & 0xc0) != 0x80) return -1;
+		}
+		else if (*s <= 0xfd) {
+			if ((cur_size += 6) > max_size) break;
+			if ((*++s & 0xc0) != 0x80) return -1;
+			if ((*++s & 0xc0) != 0x80) return -1;
+			if ((*++s & 0xc0) != 0x80) return -1;
+			if ((*++s & 0xc0) != 0x80) return -1;
+			if ((*++s & 0xc0) != 0x80) return -1;
+		}
+		else return -1;
+	}
+	return	len;
 }
 

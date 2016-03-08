@@ -121,6 +121,11 @@ LRESULT TDlg::WinProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		EvNcPaint((HRGN)wParam);
 		return	0;
 
+	case WM_PRINT:
+	case WM_PRINTCLIENT:
+		EventPrint(uMsg, (HDC)wParam, (DWORD)lParam);
+		return	0;
+
 	case WM_SIZE:
 		EvSize((UINT)wParam, LOWORD(lParam), HIWORD(lParam));
 		return	0;
@@ -202,6 +207,11 @@ LRESULT TDlg::WinProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		SetWindowLong(DWL_MSGRESULT, 0);
 		return	0;
 
+	case WM_MOUSEWHEEL:
+		EvMouseWheel(GET_KEYSTATE_WPARAM(wParam), GET_WHEEL_DELTA_WPARAM(wParam),
+			GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+		return	0;
+
 	case WM_LBUTTONUP:
 	case WM_RBUTTONUP:
 	case WM_NCLBUTTONUP:
@@ -271,7 +281,7 @@ LRESULT TDlg::WinProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		return	result;
 	}
 
-	return	FALSE;
+	return	0;
 }
 
 BOOL TDlg::PreProcMsg(MSG *msg)

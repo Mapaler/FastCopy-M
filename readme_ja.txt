@@ -1,5 +1,5 @@
 ﻿======================================================================
-                     FastCopy  ver3.11                 2015/12/06
+                     FastCopy  ver3.12                 2016/03/06
                                             H.Shirouzu（白水啓章）
                      FastCopy-M branch              2015/09/22
                                             Mapaler（枫谷剑仙）
@@ -55,4 +55,3 @@
 
 ソース・ビルドについて：
 	VS2015 以降でビルドできます。
-	FastCopy-M additional dependencies need include "shlwapi.lib" after ver3.0.4.20.

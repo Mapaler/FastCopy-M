@@ -24,14 +24,22 @@ class THashObjT {
 public:
 	THashObjT	*prevHash;
 	THashObjT	*nextHash;
-	T				hashId;
+	T			hashId;
 
 public:
-	THashObjT() { prevHash = nextHash = NULL; hashId = 0; }
-	virtual ~THashObjT() { if (prevHash && prevHash != this) UnlinkHash(); }
-
+	THashObjT() {
+		prevHash = nextHash = NULL;
+		hashId = 0;
+	}
+	virtual ~THashObjT() {
+		if (prevHash && prevHash != this) {
+			UnlinkHash();
+		}
+	}
 	virtual BOOL LinkHash(THashObjT *top) {
-		if (prevHash) return FALSE;
+		if (prevHash) {
+			return FALSE;
+		}
 		this->nextHash = top->nextHash;
 		this->prevHash = top;
 		top->nextHash->prevHash = this;
@@ -39,7 +47,9 @@ public:
 		return TRUE;
 	}
 	virtual BOOL UnlinkHash() {
-		if (!prevHash) return FALSE;
+		if (!prevHash) {
+			return FALSE;
+		}
 		prevHash->nextHash = nextHash;
 		nextHash->prevHash = prevHash;
 		prevHash = nextHash = NULL;
@@ -62,11 +72,14 @@ public:
 		hashTbl = NULL;
 		registerNum = 0;
 		isDeleteObj = _isDeleteObj;
-		if ((hashNum = _hashNum) > 0) Init(hashNum);
+		if ((hashNum = _hashNum) > 0) {
+			Init(hashNum);
+		}
 	}
 	virtual ~THashTblT() { UnInit(); }
 	virtual BOOL Init(int _hashNum) {
-		if ((hashTbl = new THashObjT<T> [hashNum = _hashNum]) == NULL) {
+		hashTbl = new THashObjT<T> [hashNum = _hashNum];
+		if (hashTbl == NULL) {
 			return	FALSE;	// VC4's new don't occur exception
 		}
 		for (int i=0; i < hashNum; i++) {
@@ -77,7 +90,9 @@ public:
 		return	TRUE;
 	}
 	virtual void UnInit() {
-		if (!hashTbl) return;
+		if (!hashTbl) {
+			return;
+		}
 		if (isDeleteObj) {
 			for (int i=0; i < hashNum && registerNum > 0; i++) {
 				THashObjT<T>	*start = hashTbl + i;
@@ -95,19 +110,27 @@ public:
 	}
 	virtual void Register(THashObjT<T> *obj, T hash_id) {
 		obj->hashId = hash_id;
-		if (obj->LinkHash(hashTbl + (hash_id % hashNum))) registerNum++;
+		if (obj->LinkHash(hashTbl + (hash_id % hashNum))) {
+			registerNum++;
+		}
 	}
 	virtual void UnRegister(THashObjT<T> *obj) {
-		if (obj->UnlinkHash()) registerNum--;
+		if (obj->UnlinkHash()) {
+			registerNum--;
+		}
 	}
 	virtual THashObjT<T> *Search(const void *data, T hash_id) {
 		THashObjT<T> *top = hashTbl + (hash_id % hashNum);
 		for (THashObjT<T> *obj=top->nextHash; obj != top; obj=obj->nextHash) {
-			if (obj->hashId == hash_id && IsSameVal(obj, data)) return obj;
+			if (obj->hashId == hash_id && IsSameVal(obj, data)) {
+				return obj;
+			}
 		}
 		return	NULL;
 	}
-	virtual int		GetRegisterNum() { return registerNum; }
+	virtual int	GetRegisterNum() {
+		return registerNum;
+	}
 //	virtual T		MakeHashId(const void *data) = 0;
 };
 
@@ -119,8 +142,15 @@ typedef THashTblT<uint64> THashTbl64;
 /* for internal use start */
 struct TResHashObj : THashObj {
 	void	*val;
-	TResHashObj(UINT _resId, void *_val) { hashId = _resId; val = _val; }
-	~TResHashObj() { free(val); }
+
+	TResHashObj(UINT _resId, void *_val) {
+		hashId = _resId;
+		val = _val;
+	}
+
+	~TResHashObj() {
+		free(val);
+	}
 	
 };
 
@@ -132,8 +162,12 @@ protected:
 
 public:
 	TResHash(int _hashNum) : THashTbl(_hashNum) {}
-	TResHashObj	*Search(UINT resId) { return (TResHashObj *)THashTbl::Search(&resId, resId); }
-	void		Register(TResHashObj *obj) { THashTbl::Register(obj, obj->hashId); }
+	TResHashObj	*Search(UINT resId) {
+		return (TResHashObj *)THashTbl::Search(&resId, resId);
+	}
+	void	Register(TResHashObj *obj) {
+		THashTbl::Register(obj, obj->hashId);
+	}
 };
 
 class Condition {
@@ -202,6 +236,7 @@ public:
 	void	SetUsedSize(ssize_t _used_size) { usedSize = _used_size; }
 	ssize_t	AddUsedSize(ssize_t _used_size) { return usedSize += _used_size; }
 	ssize_t	RemainSize(void) { return size - usedSize; }
+	VBuf& operator =(const VBuf&);
 };
 
 template <class T>
@@ -218,7 +253,9 @@ public:
 		ssize_t min_size = ALIGN_SIZE(min_num * sizeof(T), PAGE_SIZE);
 		ssize_t max_size = ALIGN_SIZE(max_num * sizeof(T), PAGE_SIZE);
 		growSize = grow_num ? ALIGN_SIZE(grow_num * sizeof(T), PAGE_SIZE) : min_size;
-		if (growSize == 0) growSize = ALIGN_SIZE(sizeof(T), PAGE_SIZE);
+		if (growSize == 0) {
+			growSize = ALIGN_SIZE(sizeof(T), PAGE_SIZE);
+		}
 		usedNum  = 0;
 		return AllocBuf(min_size, max_size);
 	}
@@ -229,21 +266,30 @@ public:
 	const T& operator [](int idx) const {
 		return	Get(idx);
 	}
+	const VBVec<T>& operator =(const VBVec<T> &);	// default definition is none
 	bool Aquire(int idx) {
 		int		need_num = idx + 1;
-		if (need_num <= usedNum) return true;
+		if (need_num <= usedNum) {
+			return true;
+		}
 
 		ssize_t	need_size = need_num * sizeof(T);
 		if (need_size > size) {
-			if (need_size > maxSize) return false;
-			if (need_size > size && !Grow(growSize)) return false;
+			if (need_size > maxSize) {
+				return false;
+			}
+			if (need_size > size && !Grow(growSize)) {
+				return false;
+			}
 		}
 		usedSize = need_size;
 		usedNum  = need_num;
 		return	true;
 	}
 	bool Set(int idx, const T& d) {
-		if (!Aquire(idx)) return false;
+		if (!Aquire(idx)) {
+			return false;
+		}
 		Get(idx) = d;
 		return	true;
 	}
@@ -265,7 +311,9 @@ public:
 		return	Set(UsedNum(), d); // usedNum will be increment in Aquire
 	}
 	bool Pop() {
-		if (usedNum <= 0) return false;
+		if (usedNum <= 0) {
+			return false;
+		}
 		usedSize -= sizeof(T);
 		usedNum--;
 		return	true;
@@ -289,7 +337,9 @@ public:
 	}
 	GBuf(VBuf *vbuf, BOOL with_lock=TRUE, UINT _flags=GMEM_MOVEABLE) {
 		Init((int)vbuf->Size(), with_lock, _flags);
-		if (buf) memcpy(buf, vbuf->Buf(), (int)vbuf->Size());
+		if (buf) {
+			memcpy(buf, vbuf->Buf(), (int)vbuf->Size());
+		}
 	}
 	~GBuf() {
 		UnInit();
@@ -298,24 +348,41 @@ public:
 		hGlobal	= NULL;
 		buf		= NULL;
 		flags	= _flags;
-		if ((size = _size) == 0) return TRUE;
-		if (!(hGlobal = ::GlobalAlloc(flags, size))) return FALSE;
-		if (!with_lock) return	TRUE;
+
+		if ((size = _size) == 0) {
+			return TRUE;
+		}
+		if (!(hGlobal = ::GlobalAlloc(flags, size))) {
+			return FALSE;
+		}
+		if (!with_lock) {
+			return	TRUE;
+		}
 		return	Lock() ? TRUE : FALSE;
 	}
 	void UnInit() {
-		if (buf && (flags & GMEM_FIXED)) ::GlobalUnlock(buf);
-		if (hGlobal) ::GlobalFree(hGlobal);
+		if (buf && (flags & GMEM_FIXED)) {
+			::GlobalUnlock(buf);
+		}
+		if (hGlobal) {
+			::GlobalFree(hGlobal);
+		}
 		buf		= NULL;
 		hGlobal	= NULL;
 	}
-	HGLOBAL	Handle() { return hGlobal; }
+	HGLOBAL	Handle() {
+		return hGlobal;
+	}
 	BYTE *Buf() {
 		return	buf;
 	}
 	BYTE *Lock() {
-		if ((flags & GMEM_FIXED))	buf = (BYTE *)hGlobal;
-		else						buf = (BYTE *)::GlobalLock(hGlobal);
+		if ((flags & GMEM_FIXED)) {
+			buf = (BYTE *)hGlobal;
+		}
+		else {
+			buf = (BYTE *)::GlobalLock(hGlobal);
+		}
 		return	buf;
 	}
 	void Unlock() {
@@ -326,25 +393,36 @@ public:
 		
 	}
 	int	Size() { return size; }
+	const GBuf& operator =(const GBuf &);	// default definition is none
 };
 
 class DynBuf {
 protected:
 	char	*buf;
 	int		size;
+	int		usedSize;
 
 public:
 	DynBuf(int _size=0)	{
 		buf = NULL;
-		if ((size = _size) > 0) Alloc(size);
+		usedSize = 0;
+
+		if ((size = _size) > 0) {
+			Alloc(size);
+		}
 	}
 	~DynBuf() {
 		free(buf);
 	}
 	char *Alloc(int _size) {
-		if (buf) free(buf);
+		if (buf) {
+			free(buf);
+		}
 		buf = NULL;
-		if ((size = _size) <= 0) return NULL;
+		usedSize = 0;
+		if ((size = _size) <= 0) {
+			return NULL;
+		}
 		return	(buf = (char *)malloc(size));
 	}
 	void Free() 		{ Alloc(0); }
@@ -353,12 +431,17 @@ public:
 	operator WCHAR*()	{ return (WCHAR *)buf; }
 	operator void*()	{ return (void *)buf; }
 	int	Size()			{ return size; }
+	int	UsedSize()		{ return usedSize; }
+	int	SetUsedSize(int _usedSize) { usedSize = _usedSize; }
+	const DynBuf& operator =(const DynBuf &);	// default definition is none
 };
 
 void InitInstanceForLoadStr(HINSTANCE hI);
+
 LPSTR GetLoadStrA(UINT resId, HINSTANCE hI=NULL);
 LPSTR GetLoadStrU8(UINT resId, HINSTANCE hI=NULL);
 LPWSTR GetLoadStrW(UINT resId, HINSTANCE hI=NULL);
+
 void TSetDefaultLCID(LCID id=0);
 HMODULE TLoadLibrary(LPSTR dllname);
 HMODULE TLoadLibraryW(WCHAR *dllname);
@@ -372,6 +455,11 @@ int bin2hexstr_revendian(const BYTE *bin, int len, char *buf);
 int bin2hexstrW(const BYTE *bindata, int len, WCHAR *buf);
 BOOL hexstr2bin(const char *buf, BYTE *bindata, int maxlen, int *len);
 BOOL hexstr2bin_revendian(const char *buf, BYTE *bindata, int maxlen, int *len);
+
+BYTE hexstr2byte(const char *buf);
+WORD hexstr2word(const char *buf);
+DWORD hexstr2dword(const char *buf);
+int64 hexstr2int64(const char *buf);
 
 int bin2b64str(const BYTE *bindata, int len, char *buf);
 int bin2b64str_revendian(const BYTE *bin, int len, char *buf);
@@ -391,8 +479,10 @@ int strcpyz(char *dest, const char *src);
 int wcscpyz(WCHAR *dest, const WCHAR *src);
 int strncpyz(char *dest, const char *src, int num);
 int strncatz(char *dest, const char *src, int num);
+const char *wcsnchr(const char *src, char ch, int num);
 int wcsncpyz(WCHAR *dest, const WCHAR *src, int num);
 int wcsncatz(WCHAR *dest, const WCHAR *src, int num);
+const WCHAR *wcsnchr(const WCHAR *src, WCHAR ch, int num);
 
 inline int get_ntz64(uint64 val) {
 #ifdef _WIN64
@@ -401,7 +491,9 @@ inline int get_ntz64(uint64 val) {
 	return	ret;
 #else
 	u_long	ret = 0;
-	if (_BitScanForward(&ret, (u_int)val)) return ret;
+	if (_BitScanForward(&ret, (u_int)val)) {
+		return ret;
+	}
 
 	u_int sval = (u_int)(val >> 32);
 	_BitScanForward(&ret, sval);
@@ -424,7 +516,9 @@ public:
 	DWORD elaps(BOOL overwrite=TRUE) {
 		DWORD	cur = ::GetTickCount();
 		DWORD	diff = cur - tick;
-		if (overwrite) tick = cur;
+		if (overwrite) {
+			tick = cur;
+		}
 		return	diff;
 	}
 };
@@ -436,7 +530,9 @@ template<class T> int LocalNewLineToUnixT(const T *src, T *dest, int maxlen) {
 	int	len = 0;
 
 	while (*src && dest < max_dest) {
-		if ((*dest = *src++) != '\r') dest++;
+		if ((*dest = *src++) != '\r') {
+			dest++;
+		}
 	}
 	*dest = 0;
 
@@ -487,6 +583,27 @@ void DebugU8(const char *fmt,...);
 const char *Fmt(const char *fmt,...);
 const WCHAR *FmtW(const WCHAR *fmt,...);
 
+class TWin;
+class OpenFileDlg {
+public:
+	enum			Mode { OPEN, MULTI_OPEN, SAVE, NODEREF_SAVE };
+
+protected:
+	TWin			*parent;
+	LPOFNHOOKPROC	hook;
+	Mode			mode;
+	DWORD			flags;
+
+public:
+	OpenFileDlg(TWin *_parent, Mode _mode=OPEN, LPOFNHOOKPROC _hook=NULL, DWORD _flags=0) {
+		parent = _parent; hook = _hook; mode = _mode; flags = _flags;
+	}
+	BOOL Exec(char *target, int size, char *title=NULL, char *filter=NULL, char *defaultDir=NULL,
+				char *defaultExt=NULL);
+	BOOL Exec(UINT editCtl, char *title=NULL, char *filter=NULL, char *defaultDir=NULL,
+				char *defaultExt=NULL);
+};
+
 BOOL SymLinkW(WCHAR *src, WCHAR *dest, WCHAR *arg=L"");
 BOOL ReadLinkW(WCHAR *src, WCHAR *dest, WCHAR *arg=NULL);
 BOOL DeleteLinkW(WCHAR *path);
@@ -497,6 +614,11 @@ HWND ShowHelpU8(HWND hOwner, const char *help_dir, const char *help_file, const 
 HWND CloseHelpAll();
 
 BOOL ForceSetTrayIcon(HWND hWnd, UINT id, DWORD pref=2);
+BOOL SetWinAppId(HWND hWnd, const WCHAR *app_id);
+
+BOOL GetDomainAndUid(WCHAR *domain, WCHAR *uid);
+BOOL GetDomainFullName(const WCHAR *domain, const WCHAR *uid, WCHAR *full_name);
+BOOL GetDomainGroup(const WCHAR *domain, const WCHAR *uid, WCHAR *group);
 
 #endif
 

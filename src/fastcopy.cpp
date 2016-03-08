@@ -1,9 +1,9 @@
 ﻿static char *fastcopy_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		fastcopy.cpp	ver3.11";
+	"@(#)Copyright (C) 2004-2016 H.Shirouzu		fastcopy.cpp	ver3.12";
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-12-05(Sat)
+	Update					: 2016-01-02(Sat)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-09
@@ -33,8 +33,13 @@ FastCopy::FastCopy()
 {
 	hReadThread = hWriteThread = hRDigestThread = hWDigestThread = NULL;
 
-	TSetPrivilege(SE_BACKUP_NAME, TRUE);
-	TSetPrivilege(SE_RESTORE_NAME, TRUE);
+	enableBackupPriv = TRUE;
+	if (!TSetPrivilege(SE_BACKUP_NAME, TRUE)) {
+		enableBackupPriv = FALSE;
+	}
+	if (!TSetPrivilege(SE_RESTORE_NAME, TRUE)) {
+		enableBackupPriv = FALSE;
+	}
 	TSetPrivilege(SE_CREATE_SYMBOLIC_LINK_NAME, TRUE);
 
 	TLibInit_Ntdll();
@@ -906,10 +911,11 @@ BOOL FastCopy::ClearNonSurrogateReparse(WIN32_FIND_DATAW *fdat)
 	return	TRUE;
 }
 
-BOOL GetFileInformation(const WCHAR *path, BY_HANDLE_FILE_INFORMATION *bhi)
+BOOL GetFileInformation(const WCHAR *path, BY_HANDLE_FILE_INFORMATION *bhi, BOOL backup_flg)
 {
 	DWORD	share = FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE;
-	HANDLE	hFile = ::CreateFileW(path, 0, share, 0, OPEN_EXISTING, 0, 0);
+	HANDLE	hFile = ::CreateFileW(path, 0, share, 0, OPEN_EXISTING,
+		(backup_flg ? FILE_FLAG_BACKUP_SEMANTICS : 0), 0);
 
 	if (hFile == INVALID_HANDLE_VALUE) return FALSE;
 
@@ -919,11 +925,11 @@ BOOL GetFileInformation(const WCHAR *path, BY_HANDLE_FILE_INFORMATION *bhi)
 	return	ret;
 }
 
-BOOL ModifyRealFdat(const WCHAR *path, WIN32_FIND_DATAW *fdat)
+BOOL ModifyRealFdat(const WCHAR *path, WIN32_FIND_DATAW *fdat, BOOL backup_flg)
 {
 	BY_HANDLE_FILE_INFORMATION	bhi;
 
-	if (!GetFileInformation(path, &bhi)) return FALSE;
+	if (!GetFileInformation(path, &bhi, backup_flg)) return FALSE;
 
 	fdat->nFileSizeHigh		= bhi.nFileSizeHigh;
 	fdat->nFileSizeLow		= bhi.nFileSizeLow;
@@ -967,7 +973,7 @@ BOOL FastCopy::PreSearchProc(WCHAR *path, int prefix_len, int dir_len, FilterRes
 			total.preFiles++;
 			if (NeedSymlinkDeref(&fdat)) { // del/moveでは REPARSE_AS_NORMAL は存在しない
 				wcscpyz(path + dir_len, fdat.cFileName);
-				ModifyRealFdat(path, &fdat);
+				ModifyRealFdat(path, &fdat, enableBackupPriv);
 			}
 			if (!IsReparseEx(fdat.dwFileAttributes)) {
 				total.preTrans += FileSize(fdat);
@@ -1103,7 +1109,8 @@ BOOL FastCopy::MakeDigest(WCHAR *path, DigestBuf *dbuf, FileStat *stat)
 	bool	is_src = (dbuf == &srcDigest);
 	bool	useOvl = (flagOvl && file_size > info.maxOvlSize);
 	DWORD	flg = ((info.flags & USE_OSCACHE_READ) ? 0 : FILE_FLAG_NO_BUFFERING)
-				| FILE_FLAG_SEQUENTIAL_SCAN | (useOvl ? flagOvl : 0);
+				| FILE_FLAG_SEQUENTIAL_SCAN | (useOvl ? flagOvl : 0)
+				| (enableBackupPriv ? FILE_FLAG_BACKUP_SEMANTICS : 0);
 	DWORD	share = FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE;
 	BOOL	ret = FALSE;
 	OvlList	&ovl_list = is_src ? rOvl : wOvl;
@@ -1226,7 +1233,8 @@ FastCopy::LinkStatus FastCopy::CheckHardLink(WCHAR *path, int len, HANDLE hFileO
 	DWORD		share = FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE;
 
 	if (hFileOrg == INVALID_HANDLE_VALUE) {
-		hFile = ::CreateFileW(path, 0, share, 0, OPEN_EXISTING, 0, 0);
+		hFile = ::CreateFileW(path, 0, share, 0, OPEN_EXISTING,
+			(enableBackupPriv ? FILE_FLAG_BACKUP_SEMANTICS : 0), 0);
 		if (hFile == INVALID_HANDLE_VALUE){
 //			DBGWriteW(L"CheckHardLink can't open(%s) %d\n", path);
 			return	ret;
@@ -1919,7 +1927,7 @@ BOOL FastCopy::ReadDirEntry(int dir_len, BOOL confirm_dir, FilterRes fr)
 		else {
 			if (NeedSymlinkDeref(&fdat)) { // del/moveでは REPARSE_AS_NORMAL は存在しない
 				wcscpyz(src + dir_len, fdat.cFileName);
-				ModifyRealFdat(src, &fdat);
+				ModifyRealFdat(src, &fdat, enableBackupPriv);
 			}
 			len = FdatToFileStat(&fdat, (FileStat *)fileStatBuf.UsedEnd(), confirm_dir, cur_fr);
 			fileStatBuf.AddUsedSize(len);
@@ -1960,8 +1968,9 @@ BOOL FastCopy::OpenFileProc(FileStat *stat, int dir_len)
 
 	if (is_open) {
 		DWORD	mode = GENERIC_READ;
-		DWORD	flg = ((info.flags & USE_OSCACHE_READ) ?
-					0 : FILE_FLAG_NO_BUFFERING) | FILE_FLAG_SEQUENTIAL_SCAN;
+		DWORD	flg = ((info.flags & USE_OSCACHE_READ) ? 0 : FILE_FLAG_NO_BUFFERING)
+					| FILE_FLAG_SEQUENTIAL_SCAN
+					| (enableBackupPriv ? FILE_FLAG_BACKUP_SEMANTICS : 0);
 		DWORD	share = FILE_SHARE_READ | ((info.flags & WRITESHARE_OPEN) ?
 			(FILE_SHARE_WRITE|FILE_SHARE_DELETE) : 0);
 
@@ -1969,13 +1978,12 @@ BOOL FastCopy::OpenFileProc(FileStat *stat, int dir_len)
 
 		if (is_backup) {
 			mode |= READ_CONTROL;
-			flg  |= FILE_FLAG_BACKUP_SEMANTICS;
 		}
 		else if (useOvl) {
 			flg |= flagOvl;
 		}
 		if (is_reparse) {
-			flg |= FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT;
+			flg |= FILE_FLAG_OPEN_REPARSE_POINT;
 		}
 		if ((stat->hFile = ::CreateFileW(src, mode, share, 0, OPEN_EXISTING, flg, 0))
 				== INVALID_HANDLE_VALUE) {
@@ -2143,7 +2151,8 @@ BOOL FastCopy::OpenFileBackupStreamCore(int src_len, int64 size, WCHAR *altname,
 	bool		useOvl = (size > info.maxOvlSize) && flagOvl && srcFsType != FSTYPE_NETWORK;
 	DWORD		share = FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE;
 	DWORD		flg = ((info.flags & USE_OSCACHE_READ) ? 0 : FILE_FLAG_NO_BUFFERING)
-					| FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_BACKUP_SEMANTICS
+					| FILE_FLAG_SEQUENTIAL_SCAN
+					| (enableBackupPriv ? FILE_FLAG_BACKUP_SEMANTICS : 0)
 					| (useOvl ? flagOvl : 0);
 
 	openFiles[openFilesCnt++] = subStat;
@@ -2681,7 +2690,7 @@ BOOL FastCopy::ReadDstStat(int dir_len)
 
 		if (NeedSymlinkDeref(&fdat)) { // del/moveでは REPARSE_AS_NORMAL は存在しない
 			wcscpyz(confirmDst + dir_len, fdat.cFileName);
-			ModifyRealFdat(confirmDst, &fdat);
+			ModifyRealFdat(confirmDst, &fdat, enableBackupPriv);
 		}
 		len = FdatToFileStat(&fdat, dstStat, TRUE);
 		dstStatBuf.AddUsedSize(len);
@@ -3067,7 +3076,8 @@ BOOL FastCopy::WriteRandomData(WCHAR *path, FileStat *stat, BOOL skip_hardlink)
 							&& (stat->FileSize() >= max(nbMinSize, PAGE_SIZE)
 						|| (stat->FileSize() % dstSectorSize) == 0)
 							&& (info.flags & USE_OSCACHE_WRITE) == 0 ? TRUE : FALSE;
-	DWORD	flg = (is_nonbuf ? FILE_FLAG_NO_BUFFERING : 0) | FILE_FLAG_SEQUENTIAL_SCAN;
+	DWORD	flg = (is_nonbuf ? FILE_FLAG_NO_BUFFERING : 0) | FILE_FLAG_SEQUENTIAL_SCAN
+					| (enableBackupPriv ? FILE_FLAG_BACKUP_SEMANTICS : 0);
 	DWORD	share = FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE;
 
 	HANDLE	hFile = ForceCreateFileW(path, GENERIC_WRITE, share, 0, OPEN_EXISTING, flg, 0,
@@ -3606,7 +3616,8 @@ BOOL FastCopy::MakeDigestAsync(DigestObj *obj)
 {
 	BOOL	useOvl = (flagOvl && obj->fileSize > info.maxOvlSize);
 	DWORD	flg = ((info.flags & USE_OSCACHE_READ) ? 0 : FILE_FLAG_NO_BUFFERING)
-				| FILE_FLAG_SEQUENTIAL_SCAN | (useOvl ? flagOvl : 0);
+				| FILE_FLAG_SEQUENTIAL_SCAN | (useOvl ? flagOvl : 0)
+				| (enableBackupPriv ? FILE_FLAG_BACKUP_SEMANTICS : 0);
 	DWORD	share = FILE_SHARE_READ|FILE_SHARE_WRITE;
 	HANDLE	hFile = INVALID_HANDLE_VALUE;
 	int64	file_size = 0;
@@ -3867,19 +3878,20 @@ BOOL FastCopy::WriteFileProcCore(HANDLE *_fh, FileStat *stat, WInfo *_wi)
 	WInfo	&wi = *_wi;
 	DWORD	mode = GENERIC_WRITE;
 	DWORD	share = FILE_SHARE_READ|FILE_SHARE_WRITE;
-	DWORD	flg = (wi.is_nonbuf ? FILE_FLAG_NO_BUFFERING : 0) | FILE_FLAG_SEQUENTIAL_SCAN;
+	DWORD	flg = (wi.is_nonbuf ? FILE_FLAG_NO_BUFFERING : 0) | FILE_FLAG_SEQUENTIAL_SCAN
+					| (enableBackupPriv ? FILE_FLAG_BACKUP_SEMANTICS : 0);
 	BOOL	useOvl = (flagOvl && wi.file_size > info.maxOvlSize) && (dstFsType != FSTYPE_NETWORK
 		|| wi.cmd == WRITE_FILE);
 
 	if (wi.cmd == WRITE_BACKUP_FILE || wi.cmd == WRITE_BACKUP_ALTSTREAM) {
 		if (stat->acl && stat->aclSize && enableAcl) mode |= WRITE_OWNER|WRITE_DAC;
-		flg |= FILE_FLAG_BACKUP_SEMANTICS;
 	}
+
 	if (useOvl && wi.cmd != WRITE_BACKUP_FILE) {
 		flg |= flagOvl;		// BackupWrite しないなら OVERLAPPED モードで開く
 	}
 	if (wi.is_reparse) {
-		flg |= FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT;
+		flg |= FILE_FLAG_OPEN_REPARSE_POINT;
 	}
 	fh = ForceCreateFileW(dst, mode, share, 0, CREATE_ALWAYS, flg, 0, FMF_ATTR);
 	if (fh == INVALID_HANDLE_VALUE) {
@@ -4099,7 +4111,6 @@ BOOL FastCopy::WriteFileCore(HANDLE fh, FileStat *stat, WInfo *_wi, DWORD mode, 
 	if (ret && is_reopen && fh2 == INVALID_HANDLE_VALUE) {
 		fh2 = CreateFileWithRetry(dst, mode, share, 0, OPEN_EXISTING, flg, 0, 10);
 		if (fh2 == INVALID_HANDLE_VALUE && ::GetLastError() != ERROR_SHARING_VIOLATION) {
-			flg  &= ~FILE_FLAG_BACKUP_SEMANTICS;
 			mode &= ~(WRITE_OWNER|WRITE_DAC);
 			fh2 = CreateFileWithRetry(dst, mode, share, 0, OPEN_EXISTING, flg, 0, 10);
 		}

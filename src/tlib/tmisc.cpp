@@ -289,7 +289,7 @@ LPSTR GetLoadStrA(UINT resId, HINSTANCE hI)
 	static TResHash	*hash;
 
 	if (hash == NULL) {
-		hash = new TResHash(100);
+		hash = new TResHash(1000);
 	}
 
 	char		buf[1024];
@@ -309,7 +309,7 @@ LPWSTR GetLoadStrW(UINT resId, HINSTANCE hI)
 	static TResHash	*hash;
 
 	if (hash == NULL) {
-		hash = new TResHash(100);
+		hash = new TResHash(1000);
 	}
 
 	WCHAR		buf[1024];
@@ -486,6 +486,46 @@ BOOL hexstr2bin_revendian(const char *buf, BYTE *bindata, int maxlen, int *len)
 	return	TRUE;
 }
 
+BYTE hexstr2byte(const char *buf)
+{
+	BYTE	val = 0;
+	int		len = 0;
+
+	hexstr2bin_revendian(buf, (BYTE *)&val, sizeof(val), &len);
+
+	return	val;
+}
+
+WORD hexstr2word(const char *buf)
+{
+	WORD	val = 0;
+	int		len = 0;
+
+	hexstr2bin_revendian(buf, (BYTE *)&val, sizeof(val), &len);
+
+	return	val;
+}
+
+DWORD hexstr2dword(const char *buf)
+{
+	DWORD	val = 0;
+	int		len = 0;
+
+	hexstr2bin_revendian(buf, (BYTE *)&val, sizeof(val), &len);
+
+	return	val;
+}
+
+int64 hexstr2int64(const char *buf)
+{
+	int64	val = 0;
+	int		len = 0;
+
+	hexstr2bin_revendian(buf, (BYTE *)&val, sizeof(val), &len);
+
+	return	val;
+}
+
 int strip_crlf(const char *s, char *d)
 {
 	char	*sv = d;
@@ -659,9 +699,8 @@ void DebugU8(const char *fmt,...)
 	_vsnprintf(buf, sizeof(buf), fmt, ap);
 	va_end(ap);
 
-	WCHAR *wbuf = U8toWs(buf);
-	::OutputDebugStringW(wbuf);
-	delete [] wbuf;
+	Wstr	w(buf);
+	::OutputDebugStringW(w.s());
 }
 
 const char *Fmt(const char *fmt,...)
@@ -906,6 +945,16 @@ int strncatz(char *dest, const char *src, int num)
 	return strncpyz(dest, src, num);
 }
 
+const char *wcsnchr(const char *dest, char ch, int num)
+{
+	for ( ; num > 0 && *dest; num--, dest++) {
+		if (*dest == ch) {
+			return	dest;
+		}
+	}
+	return	NULL;
+}
+
 int wcsncpyz(WCHAR *dest, const WCHAR *src, int num)
 {
 	WCHAR	*sv_dest = dest;
@@ -924,6 +973,16 @@ int wcsncatz(WCHAR *dest, const WCHAR *src, int num)
 	for ( ; *dest; dest++, num--)
 		;
 	return wcsncpyz(dest, src, num);
+}
+
+const WCHAR *wcsnchr(const WCHAR *dest, WCHAR ch, int num)
+{
+	for ( ; num > 0 && *dest; num--, dest++) {
+		if (*dest == ch) {
+			return	dest;
+		}
+	}
+	return	NULL;
 }
 
 char *strdupNew(const char *_s, int max_len)
@@ -1131,6 +1190,81 @@ BOOL TChangeWindowMessageFilter(UINT msg, DWORD flg)
 
 	if (pChangeWindowMessageFilter) {
 		ret = pChangeWindowMessageFilter(msg, flg);
+	}
+
+	return	ret;
+}
+
+/*
+	ファイルダイアログ用汎用ルーチン
+*/
+BOOL OpenFileDlg::Exec(UINT editCtl, char *title, char *filter, char *defaultDir, char *defaultExt)
+{
+	char buf[MAX_PATH_U8];
+
+	if (parent == NULL)
+		return FALSE;
+
+	parent->GetDlgItemTextU8(editCtl, buf, sizeof(buf));
+
+	if (!Exec(buf, sizeof(buf), title, filter, defaultDir, defaultExt))
+		return	FALSE;
+
+	parent->SetDlgItemTextU8(editCtl, buf);
+	return	TRUE;
+}
+
+BOOL OpenFileDlg::Exec(char *target, int targ_size, char *title, char *filter, char *defaultDir,
+						char *defaultExt)
+{
+	if (targ_size <= 1) return FALSE;
+
+	OPENFILENAME	ofn;
+	U8str			fileName(targ_size);
+	U8str			dirName(targ_size);
+	char			*fname = NULL;
+
+	if (*target && GetFullPathNameU8(target, targ_size, dirName.Buf(), &fname) != 0 && fname) {
+		*(fname -1) = 0;
+		strncpyz(fileName.Buf(), fname, targ_size);
+	}
+	else if (defaultDir) {
+		strncpyz(dirName.Buf(), defaultDir, targ_size);
+	}
+
+	memset(&ofn, 0, sizeof(ofn));
+	ofn.lStructSize = sizeof(OPENFILENAME);
+	ofn.hwndOwner = parent ? parent->hWnd : NULL;
+	ofn.lpstrFilter = filter;
+	ofn.nFilterIndex = filter ? 1 : 0;
+	ofn.lpstrFile = fileName.Buf();
+	ofn.lpstrDefExt	 = defaultExt;
+	ofn.nMaxFile = targ_size;
+	ofn.lpstrTitle = title;
+	ofn.lpstrInitialDir = dirName.Buf();
+	ofn.lpfnHook = hook;
+	ofn.Flags = OFN_HIDEREADONLY|OFN_EXPLORER|(hook ? OFN_ENABLEHOOK : 0);
+	if (mode == OPEN || mode == MULTI_OPEN)
+		ofn.Flags |= OFN_FILEMUSTEXIST | (mode == MULTI_OPEN ? OFN_ALLOWMULTISELECT : 0);
+	else
+		ofn.Flags |= (mode == NODEREF_SAVE ? OFN_NODEREFERENCELINKS : 0);
+	ofn.Flags |= flags;
+
+	U8str	dirNameBak(targ_size);
+	GetCurrentDirectoryU8(targ_size, dirNameBak.Buf());
+
+	BOOL	ret = (mode == OPEN || mode == MULTI_OPEN) ?
+					GetOpenFileNameU8(&ofn) : GetSaveFileNameU8(&ofn);
+
+	SetCurrentDirectoryU8(dirNameBak.Buf());
+	if (ret) {
+		if (mode == MULTI_OPEN) {
+			memcpy(target, fileName.Buf(), targ_size);
+		} else {
+			strncpyz(target, ofn.lpstrFile, targ_size);
+		}
+
+		if (defaultDir) strncpyz(defaultDir, ofn.lpstrFile, ofn.nFileOffset);
 	}
 
 	return	ret;
@@ -1595,4 +1729,181 @@ BOOL ForceSetTrayIcon(HWND hWnd, UINT id, DWORD pref)
 	}
 	return	ret;
 }
+
+#include <Shellapi.h>
+#include <propkey.h>
+#include <propvarutil.h>
+
+
+BOOL SetWinAppId(HWND hWnd, const WCHAR *app_id)
+{
+	static HRESULT (WINAPI *pSHGetPropertyStoreForWindow)(HWND, REFIID, void**);
+
+	if (!pSHGetPropertyStoreForWindow) {
+		pSHGetPropertyStoreForWindow = (HRESULT (WINAPI *)(HWND, REFIID, void**))
+			::GetProcAddress(::GetModuleHandle("shell32"), "SHGetPropertyStoreForWindow");
+	}
+	if (!pSHGetPropertyStoreForWindow) {
+		return	FALSE;
+	}
+
+	IPropertyStore *pps;
+	HRESULT hr = pSHGetPropertyStoreForWindow(hWnd, IID_PPV_ARGS(&pps));
+	if (SUCCEEDED(hr)) {
+		PROPVARIANT pv;
+		hr = ::InitPropVariantFromString(app_id, &pv);
+		if (SUCCEEDED(hr)) {
+			hr = pps->SetValue(PKEY_AppUserModel_ID, pv);
+			::PropVariantClear(&pv);
+		}
+		pps->Release();
+	}
+	return	SUCCEEDED(hr);
+}
+
+
+#include <Iads.h>
+#include <Adshlp.h>
+
+#pragma comment (lib, "ADSIid.lib")
+#pragma comment (lib, "Activeds.lib")
+
+BOOL GetDomainAndUid(WCHAR *domain, WCHAR *uid)
+{
+	HANDLE		hToken;
+	BYTE		info[1024];
+	DWORD		infoSize = sizeof(info);
+	TOKEN_USER	*tu = (TOKEN_USER *)info;
+	DWORD		uidSize    = 200;	// KB 111544
+	DWORD		domainSize = 200;	// KB 111544
+	SID_NAME_USE snu;
+
+	if (!::OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken)) {
+		return	FALSE;
+	}
+	BOOL ret = ::GetTokenInformation(hToken,TokenUser, info, infoSize, &infoSize);
+	::CloseHandle(hToken);
+
+	if (!ret) {
+		return	FALSE;
+	}
+
+	return	::LookupAccountSidW(NULL, tu->User.Sid, uid, &uidSize, domain, &domainSize, &snu);
+}
+
+BOOL GetDomainFullName(const WCHAR *domain, const WCHAR *uid, WCHAR *full_name)
+{
+	WCHAR	nt_domain[256];
+
+	swprintf(nt_domain, L"WinNT://%s", domain);
+
+	IADsContainer*	ads = NULL;
+	if (!SUCCEEDED(::ADsGetObject(nt_domain, IID_IADsContainer, (void**)&ads))) {
+		return	FALSE;
+	}
+
+	BOOL		ret = FALSE;
+	BSTR		buid = ::SysAllocString(uid);
+	IDispatch	*udis = NULL;
+
+	if (SUCCEEDED(ads->GetObject(L"User", buid, &udis))) {
+		IADsUser	*user = NULL;
+
+		if (SUCCEEDED(udis->QueryInterface(IID_IADsUser, (void**)&user))) {
+			BSTR	bstr = NULL;
+
+			if (SUCCEEDED(user->get_FullName(&bstr))) {
+				wcscpy(full_name, bstr);
+				::SysFreeString(bstr);
+				ret = TRUE;
+			}
+			user->Release();
+		}
+		udis->Release();
+	}
+	ads->Release();
+	::SysFreeString(buid);
+
+	return	ret;
+}
+
+BOOL IsAsciiStr(const WCHAR *s)
+{
+	for ( ; *s; s++) {
+		if (*s >= 128) {
+			return	FALSE;
+		}
+	}
+	return	TRUE;
+}
+
+BOOL GetDomainGroup(const WCHAR *domain, const WCHAR *uid, WCHAR *group)
+{
+	WCHAR	nt_domain[256];
+
+	swprintf(nt_domain, L"WinNT://%s", domain);
+
+	IADsContainer*	ads = NULL;
+	if (!SUCCEEDED(ADsGetObject(nt_domain, IID_IADsContainer, (void**)&ads))) {
+		return	FALSE;
+	}
+
+	BOOL	ret = FALSE;
+	BSTR	buid = ::SysAllocString(uid);
+	IDispatch	*udis = NULL;
+
+	if (SUCCEEDED(ads->GetObject(L"User", buid, &udis))) {
+		IADsUser	*user = NULL;
+
+		if (SUCCEEDED(udis->QueryInterface(IID_IADsUser, (void**)&user))) {
+			IADsMembers	*grps = NULL;
+
+			if (SUCCEEDED(user->Groups(&grps))) {
+				IUnknown *pUnk = NULL;
+
+				if (SUCCEEDED(grps->get__NewEnum(&pUnk))) {
+					IEnumVARIANT	*pEnum = NULL;
+
+					if (SUCCEEDED(pUnk->QueryInterface(IID_IEnumVARIANT, (void **)&pEnum))) {
+						VARIANT	var;
+						ULONG	lFetch = 0;
+
+						while (!ret && pEnum->Next(1, &var, &lFetch) == S_OK) {
+							if (lFetch == 1) {
+								IDispatch	*pDisp = V_DISPATCH(&var);
+								IADs		*grp = NULL;
+
+								if (SUCCEEDED(pDisp->QueryInterface(IID_IADs, (void **)&grp))) {
+									BSTR	bstr = NULL;
+
+									if (SUCCEEDED(grp->get_Name(&bstr))) {
+										if (!IsAsciiStr(bstr)) {
+											wcscpy(group, bstr);
+											ret = TRUE;
+										}
+										SysFreeString(bstr);
+									}
+									grp->Release();
+								}
+							}
+							VariantClear(&var);
+						}
+						pEnum->Release();
+					}
+					pUnk->Release();
+				}
+				grps->Release();
+			}
+			user->Release();
+		}
+		udis->Release();
+	}
+	ads->Release();
+	::SysFreeString(buid);
+
+	return	ret;
+}
+
+
+
 

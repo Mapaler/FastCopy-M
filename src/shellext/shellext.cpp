@@ -89,7 +89,7 @@ DWORD DbgLogW(WCHAR *fmt,...)
 	DWORD	len = wvsprintfW(wbuf, fmt, va);
 	va_end(va);
 
-	WtoA(wbuf, buf, sizeof(buf), len + 1);
+	WtoA(wbuf, buf, sizeof(buf));
 	return	DbgLog("%s", buf);
 }
 #else
