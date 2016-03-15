@@ -1,5 +1,5 @@
 ﻿static char *mainwin_id = 
-	"@(#)Copyright (C) 2004-2016 H.Shirouzu		mainwin.cpp	ver3.12";
+	"@(#)Copyright (C) 2004-2016 H.Shirouzu		mainwin.cpp	ver3.13";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2004-09-15(Wed)
@@ -489,6 +489,18 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 	hAccel = LoadAccelerators(TApp::GetInstance(), (LPCSTR)IDR_ACCEL);
 	SetSize();
 
+	taskbarList = NULL;
+
+	if (IsWin7()) {
+		SetWinAppId(hWnd, L"FastCopy");
+		::CoCreateInstance(CLSID_TaskbarList, 0, CLSCTX_INPROC_SERVER, IID_ITaskbarList,
+			(void **)&taskbarList);
+		if (taskbarList) {
+			taskbarList->SetProgressValue(hWnd, 0, 100);
+			taskbarList->SetProgressState(hWnd, TBPF_NORMAL);
+		}
+	}
+
 	TaskBarCreateMsg = ::RegisterWindowMessage("TaskbarCreated");
 
 	// メッセージセット
@@ -557,18 +569,6 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 	}
 
 	if (*cfg.statusFont) StatusEditSetup();
-
-	taskbarList = NULL;
-
-	if (IsWin7()) {
-		SetWinAppId(hWnd, L"FastCopy");
-		::CoCreateInstance(CLSID_TaskbarList, 0, CLSCTX_INPROC_SERVER, IID_ITaskbarList,
-			(void **)&taskbarList);
-		if (taskbarList) {
-			taskbarList->SetProgressValue(hWnd, 0, 100);
-			taskbarList->SetProgressState(hWnd, TBPF_NORMAL);
-		}
-	}
 
 	// command line mode
 	if (orgArgc > 1) {
