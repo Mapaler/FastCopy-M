@@ -12,8 +12,9 @@ After Vista support new Shell common file dialog (Easy-to-use, and can select fo
 ![Folder select](http://ww3.sinaimg.cn/large/6c84b2d6gw1ewei65dy7bj20li0g8tdj.jpg)
 ![File select](http://ww3.sinaimg.cn/large/6c84b2d6gw1ewei561xzhj20kv0fu0wz.jpg)
 
-* 主界面复制时图标也显示动画，并允许修改动画总帧数<br />
+* 主界面复制时图标也显示动画，并允许修改动画总帧数。<br />
 The main window icon displayed animation when runing copy process. And allows to modify the total number of animation frames.<br />
+图标来自(Icon from)：[(C75)[迷走ポタージュ]東方籠奴抄 - オプティカル セロファン](http://mesopota.net/roadshow/crossfade.html)<br />
 ![Main window icon animation](http://ww3.sinaimg.cn/large/6c84b2d6gw1ewbcz4bxdbj20b00hnwhb.jpg)
 
 * 支持调用网络URL作为帮助文件，资源文件内“IDS_FASTCOPYHELP”修改为网页url即可。<br />
