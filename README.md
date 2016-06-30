@@ -1,6 +1,6 @@
 ﻿FastCopy-M
 ===========
-"M" is Multilanguage
+"M" is Multilanguage or Mapaler
 
 ## FastCopy-M feature | FastCopy-M特点
 
