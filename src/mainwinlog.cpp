@@ -27,7 +27,7 @@ BOOL TMainDlg::StartFileLog()
 	if (fileLogMode == NO_FILELOG || (!isListLog && IsListing())) return FALSE;
 
 	if (fileLogMode == AUTO_FILELOG || wcschr(fileLogPath, '\\') == 0) {
-		MakePathW(logDir, cfg.userDir, GetLoadStrW(IDS_FILELOG_SUBDIR));
+		MakePathW(logDir, cfg.userDir, LoadStrW(IDS_FILELOG_SUBDIR));
 		if (::GetFileAttributesW(logDir) == 0xffffffff)
 			::CreateDirectoryW(logDir, NULL);
 
@@ -40,7 +40,7 @@ BOOL TMainDlg::StartFileLog()
 	if (fileLogMode == AUTO_FILELOG || *fileLogPath == 0) {
 		SYSTEMTIME	st = startTm;
 		for (int i=0; i < 100; i++) {
-			swprintf(wbuf, GetLoadStrW(IDS_FILELOGNAME),
+			swprintf(wbuf, LoadStrW(IDS_FILELOGNAME),
 				st.wYear, st.wMonth, st.wDay, st.wHour,
 				st.wMinute, st.wSecond, i);
 			MakePathW(fileLogPath, logDir, wbuf);
@@ -146,7 +146,7 @@ void TMainDlg::WriteErrLogAtStart()
 
 	if (!errBufOffset) {
 		DWORD	len;
-		char	*msg = GetLoadStr(IDS_ErrLog_Initialize); //Initialize Error (Can't alloc memory or create/access DestDir)\r\n
+		char	*msg = LoadStr(IDS_ErrLog_Initialize); //Initialize Error (Can't alloc memory or create/access DestDir)\r\n
 
 		::WriteFile(hErrLog, msg, (DWORD)strlen(msg), &len, 0);
 	}
@@ -201,7 +201,7 @@ void TMainDlg::WriteLogHeader(HANDLE hFile, BOOL add_filelog)
 		, head_start
 		, GetVersionStr()
 		, GetVerAdminStr()
-		, cfg.isUtf8Log ? AtoU8s(GetLoadStr(IDS_Log_StartAt)) : GetLoadStr(IDS_Log_StartAt) //start at
+		, cfg.isUtf8Log ? AtoU8s(LoadStr(IDS_Log_StartAt)) : LoadStr(IDS_Log_StartAt) //start at
 		, startTm.wYear
 		, startTm.wMonth
 		, startTm.wDay
@@ -217,7 +217,7 @@ void TMainDlg::WriteLogHeader(HANDLE hFile, BOOL add_filelog)
 
 	if (add_filelog && *fileLogPath) {
 		len = sprintf(buf, "<%s> %s\r\n"
-			, cfg.isUtf8Log ? AtoU8s(GetLoadStr(IDS_Log_FileLog)) : GetLoadStr(IDS_Log_FileLog) //FileLog
+			, cfg.isUtf8Log ? AtoU8s(LoadStr(IDS_Log_FileLog)) : LoadStr(IDS_Log_FileLog) //FileLog
 			, cfg.isUtf8Log ? WtoU8s(fileLogPath) : WtoAs(fileLogPath)
 			);
 		::WriteFile(hFile, buf, len, &len, 0);
@@ -226,7 +226,7 @@ void TMainDlg::WriteLogHeader(HANDLE hFile, BOOL add_filelog)
 	if (finActIdx >= 1) {
 		const WCHAR	*title = cfg.finActArray[finActIdx]->title;
 		len = sprintf(buf, "<%s> %s\r\n%s\r\n"
-			, cfg.isUtf8Log ? AtoU8s(GetLoadStr(IDS_Log_PostPrc)) : GetLoadStr(IDS_Log_PostPrc) //PostPrc
+			, cfg.isUtf8Log ? AtoU8s(LoadStr(IDS_Log_PostPrc)) : LoadStr(IDS_Log_PostPrc) //PostPrc
 			, cfg.isUtf8Log ? WtoU8s(title) : WtoAs(title)
 			, head_end
 			);
@@ -254,7 +254,7 @@ BOOL TMainDlg::WriteLogFooter(HANDLE hFile)
 	if (errBufOffset == 0 && ti.total.errFiles == 0 && ti.total.errDirs == 0)
 		len += sprintf(buf + len, "%s%s\r\n"
 			, hFile == hFileLog ? "\r\n" : ""
-			, cfg.isUtf8Log ? AtoU8s(GetLoadStr(IDS_Log_NoErrors)) : GetLoadStr(IDS_Log_NoErrors) //No Errors
+			, cfg.isUtf8Log ? AtoU8s(LoadStr(IDS_Log_NoErrors)) : LoadStr(IDS_Log_NoErrors) //No Errors
 			);
 
 	len += sprintf(buf + len, "\r\n");
@@ -266,7 +266,7 @@ BOOL TMainDlg::WriteLogFooter(HANDLE hFile)
 	//len += GetDlgItemText(STATUS_EDIT, buf + len, sizeof(buf) - len); //记录速度信息等
 
 	len += sprintf(buf + len, "\r\n\r\n%s : "
-		, cfg.isUtf8Log ? AtoU8s(GetLoadStr(IDS_Log_Result)) : GetLoadStr(IDS_Log_Result) //Result
+		, cfg.isUtf8Log ? AtoU8s(LoadStr(IDS_Log_Result)) : LoadStr(IDS_Log_Result) //Result
 		);
 
 	len2 += GetDlgItemText(ERRSTATUS_STATIC, buf2 + len2, sizeof(buf2) - len2);

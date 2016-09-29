@@ -1,9 +1,9 @@
 ﻿/* static char *mainwin_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		mainwin.h	Ver3.10"; */
+	"@(#)Copyright (C) 2004-2015 H.Shirouzu		mainwin.h	Ver3.20"; */
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-11-29(Sun)
+	Update					: 2016-09-27(Tue)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-16
@@ -62,10 +62,6 @@ struct CopyInfo {
 	FastCopy::OverWrite	overWrite;
 };
 
-//#ifdef _WinXP
-//#define MAX_NORMAL_FASTCOPY_ICON	6 //动态图标个数
-//#endif
-//因为define的意义是编译时替换代码中文字而非产生const常量，因此不需要修改也可以使用。
 #define FCNORMAL_ICON_IDX			0
 #define FCWAIT_ICON_IDX				MAX_NORMAL_FASTCOPY_ICON
 #define MAX_FASTCOPY_ICON			MAX_NORMAL_FASTCOPY_ICON + 1
@@ -88,12 +84,8 @@ protected:
 	int				orgArgc;
 	WCHAR			**orgArgv;
 	Cfg				cfg;
-//#ifdef _WinXP
-//	HICON			hMainIcon[MAX_FASTCOPY_ICON];
-//#else
 	int				MAX_NORMAL_FASTCOPY_ICON; //动态图标个数
 	HICON			*hMainIcon;
-//#endif
 	CopyInfo		*copyInfo;
 	int				finActIdx;
 	int				doneRatePercent;
@@ -105,11 +97,12 @@ protected:
 	AutoCloseLevel autoCloseLevel;
 	BOOL		isTaskTray;
 	BOOL		speedLevel;
+	int			finishNotify;
 
 	BOOL		noConfirmDel;
 	BOOL		noConfirmStop;
 	UINT		diskMode;
-	BOOL		isShellExt;
+	enum		{ SHELL_NONE, SHELL_ADMIN, SHELL_USER } shellMode;
 	BOOL		isInstaller;
 	BOOL		isNetPlaceSrc;
 	int			skipEmptyDir;
@@ -124,6 +117,7 @@ protected:
 	BOOL		isReparse;
 	BOOL		isLinkDest;
 	int			maxLinkHash;
+	int			maxTempRunNum;	// 0以外は /force_start=N での一時制限
 	BOOL		isReCreate;
 	BOOL		isExtendFilter;
 	BOOL		resultStatus;
@@ -143,6 +137,7 @@ protected:
 	DWORD RunasShareSize() {
 		return offsetof(TMainDlg, isRunAsStart) - offsetof(TMainDlg, autoCloseLevel);
 	}
+	int			MaxRunNum() { return maxTempRunNum ? maxTempRunNum : cfg.maxRunNum; }
 
 	// Register to dlgItems in SetSize()
 	enum {	srcbutton_item=0, dstbutton_item, srccombo_item, dstcombo_item,
@@ -151,8 +146,8 @@ protected:
 			owdel_item, acl_item, stream_item, speed_item, speedstatic_item, samedrv_item,
 			incstatic_item, filterhelp_item, excstatic_item, inccombo_item, exccombo_item,
 			filter_item,
-//			fromdate_static, todate_static, minsize_static, maxsize_static,
-//			fromdate_combo, todate_combo, minsize_combo, maxsize_combo,
+			fdatestatic_item, todatestatic_item, minsizestatic_item, maxsizestatic_item,
+			fdatecombo_item,  todatecombo_item,  minsizecombo_item,  maxsizecombo_item,
 			path_item, errstatic_item, errstatus_item, erredit_item, max_dlgitem };
 
 	int			listBufOffset;
@@ -189,7 +184,6 @@ protected:
 
 	TAboutDlg		aboutDlg;
 	TSetupDlg		setupDlg;
-	TShellExtDlg	shellExtDlg;
 	TJobDlg			jobDlg;
 	TFinActDlg		finActDlg;
 	TEditSub		pathEdit;

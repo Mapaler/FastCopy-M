@@ -1,9 +1,9 @@
 ﻿/* static char *fastcopy_id = 
-	"@(#)Copyright (C) 2004-2016 H.Shirouzu		fastcopy.h	Ver3.12"; */
+	"@(#)Copyright (C) 2004-2016 H.Shirouzu		fastcopy.h	Ver3.20"; */
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2016-01-02(Sat)
+	Update					: 2016-09-27(Tue)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-09
@@ -169,8 +169,8 @@ struct FileStat {
 	int			eadSize;
 	int			repSize;
 
-	// md5/sha1 digest
-	BYTE		digest[SHA1_SIZE];
+	// md5/sha1/sha256 digest
+	BYTE		digest[SHA256_SIZE];
 	WCHAR		cFileName[2];	// 2 == dummy
 
 	int64	FileSize() { return *(int64 *)&nFileSizeLow; } // Low/Highの順序
@@ -272,8 +272,6 @@ public:
 		RESTORE_HARDLINK	=	0x00040000,
 		DEL_BEFORE_CREATE	=	0x00080000,
 		DELDIR_WITH_FILTER	=	0x00100000,
-		VERIFY_MD5			=	0x00200000,
-		VERIFY_FILE			=	0x00400000,
 		WRITESHARE_OPEN		=	0x00800000,
 		//
 		LISTING				=	0x01000000,
@@ -282,6 +280,12 @@ public:
 		REPORT_ACL_ERROR	=	0x20000000,
 		REPORT_STREAM_ERROR	=	0x40000000,
 		//
+	};
+	enum VerifyFlags {
+		VERIFY_MD5			=	0x00000001,
+		VERIFY_SHA1			=	0x00000002,
+		VERIFY_SHA256		=	0x00000004,
+		VERIFY_FILE			=	0x00001000,
 	};
 	enum FileLogFlags {
 		FILELOG_TIMESTAMP	=	0x00000001,
@@ -297,6 +301,7 @@ public:
 		Mode	mode;			// (I/ )
 		OverWrite overWrite;	// (I/ )
 		int		flags;			// (I/ )
+		int		verifyFlags;	// (I/ )
 		int64	timeDiffGrace;	// (I )
 		int		fileLogFlags;	// (I/ )
 		int		debugFlags;		// (I/ )	// 1: timestamp debug
@@ -307,6 +312,7 @@ public:
 		DWORD	maxOvlNum;		// (I/ )
 		int		maxAttrSize;	// (I/ )
 		int		maxDirSize;		// (I/ )
+		int		minSectorSize;	// (I/ ) 最小セクタサイズ
 		int		nbMinSizeNtfs;	// (I/ ) FILE_FLAG_NO_BUFFERING でオープンする最小サイズ
 		int		nbMinSizeFat;	// (I/ ) FILE_FLAG_NO_BUFFERING でオープンする最小サイズ (FAT用)
 		int		maxLinkHash;	// (I/ ) Dest Hardlink 用 hash table サイズ
@@ -345,8 +351,8 @@ public:
 	BOOL Start(TransInfo *ti);
 	BOOL End(void);
 
-	BOOL TakeExclusivePriv(bool is_force=FALSE, ShareInfo::CheckInfo *ci=NULL) {
-		return shareInfo.TakeExclusive(useDrives, info.maxRunNum, is_force, ci);
+	BOOL TakeExclusivePriv(int force_mode=0, ShareInfo::CheckInfo *ci=NULL) {
+		return shareInfo.TakeExclusive(useDrives, info.maxRunNum, force_mode, ci);
 	}
 	BOOL ReleaseExclusivePriv() { return shareInfo.ReleaseExclusive(); }
 	BOOL IsTakeExclusivePriv(void) { return shareInfo.IsTaken(); }
@@ -426,7 +432,7 @@ protected:
 		int64		wTime;
 		DWORD		dwAttr;
 		enum		Status { OK, NG, PASS } status;
-		BYTE		digest[SHA1_SIZE];
+		BYTE		digest[SHA256_SIZE];
 		int			pathLen;
 		WCHAR		path[1];
 	};
@@ -437,7 +443,7 @@ protected:
 		DWORD		dwAttr;
 		enum		Status { INIT, CONT, DONE, PRE_ERR, ERR, PASS, FIN } status;
 		int			dataSize;
-		BYTE		digest[SHA1_SIZE];
+		BYTE		digest[SHA256_SIZE];
 		BYTE		*data;
 		WCHAR		path[1]; // さらに dstSector境界後にデータが続く
 	};
@@ -502,6 +508,10 @@ protected:
 	BOOL	enableAcl;
 	BOOL	enableStream;
 	BOOL	enableBackupPriv;
+
+	FINDEX_INFO_LEVELS
+			findInfoLv; // FindFirstFileEx用info level
+	DWORD	findFlags;  // FindFirstFileEx用flags
 
 	// セクタ情報など
 	int		srcSectorSize;
@@ -602,7 +612,7 @@ protected:
 	public:
 		DigestBuf() : TDigest() {}
 		VBuf	buf;
-		BYTE	val[SHA1_SIZE];
+		BYTE	val[SHA256_SIZE];
 	};
 	DigestBuf	srcDigest;
 	DigestBuf	dstDigest;
@@ -618,7 +628,7 @@ protected:
 
 	DataList	digestList;	// ハッシュ/Open記録（WriteThread のみ利用）
 	bool IsUsingDigestList() {
-		return (info.flags & VERIFY_FILE) && (info.flags & LISTING_ONLY) == 0;
+		return (info.verifyFlags & VERIFY_FILE) && (info.flags & LISTING_ONLY) == 0;
 	}
 	bool IsReparseEx(DWORD attr) {
 		return IsReparse(attr) && (info.flags & REPARSE_AS_NORMAL) == 0;

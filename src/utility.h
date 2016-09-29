@@ -1,9 +1,9 @@
 ﻿/* static char *utility_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		utility.h	Ver3.05"; */
+	"@(#)Copyright (C) 2004-2016 H.Shirouzu		utility.h	Ver3.20"; */
 /* ========================================================================
 	Project  Name			: Utility
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-09-23(Wed)
+	Update					: 2016-09-27(Tue)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */

@@ -88,7 +88,7 @@ http://www.mapaler.com/fastcopy-m/
 http://ipmsg.org/tools/fastcopy.html
  
 ##Official License | FastCopy官方许可
-FastCopy ver3.0 Copyright(C) 2004-2015 by SHIROUZU Hiroaki
+FastCopy ver3.2 Copyright(C) 2004-2016 by SHIROUZU Hiroaki
 
 This program is free software. You can redistribute it and/or modify it under the GNU General Public License version 3(GPLv3).<br />
 [license-gpl3.txt](http://ipmsg.org/tools/license-gpl3.txt)

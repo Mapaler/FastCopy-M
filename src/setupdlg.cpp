@@ -1,9 +1,9 @@
 ﻿static char *setuplg_id = 
-	"@(#)Copyright (C) 2015 H.Shirouzu		setupdlg.cpp	ver3.10";
+	"@(#)Copyright (C) 2015-2016 H.Shirouzu		setupdlg.cpp	ver3.20";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2015-07-17(Fri)
-	Update					: 2015-11-29(Sun)
+	Update					: 2016-09-28(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-08-13
@@ -49,23 +49,23 @@ BOOL TSetupSheet::CheckData()
 	if (resId == MAIN_SHEET) {
 		if (GetDlgItemInt(BUFSIZE_EDIT) <
 			setupDlg->GetSheet(IO_SHEET)->GetDlgItemInt(MAXTRANS_EDIT) * BUFIO_SIZERATIO) {
-			MessageBox(GetLoadStr(IDS_SMALLBUF_SETERR));
+			MessageBox(LoadStr(IDS_SMALLBUF_SETERR));
 			return	FALSE;
 		}
 		return	TRUE;
 	}
 	else if (resId == IO_SHEET) {
 		if (GetDlgItemInt(MAXTRANS_EDIT) <= 0 || GetDlgItemInt(MAXOVL_EDIT) <= 0) {
-			MessageBox(GetLoadStr(IDS_SMALLVAL_SETERR));
+			MessageBox(LoadStr(IDS_SMALLVAL_SETERR));
 			return	FALSE;
 		}
 		if (GetDlgItemInt(MAXTRANS_EDIT) % GetDlgItemInt(MAXOVL_EDIT)) {
-			MessageBox(GetLoadStr(IDS_MAXOVL_SETERR));
+			MessageBox(LoadStr(IDS_MAXOVL_SETERR));
 			return	FALSE;
 		}
 		if (GetDlgItemInt(MAXTRANS_EDIT) * BUFIO_SIZERATIO >
 			setupDlg->GetSheet(MAIN_SHEET)->GetDlgItemInt(BUFSIZE_EDIT)) {
-			MessageBox(GetLoadStr(IDS_BIGIO_SETERR));
+			MessageBox(LoadStr(IDS_BIGIO_SETERR));
 			return	FALSE;
 		}
 		return	TRUE;
@@ -76,7 +76,7 @@ BOOL TSetupSheet::CheckData()
 		for (int i=0; i < sizeof(buf) && (c = buf[i]); i++) {
 			if (c >= 'a' && c <= 'z') buf[i] = c = toupper(c);
 			if ((c < 'A' || c > 'Z' || strchr(buf+i+1, c)) && c != ',' || c == last_c) {
-				MessageBox(GetLoadStr(IDS_DRVGROUP_SETERR));
+				MessageBox(LoadStr(IDS_DRVGROUP_SETERR));
 				return	FALSE;
 			}
 			last_c = c;
@@ -85,7 +85,7 @@ BOOL TSetupSheet::CheckData()
 	}
 	else if (resId == PARALLEL_SHEET) {
 		if (GetDlgItemInt(MAXRUN_EDIT) <= 0) {
-			MessageBox(GetLoadStr(IDS_SMALLVAL_SETERR));
+			MessageBox(LoadStr(IDS_SMALLVAL_SETERR));
 			return	FALSE;
 		}
 		return	TRUE;
@@ -134,15 +134,20 @@ BOOL TSetupSheet::SetData()
 	else if (resId == IO_SHEET) {
 		SetDlgItemInt(MAXTRANS_EDIT, cfg->maxTransSize);
 		SetDlgItemInt(MAXOVL_EDIT, cfg->maxOvlNum);
+		if (cfg->minSectorSize == 0 || cfg->minSectorSize == 4096) {
+			CheckDlgButton(SECTOR4096_CHECK, cfg->minSectorSize == 4096);
+		} else {
+			::EnableWindow(GetDlgItem(SECTOR4096_CHECK), FALSE);
+		}
 		CheckDlgButton(READOSBUF_CHECK, cfg->isReadOsBuf);
 		SetDlgItemInt(NONBUFMINNTFS_EDIT, cfg->nbMinSizeNtfs);
 		SetDlgItemInt(NONBUFMINFAT_EDIT, cfg->nbMinSizeFat);
 	}
 	else if (resId == PHYSDRV_SHEET) {
 		SetDlgItemText(DRIVEMAP_EDIT, cfg->driveMap);
-		SendDlgItemMessage(NETDRVMODE_COMBO, CB_ADDSTRING, 0, (LPARAM)GetLoadStr(IDS_NETDRV_UNC));
-		SendDlgItemMessage(NETDRVMODE_COMBO, CB_ADDSTRING, 0, (LPARAM)GetLoadStr(IDS_NETDRV_SVR));
-		SendDlgItemMessage(NETDRVMODE_COMBO, CB_ADDSTRING, 0, (LPARAM)GetLoadStr(IDS_NETDRV_ALL));
+		SendDlgItemMessage(NETDRVMODE_COMBO, CB_ADDSTRING, 0, (LPARAM)LoadStr(IDS_NETDRV_UNC));
+		SendDlgItemMessage(NETDRVMODE_COMBO, CB_ADDSTRING, 0, (LPARAM)LoadStr(IDS_NETDRV_SVR));
+		SendDlgItemMessage(NETDRVMODE_COMBO, CB_ADDSTRING, 0, (LPARAM)LoadStr(IDS_NETDRV_ALL));
 		SendDlgItemMessage(NETDRVMODE_COMBO, CB_SETCURSEL, cfg->netDrvMode, 0);
 	}
 	else if (resId == PARALLEL_SHEET) {
@@ -183,6 +188,7 @@ BOOL TSetupSheet::SetData()
 		CheckDlgButton(TASKBAR_CHECK, cfg->taskbarMode);
 		CheckDlgButton(FINISH_CHECK, (cfg->finishNotify & 1));
 		CheckDlgButton(SPAN1_RADIO + cfg->infoSpan, 1);
+		CheckDlgButton(PREVENTSLEEP_CHECK, cfg->preventSleep);
 
 		if ((cfg->lcid != -1 || GetSystemDefaultLCID() != 0x409)) { // == 0x411 改成 != 0x409 让所有语言都可以切换到英文
 			::ShowWindow(GetDlgItem(LCID_CHECK), SW_SHOW);
@@ -248,6 +254,9 @@ BOOL TSetupSheet::GetData()
 	else if (resId == IO_SHEET) {
 		cfg->maxTransSize  = GetDlgItemInt(MAXTRANS_EDIT);
 		cfg->maxOvlNum     = GetDlgItemInt(MAXOVL_EDIT);
+		if (cfg->minSectorSize == 0 || cfg->minSectorSize == 4096) {
+			cfg->minSectorSize = IsDlgButtonChecked(SECTOR4096_CHECK) ? 4096 : 0;
+		}
 		cfg->isReadOsBuf   = IsDlgButtonChecked(READOSBUF_CHECK);
 		cfg->nbMinSizeNtfs = GetDlgItemInt(NONBUFMINNTFS_EDIT);
 		cfg->nbMinSizeFat  = GetDlgItemInt(NONBUFMINFAT_EDIT);
@@ -299,6 +308,8 @@ BOOL TSetupSheet::GetData()
 		cfg->infoSpan    =	IsDlgButtonChecked(SPAN1_RADIO) ? 0 :
 							IsDlgButtonChecked(SPAN2_RADIO) ? 1 : 2;
 
+		cfg->preventSleep = IsDlgButtonChecked(PREVENTSLEEP_CHECK);
+
 		if (::IsWindowEnabled(GetDlgItem(LCID_CHECK))) {
 			cfg->lcid = IsDlgButtonChecked(LCID_CHECK) ? 0x409 : -1;
 		}
@@ -340,7 +351,7 @@ BOOL TSetupSheet::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hWndCtl)
 		else if (resId == MISC_SHEET) {
 			section = L"#setting_misc";
 		}
-		ShowHelpW(NULL, cfg->execDir, GetLoadStrW(IDS_FASTCOPYHELP), section);
+		ShowHelpW(NULL, cfg->execDir, LoadStrW(IDS_FASTCOPYHELP), section);
 		return	TRUE;
 	}
 	return	FALSE;
@@ -364,7 +375,7 @@ BOOL TSetupDlg::EvCreate(LPARAM lParam)
 
 	for (int i=0; i < MAX_SETUP_SHEET; i++) {
 		sheet[i].Create(SETUP_SHEET1 + i, cfg, this);
-		setup_list.SendMessage(LB_ADDSTRING, 0, (LPARAM)GetLoadStr(IDS_SETUP_SHEET1 + i));
+		setup_list.SendMessage(LB_ADDSTRING, 0, (LPARAM)LoadStr(IDS_SETUP_SHEET1 + i));
 	}
 	SetSheet();
 
@@ -448,41 +459,54 @@ void TSetupDlg::SetSheet(int idx)
 #endif
 #define REGISTER_PROC		"DllRegisterServer"
 #define UNREGISTER_PROC		"DllUnregisterServer"
+#define REGISTERUSER_PROC	"DllRegisterServerUser"
+#define UNREGISTERUSER_PROC	"DllUnregisterServerUser"
 #define ISREGISTER_PROC		"IsRegistServer"
 #define SETMENUFLAGS_PROC	"SetMenuFlags"
 #define GETMENUFLAGS_PROC	"GetMenuFlags"
-#define UPDATEDLL_PROC		"UpdateDll"
+#define SETADMINMODE_PROC	"SetAdminMode"
 
 BOOL ShellExt::Load(WCHAR *parent_dir, WCHAR *dll_name)
 {
-	if (hShellExtDll) UnLoad();
+	if (hShDll) {
+		UnLoad();
+	}
 
 	WCHAR	path[MAX_PATH];
 	MakePathW(path, parent_dir, dll_name);
-	if ((hShellExtDll = TLoadLibraryW(path)) == NULL)
+	if ((hShDll = TLoadLibraryW(path)) == NULL)
 		return	FALSE;
 
-	RegisterDllProc		= (HRESULT (WINAPI *)(void))GetProcAddress(hShellExtDll, REGISTER_PROC);
-	UnRegisterDllProc	= (HRESULT (WINAPI *)(void))GetProcAddress(hShellExtDll, UNREGISTER_PROC);
-	IsRegisterDllProc	= (BOOL (WINAPI *)(void))GetProcAddress(hShellExtDll, ISREGISTER_PROC);
-	SetMenuFlagsProc	= (BOOL (WINAPI *)(int))GetProcAddress(hShellExtDll, SETMENUFLAGS_PROC);
-	GetMenuFlagsProc	= (int (WINAPI *)(void))GetProcAddress(hShellExtDll, GETMENUFLAGS_PROC);
-	UpdateDllProc		= (BOOL (WINAPI *)(void))GetProcAddress(hShellExtDll, UPDATEDLL_PROC);
+	RegisterDllProc  = (HRESULT (WINAPI *)(void))GetProcAddress(hShDll, REGISTER_PROC);
+	UnRegisterDllProc= (HRESULT (WINAPI *)(void))GetProcAddress(hShDll, UNREGISTER_PROC);
+	RegisterDllUserProc  = (HRESULT (WINAPI *)(void))GetProcAddress(hShDll, REGISTERUSER_PROC);
+	UnRegisterDllUserProc= (HRESULT (WINAPI *)(void))GetProcAddress(hShDll, UNREGISTERUSER_PROC);
+	IsRegisterDllProc= (BOOL (WINAPI *)(BOOL))GetProcAddress(hShDll, ISREGISTER_PROC);
+	SetMenuFlagsProc = (BOOL (WINAPI *)(BOOL, int))GetProcAddress(hShDll, SETMENUFLAGS_PROC);
+	GetMenuFlagsProc = (int (WINAPI *)(BOOL))GetProcAddress(hShDll, GETMENUFLAGS_PROC);
+	SetAdminModeProc = (BOOL (WINAPI *)(BOOL))GetProcAddress(hShDll, SETADMINMODE_PROC);
+
+// ver違いで proc error になるが、
+// install時に overwrite failを検出して、リネームする
 
 	if (!RegisterDllProc || !UnRegisterDllProc || !IsRegisterDllProc
-	|| !SetMenuFlagsProc || !GetMenuFlagsProc || !UpdateDllProc) {
-		::FreeLibrary(hShellExtDll);
-		hShellExtDll = NULL;
+	|| !RegisterDllUserProc || !UnRegisterDllUserProc
+	|| !SetMenuFlagsProc || !GetMenuFlagsProc || !SetAdminModeProc) {
+		::FreeLibrary(hShDll);
+		hShDll = NULL;
 		return	FALSE;
 	}
+
+	SetAdminModeProc(isAdmin);
+
 	return	TRUE;
 }
 
 BOOL ShellExt::UnLoad(void)
 {
-	if (hShellExtDll) {
-		::FreeLibrary(hShellExtDll);
-		hShellExtDll = NULL;
+	if (hShDll) {
+		::FreeLibrary(hShDll);
+		hShDll = NULL;
 	}
 	return	TRUE;
 }
@@ -490,9 +514,12 @@ BOOL ShellExt::UnLoad(void)
 /*
 	ShellExt Dialog初期化処理
 */
-TShellExtDlg::TShellExtDlg(Cfg *_cfg, TWin *_parent) : TDlg(SHELLEXT_DIALOG, _parent)
+TShellExtDlg::TShellExtDlg(Cfg *_cfg, BOOL _isAdmin, TWin *_parent)
+	: shellExt(_isAdmin), TDlg(SHELLEXT_DIALOG, _parent)
 {
-	cfg = _cfg;
+	cfg     = _cfg;
+	isAdmin = _isAdmin;
+	shCfg   = isAdmin ? &cfg->shAdmin : &cfg->shUser;
 }
 
 /*
@@ -519,34 +546,35 @@ BOOL TShellExtDlg::EvCreate(LPARAM lParam)
 		MoveWindow((x < 0) ? 0 : x % (cx - xsize), (y < 0) ? 0 : y % (cy - ysize),
 			xsize, ysize, FALSE);
 	}
-	else
+	else {
 		MoveWindow(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, FALSE);
+	}
 
 	return	TRUE;
 }
 
 BOOL TShellExtDlg::ReflectStatus(void)
 {
-	BOOL	isRegister = shellExt.IsRegisterDllProc();
+	BOOL	isRegister = shellExt.IsRegisterDllProc(isAdmin);
 	int		flags;
 
 	SetDlgItemText(IDSHELLEXT_OK, isRegister ?
-		GetLoadStr(IDS_SHELLEXT_MODIFY) : GetLoadStr(IDS_SHELLEXT_EXEC));
+		LoadStr(IDS_SHELLEXT_MODIFY) : LoadStr(IDS_SHELLEXT_EXEC));
 	::EnableWindow(GetDlgItem(IDSHELLEXT_CANCEL), isRegister);
 
-	if ((flags = shellExt.GetMenuFlagsProc()) == -1) {
+	if ((flags = shellExt.GetMenuFlagsProc(isAdmin)) == -1) {
 		flags = (SHEXT_RIGHT_COPY|SHEXT_RIGHT_DELETE|SHEXT_DD_COPY|SHEXT_DD_MOVE);
 		// for old shellext
 	}
-	if ((flags & SHEXT_MENUFLG_EX) == 0) {	// old shellext
-		::EnableWindow(GetDlgItem(RIGHT_PASTE_CHECK), FALSE);
-	}
+//	if ((flags & SHEXT_MENUFLG_EX) == 0) {	// old shellext
+//		::EnableWindow(GetDlgItem(RIGHT_PASTE_CHECK), FALSE);
+//	}
 
 	if (flags & SHEXT_ISSTOREOPT) {
-		cfg->shextNoConfirm		= (flags & SHEXT_NOCONFIRM) ? TRUE : FALSE;
-		cfg->shextNoConfirmDel	= (flags & SHEXT_NOCONFIRMDEL) ? TRUE : FALSE;
-		cfg->shextTaskTray		= (flags & SHEXT_TASKTRAY) ? TRUE : FALSE;
-		cfg->shextAutoClose		= (flags & SHEXT_AUTOCLOSE) ? TRUE : FALSE;
+		shCfg->noConfirm	= (flags & SHEXT_NOCONFIRM) ? TRUE : FALSE;
+		shCfg->noConfirmDel	= (flags & SHEXT_NOCONFIRMDEL) ? TRUE : FALSE;
+		shCfg->taskTray		= (flags & SHEXT_TASKTRAY) ? TRUE : FALSE;
+		shCfg->autoClose	= (flags & SHEXT_AUTOCLOSE) ? TRUE : FALSE;
 	}
 
 	CheckDlgButton(RIGHT_COPY_CHECK, flags & SHEXT_RIGHT_COPY);
@@ -557,13 +585,15 @@ BOOL TShellExtDlg::ReflectStatus(void)
 	CheckDlgButton(DD_MOVE_CHECK, flags & SHEXT_DD_MOVE);
 	CheckDlgButton(DD_SUBMENU_CHECK, flags & SHEXT_SUBMENU_DD);
 
-	CheckDlgButton(NOCONFIRM_CHECK, cfg->shextNoConfirm);
-	CheckDlgButton(NOCONFIRMDEL_CHECK, cfg->shextNoConfirmDel);
-	CheckDlgButton(TASKTRAY_CHECK, cfg->shextTaskTray);
-	CheckDlgButton(AUTOCLOSE_CHECK, cfg->shextAutoClose);
+	CheckDlgButton(NOCONFIRM_CHECK, shCfg->noConfirm);
+	CheckDlgButton(NOCONFIRMDEL_CHECK, shCfg->noConfirmDel);
+	CheckDlgButton(TASKTRAY_CHECK, shCfg->taskTray);
+	CheckDlgButton(AUTOCLOSE_CHECK, shCfg->autoClose);
 
-	if (!::IsUserAnAdmin()) {
-		SetDlgItemText(SHELL_STATIC, GetLoadStr(IDS_SHELLEXT_NEEDADMIN));
+	SetWindowText(LoadStr(isAdmin ? IDS_SHELLEXT_ADMIN : IDS_SHELLEXT_USER));
+
+	if (isAdmin && !::IsUserAnAdmin()) {
+		SetDlgItemText(SHELL_STATIC, LoadStr(IDS_SHELLEXT_NEEDADMIN));
 		::EnableWindow(GetDlgItem(IDSHELLEXT_OK), FALSE);
 		::EnableWindow(GetDlgItem(IDSHELLEXT_CANCEL), FALSE);
 	}
@@ -573,8 +603,9 @@ BOOL TShellExtDlg::ReflectStatus(void)
 
 BOOL TShellExtDlg::EvNcDestroy(void)
 {
-	if (shellExt.Status())
+	if (shellExt.Status()) {
 		shellExt.UnLoad();
+	}
 	return	TRUE;
 }
 
@@ -583,16 +614,17 @@ BOOL TShellExtDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hWndCtl)
 	switch (wID)
 	{
 	case IDSHELLEXT_OK: case IDSHELLEXT_CANCEL:
-		if (IsWinXP() && !::IsUserAnAdmin()) {
-			TMsgBox(this).Exec(GetLoadStr(IDS_REQUIRE_ADMIN));
+		if (isAdmin && !::IsUserAnAdmin()) {
+			TMsgBox(this).Exec(LoadStr(IDS_REQUIRE_ADMIN));
 			return	TRUE;
 		}
 		if (RegisterShellExt(wID == IDSHELLEXT_OK ? TRUE : FALSE) == FALSE) {
 			TMsgBox(this).Exec("ShellExt Error");
 		}
 		ReflectStatus();
-		if (wID == IDSHELLEXT_OK)
+		if (wID == IDSHELLEXT_OK) {
 			EndDialog(wID);
+		}
 		return	TRUE;
 
 	case IDOK: case IDCANCEL:
@@ -607,11 +639,11 @@ BOOL TShellExtDlg::RegisterShellExt(BOOL is_register)
 	if (shellExt.Status() == FALSE)
 		return	FALSE;
 
-	cfg->shextNoConfirm    = is_register && IsDlgButtonChecked(NOCONFIRM_CHECK);
-	cfg->shextNoConfirmDel = is_register && IsDlgButtonChecked(NOCONFIRMDEL_CHECK);
-	cfg->shextTaskTray     = is_register && IsDlgButtonChecked(TASKTRAY_CHECK);
-	cfg->shextAutoClose    = IsDlgButtonChecked(AUTOCLOSE_CHECK);
-	cfg->WriteIni();
+	shCfg->noConfirm    = is_register && IsDlgButtonChecked(NOCONFIRM_CHECK);
+	shCfg->noConfirmDel = is_register && IsDlgButtonChecked(NOCONFIRMDEL_CHECK);
+	shCfg->taskTray     = is_register && IsDlgButtonChecked(TASKTRAY_CHECK);
+	shCfg->autoClose    = IsDlgButtonChecked(AUTOCLOSE_CHECK);
+//	cfg->WriteIni();
 
 #ifdef _WIN64
 	if (1) {
@@ -620,11 +652,11 @@ BOOL TShellExtDlg::RegisterShellExt(BOOL is_register)
 #endif
 		WCHAR	arg[1024];
 		Wstr	cur_shell_ex(CURRENT_SHEXTDLL_EX);
-		Wstr	reg_proc(REGISTER_PROC);
-		Wstr	unreg_proc(UNREGISTER_PROC);
+		Wstr	reg_proc(isAdmin ? REGISTER_PROC : REGISTERUSER_PROC);
+		Wstr	unreg_proc(isAdmin ? UNREGISTER_PROC : UNREGISTERUSER_PROC);
 
-		swprintf(arg, L"\"%s\\%s\",%s", cfg->execDir, cur_shell_ex.Buf(),
-			is_register ? reg_proc.Buf() : unreg_proc.Buf());
+		swprintf(arg, L"\"%s\\%s\",%s %d", cfg->execDir, cur_shell_ex.Buf(),
+			is_register ? reg_proc.Buf() : unreg_proc.Buf(), isAdmin);
 
 		SHELLEXECUTEINFOW	sei = { sizeof(sei) };
 
@@ -633,25 +665,27 @@ BOOL TShellExtDlg::RegisterShellExt(BOOL is_register)
 		::ShellExecuteExW(&sei);
 	}
 
-	if (!is_register)
-		return	shellExt.UnRegisterDllProc() == S_OK ? TRUE : FALSE;
+	if (!is_register) {
+		HRESULT	hr = isAdmin ? shellExt.UnRegisterDllProc() : shellExt.UnRegisterDllUserProc();
+		return	(hr == S_OK) ? TRUE : FALSE;
+	}
 
 	int		flags = SHEXT_MENU_DEFAULT;
 
-	if ((shellExt.GetMenuFlagsProc() & SHEXT_MENUFLG_EX)) {
+//	if ((shellExt.GetMenuFlagsProc(isAdmin) & SHEXT_MENUFLG_EX)) {
 		flags |= SHEXT_ISSTOREOPT;
-		if (cfg->shextNoConfirm)	flags |=  SHEXT_NOCONFIRM;
+		if (shCfg->noConfirm)		flags |=  SHEXT_NOCONFIRM;
 		else						flags &= ~SHEXT_NOCONFIRM;
-		if (cfg->shextNoConfirmDel)	flags |=  SHEXT_NOCONFIRMDEL;
+		if (shCfg->noConfirmDel)	flags |=  SHEXT_NOCONFIRMDEL;
 		else						flags &= ~SHEXT_NOCONFIRMDEL;
-		if (cfg->shextTaskTray)		flags |=  SHEXT_TASKTRAY;
+		if (shCfg->taskTray)		flags |=  SHEXT_TASKTRAY;
 		else						flags &= ~SHEXT_TASKTRAY;
-		if (cfg->shextAutoClose)	flags |=  SHEXT_AUTOCLOSE;
+		if (shCfg->autoClose)		flags |=  SHEXT_AUTOCLOSE;
 		else						flags &= ~SHEXT_AUTOCLOSE;
-	}
-	else {	// for old shell ext
-		flags &= ~SHEXT_MENUFLG_EX;
-	}
+//	}
+//	else {	// for old shell ext
+//		flags &= ~SHEXT_MENUFLG_EX;
+//	}
 
 	if (!IsDlgButtonChecked(RIGHT_COPY_CHECK))
 		flags &= ~SHEXT_RIGHT_COPY;
@@ -674,9 +708,10 @@ BOOL TShellExtDlg::RegisterShellExt(BOOL is_register)
 	if (IsDlgButtonChecked(DD_SUBMENU_CHECK))
 		flags |= SHEXT_SUBMENU_DD;
 
-	if (shellExt.RegisterDllProc() != S_OK)
+	HRESULT	hr = isAdmin ? shellExt.RegisterDllProc() : shellExt.RegisterDllUserProc();
+	if (hr != S_OK)
 		return	FALSE;
 
-	return	shellExt.SetMenuFlagsProc(flags);
+	return	shellExt.SetMenuFlagsProc(isAdmin, flags);
 }
 

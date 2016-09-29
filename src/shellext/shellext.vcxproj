@@ -106,7 +106,7 @@
       </Optimization>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>crypt32.lib;winmm.lib;Shlwapi.lib;..\..\Output\$(Configuration)\$(PlatformShortName)\lib\tlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>crypt32.lib;winmm.lib;Shlwapi.lib;..\..\Output\$(Configuration)\$(PlatformShortName)\lib\tlib_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <ModuleDefinitionFile>shellext.def</ModuleDefinitionFile>
     </Link>

@@ -1,9 +1,9 @@
 ﻿static char *cfg_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		cfg.cpp	ver3.10";
+	"@(#)Copyright (C) 2004-2016 H.Shirouzu		cfg.cpp	ver3.20";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-11-29(Sun)
+	Update					: 2016-09-28(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-08-23
@@ -61,10 +61,11 @@
 #define MAXOPENFILES_KEY		"max_openfiles"
 #define MAXATTRSIZE_KEY			"max_attrsize"
 #define MAXDIRSIZE_KEY			"max_dirsize"
-#define SHEXTAUTOCLOSE_KEY		"shext_autoclose"
-#define SHEXTTASKTRAY_KEY		"shext_tasktray"
-#define SHEXTNOCONFIRM_KEY		"shext_dd_noconfirm"
-#define SHEXTNOCONFIRMDEL_KEY	"shext_right_noconfirm"
+#define MINSECTOR_KEY			"min_sectorsize"
+//#define SHEXTAUTOCLOSE_KEY	"shext_autoclose"
+//#define SHEXTTASKTRAY_KEY		"shext_tasktray"
+//#define SHEXTNOCONFIRM_KEY	"shext_dd_noconfirm"
+//#define SHEXTNOCONFIRMDEL_KEY	"shext_right_noconfirm"
 #define EXECCONRIM_KEY			"exec_confirm"
 #define FORCESTART_KEY			"force_start"
 #define LCID_KEY				"lcid"
@@ -80,6 +81,7 @@
 #define STREAM_KEY				"stream"
 #define VERIFY_KEY				"verify"
 #define USEMD5_KEY				"using_md5"
+#define HASHMODE_KEY			"hash_mode"
 #define NSA_KEY					"nsa_del"
 #define DELDIR_KEY				"deldir_with_filter"
 #define MOVEATTR_KEY			"move_attr"
@@ -98,6 +100,7 @@
 #define INFOSPAN_KEY			"infoSpan"
 #define STATUSFONT_KEY			"status_font"
 #define STATUSFONTSIZE_KEY		"status_fontsize"
+#define PREVENTSLEEP_KEY		"prevent_sleep"
 
 #define NONBUFMINSIZENTFS_KEY	"nonbuf_minsize_ntfs2"
 #define NONBUFMINSIZEFAT_KEY	"nonbuf_minsize_fat"
@@ -260,7 +263,9 @@ BOOL Cfg::Init(WCHAR *user_dir, WCHAR *virtual_dir)
 
 	::GetModuleFileNameW(NULL, buf, MAX_PATH);
 	::GetFullPathNameW(buf, MAX_PATH, path, &fname);
-	if (!fname) return FALSE;
+	if (!fname) {
+		return FALSE;
+	}
 
 	execPath = wcsdup(path);
 	fname[-1] = 0; // remove '\\' of dir\\fname
@@ -273,7 +278,9 @@ BOOL Cfg::Init(WCHAR *user_dir, WCHAR *virtual_dir)
 	if (IsWinVista() && TIsVirtualizedDirW(execDir)) {
 		if (user_dir) {
 			userDir = wcsdup(user_dir);
-			if (virtual_dir) virtualDir = wcsdup(virtual_dir);
+			if (virtual_dir) {
+				virtualDir = wcsdup(virtual_dir);
+			}
 		}
 		else {
 			WCHAR	virtual_store[MAX_PATH];
@@ -290,12 +297,16 @@ BOOL Cfg::Init(WCHAR *user_dir, WCHAR *virtual_dir)
 #ifdef _WIN64
 			ConvertToX86Dir(buf);
 #endif
-			if (!TMakeVirtualStorePathW(buf, virtual_store)) return FALSE;
+			if (!TMakeVirtualStorePathW(buf, virtual_store)) {
+				return FALSE;
+			}
 			virtualDir = wcsdup(virtual_store);
 		}
 		ConvertVirtualStoreConf(execDir, userDir, virtualDir);
 	}
-	if (!userDir) userDir = wcsdup(execDir);
+	if (!userDir) {
+		userDir = wcsdup(execDir);
+	}
 
 	WCHAR	ini_path[MAX_PATH];
 	MakePathW(ini_path, userDir, FASTCOPY_INI);
@@ -461,7 +472,22 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 	}
 	maxOpenFiles	= ini.GetInt(MAXOPENFILES_KEY, DEFAULT_MAXOPENFILES);
 	maxAttrSize		= ini.GetInt(MAXATTRSIZE_KEY, DEFAULT_MAXATTRSIZE);
+#ifdef WIN64
+	if (maxAttrSize < DEFAULT_MAXATTRSIZE) {	// 32bit ini ?
+		maxAttrSize = DEFAULT_MAXATTRSIZE;
+	}
+#endif
 	maxDirSize		= ini.GetInt(MAXDIRSIZE_KEY, DEFAULT_MAXDIRSIZE);
+#ifdef WIN64
+	if (maxDirSize < DEFAULT_MAXDIRSIZE) {	// 32bit ini ?
+		maxDirSize = DEFAULT_MAXDIRSIZE;
+	}
+#endif
+	minSectorSize	= ini.GetInt(MINSECTOR_KEY, 0);
+	if (minSectorSize % 512) {
+		minSectorSize = 0;
+	}
+
 	nbMinSizeNtfs	= ini.GetInt(NONBUFMINSIZENTFS_KEY, DEFAULT_NBMINSIZE_NTFS);
 	nbMinSizeFat	= ini.GetInt(NONBUFMINSIZEFAT_KEY, DEFAULT_NBMINSIZE_FAT);
 	timeDiffGrace	= ini.GetInt(TIMEDIFFGRACE_KEY, 0);
@@ -490,10 +516,14 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 	debugFlags		= ini.GetInt(DEBUGFLAGS_KEY, 0);
 	isRunasButton	= ini.GetInt(ISRUNASBUTTON_KEY, FALSE);
 	isSameDirRename	= ini.GetInt(ISSAMEDIRRENAME_KEY, TRUE);
-	shextAutoClose	= ini.GetInt(SHEXTAUTOCLOSE_KEY, TRUE);
-	shextTaskTray	= ini.GetInt(SHEXTTASKTRAY_KEY, FALSE);
-	shextNoConfirm	= ini.GetInt(SHEXTNOCONFIRM_KEY, FALSE);
-	shextNoConfirmDel = ini.GetInt(SHEXTNOCONFIRMDEL_KEY, FALSE);
+
+//	shextAutoClose	= ini.GetInt(SHEXTAUTOCLOSE_KEY, TRUE);
+//	shextTaskTray	= ini.GetInt(SHEXTTASKTRAY_KEY, FALSE);
+//	shextNoConfirm	= ini.GetInt(SHEXTNOCONFIRM_KEY, FALSE);
+//	shextNoConfirmDel = ini.GetInt(SHEXTNOCONFIRMDEL_KEY, FALSE);
+	memset(&shAdmin, 0, sizeof(shAdmin));
+	memset(&shUser,  0, sizeof(shUser));
+
 	execConfirm		= ini.GetInt(EXECCONRIM_KEY, FALSE);
 	lcid			= ini.GetInt(LCID_KEY, -1);
 	waitTick		= ini.GetInt(WAITTICK_KEY, DEFAULT_WAITTICK);
@@ -506,6 +536,7 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 	enableVerify	= ini.GetInt(VERIFY_KEY, FALSE);
 	useOverlapIo	= ini.GetInt(USEOVERLAPIO_KEY, TRUE);
 	usingMD5		= ini.GetInt(USEMD5_KEY, TRUE);
+	hashMode		= ini.GetInt(HASHMODE_KEY, usingMD5 ? 0 : 1);
 	enableNSA		= ini.GetInt(NSA_KEY, FALSE);
 	delDirWithFilter= ini.GetInt(DELDIR_KEY, FALSE);
 	enableMoveAttr	= ini.GetInt(MOVEATTR_KEY, FALSE);
@@ -520,6 +551,7 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 	taskbarMode		= ini.GetInt(TASKBARMODE_KEY, 0);
 	finishNotify	= ini.GetInt(FINISHNOTIFY_KEY, 1);
 	finishNotifyTout = ini.GetInt(FINISHNOTIFYTOUT_KEY, FINISH_NOTIFY_DEFAULT);
+	preventSleep	= ini.GetInt(PREVENTSLEEP_KEY, 1);
 
 	infoSpan		= ini.GetInt(INFOSPAN_KEY, DEFAULT_INFOSPAN);
 	if (infoSpan < 0 || infoSpan > 2) infoSpan = DEFAULT_INFOSPAN;
@@ -554,7 +586,7 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 		ini.SetSection(section_p);
 		history = (WCHAR **)calloc(maxHistory, sizeof(WCHAR *));
 		for (j=0; j < maxHistory + 30; j++) {
-			wsprintf(key, "%d", j);
+			sprintf(key, "%d", j);
 			if (j < maxHistory) {
 				if (is_filter) {
 					GetFilterStr(key, buf, wbuf.Buf());
@@ -573,7 +605,7 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 	for (i=0; i < JOB_MAX; i++) {
 		Job		job;
 
-		wsprintf(section, FMT_JOB_KEY, i);
+		sprintf(section, FMT_JOB_KEY, i);
 		ini.SetSection(section);
 
 		if (ini.GetStr(TITLE_KEY, buf, MAX_HISTORY_CHAR_BUF) <= 0)
@@ -632,7 +664,7 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 	for (i=0; i < FINACT_MAX; i++) {
 		FinAct	act;
 
-		wsprintf(buf, FMT_FINACT_KEY, i);
+		sprintf(buf, FMT_FINACT_KEY, i);
 		ini.SetSection(buf);
 
 		if (ini.GetStr(TITLE_KEY, buf, MAX_HISTORY_CHAR_BUF) <= 0)
@@ -678,12 +710,12 @@ BOOL Cfg::PostReadIni(void)
 			FinAct	act;
 			act.flags = flags_list[i] | FinAct::BUILTIN;
 			if (i >= 1) act.shutdownTime = 60;
-			act.SetString(GetLoadStrW(id_list[i]), L"", L"");
+			act.SetString(LoadStrW(id_list[i]), L"", L"");
 			AddFinActW(&act);
 		}
 		if (finActArray[i]->flags & FinAct::BUILTIN) {
 			free(finActArray[i]->title);
-			finActArray[i]->title = wcsdup(GetLoadStrW(id_list[i]));
+			finActArray[i]->title = wcsdup(LoadStrW(id_list[i]));
 		}
 	}
 
@@ -735,10 +767,10 @@ BOOL Cfg::WriteIni(void)
 //	ini.SetInt(DEBUGFLAGS_KEY, debugFlags);
 //	ini.SetInt(ISRUNASBUTTON_KEY, isRunasButton);
 	ini.SetInt(ISSAMEDIRRENAME_KEY, isSameDirRename);
-	ini.SetInt(SHEXTAUTOCLOSE_KEY, shextAutoClose);
-	ini.SetInt(SHEXTTASKTRAY_KEY, shextTaskTray);
-	ini.SetInt(SHEXTNOCONFIRM_KEY, shextNoConfirm);
-	ini.SetInt(SHEXTNOCONFIRMDEL_KEY, shextNoConfirmDel);
+//	ini.SetInt(SHEXTAUTOCLOSE_KEY, shextAutoClose);
+//	ini.SetInt(SHEXTTASKTRAY_KEY, shextTaskTray);
+//	ini.SetInt(SHEXTNOCONFIRM_KEY, shextNoConfirm);
+//	ini.SetInt(SHEXTNOCONFIRMDEL_KEY, shextNoConfirmDel);
 	ini.SetInt(EXECCONRIM_KEY, execConfirm);
 	ini.SetInt(FORCESTART_KEY, forceStart);
 	ini.SetInt(LCID_KEY, lcid);
@@ -752,6 +784,7 @@ BOOL Cfg::WriteIni(void)
 	ini.SetInt(VERIFY_KEY, enableVerify);
 	ini.SetInt(USEOVERLAPIO_KEY, useOverlapIo);
 //	ini.SetInt(USEMD5_KEY, usingMD5);
+//	ini.SetInt(HASHMODE_KEY, hashMode);
 	ini.SetInt(NSA_KEY, enableNSA);
 	ini.SetInt(DELDIR_KEY, delDirWithFilter);
 	ini.SetInt(MOVEATTR_KEY, enableMoveAttr);
@@ -766,6 +799,7 @@ BOOL Cfg::WriteIni(void)
 	ini.SetInt(TASKBARMODE_KEY, taskbarMode);
 	ini.SetInt(FINISHNOTIFY_KEY, finishNotify);
 //	ini.SetInt(FINISHNOTIFYTOUT_KEY, finishNotifyTout);
+	ini.SetInt(PREVENTSLEEP_KEY, preventSleep);
 	ini.SetInt(INFOSPAN_KEY, infoSpan);
 
 	char	val[256];
@@ -795,7 +829,7 @@ BOOL Cfg::WriteIni(void)
 
 		ini.SetSection(section);
 		for (j=0; j < maxHistory; j++) {
-			wsprintf(key, "%d", j);
+			sprintf(key, "%d", j);
 			WtoU8(history[j], buf, MAX_HISTORY_CHAR_BUF);
 			if (j < maxHistoryNext)
 				ini.SetStr(key, buf);
@@ -805,7 +839,7 @@ BOOL Cfg::WriteIni(void)
 	}
 
 	for (i=0; i < jobMax; i++) {
-		wsprintf(buf, FMT_JOB_KEY, i);
+		sprintf(buf, FMT_JOB_KEY, i);
 		Job *job = jobArray[i];
 
 		ini.SetSection(buf);
@@ -847,11 +881,11 @@ BOOL Cfg::WriteIni(void)
 		ini.SetInt(FILTER_KEY,		job->isFilter);
 		ini.SetInt(BUFSIZE_KEY,		job->bufSize);
 	}
-	wsprintf(buf, FMT_JOB_KEY, i);
+	sprintf(buf, FMT_JOB_KEY, i);
 	ini.DelSection(buf);
 
 	for (i=0; i < finActMax; i++) {
-		wsprintf(buf, FMT_FINACT_KEY, i);
+		sprintf(buf, FMT_FINACT_KEY, i);
 		FinAct *finAct = finActArray[i];
 
 		ini.SetSection(buf);
@@ -868,7 +902,7 @@ BOOL Cfg::WriteIni(void)
 		ini.SetInt(SHUTDOWNTIME_KEY,	finAct->shutdownTime);
 		ini.SetInt(FLAGS_KEY,			finAct->flags);
 	}
-	wsprintf(buf, FMT_FINACT_KEY, i);
+	sprintf(buf, FMT_FINACT_KEY, i);
 	ini.DelSection(buf);
 
 	return	ini.EndUpdate();

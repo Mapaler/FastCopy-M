@@ -1,9 +1,9 @@
 ﻿/* static char *setupdlg_id = 
-	"@(#)Copyright (C) 2015 H.Shirouzu		setupdlg.h	Ver3.00"; */
+	"@(#)Copyright (C) 2015-2016 H.Shirouzu		setupdlg.h	Ver3.20"; */
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2015-07-17(Fri)
-	Update					: 2015-08-12(Wed)
+	Update					: 2016-09-28(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -73,28 +73,33 @@ public:
 };
 
 class ShellExt {
-	HMODULE	hShellExtDll;
+	HMODULE	hShDll;
+	BOOL	isAdmin;
 
 public:
-	ShellExt() { hShellExtDll = NULL; }
-	~ShellExt() { if (hShellExtDll) UnLoad(); }
+	ShellExt(BOOL _isAdmin) { hShDll = NULL; isAdmin = _isAdmin; }
+	~ShellExt() { if (hShDll) UnLoad(); }
 	BOOL	Load(WCHAR *parent_dir, WCHAR *dll_name);
 	BOOL	UnLoad(void);
-	BOOL	Status(void) { return	hShellExtDll ? TRUE : FALSE; }
+	BOOL	Status(void) { return	hShDll ? TRUE : FALSE; }
 	HRESULT	(WINAPI *RegisterDllProc)(void);
 	HRESULT	(WINAPI *UnRegisterDllProc)(void);
-	BOOL	(WINAPI *IsRegisterDllProc)(void);
-	BOOL	(WINAPI *SetMenuFlagsProc)(int);
-	int		(WINAPI *GetMenuFlagsProc)(void);
-	BOOL	(WINAPI *UpdateDllProc)(void);
+	HRESULT	(WINAPI *RegisterDllUserProc)(void);
+	HRESULT	(WINAPI *UnRegisterDllUserProc)(void);
+	BOOL	(WINAPI *IsRegisterDllProc)(BOOL);
+	BOOL	(WINAPI *SetMenuFlagsProc)(BOOL, int);
+	int		(WINAPI *GetMenuFlagsProc)(BOOL);
+	BOOL	(WINAPI *SetAdminModeProc)(BOOL);
 };
 
 class TShellExtDlg : public TDlg {
-	Cfg			*cfg;
-	ShellExt	shellExt;
+	Cfg				*cfg;
+	Cfg::ShExtCfg	*shCfg;
+	ShellExt		shellExt;
+	BOOL			isAdmin;
 
 public:
-	TShellExtDlg(Cfg *_cfg, TWin *_parent = NULL);
+	TShellExtDlg(Cfg *_cfg, BOOL _isAdmin, TWin *_parent = NULL);
 	virtual BOOL	EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl);
 	virtual BOOL	EvCreate(LPARAM lParam);
 	virtual BOOL	EvNcDestroy(void);

@@ -1,9 +1,9 @@
 ﻿static char *mainwin_id = 
-	"@(#)Copyright (C) 2004-2016 H.Shirouzu		mainwin.cpp	ver3.13";
+	"@(#)Copyright (C) 2004-2016 H.Shirouzu		mainwin.cpp	ver3.20";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2016-01-02(Sat)
+	Update					: 2016-09-28(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-29
@@ -53,11 +53,18 @@ void TFastCopyApp::InitWindow(void)
 	mainDlg->Create();
 }
 
+extern HWND TransMsgHelp(MSG *msg);
+
 BOOL TFastCopyApp::PreProcMsg(MSG *msg)
 {
 	if (msg->message == WM_KEYDOWN || msg->message == WM_KEYUP || msg->message == WM_ACTIVATEAPP) {
 		mainWnd->PostMessage(WM_FASTCOPY_KEY, 0, 0);
 	}
+
+	if (TransMsgHelp(msg)) {
+		return	TRUE;
+	}
+
 	return	TApp::PreProcMsg(msg);
 }
 
@@ -73,7 +80,7 @@ int WINAPI WinMain(HINSTANCE _hI, HINSTANCE, LPSTR arg, int show)
   注  意 ： 
 =========================================================================*/
 TMainDlg::TMainDlg() : TDlg(MAIN_DIALOG), aboutDlg(this), setupDlg(&cfg, this),
-	shellExtDlg(&cfg, this), jobDlg(&cfg, this), finActDlg(&cfg, this),
+	jobDlg(&cfg, this), finActDlg(&cfg, this),
 	pathEdit(this), errEdit(this)
 #ifdef USE_LISTVIEW
 	, listHead(this), listView(this)
@@ -112,12 +119,13 @@ TMainDlg::TMainDlg() : TDlg(MAIN_DIALOG), aboutDlg(this), setupDlg(&cfg, this),
 		return;
 	}
 
-	if (cfg.lcid > 0)
+	if (cfg.lcid > 0) {
 		TSetDefaultLCID(cfg.lcid);
+	}
 
 	cfg.PostReadIni();
 
-	isShellExt = FALSE;
+	shellMode = SHELL_NONE;
 	isErrLog = cfg.isErrLog;
 	isUtf8Log = cfg.isUtf8Log;
 	fileLogMode = (FileLogMode)cfg.fileLogMode;
@@ -127,12 +135,9 @@ TMainDlg::TMainDlg() : TDlg(MAIN_DIALOG), aboutDlg(this), setupDlg(&cfg, this),
 	isReCreate = cfg.isReCreate;
 	isExtendFilter = cfg.isExtendFilter;
 	maxLinkHash = cfg.maxLinkHash;
+	maxTempRunNum = 0;
 	forceStart = cfg.forceStart;
-
-	shextNoConfirm    = cfg.shextNoConfirm;
-	shextNoConfirmDel = cfg.shextNoConfirmDel;
-	shextTaskTray     = cfg.shextTaskTray;
-	shextAutoClose    = cfg.shextAutoClose;
+	finishNotify = cfg.finishNotify;
 
 	isTaskTray = FALSE;
 	noConfirmDel = noConfirmStop = FALSE;
@@ -321,8 +326,9 @@ BOOL TMainDlg::SetupWindow()
 {
 	static BOOL once = FALSE;
 
-	if (once)
+	if (once) {
 		return TRUE;
+	}
 
 	once = TRUE;
 	EnableWindow(TRUE);
@@ -373,13 +379,13 @@ void TMainDlg::StatusEditSetup(BOOL reset)
 		wcscpy(lf.lfFaceName, cfg.statusFont);
 	}
 	else {
-		if (WCHAR *s = GetLoadStrW(font_id)) {
+		if (WCHAR *s = LoadStrW(font_id)) {
 			wcscpy(lf.lfFaceName, s);
 		}
 		if (!*lf.lfFaceName) return;
 	}
 	if ((font_size = cfg.statusFontSize) <= 0) {
-		if (char *s = GetLoadStr(fontsize_id)) {
+		if (char *s = LoadStr(fontsize_id)) {
 			font_size = atoi(s);
 		}
 		if (font_size <= 0) return;
@@ -440,11 +446,10 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 		SetVersionStr(is_elevated_admin, isNoUI);
 	}
 
-//#ifndef _WinXP
-	MAX_NORMAL_FASTCOPY_ICON = atoi((char *)GetLoadStr(IDS_Animation_Icon_Num));
+
+	MAX_NORMAL_FASTCOPY_ICON = atoi((char *)LoadStr(IDS_Animation_Icon_Num));
 	//用指针hMainIcon指向new动态分配的长度为len*sizeof(HICON)的内存空间 
 	hMainIcon = new HICON[MAX_NORMAL_FASTCOPY_ICON];
-//#endif
 
 	char	title[100];
 	sprintf(title, "%s %s%s", FASTCOPY_TITLE, GetVersionStr(), GetVerAdminStr());
@@ -452,7 +457,7 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 	WCHAR	user_log[MAX_PATH];
 	MakePathW(user_log, cfg.userDir, L"fastcopy_exception.log");
 
-	InstallExceptionFilter(title, GetLoadStr(IDS_EXCEPTIONLOG), WtoAs(user_log));
+	InstallExceptionFilter(title, LoadStr(IDS_EXCEPTIONLOG), WtoAs(user_log));
 
 	if (IsWinVista()) {
 		HMENU	hMenu = ::GetMenu(hWnd);
@@ -471,7 +476,7 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 					::ModifyMenu(hMenu, 3, MF_BYPOSITION|MF_STRING, 0, buf);
 				}
 				::InsertMenuW(hMenu, 4, MF_BYPOSITION|MF_STRING|MF_HELP, ADMIN_MENUITEM,
-					GetLoadStrW(IDS_ELEVATE));
+					LoadStrW(IDS_ELEVATE));
 			}
 		}
 	}
@@ -486,7 +491,7 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 	}
 	::SetClassLong(hWnd, GCL_HICON, LONG_RDC(hMainIcon[FCNORMAL_ICON_IDX]));
 
-	hAccel = LoadAccelerators(TApp::GetInstance(), (LPCSTR)IDR_ACCEL);
+	hAccel = ::LoadAccelerators(TApp::GetInstance(), (LPCSTR)IDR_ACCEL);
 	SetSize();
 
 	taskbarList = NULL;
@@ -504,7 +509,7 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 	TaskBarCreateMsg = ::RegisterWindowMessage("TaskbarCreated");
 
 	// メッセージセット
-	SetDlgItemText(STATUS_EDIT, GetLoadStr(IDS_BEHAVIOR));
+	SetDlgItemText(STATUS_EDIT, LoadStr(IDS_BEHAVIOR));
 	SetDlgItemInt(BUFSIZE_EDIT, cfg.bufSize);
 
 // 123456789012345678901234567
@@ -568,22 +573,30 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 		isInstaller = FALSE;
 	}
 
-	if (*cfg.statusFont) StatusEditSetup();
+	if (*cfg.statusFont) {
+		StatusEditSetup();
+	}
 
 	// command line mode
 	if (orgArgc > 1) {
 		// isRunAsParent の場合は、Child側からの CLOSE を待つため、自主終了しない
-		if (!CommandLineExecW(orgArgc, orgArgv) && (!isShellExt || autoCloseLevel >= NOERR_CLOSE)
-				&& !isRunAsParent) {
+		if (!CommandLineExecW(orgArgc, orgArgv) &&
+			(shellMode == SHELL_NONE || autoCloseLevel >= NOERR_CLOSE) && !isRunAsParent) {
 			resultStatus = FALSE;
-			if (IsForeground() && (::GetAsyncKeyState(VK_SHIFT) & 0x8000))
+			if (IsForeground() && (::GetAsyncKeyState(VK_SHIFT) & 0x8000)) {
 				autoCloseLevel = NO_CLOSE;
-			else
+			}
+			else {
 				PostMessage(WM_CLOSE, 0, 0);
+			}
+		}
+		if (cfg.taskbarMode) {
+			EnableWindow(TRUE);
 		}
 	}
-	else
+	else {
 		Show();
+	}
 
 	return	TRUE;
 }
@@ -607,7 +620,7 @@ BOOL TMainDlg::CancelCopy()
 		WriteErrLogNoUI("CanceCopy (aborted by system or etc)");
 	}
 	else if (!isDelay) {
-		ret = (TMsgBox(this).Exec(GetLoadStr(IsListing() ? IDS_LISTCONFIRM :
+		ret = (TMsgBox(this).Exec(LoadStr(IsListing() ? IDS_LISTCONFIRM :
 					info.mode == FastCopy::DELETE_MODE ? IDS_DELSTOPCONFIRM : IDS_STOPCONFIRM),
 					FASTCOPY, MB_OKCANCEL) == IDOK) ? TRUE : FALSE;
 	}
@@ -618,7 +631,7 @@ BOOL TMainDlg::CancelCopy()
 			EndCopy();
 		}
 		else {
-			::SetTimer(hWnd, FASTCOPY_TIMER, FASTCOPY_TIMER_TICK*2, NULL);
+			SetTimer(FASTCOPY_TIMER, FASTCOPY_TIMER_TICK*2, NULL);
 		}
 	}
 	else {
@@ -629,7 +642,7 @@ BOOL TMainDlg::CancelCopy()
 			fastCopy.Aborting();
 		}
 		else {
-			::SetTimer(hWnd, FASTCOPY_TIMER, FASTCOPY_TIMER_TICK, NULL);
+			SetTimer(FASTCOPY_TIMER, FASTCOPY_TIMER_TICK, NULL);
 		}
 	}
 
@@ -788,7 +801,7 @@ BOOL TMainDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl)
 					EndDialog(IDCANCEL);
 				}
 				else {
-					if (TMsgBox(this).Exec(GetLoadStr(IDS_CONFIRMFORCEEND),
+					if (TMsgBox(this).Exec(LoadStr(IDS_CONFIRMFORCEEND),
 											FASTCOPY, MB_OKCANCEL) == IDOK) {
 						EndDialog(wID);
 					}
@@ -804,17 +817,17 @@ BOOL TMainDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl)
 	case ATONCE_BUTTON:
 		isDelay = FALSE;
 		::KillTimer(hWnd, FASTCOPY_TIMER);
-		fastCopy.TakeExclusivePriv(true);
+		fastCopy.TakeExclusivePriv(1);
 		ExecCopyCore();
 		return	TRUE;
 
 	case SRC_FILE_BUTTON:
-		BrowseDirDlgW(this, SRC_COMBO, GetLoadStrW(IDS_SRC_SELECT),
+		BrowseDirDlgW(this, SRC_COMBO, LoadStrW(IDS_SRC_SELECT),
 						BRDIR_MULTIPATH|BRDIR_CTRLADD|BRDIR_FILESELECT);
 		return	TRUE;
 
 	case DST_FILE_BUTTON:
-		BrowseDirDlgW(this, DST_COMBO, GetLoadStrW(IDS_DST_SELECT), BRDIR_BACKSLASH);
+		BrowseDirDlgW(this, DST_COMBO, LoadStrW(IDS_DST_SELECT), BRDIR_BACKSLASH);
 		return	TRUE;
 
 	case TOPLEVEL_CHECK:
@@ -840,11 +853,15 @@ BOOL TMainDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl)
 		return	TRUE;
 
 	case FILTERHELP_BUTTON:
-		ShowHelpW(0, cfg.execDir, GetLoadStrW(IDS_FASTCOPYHELP), L"#filter");
+		ShowHelpW(0, cfg.execDir, LoadStrW(IDS_FASTCOPYHELP), L"#filter");
 		return	TRUE;
 
 	case OPENDIR_MENUITEM:
-		::ShellExecuteW(NULL, NULL, cfg.userDir, 0, 0, SW_SHOW);
+		{
+			WCHAR	dir[MAX_PATH];
+			MakePathW(dir, cfg.userDir, L"");	// 末尾に \\ がないと exeが開く環境あり…
+			::ShellExecuteW(NULL, NULL, dir, 0, 0, SW_SHOW);
+		}
 		return	TRUE;
 
 	case OPENLOG_MENUITEM:
@@ -910,6 +927,7 @@ BOOL TMainDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl)
 			skipEmptyDir = cfg.skipEmptyDir;
 			forceStart = cfg.forceStart;
 			isExtendFilter = cfg.isExtendFilter;
+			finishNotify = cfg.finishNotify;
 		}
 		SetExtendFilter();
 		return	TRUE;
@@ -931,11 +949,11 @@ BOOL TMainDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl)
 		return	TRUE;
 
 	case SHELLEXT_MENUITEM:
-		shellExtDlg.Exec();
-		shextNoConfirm    = cfg.shextNoConfirm;
-		shextNoConfirmDel = cfg.shextNoConfirmDel;
-		shextTaskTray     = cfg.shextTaskTray;
-		shextAutoClose    = cfg.shextAutoClose;
+	case SHELLEXTLOCAL_MENUITEM:
+		{
+			TShellExtDlg	dlg(&cfg, wID == SHELLEXT_MENUITEM ? TRUE : FALSE, this);
+			dlg.Exec();
+		}
 		return	TRUE;
 
 	case ABOUT_MENUITEM:
@@ -943,11 +961,11 @@ BOOL TMainDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl)
 		return	TRUE;
 
 	case FASTCOPYURL_MENUITEM:
-		::ShellExecuteW(NULL, NULL, GetLoadStrW(IDS_FASTCOPYURL), NULL, NULL, SW_SHOW);
+		::ShellExecuteW(NULL, NULL, LoadStrW(IDS_FASTCOPYURL), NULL, NULL, SW_SHOW);
 		return	TRUE;
 
 	case FCSUPPORTURL_MENUITEM:
-		::ShellExecuteW(NULL, NULL, GetLoadStrW(IDS_FCSUPPORTURL), NULL, NULL, SW_SHOW);
+		::ShellExecuteW(NULL, NULL, LoadStrW(IDS_FCSUPPORTURL), NULL, NULL, SW_SHOW);
 		return	TRUE;
 
 	case AUTODISK_MENUITEM: case SAMEDISK_MENUITEM: case DIFFDISK_MENUITEM:
@@ -976,11 +994,11 @@ BOOL TMainDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl)
 		break;
 
 	case HELP_BUTTON:
-		ShowHelpW(0, cfg.execDir, GetLoadStrW(IDS_FASTCOPYHELP), L"#usage");
+		ShowHelpW(0, cfg.execDir, LoadStrW(IDS_FASTCOPYHELP), L"#usage");
 		return	TRUE;
 
 	case HELP_MENUITEM:
-		ShowHelpW(0, cfg.execDir, GetLoadStrW(IDS_FASTCOPYHELP), NULL);
+		ShowHelpW(0, cfg.execDir, LoadStrW(IDS_FASTCOPYHELP), NULL);
 		return	TRUE;
 
 	case FINACT_MENUITEM:
@@ -1013,7 +1031,7 @@ BOOL TMainDlg::EvSysCommand(WPARAM uCmdType, POINTS pos)
 		if (cfg.taskbarMode) {
 			TaskTray(NIM_DELETE);
 		}
-		return	TRUE;
+		return	FALSE;
 
 	case SC_MINIMIZE:
 		PostMessage(WM_FASTCOPY_HIDDEN, 0, 0);
@@ -1089,28 +1107,24 @@ void TMainDlg::RefreshWindow(BOOL is_start_stop)
 	hdwp = ::DeferWindowPos(hdwp, item->hWnd, 0, item->wpos.x, item->wpos.y + ydiffex,
 		item->wpos.cx + xdiff, item->wpos.cy + (is_path_grow ? ydiff + erredit_diff : 0), dwFlg);
 
-/*
-	item = dlgItems + filter_item;
-	hdwp = ::DeferWindowPos(hdwp, item->hWnd, 0, item->wpos.x + xdiff, item->wpos.y,
-		item->wpos.cx, item->wpos.cy, dwFlg);
-
-	int	harf_growslide_x[] = { exccombo_item, excstatic_item, -1 };
+	int	harf_growslide_x[] = { todatestatic_item, todatecombo_item, -1 };
 	for (target=harf_growslide_x; *target != -1; target++) {
 		item = dlgItems + *target;
 		hdwp = ::DeferWindowPos(hdwp, item->hWnd, 0, item->wpos.x + xdiff/2, item->wpos.y,
-			item->wpos.cx + xdiff/2, item->wpos.cy, dwFlg);
+			item->wpos.cx + xdiff/2, item->wpos.cy, isExtendFilter ? dwFlg : dwHideFlg);
 	}
 
-	int	harf_glow_x[] = { inccombo_item, incstatic_item, -1 };
+	int	harf_glow_x[] = { fdatestatic_item, fdatecombo_item, -1 };
 	for (target=harf_glow_x; *target != -1; target++) {
 		item = dlgItems + *target;
 		hdwp = ::DeferWindowPos(hdwp, item->hWnd, 0, item->wpos.x, item->wpos.y,
-			item->wpos.cx + xdiff/2, item->wpos.cy, dwFlg);
+			item->wpos.cx + xdiff/2, item->wpos.cy, isExtendFilter ? dwFlg : dwHideFlg);
 	}
-*/
+
 	int	slide_x[] = { ok_item, list_item, samedrv_item, top_item, estimate_item, verify_item,
-					  speed_item, speedstatic_item, ignore_item, bufedit_item, bufstatic_item,
-					  help_item, mode_item, filter_item, filterhelp_item, -1 };
+		speed_item, speedstatic_item, ignore_item, bufedit_item, bufstatic_item,
+		help_item, mode_item, filter_item, filterhelp_item,
+		minsizestatic_item, maxsizestatic_item, minsizecombo_item, maxsizecombo_item, -1 };
 	for (target=slide_x; *target != -1; target++) {
 		item = dlgItems + *target;
 		hdwp = ::DeferWindowPos(hdwp, item->hWnd, 0, item->wpos.x + xdiff,
@@ -1118,7 +1132,9 @@ void TMainDlg::RefreshWindow(BOOL is_start_stop)
 			is_exec && (*target == list_item && !IsListing()
 			|| *target == ok_item && IsListing()) || is_delete
 				&& (*target == estimate_item || *target == verify_item)
-			|| (*target == filterhelp_item && !is_filter) ? dwHideFlg : dwFlg);
+			|| (*target == filterhelp_item && !is_filter)
+			|| (!isExtendFilter && *target >= minsizestatic_item && *target <= maxsizecombo_item)
+				? dwHideFlg : dwFlg);
 	}
 
 	int	grow_x[] = { inccombo_item, exccombo_item, srccombo_item, dstcombo_item, -1 };
@@ -1185,6 +1201,16 @@ void TMainDlg::SetSize(void)
 	SetDlgItem(INCLUDE_COMBO);
 	SetDlgItem(EXCLUDE_COMBO);
 	SetDlgItem(FILTER_CHECK);
+
+	SetDlgItem(FROMDATE_STATIC);
+	SetDlgItem(TODATE_STATIC);
+	SetDlgItem(MINSIZE_STATIC);
+	SetDlgItem(MAXSIZE_STATIC);
+	SetDlgItem(FROMDATE_COMBO);
+	SetDlgItem(TODATE_COMBO);
+	SetDlgItem(MINSIZE_COMBO);
+	SetDlgItem(MAXSIZE_COMBO);
+
 	SetDlgItem(PATH_EDIT);
 	SetDlgItem(ERR_STATIC);
 	SetDlgItem(ERRSTATUS_STATIC);
@@ -1281,14 +1307,15 @@ void TMainDlg::SetExtendFilter()
 	if (lastExtendFilter != isExtendFilter) {
 		int mode = isExtendFilter ? SW_SHOW : SW_HIDE;
 
-		::ShowWindow(GetDlgItem(FROMDATE_STATIC), mode);
-		::ShowWindow(GetDlgItem(TODATE_STATIC),   mode);
-		::ShowWindow(GetDlgItem(MINSIZE_STATIC),  mode);
-		::ShowWindow(GetDlgItem(MAXSIZE_STATIC),  mode);
-		::ShowWindow(GetDlgItem(FROMDATE_COMBO),  mode);
-		::ShowWindow(GetDlgItem(TODATE_COMBO),    mode);
-		::ShowWindow(GetDlgItem(MINSIZE_COMBO),   mode);
-		::ShowWindow(GetDlgItem(MAXSIZE_COMBO),   mode);
+		::ShowWindow(dlgItems[fdatestatic_item].hWnd, mode);
+		::ShowWindow(dlgItems[todatestatic_item].hWnd, mode);
+		::ShowWindow(dlgItems[minsizestatic_item].hWnd, mode);
+		::ShowWindow(dlgItems[maxsizestatic_item].hWnd, mode);
+
+		::ShowWindow(dlgItems[fdatecombo_item].hWnd, mode);
+		::ShowWindow(dlgItems[todatecombo_item].hWnd, mode);
+		::ShowWindow(dlgItems[minsizecombo_item].hWnd, mode);
+		::ShowWindow(dlgItems[maxsizecombo_item].hWnd, mode);
 
 		GetWindowRect(&rect);
 		int height = rect.bottom - rect.top + (isExtendFilter ? filterHeight : -filterHeight);
@@ -1312,16 +1339,16 @@ void TMainDlg::ReflectFilterCheck(BOOL is_invert)
 //	if (is_show_filter)
 		CheckDlgButton(FILTER_CHECK, new_status);
 
-	::EnableWindow(GetDlgItem(FILTER_CHECK), is_show_filter);
-	::EnableWindow(GetDlgItem(INCLUDE_COMBO),  new_status);
-	::EnableWindow(GetDlgItem(EXCLUDE_COMBO),  new_status);
-	::EnableWindow(GetDlgItem(INC_STATIC),     new_status);
-	::EnableWindow(GetDlgItem(EXC_STATIC),     new_status);
-	::EnableWindow(GetDlgItem(FROMDATE_COMBO), new_status);
-	::EnableWindow(GetDlgItem(TODATE_COMBO),   new_status);
-	::EnableWindow(GetDlgItem(MINSIZE_COMBO),  new_status);
-	::EnableWindow(GetDlgItem(MAXSIZE_COMBO),  new_status);
-	::ShowWindow(GetDlgItem(FILTERHELP_BUTTON), is_checked ? SW_SHOW : SW_HIDE);
+	::EnableWindow(dlgItems[filter_item].hWnd,     is_show_filter);
+	::EnableWindow(dlgItems[inccombo_item].hWnd,   new_status);
+	::EnableWindow(dlgItems[exccombo_item].hWnd,   new_status);
+	::EnableWindow(dlgItems[incstatic_item].hWnd,  new_status);
+	::EnableWindow(dlgItems[excstatic_item].hWnd,  new_status);
+	::EnableWindow(dlgItems[fdatecombo_item].hWnd, new_status);
+	::EnableWindow(dlgItems[todatecombo_item].hWnd,  new_status);
+	::EnableWindow(dlgItems[minsizecombo_item].hWnd, new_status);
+	::EnableWindow(dlgItems[maxsizecombo_item].hWnd, new_status);
+	::ShowWindow(dlgItems[filterhelp_item].hWnd, is_checked ? SW_SHOW : SW_HIDE);
 }
 
 BOOL TMainDlg::IsDestDropFiles(HDROP hDrop)
@@ -1334,45 +1361,105 @@ BOOL TMainDlg::IsDestDropFiles(HDROP hDrop)
 			return	FALSE;
 	}
 
-	if (!::GetWindowRect(GetDlgItem(DST_COMBO), &dst_rect) || !PtInRect(&dst_rect, pt))
+	if (!::GetWindowRect(dlgItems[dstcombo_item].hWnd, &dst_rect) || !PtInRect(&dst_rect, pt))
 		return	FALSE;
 
 	return	TRUE;
 }
 
+int64 ParseDateTime(const WCHAR *s, BOOL *is_abs)
+{
+	WCHAR	tmp[MINI_BUF];
+
+	*is_abs = (*s != '+' && *s != '-') ? TRUE : FALSE;
+
+	if (*is_abs) {
+		int		cont = 0;
+		WCHAR	*d = tmp;
+
+		for ( ; *s; s++) {
+			if (*s == ' ' || *s == '/' || *s == ':') {
+				if (cont % 2) {
+					return -1;
+				}
+				cont = 0;
+			}
+			else if (*s < '0' || *s > '9') {
+				return -1;
+			}
+			else {
+				cont++;
+				*d++ = *s;
+			}
+		}
+		*d = 0;
+	}
+	else {
+		wcsncpyz(tmp, s+1, MINI_BUF);
+	}
+
+	return	wcstoll(tmp, 0, 10);
+}
+
 int64 TMainDlg::GetDateInfo(WCHAR *buf, BOOL is_end)
 {
-	WCHAR		*p = NULL, tmp[MINI_BUF];
 	FILETIME	ft;
 	SYSTEMTIME	st;
 	int64		&t = *(int64 *)&ft;
-	int64		val;
+	int64		val = 0;
+	BOOL		is_abs = FALSE;
+	WCHAR		*p;
+	WCHAR		*tok = strtok_pathW(buf, L"", &p);
 
-	for (WCHAR *s=buf, *d=tmp; *d = *s; s++) {
-		if (*s != '/') d++;
+	if (!tok || (val = ParseDateTime(tok, &is_abs)) <= 0) {
+		return	-1;
 	}
-	val = wcstol(tmp, &p, 10);
 
-	if (val > 0 && !wcschr(buf, '+')) {	// absolute
-		if (val < 16010102) return -1;
+	if (is_abs) {	// absolute
+		int64 day = 0;
+
 		memset(&st, 0, sizeof(st));
-		st.wYear	= (WORD) (val / 10000);
-		st.wMonth	= (WORD)((val / 100) % 100);
-		st.wDay		= (WORD) (val % 100);
 		if (is_end) {
 			st.wHour			= 23;
 			st.wMinute			= 59;
 			st.wSecond			= 59;
 			st.wMilliseconds	= 999;
 		}
+		if (val > 16010000000000) {
+			day = val / 1000000;
+			int64 tim = val % 1000000;
+			st.wHour   = (WORD)(tim / 10000);
+			st.wMinute = (WORD)((tim % 10000) / 100);
+			st.wSecond = (WORD)(tim % 100);
+		}
+		else if (val > 160100000000) {
+			day = val / 10000;
+			int64 tim = val % 10000;
+			st.wHour   = (WORD)(tim / 100);
+			st.wMinute = (WORD)(tim % 100);
+		}
+		else if (val > 1601000000) {
+			day = val / 100;
+			int64 tim = val % 100;
+			st.wHour  = (WORD)(tim % 100);
+		}
+		else if (val > 16010000) {
+			day = val;
+		} else {
+			return -1;
+		}
+		st.wYear	= (WORD) (day / 10000);
+		st.wMonth	= (WORD)((day / 100) % 100);
+		st.wDay		= (WORD) (day % 100);
+
 		FILETIME	lt;
 		if (!::SystemTimeToFileTime(&st, &lt)) return -1;
 		if (!::LocalFileTimeToFileTime(&lt, &ft)) return -1;
 	}
-	else if (p && p[0]) {
+	else {
 		::GetSystemTime(&st);
 		::SystemTimeToFileTime(&st, &ft);
-		switch (p[0]) {
+		switch (tok[wcslen(tok)-1]) {
 		case 'W': val *= 60 * 60 * 24 * 7;	break;
 		case 'D': val *= 60 * 60 * 24;		break;
 		case 'h': val *= 60 * 60;			break;
@@ -1382,7 +1469,6 @@ int64 TMainDlg::GetDateInfo(WCHAR *buf, BOOL is_end)
 		}
 		t += val * 10000000;
 	}
-	else return -1;
 
 	return	t;
 }
@@ -1424,9 +1510,9 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 	BOOL	is_fore = IsForeground();
 	BOOL	is_ctrkey   = (::GetAsyncKeyState(VK_CONTROL) & 0x8000) ? TRUE : FALSE;
 	BOOL	is_shiftkey = (::GetAsyncKeyState(VK_SHIFT) & 0x8000) ? TRUE : FALSE;
+	// 削除は原則として、排他から除外するが、shiftキー実行すると排他動作
+	BOOL	is_del_force = (is_delete_mode && is_fore && is_shiftkey) ? FALSE : TRUE;
 
-	// コピーと同じように、削除も排他実行する
-	if (is_delete_mode && is_fore && is_shiftkey) forceStart = 2;
 	isListLog = (is_listing && is_shiftkey) ? TRUE : FALSE;
 
 	info.ignoreEvent	= (IsDlgButtonChecked(IGNORE_CHECK) ? FASTCOPY_ERROR_EVENT : 0) |
@@ -1444,7 +1530,6 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 		| (cfg.streamErrLog ? FastCopy::REPORT_STREAM_ERROR : 0)
 		| (!is_delete_mode && IsDlgButtonChecked(ESTIMATE_CHECK) && !is_listing ?
 			FastCopy::PRE_SEARCH : 0)
-		| ((!is_listing && IsDlgButtonChecked(VERIFY_CHECK)) ? FastCopy::VERIFY_FILE : 0)
 		| (is_delete_mode && IsDlgButtonChecked(OWDEL_CHECK) ? cfg.enableNSA ?
 			FastCopy::OVERWRITE_DELETE_NSA : FastCopy::OVERWRITE_DELETE : 0)
 		| (is_delete_mode && cfg.delDirWithFilter ? FastCopy::DELDIR_WITH_FILTER : 0)
@@ -1452,11 +1537,9 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 		| (cfg.isAutoSlowIo ? FastCopy::AUTOSLOW_IOLIMIT : 0)
 		| (cfg.isReadOsBuf ? FastCopy::USE_OSCACHE_READ : 0)
 		| (cfg.isWShareOpen ? FastCopy::WRITESHARE_OPEN : 0)
-		| (cfg.usingMD5 ? FastCopy::VERIFY_MD5 : 0)
 		| (skipEmptyDir && is_filter ? FastCopy::SKIP_EMPTYDIR : 0)
 		| (!isReparse && info.mode != FastCopy::MOVE_MODE && info.mode != FastCopy::DELETE_MODE ?
 			FastCopy::REPARSE_AS_NORMAL : 0)
-		| ((is_listing && is_fore && is_ctrkey) ? FastCopy::VERIFY_FILE : 0)
 		| (info.mode == FastCopy::MOVE_MODE && cfg.serialMove ? FastCopy::SERIAL_MOVE : 0)
 		| (info.mode == FastCopy::MOVE_MODE && cfg.serialVerifyMove ?
 			FastCopy::SERIAL_VERIFY_MOVE : 0)
@@ -1465,13 +1548,31 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 		| ((diskMode == 2 || info.mode == FastCopy::TESTWRITE_MODE) ? FastCopy::FIX_DIFFDISK :
 			diskMode == 1 ? FastCopy::FIX_SAMEDISK : 0);
 	info.flags			&= ~cfg.copyUnFlags;
+
+	info.verifyFlags	= 0;
+	if ((!is_listing && IsDlgButtonChecked(VERIFY_CHECK)) ||
+		 (is_listing && is_fore && is_ctrkey)) {
+		info.verifyFlags = FastCopy::VERIFY_FILE;
+		switch (cfg.hashMode) {
+		case 0:
+			info.verifyFlags |= FastCopy::VERIFY_MD5;
+			break;
+		case 1:
+			info.verifyFlags |= FastCopy::VERIFY_SHA1;
+			break;
+		case 2:
+			info.verifyFlags |= FastCopy::VERIFY_SHA256;
+			break;
+		}
+	}
+
 	info.timeDiffGrace	= (int64)cfg.timeDiffGrace * 10000; // 1ms -> 100ns
 
 	info.fileLogFlags	= (!is_listing || is_ctrkey || is_shiftkey) ? cfg.fileLogFlags : 0;
 	info.debugFlags		= cfg.debugFlags;
 
 	info.bufSize		= (int64)GetDlgItemInt(BUFSIZE_EDIT) * 1024 * 1024;
-	info.maxRunNum		= cfg.maxRunNum;
+	info.maxRunNum		= MaxRunNum();
 	info.maxTransSize	= cfg.maxTransSize * 1024 * 1024;
 	info.netDrvMode		= cfg.netDrvMode;
 	info.aclReset		= cfg.aclReset;
@@ -1480,7 +1581,9 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 	info.maxOpenFiles	= cfg.maxOpenFiles;
 	info.maxAttrSize	= cfg.maxAttrSize;
 	info.maxDirSize		= cfg.maxDirSize;
+	info.minSectorSize	= cfg.minSectorSize;
 	info.maxLinkHash	= maxLinkHash;
+	info.maxRunNum		= MaxRunNum();
 	info.allowContFsize	= cfg.allowContFsize;
 	info.nbMinSizeNtfs	= cfg.nbMinSizeNtfs * 1024;
 	info.nbMinSizeFat	= cfg.nbMinSizeFat * 1024;
@@ -1515,8 +1618,9 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 		if (cfg.execConfirm || (is_fore && (::GetAsyncKeyState(VK_CONTROL) & 0x8000))) {
 			exec_confirm = TRUE;
 		} else {
-			if (isShellExt && (exec_flags & CMDLINE_EXEC)) {
-				exec_confirm = is_delete_mode ? !shextNoConfirmDel : !shextNoConfirm;
+			if (shellMode != SHELL_NONE && (exec_flags & CMDLINE_EXEC)) {
+				Cfg::ShExtCfg *shCfg = (shellMode == SHELL_ADMIN) ? &cfg.shAdmin : &cfg.shUser;
+				exec_confirm = is_delete_mode ? !shCfg->noConfirmDel : !shCfg->noConfirm;
 			} else {
 				exec_confirm = is_delete_mode ? !noConfirmDel : cfg.execConfirm;
 			}
@@ -1571,7 +1675,7 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 				info.maxSizeFilter  = GetSizeInfo(max_size);
 
 			if (info.fromDateFilter == -1 || info.toDateFilter  == -1) {
-				const char *msg = GetLoadStr(IDS_DATEFORMAT_MSG);
+				const char *msg = LoadStr(IDS_DATEFORMAT_MSG);
 				if (isNoUI) {
 					WriteErrLogNoUI(AtoU8(msg));
 				}
@@ -1581,7 +1685,7 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 				ret = FALSE;
 			}
 			if (info.minSizeFilter  == -2 || info.maxSizeFilter == -2) {
-				const char *msg = GetLoadStr(IDS_SIZEFORMAT_MSG);
+				const char *msg = LoadStr(IDS_SIZEFORMAT_MSG);
 				if (isNoUI) {
 					WriteErrLogNoUI(msg);
 				}
@@ -1605,12 +1709,12 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 	if (ret && exec_confirm && (exec_flags & LISTING_EXEC) == 0) {
 		srcArray.GetMultiPath(src_list, src_list_len, NEWLINE_STR, L"");
 		WCHAR	*title =
-					info.mode == FastCopy::MOVE_MODE   ? GetLoadStrW(IDS_MOVECONFIRM) :
-					info.mode == FastCopy::SYNCCP_MODE ? GetLoadStrW(IDS_SYNCCONFIRM) :
-					info.isRenameMode ? GetLoadStrW(IDS_DUPCONFIRM): NULL;
+					info.mode == FastCopy::MOVE_MODE   ? LoadStrW(IDS_MOVECONFIRM) :
+					info.mode == FastCopy::SYNCCP_MODE ? LoadStrW(IDS_SYNCCONFIRM) :
+					info.isRenameMode ? LoadStrW(IDS_DUPCONFIRM): NULL;
 		int		sv_flags = info.flags;	// delete confirm で変化しないか確認
 
-		switch (TExecConfirmDlg(&info, &cfg, this, title, isShellExt).Exec(src_list,
+		switch (TExecConfirmDlg(&info, &cfg, this, title, shellMode != SHELL_NONE).Exec(src_list,
 				is_delete_mode ? NULL : dst)) {
 		case IDOK:
 			break;
@@ -1622,7 +1726,7 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 
 		default:
 			ret = FALSE;
-			if (isShellExt && !is_delete_mode)
+			if (shellMode != SHELL_NONE && !is_delete_mode)
 				autoCloseLevel = NO_CLOSE;
 			break;
 		}
@@ -1648,68 +1752,69 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 
 	if ((ret || is_initerr_logging) && (pathLogBuf = new char [pathLogMax])) {
 		int len = sprintf(pathLogBuf, "<%s> %s" //Source
-					, isUtf8Log ? AtoU8s(GetLoadStr(IDS_Log_Source)) : GetLoadStr(IDS_Log_Source) //Source
+					, isUtf8Log ? AtoU8s(LoadStr(IDS_Log_Source)) : LoadStr(IDS_Log_Source) //Source
 					, isUtf8Log ? WtoU8s(src) : WtoAs(src)
 					);
 		if (!is_delete_mode) {
 			len += sprintf(pathLogBuf + len, "\r\n<%s> %s" //DestDir
-						, isUtf8Log ? AtoU8s(GetLoadStr(IDS_Log_DestDir)) : GetLoadStr(IDS_Log_DestDir) //DestDir
+						, isUtf8Log ? AtoU8s(LoadStr(IDS_Log_DestDir)) : LoadStr(IDS_Log_DestDir) //DestDir
 						, isUtf8Log ? WtoU8s(dst) : WtoAs(dst)
 						);
 		}
 		if (inc && inc[0]) {
 			len += sprintf(pathLogBuf + len, "\r\n<%s> %s" //Includ
-						, isUtf8Log ? AtoU8s(GetLoadStr(IDS_Log_Includ)) : GetLoadStr(IDS_Log_Includ) //Includ
+						, isUtf8Log ? AtoU8s(LoadStr(IDS_Log_Includ)) : LoadStr(IDS_Log_Includ) //Includ
 						, isUtf8Log ? WtoU8s(inc) : WtoAs(inc)
 						);
 		}
 		if (exc && exc[0]) {
 			len += sprintf(pathLogBuf + len, "\r\n<%s> %s" //Exclude
-						, isUtf8Log ? AtoU8s(GetLoadStr(IDS_Log_Exclude)) : GetLoadStr(IDS_Log_Exclude) //Exclude
+						, isUtf8Log ? AtoU8s(LoadStr(IDS_Log_Exclude)) : LoadStr(IDS_Log_Exclude) //Exclude
 						, isUtf8Log ? WtoU8s(exc) : WtoAs(exc)
 						);
 		}
 	
 		len += sprintf(pathLogBuf + len, "\r\n<%s> %s" //Command
-					, isUtf8Log ? AtoU8s(GetLoadStr(IDS_Log_Command)) : GetLoadStr(IDS_Log_Command) //Command
+					, isUtf8Log ? AtoU8s(LoadStr(IDS_Log_Command)) : LoadStr(IDS_Log_Command) //Command
 					, isUtf8Log ? AtoU8s(copyInfo[idx].list_str) : copyInfo[idx].list_str
 					);
-		if (info.flags & (FastCopy::WITH_ACL|FastCopy::WITH_ALTSTREAM|FastCopy::OVERWRITE_DELETE
-						 |FastCopy::OVERWRITE_DELETE_NSA|FastCopy::VERIFY_FILE)) {
+		if ((info.flags & (FastCopy::WITH_ACL|FastCopy::WITH_ALTSTREAM|FastCopy::OVERWRITE_DELETE
+						 |FastCopy::OVERWRITE_DELETE_NSA)) ||
+			(info.verifyFlags & FastCopy::VERIFY_FILE)) {
 			len += sprintf(pathLogBuf + len, " (%s"
-						, isUtf8Log ? AtoU8s(GetLoadStr(IDS_Log_with)) : GetLoadStr(IDS_Log_with) //with
+						, isUtf8Log ? AtoU8s(LoadStr(IDS_Log_with)) : LoadStr(IDS_Log_with) //with
 						);
-			if (!is_delete_mode && (info.flags & FastCopy::VERIFY_FILE))
+			if (!is_delete_mode && (info.verifyFlags & FastCopy::VERIFY_FILE))
 				len += sprintf(pathLogBuf + len, " %s"
-							, isUtf8Log ? AtoU8s(GetLoadStr(IDS_Log_Verify)) : GetLoadStr(IDS_Log_Verify) //Verify
+							, isUtf8Log ? AtoU8s(LoadStr(IDS_Log_Verify)) : LoadStr(IDS_Log_Verify) //Verify
 							);
 			if (!is_delete_mode && (info.flags & FastCopy::WITH_ACL))
 				len += sprintf(pathLogBuf + len, " %s"
-							, isUtf8Log ? AtoU8s(GetLoadStr(IDS_Log_ACL)) : GetLoadStr(IDS_Log_ACL) //ACL
+							, isUtf8Log ? AtoU8s(LoadStr(IDS_Log_ACL)) : LoadStr(IDS_Log_ACL) //ACL
 							);
 			if (!is_delete_mode && (info.flags & FastCopy::WITH_ALTSTREAM))
 				len += sprintf(pathLogBuf + len, " %s"
-							, isUtf8Log ? AtoU8s(GetLoadStr(IDS_Log_AltStream)) : GetLoadStr(IDS_Log_AltStream) //AltStream
+							, isUtf8Log ? AtoU8s(LoadStr(IDS_Log_AltStream)) : LoadStr(IDS_Log_AltStream) //AltStream
 							);
 			if (is_delete_mode && (info.flags & FastCopy::OVERWRITE_DELETE))
 				len += sprintf(pathLogBuf + len, " %s"
-							, isUtf8Log ? AtoU8s(GetLoadStr(IDS_Log_OverWrite)) : GetLoadStr(IDS_Log_OverWrite) //OverWrite
+							, isUtf8Log ? AtoU8s(LoadStr(IDS_Log_OverWrite)) : LoadStr(IDS_Log_OverWrite) //OverWrite
 							);
 			if (is_delete_mode && (info.flags & FastCopy::OVERWRITE_DELETE_NSA))
 				len += sprintf(pathLogBuf + len, " %s"
-							, isUtf8Log ? AtoU8s(GetLoadStr(IDS_Log_NSA)) : GetLoadStr(IDS_Log_NSA) //NSA
+							, isUtf8Log ? AtoU8s(LoadStr(IDS_Log_NSA)) : LoadStr(IDS_Log_NSA) //NSA
 							);
 			len += sprintf(pathLogBuf + len, ")");
 		}
 		if (is_listing && isListLog) len += sprintf(pathLogBuf + len, " (%s)"
-											, isUtf8Log ? AtoU8s(GetLoadStr(IDS_Log_ListingOnly)) : GetLoadStr(IDS_Log_ListingOnly) //Listing only
+											, isUtf8Log ? AtoU8s(LoadStr(IDS_Log_ListingOnly)) : LoadStr(IDS_Log_ListingOnly) //Listing only
 											);
 
 		WCHAR	job[MAX_PATH] = L"";
 		GetDlgItemTextW(JOBTITLE_STATIC, job, MAX_PATH);
 		if (*job) {
 			len += sprintf(pathLogBuf + len, "\r\n<%s> %s"
-				, isUtf8Log ? AtoU8s(GetLoadStr(IDS_Log_JobName)) : GetLoadStr(IDS_Log_JobName) //JobName
+				, isUtf8Log ? AtoU8s(LoadStr(IDS_Log_JobName)) : LoadStr(IDS_Log_JobName) //JobName
 				, isUtf8Log ? WtoU8s(job) : WtoAs(job)
 				);
 		}
@@ -1729,15 +1834,17 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 		SetDlgItemText(ERR_EDIT, "");
 		ShareInfo::CheckInfo	ci;
 
-		if ((is_delete_mode && forceStart != 2) || fastCopy.IsTakeExclusivePriv()
-		|| fastCopy.TakeExclusivePriv(forceStart ? true : false, &ci) || forceStart) {
+		if ((is_delete_mode && is_del_force)
+			|| fastCopy.IsTakeExclusivePriv()
+			|| fastCopy.TakeExclusivePriv(forceStart, &ci)
+			|| forceStart == 1) { // forceStart==1の場合も、可能な限りTakeをしておく
 			ret = ExecCopyCore();
 		}
 		else {
 			isDelay = TRUE;
-			SetDlgItemText(STATUS_EDIT, GetLoadStr((ci.all_running >= cfg.maxRunNum) ?
+			SetDlgItemText(STATUS_EDIT, LoadStr(ci.all_running >= MaxRunNum() ?
 				IDS_WAIT_MANYPROC : IDS_WAIT_ACQUIREDRV));
-			::SetTimer(hWnd, FASTCOPY_TIMER, FASTCOPY_TIMER_TICK*2, NULL);
+			SetTimer(FASTCOPY_TIMER, FASTCOPY_TIMER_TICK*2, NULL);
 			if (isTaskTray) {
 				TaskTray(NIM_MODIFY, hMainIcon[FCWAIT_ICON_IDX], FASTCOPY);
 			}
@@ -1747,7 +1854,7 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 		}
 
 		if (ret) {
-			SetDlgItemText(IsListing() ? LIST_BUTTON : IDOK, GetLoadStr(IDS_CANCEL));
+			SetDlgItemText(IsListing() ? LIST_BUTTON : IDOK, LoadStr(IDS_CANCEL));
 			RefreshWindow(TRUE);
 			if (IsWinVista() && !::IsUserAnAdmin()) {
 				::EnableMenuItem(GetMenu(hWnd), ADMIN_MENUITEM,
@@ -1778,10 +1885,13 @@ BOOL TMainDlg::ExecCopyCore(void)
 
 	BOOL ret = fastCopy.Start(&ti);
 	if (ret) {
+		if (cfg.preventSleep) {
+			::SetThreadExecutionState(ES_SYSTEM_REQUIRED|ES_CONTINUOUS);
+		}
 		RefreshWindow(TRUE);
 		timerCnt = timerLast = 0;
 		::GetCursorPos(&curPt);
-		::SetTimer(hWnd, FASTCOPY_TIMER, FASTCOPY_TIMER_TICK, NULL);
+		SetTimer(FASTCOPY_TIMER, FASTCOPY_TIMER_TICK, NULL);
 		UpdateSpeedLevel();
 	}
 	return	ret;
@@ -1813,14 +1923,16 @@ BOOL TMainDlg::EndCopy(void)
 	}
 	else {
 		fastCopy.ReleaseExclusivePriv();	// start後は fastCopy.End() で自動発行
-		SendDlgItemMessage(STATUS_EDIT, WM_SETTEXT, 0, (LPARAM)GetLoadStr(IDS_EndCopy_Cancelled)); // ---- Cancelled. ----
+		SendDlgItemMessage(STATUS_EDIT, WM_SETTEXT, 0, (LPARAM)LoadStr(IDS_EndCopy_Cancelled)); // ---- Cancelled. ----
 		::SetClassLong(hWnd, GCL_HICON, (LONG)hMainIcon[FCNORMAL_ICON_IDX]);//图标回到正常
 	}
+
+	::SetThreadExecutionState(ES_CONTINUOUS);
 
 	delete [] pathLogBuf;
 	pathLogBuf = NULL;
 
-	SetDlgItemText(IsListing() ? LIST_BUTTON : IDOK, GetLoadStr(IsListing() ?
+	SetDlgItemText(IsListing() ? LIST_BUTTON : IDOK, LoadStr(IsListing() ?
 		IDS_LISTING : IDS_EXECUTE));
 	SetDlgItemText(SAMEDRV_STATIC, "");
 
@@ -1837,18 +1949,14 @@ BOOL TMainDlg::EndCopy(void)
 			PostMessage(WM_CLOSE, 0, 0);
 		}
 		autoCloseLevel = NO_CLOSE;
-		isShellExt = FALSE;
+		shellMode = SHELL_NONE;
 	}
 	RefreshWindow(TRUE);
 	UpdateMenu();
 	CheckVerifyExtension();
 
-	SetFocus(GetDlgItem(IsListing() ? LIST_BUTTON : IDOK));
+	::SetFocus(GetDlgItem(IsListing() ? LIST_BUTTON : IDOK));
 
-/*	if (isTaskTray) {
-		TaskTray(NIM_MODIFY, hMainIcon[curIconIndex = FCNORMAL_ICON_IDX], FASTCOPY);
-	}
-*/
 	if (IsWinVista() && !::IsUserAnAdmin()) {
 		::EnableMenuItem(GetMenu(hWnd), ADMIN_MENUITEM, MF_BYCOMMAND|MF_ENABLED);
 		::DrawMenuBar(hWnd);
@@ -1903,7 +2011,7 @@ BOOL TMainDlg::ExecFinalAction(BOOL is_sound_wait)
 			if (::ShellExecuteExW(&sei) && is_wait && sei.hProcess) {
 				char	buf[512], svbuf[512];
 				GetDlgItemText(PATH_EDIT, svbuf, 512);
-				_snprintf(buf, sizeof(buf), "%s\r\n%s", svbuf, GetLoadStr(IDS_FinalAction_Wait)); //Wait for finish action...
+				_snprintf(buf, sizeof(buf), "%s\r\n%s", svbuf, LoadStr(IDS_FinalAction_Wait)); //Wait for finish action...
 				SetDlgItemText(PATH_EDIT, buf);
 				EnableWindow(FALSE);
 				while (::WaitForSingleObject(sei.hProcess, 100) == WAIT_TIMEOUT) {
@@ -1981,6 +2089,7 @@ BOOL TMainDlg::EventApp(UINT uMsg, WPARAM wParam, LPARAM lParam)
 			{
 				FastCopy::Confirm	*confirm = (FastCopy::Confirm *)lParam;
 
+				::SetThreadExecutionState(ES_CONTINUOUS);
 				if (isNoUI) { // 本来ここには到達しないはずだが…
 					WriteErrLogNoUI(WtoU8(confirm->message));
 					confirm->result = FastCopy::Confirm::CANCEL_RESULT;
@@ -1991,6 +2100,9 @@ BOOL TMainDlg::EventApp(UINT uMsg, WPARAM wParam, LPARAM lParam)
 					case IDCANCEL:	confirm->result = FastCopy::Confirm::CANCEL_RESULT;		break;
 					default:		confirm->result = FastCopy::Confirm::CONTINUE_RESULT;	break;
 					}
+				}
+				if (cfg.preventSleep) {
+					::SetThreadExecutionState(ES_SYSTEM_REQUIRED|ES_CONTINUOUS);
 				}
 			}
 			break;
@@ -2052,21 +2164,19 @@ BOOL TMainDlg::EventApp(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_FASTCOPY_FILTERHISTCLEAR:
 		SetFilterHistory(SETHIST_CLEAR, (UINT)wParam);
 		return	TRUE;
-
-	default:
-		if (uMsg == TaskBarCreateMsg) {
-			if (isTaskTray) {
-				TaskTray(NIM_ADD, hMainIcon[isDelay ? FCWAIT_ICON_IDX : FCNORMAL_ICON_IDX],
-					FASTCOPY);
-			}
-			return	TRUE;
-		}
 	}
 	return	FALSE;
 }
 
 BOOL TMainDlg::EventUser(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+	if (uMsg == TaskBarCreateMsg) {
+		if (isTaskTray) {
+			TaskTray(NIM_ADD, hMainIcon[isDelay ? FCWAIT_ICON_IDX : FCNORMAL_ICON_IDX],
+				FASTCOPY);
+		}
+		return	TRUE;
+	}
 	return	FALSE;
 }
 
@@ -2081,13 +2191,13 @@ BOOL TMainDlg::EvTimer(WPARAM timerID, TIMERPROC proc)
 
 	if (isDelay) {
 		ShareInfo::CheckInfo	ci;
-		if (fastCopy.TakeExclusivePriv(false, &ci)) {
+		if (fastCopy.TakeExclusivePriv(forceStart, &ci)) {
 			::KillTimer(hWnd, FASTCOPY_TIMER);
 			isDelay = FALSE;
 			ExecCopyCore();
 		}
 		else {
-			SetDlgItemText(STATUS_EDIT, GetLoadStr((ci.all_running >= cfg.maxRunNum) ?
+			SetDlgItemText(STATUS_EDIT, LoadStr(ci.all_running >= MaxRunNum() ?
 				IDS_WAIT_MANYPROC : IDS_WAIT_ACQUIREDRV));
 		}
 	}
@@ -2325,7 +2435,8 @@ BOOL TMainDlg::TaskTray(int nimMode, HICON hSetIcon, LPCSTR tip, BOOL balloon)
 			tn.uTimeout		= cfg.finishNotifyTout * 1000;
 			tn.dwInfoFlags	= NIIF_INFO | NIIF_NOSOUND;
 
-			if (IsWinVista()) {	// Vista以降では uTimeout ではなく SPI_SETMESSAGEDURATION
+			// Vista以降では uTimeout ではなく SPI_SETMESSAGEDURATION
+			if (IsWinVista() && !IsWin10()) {
 				::SystemParametersInfo(SPI_GETMESSAGEDURATION, 0, (void *)&sv_tout, 0);
 				::SystemParametersInfo(SPI_SETMESSAGEDURATION, 0, (void *)(INT_PTR)tn.uTimeout, 0);
 			}
@@ -2334,7 +2445,7 @@ BOOL TMainDlg::TaskTray(int nimMode, HICON hSetIcon, LPCSTR tip, BOOL balloon)
 		ret = ::Shell_NotifyIcon(nimMode, &tn);
 
 		if (balloon && tip) {
-			if (IsWinVista() && sv_tout) {
+			if (IsWinVista() && !IsWin10() && sv_tout) {
 				::SystemParametersInfo(SPI_SETMESSAGEDURATION, 0, (void *)(INT_PTR)sv_tout, 0);
 			}
 		}
@@ -2409,7 +2520,7 @@ ssize_t ticktime_str(char *buf, DWORD tick)
 {
 	if (tick < 60000) return sprintf(buf, "%.1f %s"
 		, (double)tick / 1000
-		, GetLoadStr(IDS_Info_sec) //sec
+		, LoadStr(IDS_Info_sec) //sec
 		);
 	return	time_str(buf, tick/1000);
 }
@@ -2431,11 +2542,11 @@ BOOL TMainDlg::SetTaskTrayInfo(BOOL is_finish_status, double doneRate, int remai
 				"FastCopy (%s%s %s%s %s)" :
 				"FastCopy (%s%s %s%s %s%s %s)"
 				, s1
-				, GetLoadStr(IDS_Info_MB) //MB
+				, LoadStr(IDS_Info_MB) //MB
 				, s2
-				, GetLoadStr(IDS_Info_files) //files
+				, LoadStr(IDS_Info_files) //files
 				, IsListing() ? s4 : s3
-				, GetLoadStr(IDS_Info_MB_s) //MB/s
+				, LoadStr(IDS_Info_MB_s) //MB/s
 				, s4
 				);
 		}
@@ -2445,12 +2556,12 @@ BOOL TMainDlg::SetTaskTrayInfo(BOOL is_finish_status, double doneRate, int remai
 			ticktime_str(s3, ti.tickCount);
 
 			len += sprintf(buf + len, "%s (%s %s %s/%s %s/%s)"
-				, GetLoadStr(IDS_TaskTrayInfo_Estimating) //Estimating
-				, GetLoadStr(IDS_TaskTrayInfo_Total) //Total
+				, LoadStr(IDS_TaskTrayInfo_Estimating) //Estimating
+				, LoadStr(IDS_TaskTrayInfo_Total) //Total
 				, s1
-				, GetLoadStr(IDS_Info_MB) //MB
+				, LoadStr(IDS_Info_MB) //MB
 				, s2
-				, GetLoadStr(IDS_Info_files) //files
+				, LoadStr(IDS_Info_files) //files
 				, s3
 				);
 		}
@@ -2460,7 +2571,7 @@ BOOL TMainDlg::SetTaskTrayInfo(BOOL is_finish_status, double doneRate, int remai
 				time_str(s1, remain_sec);
 				len += sprintf(buf + len, "%d%% (%s %s) "
 					, doneRatePercent
-					, GetLoadStr(IDS_TaskTrayInfo_Remain) //Remain
+					, LoadStr(IDS_TaskTrayInfo_Remain) //Remain
 					, s1
 					);
 			}
@@ -2473,27 +2584,30 @@ BOOL TMainDlg::SetTaskTrayInfo(BOOL is_finish_status, double doneRate, int remai
 				"FastCopy (%s %s %s %s %s)" :
 				"FastCopy (%s %s %s %s %s %s %s)"
 				, s1
-				, GetLoadStr(IDS_Info_MB) //MB
+				, LoadStr(IDS_Info_MB) //MB
 				, s2
-				, GetLoadStr(IDS_Info_files) //files
+				, LoadStr(IDS_Info_files) //files
 				, IsListing() ? s4 : s3
-				, GetLoadStr(IDS_Info_MB_s) //MB/s
+				, LoadStr(IDS_Info_MB_s) //MB/s
 				, s4
 				);
 		}
 		if (is_finish_status) {
-			strcpy(buf + len, GetLoadStr(IDS_TaskTrayInfo_Finished)); //Finished
+			strcpy(buf + len, LoadStr(IDS_TaskTrayInfo_Finished)); //Finished
 		}
 	}
 
 	curIconIndex = is_finish_status ? 0 : (curIconIndex + 1) % MAX_NORMAL_FASTCOPY_ICON;
 	TaskTray(NIM_MODIFY, hMainIcon[curIconIndex], buf,
-		(cfg.finishNotify & 1) && is_finish_status);
+		(finishNotify & 1) && is_finish_status);
 	return	TRUE;
 }
 
-inline double SizeToCoef(const double &ave_size)
+inline double SizeToCoef(double ave_size, int64 files)
 {
+	if (files <= 2) {
+		return	0.0;
+	}
 #define AVE_WATERMARK_MIN (4.0   * 1024)
 #define AVE_WATERMARK_MID (64.0  * 1024)
 
@@ -2528,7 +2642,7 @@ BOOL TMainDlg::CalcInfo(double *doneRate, int *remain_sec, int *total_sec)
 		doneTrans = ti.total.writeTrans + ti.total.readTrans
 					+ (ti.total.skipTrans + ti.total.errTrans) * 2;
 
-		if ((info.flags & FastCopy::VERIFY_FILE)) {
+		if ((info.verifyFlags & FastCopy::VERIFY_FILE)) {
 			int vcoef =  ti.isSameDrv ? 1 : 2;
 			preFiles  += ti.total.preFiles * vcoef;
 			preTrans  += ti.total.preTrans * vcoef;
@@ -2536,7 +2650,7 @@ BOOL TMainDlg::CalcInfo(double *doneRate, int *remain_sec, int *total_sec)
 			doneTrans += (ti.total.verifyTrans + ti.total.skipTrans + ti.total.errTrans) * vcoef;
 		}
 
-//		Debug("F: %5d(%4d/%4d) / %5d  T: %7d / %7d   ", int(doneFiles), int(ti.total.writeFiles),
+//		Debug("F: %5d(%4d/%4d) / %5d  T: %7d / %7d   \n", int(doneFiles), int(ti.total.writeFiles),
 //			int(ti.total.readFiles), int(preFiles), int(doneTrans/1024), int(preTrans/1024));
 
 		if (doneFiles > preFiles) preFiles = doneFiles;
@@ -2547,7 +2661,7 @@ BOOL TMainDlg::CalcInfo(double *doneRate, int *remain_sec, int *total_sec)
 		double aveSize       = preTrans  / (preFiles  + 0.01);
 //		double doneAveSize   = doneTrans / (doneFiles + 0.01);
 
-		coef      = SizeToCoef(aveSize);
+		coef      = SizeToCoef(aveSize, preFiles);
 //		real_coef = coef * coef / SizeToCoef(doneAveSize);
 		real_coef = coef;
 
@@ -2562,9 +2676,9 @@ BOOL TMainDlg::CalcInfo(double *doneRate, int *remain_sec, int *total_sec)
 		if (calcTimes < 10
 		|| !(calcTimes % (realDoneRate < 0.70 ? 10 : (11 - int(realDoneRate * 10))))) {
 			lastTotalSec = (int)(ti.tickCount / realDoneRate / 1000);
-//			Debug("recalc(%d) ", (realDoneRate < 0.70 ? 10 : (11 - int(realDoneRate * 10))));
+			Debug("recalc(%d) %.2f sec=%d coef=%.2f pre=%lld\n", (realDoneRate < 0.70 ? 10 : (11 - int(realDoneRate * 10))), doneTransRate, lastTotalSec, coef, preFiles);
 		}
-//		else	Debug("nocalc(%d) ", (realDoneRate < 0.70 ? 10 : (11 - int(realDoneRate * 10))));
+		else	Debug("nocalc(%d) %.2f sec=%d coef=%.2f pre=%lld\n", (realDoneRate < 0.70 ? 10 : (11 - int(realDoneRate * 10))), doneTransRate, lastTotalSec, coef, preFiles);
 	}
 
 	*total_sec = lastTotalSec;
@@ -2621,7 +2735,7 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 	&& doneRate >= 0.0001) {
 		time_str(s1, remain_sec);
 		len += sprintf(buf + len, "--%s %s (%d%%)--\r\n"
-			, GetLoadStr(IDS_Info_Remain) //Remain
+			, LoadStr(IDS_Info_Remain) //Remain
 			, s1
 			, doneRatePercent);
 	}
@@ -2638,18 +2752,18 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 			"%s = %s (%s)\r\n"
 			"%s = %s\r\n"
 			"%s = %s %s"
-			, GetLoadStr(IDS_Info_Estimating) //Estimating ...
-			, GetLoadStr(IDS_Info_PreTrans) //PreTrans
+			, LoadStr(IDS_Info_Estimating) //Estimating ...
+			, LoadStr(IDS_Info_PreTrans) //PreTrans
 			, s1
-			, GetLoadStr(IDS_Info_MB) //MB
-			, GetLoadStr(IDS_Info_PreFiles) //PreFiles
+			, LoadStr(IDS_Info_MB) //MB
+			, LoadStr(IDS_Info_PreFiles) //PreFiles
 			, s2
 			, s3
-			, GetLoadStr(IDS_Info_PreTime) //PreTime
+			, LoadStr(IDS_Info_PreTime) //PreTime
 			, s4
-			, GetLoadStr(IDS_Info_PreRate) //PreRate
+			, LoadStr(IDS_Info_PreRate) //PreRate
 			, s5
-			, GetLoadStr(IDS_Info_files_s) //files/s
+			, LoadStr(IDS_Info_files_s) //files/s
 			);
 	}
 	else if (info.mode == FastCopy::DELETE_MODE) {
@@ -2675,20 +2789,20 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 			"%s = %s (%s)\r\n"
 			"%s = %s\r\n"
 			"%s = %s %s"
-			, GetLoadStr(IDS_Info_TotalDel) //TotalDel
+			, LoadStr(IDS_Info_TotalDel) //TotalDel
 			, s1
-			, GetLoadStr(IDS_Info_MB) //MB
-			, GetLoadStr(IDS_Info_DelFiles) //DelFiles
+			, LoadStr(IDS_Info_MB) //MB
+			, LoadStr(IDS_Info_DelFiles) //DelFiles
 			, s2
 			, s3
-			, GetLoadStr(IDS_Info_TotalTime) //TotalTime
+			, LoadStr(IDS_Info_TotalTime) //TotalTime
 			, s4
-			, GetLoadStr(IDS_Info_FileRate) //FileRate
+			, LoadStr(IDS_Info_FileRate) //FileRate
 			, s5
-			, GetLoadStr(IDS_Info_files_s) //files/s
-			, GetLoadStr(IDS_Info_OverWrite) //OverWrite
+			, LoadStr(IDS_Info_files_s) //files/s
+			, LoadStr(IDS_Info_OverWrite) //OverWrite
 			, s6
-			, GetLoadStr(IDS_Info_MB_s) //MB/s
+			, LoadStr(IDS_Info_MB_s) //MB/s
 			);
 	}
 	else {
@@ -2705,10 +2819,10 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 				"%s = %s/%s (%s)\r\n" :
 				"%s = %s %s\r\n"
 				"%s = %s (%s)\r\n"
-				, GetLoadStr(IDS_Info_TotalSize) //TotalSize
+				, LoadStr(IDS_Info_TotalSize) //TotalSize
 				, s1
-				, GetLoadStr(IDS_Info_MB) //MB
-				, GetLoadStr(IDS_Info_TotalFiles) //TotalFiles
+				, LoadStr(IDS_Info_MB) //MB
+				, LoadStr(IDS_Info_TotalFiles) //TotalFiles
 				, s2
 				, s3
 				, s4
@@ -2730,13 +2844,13 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 				"%s = %s %s\r\n"
 				"%s = %s %s\r\n"
 				"%s = %s (%s)\r\n"
-				, GetLoadStr(IDS_Info_TotalRead) //TotalRead
+				, LoadStr(IDS_Info_TotalRead) //TotalRead
 				, s1
-				, GetLoadStr(IDS_Info_MB) //MB
-				, GetLoadStr(IDS_Info_TotalWrite) //TotalWrite
+				, LoadStr(IDS_Info_MB) //MB
+				, LoadStr(IDS_Info_TotalWrite) //TotalWrite
 				, s2
-				, GetLoadStr(IDS_Info_MB) //MB
-				, GetLoadStr(IDS_Info_TotalFiles) //TotalFiles
+				, LoadStr(IDS_Info_MB) //MB
+				, LoadStr(IDS_Info_TotalFiles) //TotalFiles
 				, s3
 				, s4
 				, s5
@@ -2751,10 +2865,10 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 			len += sprintf(buf + len,
 				"%s = %s %s\r\n"
 				"%s = %s (%s)\r\n"
-				, GetLoadStr(IDS_Info_TotalSkip) //TotalSkip
+				, LoadStr(IDS_Info_TotalSkip) //TotalSkip
 				, s1
-				, GetLoadStr(IDS_Info_MB) //MB
-				, GetLoadStr(IDS_Info_SkipFiles) //SkipFiles
+				, LoadStr(IDS_Info_MB) //MB
+				, LoadStr(IDS_Info_SkipFiles) //SkipFiles
 				, s2
 				, s3
 				);
@@ -2767,10 +2881,10 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 			len += sprintf(buf + len,
 				"%s = %s %s\r\n"
 				"%s = %s (%s)\r\n"
-				, GetLoadStr(IDS_Info_TotalDel) //TotalDel
+				, LoadStr(IDS_Info_TotalDel) //TotalDel
 				, s1
-				, GetLoadStr(IDS_Info_MB) //MB
-				, GetLoadStr(IDS_Info_DelFiles) //DelFiles
+				, LoadStr(IDS_Info_MB) //MB
+				, LoadStr(IDS_Info_DelFiles) //DelFiles
 				, s2
 				, s3
 				);
@@ -2784,17 +2898,17 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 			"%s = %s\r\n"
 			"%s = %s %s\r\n"
 			"%s = %s %s"
-			, GetLoadStr(IDS_Info_TotalTime) //TotalTime
+			, LoadStr(IDS_Info_TotalTime) //TotalTime
 			, s1
-			, GetLoadStr(IDS_Info_TransRate) //TransRate
+			, LoadStr(IDS_Info_TransRate) //TransRate
 			, s2
-			, GetLoadStr(IDS_Info_MB_s) //MB/s
-			, GetLoadStr(IDS_Info_FileRate) //FileRate
+			, LoadStr(IDS_Info_MB_s) //MB/s
+			, LoadStr(IDS_Info_FileRate) //FileRate
 			, s3
-			, GetLoadStr(IDS_Info_files_s) //files/s
+			, LoadStr(IDS_Info_files_s) //files/s
 			);
 
-		if (info.flags & FastCopy::VERIFY_FILE) {
+		if (info.verifyFlags & FastCopy::VERIFY_FILE) {
 			mega_str(s1, ti.total.verifyTrans);
 			comma_int64(s2, ti.total.verifyFiles);
 
@@ -2802,10 +2916,10 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 				"\r\n"
 				"%s = %s %s\r\n"
 				"%s = %s"
-				, GetLoadStr(IDS_Info_VerifyRead) //VerifyRead
+				, LoadStr(IDS_Info_VerifyRead) //VerifyRead
 				, s1
-				, GetLoadStr(IDS_Info_MB) //MB
-				, GetLoadStr(IDS_Info_VerifyFiles) //VerifyFiles
+				, LoadStr(IDS_Info_MB) //MB
+				, LoadStr(IDS_Info_VerifyFiles) //VerifyFiles
 				, s2
 				);
 		}
@@ -2813,9 +2927,9 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 
 	if (IsListing() && is_finish_status) {
 		len += sprintf(buf + len, "\r\n---- %s%s %s ----"
-			, GetLoadStr(IDS_Info_Listing) //Listing
-			, (info.flags & FastCopy::VERIFY_FILE) ? GetLoadStr(IDS_Info_verify) : ""
-			, GetLoadStr(IDS_Info_Done) //Done
+			, LoadStr(IDS_Info_Listing) //Listing
+			, (info.verifyFlags & FastCopy::VERIFY_FILE) ? LoadStr(IDS_Info_verify) : ""
+			, LoadStr(IDS_Info_Done) //Done
 			);
 	}
 	curIconIndex = is_finish_status ? 0 : (curIconIndex + 1) % MAX_NORMAL_FASTCOPY_ICON;
@@ -2830,10 +2944,10 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 			comma_int64(s2, ti.total.errDirs);
 
 			sprintf(buf, "%s (%s : %s  %s : %s)"
-				, GetLoadStr(IDS_Info_Finished) //Finished
-				, GetLoadStr(IDS_Info_ErrorFiles) //ErrorFiles
+				, LoadStr(IDS_Info_Finished) //Finished
+				, LoadStr(IDS_Info_ErrorFiles) //ErrorFiles
 				, s1
-				, GetLoadStr(IDS_Info_ErrorDirs) //ErrorDirs
+				, LoadStr(IDS_Info_ErrorDirs) //ErrorDirs
 				, s2
 				);
 			SendDlgItemMessageW(PATH_EDIT, EM_SETSEL, offset_v, offset_v);
@@ -2848,10 +2962,10 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 
 		sprintf(buf, ti.total.errFiles || ti.total.errDirs ?
 			"%s (%s : %s  %s : %s)" : "%s"
-			, GetLoadStr(IDS_Info_Finished) //Finished
-			, GetLoadStr(IDS_Info_ErrorFiles) //ErrorFiles
+			, LoadStr(IDS_Info_Finished) //Finished
+			, LoadStr(IDS_Info_ErrorFiles) //ErrorFiles
 			, s1
-			, GetLoadStr(IDS_Info_ErrorDirs) //ErrorDirs
+			, LoadStr(IDS_Info_ErrorDirs) //ErrorDirs
 			, s2
 			);
 		SetDlgItemText(PATH_EDIT, buf);
@@ -2861,7 +2975,7 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 		SetDlgItemTextW(PATH_EDIT, ti.total.isPreSearch ? L"" : ti.curPath);
 
 	SetDlgItemText(SAMEDRV_STATIC, info.mode == FastCopy::DELETE_MODE ? "" : ti.isSameDrv ?
-		GetLoadStr(IDS_SAMEDISK) : GetLoadStr(IDS_DIFFDISK));
+		LoadStr(IDS_SAMEDISK) : LoadStr(IDS_DIFFDISK));
 
 //	SetDlgItemText(SPEED_STATIC, buf);
 
@@ -2886,14 +3000,14 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 		comma_int64(s2, ti.total.errDirs);
 
 		sprintf(buf, "(%s : %s / %s : %s)"
-			, GetLoadStr(IDS_Info_ErrFiles) //ErrFiles
+			, LoadStr(IDS_Info_ErrFiles) //ErrFiles
 			, s1
-			, GetLoadStr(IDS_Info_ErrDirs) //ErrDirs
+			, LoadStr(IDS_Info_ErrDirs) //ErrDirs
 			, s2);
 		SetDlgItemText(ERRSTATUS_STATIC, buf);
 	}
 
-	if (!isTaskTray && is_finish_status && (cfg.finishNotify & 2)) {
+	if (!isTaskTray && is_finish_status && (finishNotify & 2)) {
 		if (::GetForegroundWindow() != hWnd) {
 			::FlashWindow(hWnd, TRUE);
 		}
@@ -3018,7 +3132,7 @@ void TMainDlg::UpdateMenu(void)
 	::CheckMenuItem(hSubMenu, EXTENDFILTER_MENUITEM,
 		MF_BYCOMMAND|(isExtendFilter ? MF_CHECKED : MF_UNCHECKED));
 
-	swprintf(buf, GetLoadStrW(IDS_FINACTMENU),
+	swprintf(buf, LoadStrW(IDS_FINACTMENU),
 		finActIdx >= 0 ? cfg.finActArray[finActIdx]->title : L"");
 	::ModifyMenuW(hSubMenu, 7, MF_BYPOSITION|MF_STRING, 0, buf);
 
@@ -3033,7 +3147,7 @@ void TMainDlg::UpdateMenu(void)
 
 	if (!fastCopy.IsStarting() && !isDelay) {
 		SetDlgItemText(SAMEDRV_STATIC, diskMode == 0 ? "" : diskMode == 1 ?
-			GetLoadStr(IDS_FIX_SAMEDISK) : GetLoadStr(IDS_FIX_DIFFDISK));
+			LoadStr(IDS_FIX_SAMEDISK) : LoadStr(IDS_FIX_DIFFDISK));
 	}
 	SetWindowTitle();
 }
@@ -3044,7 +3158,7 @@ BOOL TMainDlg::GetRunasInfo(WCHAR **user_dir, WCHAR **virtual_dir)
 	int		len;
 
 	while (*argv && **argv == '/') {
-		if (!wcsicmpEx(*argv, RUNAS_STR, &len) == 0) {
+		if (wcsicmpEx(*argv, RUNAS_STR, &len) == 0) {
 			WCHAR	*p = *argv + len;
 
 			if (p && (p = wcschr(p, ','))) p++;	//skip parent handle

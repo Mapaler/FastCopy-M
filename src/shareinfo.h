@@ -1,9 +1,9 @@
 ﻿/* static char *shareinfo_id = 
-	"@(#)Copyright (C) 2015 H.Shirouzu		shareinfo.h	Ver3.00"; */
+	"@(#)Copyright (C) 2015 H.Shirouzu		shareinfo.h	Ver3.20"; */
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2015-07-10(Fri)
-	Update					: 2015-07-12(Sun)
+	Update					: 2016-09-27(Tue)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -89,8 +89,7 @@ public:
 	bool Lock(DWORD timeout=5000);
 	void UnLock();
 	bool ReleaseExclusive();
-	bool TakeExclusive(uint64 use_drives, int max_running=2, bool is_force=false,
-			CheckInfo *ci=NULL);
+	bool TakeExclusive(uint64 use_drives, int max_running=2, int force_mode=0, CheckInfo *ci=NULL);
 	bool IsTaken()   { return selfMode == TAKE; }
 	bool IsWaiting() { return selfMode == WAIT; }
 	bool GetCount(CheckInfo *ci, uint64 use_drives=0);
