@@ -1,5 +1,5 @@
 ﻿static char *tap32u8_id = 
-	"@(#)Copyright (C) 1996-2015 H.Shirouzu		tap32u8.cpp	Ver0.99";
+	"@(#)Copyright (C) 1996-2016 H.Shirouzu		tap32u8.cpp	Ver0.99";
 /* ========================================================================
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Application Frame Class
@@ -391,7 +391,7 @@ UINT GetDriveTypeU8(const char *path)
 	return	::GetDriveTypeW(wpath.s());
 }
 
-LPSTR GetLoadStrU8(UINT resId, HINSTANCE hI)
+LPSTR LoadStrU8(UINT resId, HINSTANCE hI)
 {
 	extern HINSTANCE defaultStrInstance;
 

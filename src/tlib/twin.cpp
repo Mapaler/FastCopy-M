@@ -1,5 +1,5 @@
 ﻿static char *twin_id = 
-	"@(#)Copyright (C) 1996-2015 H.Shirouzu		twin.cpp	Ver0.99";
+	"@(#)Copyright (C) 1996-2016 H.Shirouzu		twin.cpp	Ver0.99";
 /* ========================================================================
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Window Class
@@ -13,7 +13,8 @@
 
 TWin::TWin(TWin *_parent)
 {
-	hWnd		= 0;
+	hWnd		= NULL;
+	hTipWnd		= NULL;
 	hAccel		= NULL;
 	rect.left	= CW_USEDEFAULT;
 	rect.right	= CW_USEDEFAULT;
@@ -50,27 +51,33 @@ BOOL TWin::CreateW(const WCHAR *className, const WCHAR *title, DWORD style, DWOR
 
 	TApp::GetApp()->AddWin(this);
 
-	if ((hWnd = ::CreateWindowExW(exStyle, className, title, style,
-				rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
-				parent ? parent->hWnd : NULL, hMenu, TApp::GetInstance(), NULL)) == NULL)
-		return	TApp::GetApp()->DelWin(this), FALSE;
-	else
-		return	TRUE;
+	if (!(hWnd = ::CreateWindowExW(exStyle, className, title, style,
+			rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
+			parent ? parent->hWnd : NULL, hMenu, TApp::hInst(), NULL))) {
+		TApp::GetApp()->DelWin(this);
+		return	FALSE;
+	}
+
+	return	TRUE;
 }
 
 void TWin::Destroy(void)
 {
-	if (::IsWindow(hWnd))
-	{
+	if (hTipWnd) {
+		CloseTipWnd();
+	}
+
+	if (hWnd) {
 		::DestroyWindow(hWnd);
-		hWnd = 0;
 	}
 }
 
 void TWin::Show(int mode)
 {
-	::ShowWindow(hWnd, mode);
-	::UpdateWindow(hWnd);
+	if (hWnd) {
+		::ShowWindow(hWnd, mode);
+		::UpdateWindow(hWnd);
+	}
 }
 
 LRESULT TWin::WinProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -106,9 +113,12 @@ LRESULT TWin::WinProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		break;
 
 	case WM_NCDESTROY:
-		if (!::IsIconic(hWnd)) GetWindowRect(&rect);
-		if (!EvNcDestroy())	// hWndを0にする前に呼び出す
+		if (!::IsIconic(hWnd)) {
+			GetWindowRect(&rect);
+		}
+		if (!EvNcDestroy()) {// hWndを0にする前に呼び出す
 			DefWindowProc(uMsg, wParam, lParam);
+		}
 		done = TRUE;
 		TApp::GetApp()->DelWin(this);
 		hWnd = 0;
@@ -121,6 +131,10 @@ LRESULT TWin::WinProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	case WM_ENDSESSION:
 		done = EvEndSession((BOOL)wParam, (BOOL)lParam);
+		break;
+
+	case WM_POWERBROADCAST:
+		done = EvPowerBroadcast(wParam, lParam);
 		break;
 
 	case WM_QUERYOPEN:
@@ -290,14 +304,18 @@ LRESULT TWin::WinProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 LRESULT TWin::DefWindowProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+	if (!hWnd) {
+		return	0;
+	}
 	return	isUnicode ? ::DefWindowProcW(hWnd, uMsg, wParam, lParam) :
 						::DefWindowProcA(hWnd, uMsg, wParam, lParam);
 }
 
 BOOL TWin::PreProcMsg(MSG *msg)
 {
-	if (hAccel)
+	if (hWnd && hAccel) {
 		return	::TranslateAccelerator(hWnd, hAccel, msg);
+	}
 
 	return	FALSE;
 }
@@ -353,7 +371,7 @@ BOOL TWin::Sleep(UINT mSec)
 	if (mSec == 0 || sleepBusy)
 		return	TRUE;
 
-	if (!::SetTimer(hWnd, TLIB_SLEEPTIMER, mSec, 0))
+	if (!SetTimer(TLIB_SLEEPTIMER, mSec))
 		return	FALSE;
 	sleepBusy = TRUE;
 
@@ -362,7 +380,7 @@ BOOL TWin::Sleep(UINT mSec)
 	{
 		if (msg.hwnd == hWnd && msg.wParam == TLIB_SLEEPTIMER)
 		{
-			::KillTimer(hWnd, TLIB_SLEEPTIMER);
+			KillTimer(TLIB_SLEEPTIMER);
 			break;
 		}
 		if (TApp::GetApp()->PreProcMsg(&msg))
@@ -382,6 +400,11 @@ BOOL TWin::EvQueryEndSession(BOOL nSession, BOOL nLogOut)
 }
 
 BOOL TWin::EvEndSession(BOOL nSession, BOOL nLogOut)
+{
+	return	TRUE;
+}
+
+BOOL TWin::EvPowerBroadcast(WPARAM pbtEvent, LPARAM pbtData)
 {
 	return	TRUE;
 }
@@ -636,26 +659,41 @@ int TWin::MessageBoxW(LPCWSTR msg, LPCWSTR title, UINT style)
 
 BOOL TWin::BringWindowToTop(void)
 {
+	if (!hWnd) {
+		return	FALSE;
+	}
 	return	::BringWindowToTop(hWnd);
 }
 
 BOOL TWin::PostMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+	if (!hWnd) {
+		return	FALSE;
+	}
 	return	::PostMessage(hWnd, uMsg, wParam, lParam);
 }
 
 BOOL TWin::PostMessageW(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+	if (!hWnd) {
+		return	FALSE;
+	}
 	return	::PostMessageW(hWnd, uMsg, wParam, lParam);
 }
 
 LRESULT TWin::SendMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+	if (!hWnd) {
+		return	FALSE;
+	}
 	return	::SendMessage(hWnd, uMsg, wParam, lParam);
 }
 
 LRESULT TWin::SendMessageW(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+	if (!hWnd) {
+		return	FALSE;
+	}
 	return	::SendMessageW(hWnd, uMsg, wParam, lParam);
 }
 
@@ -681,21 +719,33 @@ BOOL TWin::GetClientRect(RECT *rc)
 
 BOOL TWin::SetWindowPos(HWND hInsAfter, int x, int y, int cx, int cy, UINT fuFlags)
 {
+	if (!hWnd) {
+		return	FALSE;
+	}
 	return	::SetWindowPos(hWnd, hInsAfter, x, y, cx, cy, fuFlags);
 }
 
 BOOL TWin::ShowWindow(int mode)
 {
+	if (!hWnd) {
+		return	FALSE;
+	}
 	return	::ShowWindow(hWnd, mode);
 }
 
 BOOL TWin::SetForegroundWindow(void)
 {
+	if (!hWnd) {
+		return	FALSE;
+	}
 	return	::SetForegroundWindow(hWnd);
 }
 
 BOOL TWin::SetForceForegroundWindow(void)
 {
+	if (!hWnd) {
+		return	FALSE;
+	}
 	DWORD	foreId, targId, svTmOut;
 
 	if (IsWinVista()) {
@@ -718,6 +768,9 @@ BOOL TWin::SetForceForegroundWindow(void)
 
 HWND TWin::SetActiveWindow(void)
 {
+	if (!hWnd) {
+		return	FALSE;
+	}
 	return	::SetActiveWindow(hWnd);
 }
 
@@ -748,16 +801,25 @@ BOOL TWin::SetWindowText(LPCSTR text)
 
 LONG_PTR TWin::SetWindowLong(int index, LONG_PTR val)
 {
+	if (!hWnd) {
+		return	0;
+	}
 	return	::SetWindowLong(hWnd, index, val);
 }
 
 WORD TWin::SetWindowWord(int index, WORD val)
 {
+	if (!hWnd) {
+		return	0;
+	}
 	return	::SetWindowWord(hWnd, index, val);
 }
 
 LONG_PTR TWin::GetWindowLong(int index)
 {
+	if (!hWnd) {
+		return	0;
+	}
 	return	::GetWindowLong(hWnd, index);
 }
 
@@ -766,13 +828,66 @@ WORD TWin::GetWindowWord(int index)
 	return	::GetWindowWord(hWnd, index);
 }
 
+UINT_PTR TWin::SetTimer(UINT_PTR idTimer, UINT uTimeout, TIMERPROC proc)
+{
+	if (!hWnd) {
+		return	0;
+	}
+	return	::SetTimer(hWnd, idTimer, uTimeout, proc);
+}
+
+BOOL TWin::KillTimer(UINT_PTR idTimer)
+{
+	if (!hWnd) {
+		return	FALSE;
+	}
+	return	::KillTimer(hWnd, idTimer);
+}
+
 BOOL TWin::MoveWindow(int x, int y, int cx, int cy, int bRepaint)
 {
+	if (!hWnd) {
+		return	FALSE;
+	}
 	return	::MoveWindow(hWnd, x, y, cx, cy, bRepaint);
+}
+
+BOOL TWin::MoveCenter(BOOL use_cursor_screen)
+{
+	RECT	screen_rect = { 0, 0,
+		::GetSystemMetrics(SM_CXFULLSCREEN),
+		::GetSystemMetrics(SM_CYFULLSCREEN) };
+
+	if (use_cursor_screen) {
+		POINT		pt = {0, 0};
+		::GetCursorPos(&pt);
+		HMONITOR	hMon = ::MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST);
+
+		if (hMon) {
+			MONITORINFO	minfo;
+			minfo.cbSize = sizeof(minfo);
+
+			if (::GetMonitorInfoW(hMon, &minfo) &&
+				(minfo.rcMonitor.right - minfo.rcMonitor.left) > 0 &&
+				(minfo.rcMonitor.bottom - minfo.rcMonitor.top) > 0) {
+				screen_rect = minfo.rcMonitor;
+			}
+		}
+	}
+
+	long x = screen_rect.left + ((screen_rect.right - screen_rect.left)
+			- (rect.right - rect.left)) / 2;
+	long y = screen_rect.top + ((screen_rect.bottom - screen_rect.top)
+			- (rect.bottom - rect.top)) / 2;
+
+	return	SetWindowPos(NULL, x, y, 0, 0, SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE);
 }
 
 BOOL TWin::FitMoveWindow(int x, int y)
 {
+	if (!hWnd) {
+		return	FALSE;
+	}
 	RECT	rc;
 	GetWindowRect(&rc);
 	int		cx = rc.right - rc.left;
@@ -871,9 +986,73 @@ int TWin::GetWindowTextLengthU8(void)
 
 BOOL TWin::InvalidateRect(const RECT *rc, BOOL fErase)
 {
+	if (!hWnd) {
+		return	FALSE;
+	}
 	return	::InvalidateRect(hWnd, rc, fErase);
 }
 
+HWND TWin::SetFocus()
+{
+	if (!hWnd) {
+		return	NULL;
+	}
+	return	::SetFocus(hWnd);
+}
+
+BOOL TWin::CreateTipWnd(const WCHAR *tip, int width, int tout)
+{
+	if (hTipWnd) {
+		CloseTipWnd();
+	}
+	if (hWnd) {
+		hTipWnd = ::CreateWindowExW(0, TOOLTIPS_CLASSW, NULL, TTS_ALWAYSTIP,
+			CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+			hWnd, NULL, TApp::hInst(), NULL);
+
+		SetTipTextW(tip, width, tout);
+	}
+	return	hTipWnd ? TRUE : FALSE;
+}
+
+BOOL TWin::SetTipTextW(const WCHAR *tip, int width, int tout)
+{
+	if (!hWnd || !hTipWnd) {
+		return	FALSE;
+	}
+
+	if (width) {
+		::SendMessageW(hTipWnd, TTM_SETMAXTIPWIDTH, 0, width);
+	}
+	if (tout) {
+		::SendMessageW(hTipWnd, TTM_SETDELAYTIME, TTDT_AUTOPOP, tout);
+	}
+
+	if (tip) {
+		TOOLINFOW ti = { sizeof(TOOLINFOW) };
+		GetClientRect(&ti.rect);
+
+		ti.uFlags = TTF_SUBCLASS;
+		ti.hwnd = hWnd;
+		ti.lpszText = (WCHAR *)tip;
+
+		::SendMessageW(hTipWnd, TTM_ADDTOOLW, 0, (LPARAM)&ti);
+	}
+
+	return	TRUE;
+}
+
+BOOL TWin::CloseTipWnd()
+{
+	if (!hTipWnd) {
+		return	FALSE;
+	}
+
+	::DestroyWindow(hTipWnd);
+	hTipWnd = NULL;
+
+	return	TRUE;
+}
 
 TSubClass::TSubClass(TWin *_parent) : TWin(_parent)
 {

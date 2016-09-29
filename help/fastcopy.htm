@@ -72,11 +72,11 @@
 <body bgcolor="#eeffff">
 
 <div align="center">
-<h1 class="help_head1">FastCopy ver3.13</h1>
+<h1 class="help_head1">FastCopy ver3.21</h1>
 </div>
 <div class="help_all">
 
-<div align="right">2016/03/15 H.Shirouzu (白水啓章)</div>
+<div align="right">2016/09/28 H.Shirouzu (白水啓章)</div>
 
 <a name="index"/>
 <h2 class="help_head2">Index</h2>
@@ -259,7 +259,9 @@
 		<td>Read/Write/Delete等で、エラーが発生しても、中断せず、可能な限り動作を続けます。<br>
 		（ただし、エラー表示欄やエラーログには残ります）</td></tr>
 		<tr><td nowrap><strong>ベリファイ</strong></td>
-		<td>MD5(or SHA-1) による書き込みデータのベリファイを行います。（SHA-1 を利用する場合は、fastcopy2.ini の [main] に using_MD5=0 を設定します）<br>
+		<td><a name="hash_mode"/>MD5 (SHA-1/SHA-256) による書き込みデータのベリファイを行います。<br><br>
+		<strong>SHA-1 を利用する場合は、fastcopy2.ini の [main] に hash_mode=1 に、SHA-256の場合、hash_mode=2 に設定します</strong>。<br>
+		なお、安全性としては MD5 でも十分ですが、ログに記録されるハッシュ値を別用途で利用したい場合にお使いください。<br><br>
 		 なお、具体的には、次のような比較を行います。<br>
 		 Read(Src) -> MD5(Src) -> Write(Dst) -> Read(Dst) -> MD5(Dst) -> MD5比較(Src/Dst) <br>
 		 （各ステージが、複数のファイルを跨ったパイプラインのように並列して処理されます）
@@ -281,7 +283,8 @@
 		<table class="help_table" border="4">
 		<tr><td><strong>ACL属性</strong></td>
 		<td>NTFS のアクセスコントロールリスト(ACL)をコピーします。<br>
-			<strong>（ACLコピーは<a href="#elevate">特権</a>に昇格した状態で実行することを推奨します）</strong></td></tr>
+			<strong>（ACLコピーは<a href="#elevate">特権</a>に昇格した状態で実行することを推奨します）</strong><br>
+			拡張属性(EA)も（存在すれば）コピーします。</td></tr>
 		<tr><td><strong>副次Stream</strong></td>
 		<td>NTFS の副次ストリーム(Alternate Stream)をコピーします</td></tr>
 		<tr><td><strong>復元無効化（上書き後に削除）</strong></td>
@@ -306,7 +309,7 @@
 		<tr><td colspan="2"><strong>以下のフィルタは、設定→拡張フィルタ表示を有効にした場合のみ表示されます</strong></td></tr>
 		<tr><td><strong>FromDate</strong></td>
 		<td>指定日時（<a href="#date_filter">書式</a>）以降の更新タイムスタンプを持つファイルを対象とします。<br>
-		書式は絶対日付指定("20150701")以外に、相対日付も<a href="#date_filter">可能</a>です(10日前: '-10D')</td></tr>
+		書式は絶対日付指定("20150701" or "2016/09/26 12:30:59" 等)以外に、相対日付も<a href="#date_filter">可能</a>です(10日前: '-10D')</td></tr>
 		<tr><td><strong>ToDate</strong></td>
 		<td>指定日時以前の更新タイムスタンプを持つファイルを対象とします。</td></tr>
 		<tr><td><strong>MinSize</strong></td>
@@ -357,7 +360,7 @@
 		<a name="date_filter"/>
 		<strong>FromDate/ToDate フィルタ指定の書式</strong>
 		<table class="help_table" border="4">
-		<tr><td>絶対日時指定</td><td>日時を YYYYMMDD もしくは YYYY/MM/DD で指定</td>
+		<tr><td>絶対日時指定</td><td>日時を YYYYMMDD[hhmmss] もしくは YYYY/MM/DD [hh:mm:ss] で指定</td>
 		<tr><td>相対日時指定</td><td>-10D（10日前）などのように、"+|- 数字 W|D|h|m|s" の書式で指定します。<br>W|D|h|m|s はそれぞれ、週、日、時、分、秒を表します。<br><strong>（大文字小文字を区別します）</strong></td>
 		</table>
 	</div>
@@ -444,9 +447,13 @@
 			<table class="help_table" border="4">
 			<tr><td nowrap><strong>最大I/O単位(MB)</strong></td><td>1回にOSにリクエストするReadFile/WriteFileのサイズを指定します<br>
 				「最大I/O単位÷重畳数」が実際のリクエストサイズになります。<br>
-				（<a href="#mainwin">Buffer 指定</a>は、最大I/O単位の2倍以上が必要です）</td></tr>
+				（<a href="#mainwin">Buffer 指定</a>は、最大I/O単位の2倍以上が必要です）<br><br>
+				この値を極端に大きくすると、カーネル内リソース不足で I/Oエラーになることがあります。
+				</td></tr>
 			<tr><td nowrap><strong>重畳数（非同期I/O発行数）</strong></td><td><strong>（v3.0以降）</strong>ReadFile/WriteFile API発行毎に完了を待たず、並行してAPIを発行することで（特にネットワークドライブに対する）I/O速度を向上させています。<br>
-			（<strong>なお、重畳数を1にすると非同期I/Oを使わず、従来と同じ動作になります</strong>）</td></tr>
+			（<strong>なお、重畳数を1にすると非同期I/Oを使わず、v2.xまでと同じ動作になります</strong>）</td></tr>
+			<tr><td nowrap><strong>最小セクタ長を4096と見なす</strong></td><td><strong>（v3.2以降）</strong>書き込み側ルートディレクトリは512byteセクタでかつ、（ジャンクション等により）配下ディレクトリが4096byteセクタに変化する場合に ON にします。<br>
+			（ONにすると、1byteファイルにも常に4096byteバッファを用意するため、小容量ファイルでのバッファ利用効率が若干下がります。なお、読み込み側ドライブ側セクタサイズ変化は自動追随するため、チェックは不要です）</td></tr>
 			</table>
 			<br>
 
@@ -569,16 +576,17 @@
 			<tr><td><strong>最小化時、タスクトレイではなく、タスクバーを使用</strong></td><td>タスクバーを使用します</td></tr>
 			<tr><td nowrap><strong>表示更新間隔</strong></td><td>実行時の表示更新時間を指定します。アイコンの回転速度にも同期します</td></tr>
 			<tr><td><strong>終了時にバルーン通知</td><td>タスクトレイ格納時に終了をバルーン通知で知らせます</td></tr>
+			<tr><td><strong>コピー中は、自動スリープを防止する</td><td>OS設定で自動スリープが設定されていても、コピー中はスリープしません。<br>（ただしエラーダイアログ表示中は移行を防止しません）</td></tr>
 			<tr><td nowrap><strong>英語UI</strong></td><td>英語UIモードになります。再起動後に有効です</td></tr>
 			</table>
 		</div>
 	</div>
 
 	<a name="shell"/>
-	<h3 class="help_head3">設定 → 拡張設定 → シェル拡張設定</h3>
+	<h3 class="help_head3">設定 → 拡張設定 → シェル拡張設定（個人用/全体用）</h3>
 	<div class="help_sub_section">
 		Explorer の右クリックメニューに、FastCopy のコピー・削除メニューを登録/解除します。<br>
-		（管理者権限が必要です。メニュー右端の「特権」で昇格してください）
+		（システム全体に反映可能な「全体用」は管理者権限が必要です。メニュー右端の「特権」で昇格してください）
 	</div>
 
 	<h3 class="help_head3">設定 → 拡張設定 → メインフォント変更＆リセット</h3>
@@ -687,7 +695,8 @@
 	<tr><td nowrap><strong>/auto_close</strong></td><td>コピー終了後、自動的に終了します</td></tr>
 	<tr><td nowrap><strong>/force_close</strong></td><td>コピー終了後、エラーが発生していた場合も、強制的に終了します</td></tr>
 	<tr><td nowrap><strong>/open_window</strong></td><td>タスクトレイに格納しません（直ちに実行開始しない場合は指定不要）</td></tr>
-	<tr><td nowrap><strong>/estimate</strong></td><td>コピー完了時間予測を行います</td></tr>
+	<tr><td nowrap><strong>/estimate</strong></td><td>コピー完了時間予測を行います（/estimate=FALSE で抑止）</td></tr>
+	<tr><td nowrap><strong>/balloon(=FALSE)</strong></td><td>完了時にバルーン表示を行います（/balloon=FALSE で抑止）</td></tr>
 	<tr><td nowrap><strong>/no_ui</strong></td><td><a name="no_ui"/>原則として問い合わせダイアログを出しません。（バックグラウンド動作用。内部的に /no_confirm_del と /no_confirm_stop と /force_close もセットされます。セッション０分離（主にタスクスケジューラ起動）では自動的に/no_uiがセットされます。ただし終了時アクションでのカウントダウンは実スクリーンの有無に関わらず行われます）</td></tr>
 	<tr><td nowrap><strong>/no_confirm_del</strong></td><td>/delete 時に、動作開始の問い合わせをしません</td></tr>
 	<tr><td nowrap><strong>/no_confirm_stop</strong></td><td>継続不能エラー発生時にも、エラーを出しません</td></tr>
@@ -696,11 +705,11 @@
 	<tr><td nowrap><strong>/bufsize=N(MB)</strong></td><td>バッファサイズを MB 単位で指定します</td></tr>
 	<tr><td nowrap><strong>/log</strong></td><td>ログファイル(fastcopy.log) にログを出力します（/log=FALSE で抑止）</td></tr>
 	<tr><td nowrap><strong>/logfile=ログファイル名</strong></td><td>ログファイル名を指定します</td></tr>
-	<tr><td nowrap><strong>/filelog</strong></td><td>詳細ファイルログを記録します。FastCopy/Log ディレクトリ配下に、日付.log という形式で保存されます。ベリファイ時はハッシュ値（通常 MD5、設定によって SHA1）も記録されます。（/filelog=filename で指定ファイルに保存可能。ただし、同じファイルを指定して、同時に複数の FastCopy を実行した場合、ログ出力が交互に混じる可能性があります）</td></tr>
+	<tr><td nowrap><strong>/filelog</strong></td><td>詳細ファイルログを記録します。FastCopy/Log ディレクトリ配下に、日付.log という形式で保存されます。ベリファイ時はハッシュ値（通常 MD5、設定によって SHA-1）も記録されます。（/filelog=filename で指定ファイルに保存可能。ただし、同じファイルを指定して、同時に複数の FastCopy を実行した場合、ログ出力が交互に混じる可能性があります）</td></tr>
 	<tr><td nowrap><strong>/utf8</strong></td><td>UTF-8でログを記録します</td></tr>
 	<tr><td nowrap><strong>/skip_empty_dir</strong></td><td>フィルタ指定時、空ディレクトリをコピーしません（/skip_empty_dir=FALSE で抑止）</td></tr>
 	<tr><td nowrap><strong>/job=ジョブ名</strong></td><td>事前に登録してあるジョブを指定します</td></tr>
-	<tr><td nowrap><strong>/force_start</strong></td><td>他の FastCopy がコピー実行中の場合も直ちに実行します（/force_start=FALSE で抑止）</td></tr>
+	<tr><td nowrap><strong>/force_start(=N)</strong></td><td>他の FastCopy がコピー実行中の場合も直ちに実行します。<br>（/force_start=2～N で同時実行上限数指定）</td></tr>
 	<tr><td nowrap><strong>/disk_mode=<br>&nbsp;&nbsp;(auto|same|diff)</strong></td><td><a href="#disk_mode">自動/同一/別HDDモード</a>を指定します。（デフォルト: auto）</td></tr>
 	<tr><td nowrap><strong>/speed=(full|autoslow|<br>&nbsp;&nbsp;9-1(90%-10%)|suspend)</strong></td><td>速度コントロールを行います</td></tr>
 	<tr><td nowrap><strong>/srcfile="files.txt</strong></td><td>Source内容をファイルで指定します。１行に１ファイルを記述します。（なお、大量のファイルを指定すると、Sourceコンボボックスの表示/再描画に非常に時間が掛かります）</td></tr>
@@ -712,10 +721,10 @@
 	<tr><td nowrap><strong>/min_size="..."</strong></td><td>サイズフィルタ（最小）を指定します（<a href="#filter">詳細</a>）</td></tr>
 	<tr><td nowrap><strong>/max_size="..."</strong></td><td>サイズフィルタ（最大）を指定します（<a href="#filter">詳細</a>）</td></tr>
 	<tr><td nowrap><strong>/wipe_del</strong></td><td>削除モード時に、ファイルを削除する前に上書き＆リネームして、復元を無効にします（/wipe_del=FALSE で抑止）</td></tr>
-	<tr><td nowrap><strong>/acl</strong></td><td>アクセスコントロールリスト(ACL)をコピーします（NTFSのみ有効）（/acl=FALSE で抑止）</td></tr>
+	<tr><td nowrap><strong>/acl</strong></td><td>アクセスコントロールリスト(ACL)、拡張属性(EA)をコピーします（NTFSのみ有効）（/acl=FALSE で抑止）</td></tr>
 	<tr><td nowrap><strong>/stream</strong></td><td>副次ストリームをコピーします（NTFSのみ有効）（/stream=FALSE で抑止）</td></tr>
 	<tr><td nowrap><strong>/reparse</strong></td><td>ジャンクション・マウントポイント・シンボリックリンクを（配下ではなく）それ自体をコピーします（/reparse=FALSE で配下をコピー）（<a href="#reparse">詳細</a> および <a href="#junction_ps">注意</a>）</td></tr>
-	<tr><td nowrap><strong>/verify</strong></td><td>MD5(or SHA-1) による書き込みデータのベリファイを行います（/verify=FALSE で抑止）</td></tr>
+	<tr><td nowrap><strong>/verify</strong></td><td><a href="#hash_mode">MD5(or SHA-1, SHA-256) </a>による書き込みデータのベリファイを行います（/verify=FALSE で抑止）</td></tr>
 	<tr><td nowrap><strong>/linkdest</strong></td><td><a name="linkdest"/>ハードリンクを可能な限り再現します。詳細は <a href="#hardlink">こちらを参照</a> ください。</td></tr>
 	<tr><td nowrap><strong>/recreate</strong></td><td><a name="recreate"/>ファイル更新の挙動を、既存ファイルの上書きから、既存ファイル削除＆再生成に変更します。（/linkdest 指定時には、/recreate指定の有無に関わらず、この動作を行います）常時、この動作を有効にしたい場合、fastcopy2.ini [main] recreate=1 にします。</td></tr>
 	<tr><td nowrap><strong>/postproc=終了時処理名</strong></td><td>事前に登録してある終了時処理名を指定します。（/postproc=FALSE で抑止）</td></tr>
@@ -751,7 +760,7 @@
 
 
 <a name="misc"/>
-<h2 class="help_head2">10. その他</h2>
+<h2 class="help_head2">10. その他（設定保存先等）</h2>
 <div class="help_section">
 	<li>設定ファイル(<strong>FastCopy2.ini</strong>)およびログファイルは、<br>
 	<div class="help_sub_section">
@@ -781,13 +790,28 @@
 
 <table class="help_table" border="4">
 <tr><th>Version</th><th>説明</th></tr>
-<tr><td>v3.13</td><td>
-一部環境で、起動時に例外が発生することがあったのを修正
+<tr><td>v3.21</td><td>
+コマンドラインで /cmd=(sync|move) を受け付けなくなっていたのを修正。
+</td></tr>
+<tr><td>v3.20</td><td>
+ユーザレベル（非管理者）でのシェル拡張を可能に。<br>
+コピー動作中の自動スリープを抑止するオプションの追加。<br>
+ディレクトリ探索の高速化（高レイテンシ環境or大規模エントリ用。FIND_FIRST_EX_LARGE_FETCH利用）。<br>
+みなし最小セクタサイズ設定を追加（ジャンクション等により、書き込み側の途中ディレクトリでセクタサイズが4096byteになる場合用）。<br>
+/NoUI時は予測機能をOFFに。（/estimate=TRUE で変更可能）。<br>
+ハッシュモードに SHA-256を追加。（fastcopy2.ini [main] hash_mode=2 を設定。hash_mode=1 で SHA-1）<br>
+/balloonオプションを追加。（/balloon=FALSE でballoon表示を抑止します）<br>
+/force_startで同時実行上限数を指定可能に。（/force_start=2～N）<br>
+拡張フィルタ用日付指定で、時分秒まで設定可能に（/from_date(to_date)="YYYYMMDD[hhmmss]" or "YYYY/MM/DD [hh:mm:ss]"）<br>
+ヘルプ内で Ctrl +F による検索を可能に。
+</td></tr>
+<tr><td>v3.13-v3.14</td><td>
+一部環境で、起動時に例外が発生することがあったのを修正。
 </td></tr>
 <tr><td>v3.12</td><td>
-通常表示（非アイコン）＋予測ON時にタスクバーにプログレス表示<br>
-ログ記録で「UTF-8で記録」OFFでもUTF-8記録されていた問題を修正<br>
-サポートBBSへのリンク追加
+通常表示（非アイコン）＋予測ON時にタスクバーにプログレス表示。<br>
+ログ記録で「UTF-8で記録」OFFでもUTF-8記録されていた問題を修正。<br>
+サポートBBSへのリンク追加。
 </td></tr>
 <tr><td>v3.11</td><td>
 タスクトレイで動作完了した時にバルーン通知できるように。<br>
@@ -881,7 +905,7 @@ ACL/Stream有効にした状態で上書きコピーに失敗することがあったのを修正。
 <tr><td>v1.93</td><td>終了時処理設定（Shutdown、コマンド実行等を可能に）を追加。「ログを開く」メニューを追加。ファイルによるSource指定オプション（/srcfile=）を追加。ジョブ管理で「削除モード」を「移動モード」として保存していたのを修正（v1.80-v1.92）。インストーラのショートカット作成オプションが効いていなかったのを修正（v1.92のみ）</td></tr>
 <tr><td>v1.92</td><td>シェル拡張に「タスクトレイで実行」オプションを追加。エラー発生時に、コピー先に不完全なファイルが残ることがあったのを修正。英語モードの表記を少し改善</td></tr>
 <tr><td>v1.91</td><td>英語UIモードの追加。復元無効化付き削除に失敗することがあったのを修正。ベリファイ付き移動時に、稀に処理が進まなくなる可能性があったのを修正。ディレクトリ選択ダイアログでネットワークドライブが見えなくなっていたのを修正。</td></tr>
-<tr><td>v1.90</td><td>ベリファイ動作の高速化（I/O とハッシュ計算を別スレッド化して並列処理）。ベリファイ用ハッシュアルゴリズムに MD5 を追加し、MD5をデフォルトに変更（fastcopy.ini で [main] using_MD5 = 0 とすれば SHA-1 を利用）。ウィンドウの位置＆サイズ固定機能、および、Source ⇔ DestDir 交換機能を追加。</td></tr>
+<tr><td>v1.90</td><td>ベリファイ動作の高速化（I/O とハッシュ計算を別スレッド化して並列処理）。ベリファイ用ハッシュアルゴリズムに MD5 を追加し、MD5をデフォルトに変更（fastcopy.ini で <strike>[main] using_MD5 = 0 とすれば SHA-1 を利用</strike>。<a href="#hash_mode">設定方法が変わりました</a>）。ウィンドウの位置＆サイズ固定機能、および、Source ⇔ DestDir 交換機能を追加。</td></tr>
 <tr><td>v1.84</td><td>フィルタ文字列登録で、（種類ごとの）登録文字数合計が62*n文字（メタ文字を除く）の境界で終わる文字列が登録されなかったのを修正。</td></tr>
 <tr><td>v1.83</td><td>読み込み側OSキャッシュ利用ONの場合も、ベリファイ用読み込み時は無効化するようにした</td></tr>
 <tr><td>v1.82</td><td>読み込み側OSキャッシュを利用するオプション追加（OSキャッシュに載っているファイルは高速読み込みされるが、そうでない場合、無駄にOSキャッシュを利用して他の仮想メモリをスワップアウトさせる原因になるので、標準では非推奨）</td></tr>

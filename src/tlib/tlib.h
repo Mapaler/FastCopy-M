@@ -1,4 +1,4 @@
-﻿/* @(#)Copyright (C) 1996-2015 H.Shirouzu		tlib.h	Ver0.99 */
+﻿/* @(#)Copyright (C) 1996-2016 H.Shirouzu		tlib.h	Ver0.99 */
 /* ========================================================================
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Main Header
@@ -62,7 +62,12 @@ typedef unsigned _int64 uint64;
 
 #include "commctrl.h"
 #include <regstr.h>
+
+#pragma warning(push)
+#pragma warning(disable : 4091) // shlobj.h(1054): warning C4091: 'typedef ': ignored ...
 #include <shlobj.h>
+#pragma warning(pop)
+
 #include <tchar.h>
 #include "tmisc.h"
 #include "tapi32ex.h"
@@ -99,6 +104,10 @@ extern DWORD TWinVersion;	// define in tmisc.cpp
 
 #define IsLang(lang)	(PRIMARYLANGID(LANGIDFROMLCID(GetThreadLocale())) == lang)
 #define wsizeof(x)		(sizeof(x) / sizeof(WCHAR))
+
+#ifndef GCL_HICONSM
+#define GCL_HICONSM (-34)
+#endif
 
 #define BUTTON_CLASS		"BUTTON"
 #define COMBOBOX_CLASS		"COMBOBOX"
@@ -322,6 +331,9 @@ struct TSize : public SIZE {
 		cx += x;
 		cy += y;
 	}
+	void Init() {
+		cx = cy = 0;
+	}
 };
 
 struct TPoint;
@@ -393,6 +405,7 @@ public:
 	virtual	~TWin();
 
 	HWND			hWnd;
+	HWND			hTipWnd;
 	DWORD			modalCount;
 	DWORD			twinId;
 
@@ -416,6 +429,7 @@ public:
 	virtual BOOL	EvNcDestroy(void);
 	virtual BOOL	EvQueryEndSession(BOOL nSession, BOOL nLogOut);
 	virtual BOOL	EvEndSession(BOOL nSession, BOOL nLogOut);
+	virtual BOOL	EvPowerBroadcast(WPARAM pbtEvent, LPARAM pbtData);
 	virtual BOOL	EvQueryOpen(void);
 	virtual BOOL	EvPaint(void);
 	virtual BOOL	EvNcPaint(HRGN hRgn);
@@ -495,11 +509,15 @@ public:
 	virtual int		GetWindowTextLengthW(void);
 	virtual int		GetWindowTextLengthU8(void);
 	virtual BOOL	InvalidateRect(const RECT *rc, BOOL fErase);
+	virtual HWND	SetFocus();
 
 	virtual LONG_PTR SetWindowLong(int index, LONG_PTR val);
 	virtual WORD	SetWindowWord(int index, WORD val);
 	virtual LONG_PTR GetWindowLong(int index);
 	virtual WORD	GetWindowWord(int index);
+	virtual UINT_PTR SetTimer(UINT_PTR idTimer, UINT uTimeout, TIMERPROC proc=NULL);
+	virtual BOOL	KillTimer(UINT_PTR idTimer);
+
 	virtual TWin	*GetParent(void) { return parent; };
 	virtual void	SetParent(TWin *_parent) { parent = _parent; };
 	virtual BOOL	MoveWindow(int x, int y, int cx, int cy, int bRepaint);
@@ -507,10 +525,17 @@ public:
 	virtual BOOL	Sleep(UINT mSec);
 	virtual BOOL	Idle(void);
 	virtual TWin	*Parent() { return parent; }
+	virtual BOOL	MoveCenter(BOOL use_cursor_screen=FALSE);
 
 	virtual	BOOL	PreProcMsg(MSG *msg);
 	virtual	LRESULT	WinProc(UINT uMsg, WPARAM wParam, LPARAM lParam);
 	virtual	LRESULT	DefWindowProc(UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+	virtual void	SetAccel(HACCEL _hAccel) { hAccel = _hAccel; }
+
+	virtual BOOL	CreateTipWnd(const WCHAR *tip=NULL, int width=0, int tout=0);
+	virtual BOOL	SetTipTextW(const WCHAR *tip, int width=0, int tout=0);
+	virtual BOOL	CloseTipWnd();
 };
 
 class TDlg : public TWin {
@@ -602,7 +627,7 @@ protected:
 	int			nCmdShow;
 	TWin		*mainWnd;
 	TWin		*preWnd;
-	HINSTANCE	hI;
+	HINSTANCE	hInstance;
 	DWORD		twinId;
 
 	virtual BOOL	InitApp(void);
@@ -628,7 +653,8 @@ public:
 
 	static TApp *GetApp() { return tapp; }
 	static void Idle(DWORD timeout=0);
-	static HINSTANCE GetInstance() { return tapp->hI; }
+	static HINSTANCE GetInstance() { return tapp->hInstance; }
+	static HINSTANCE hInst() { return tapp->hInstance; }
 	static LRESULT CALLBACK WinProc(HWND hW, UINT uMsg, WPARAM wParam, LPARAM lParam);
 	static DWORD  GenTWinID() { return tapp ? tapp->twinId++ : 0; }
 };

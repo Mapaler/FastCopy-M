@@ -1,5 +1,5 @@
 ﻿static char *tap32ex_id = 
-	"@(#)Copyright (C) 1996-2015 H.Shirouzu		tap32ex.cpp	Ver0.99";
+	"@(#)Copyright (C) 1996-2016 H.Shirouzu		tap32ex.cpp	Ver0.99";
 /* ========================================================================
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Application Frame Class
@@ -56,9 +56,15 @@ BOOL TDigest::Init(TDigest::Type _type)
 {
 	type = _type;
 
-	if (hProv == NULL) {
-		if (!::CryptAcquireContext(&hProv, NULL, MS_DEF_DSS_PROV, PROV_DSS, 0)) {
-			::CryptAcquireContext(&hProv, NULL, MS_DEF_DSS_PROV, PROV_DSS, CRYPT_NEWKEYSET);
+	if (hProv == NULL) {  
+		if (!::CryptAcquireContext(&hProv, NULL, MS_ENH_RSA_AES_PROV, PROV_RSA_AES, 0)) {
+			if (!::CryptAcquireContext(&hProv, NULL, MS_ENH_RSA_AES_PROV, PROV_RSA_AES,
+				CRYPT_NEWKEYSET)) {
+				if (!::CryptAcquireContext(&hProv, NULL, MS_DEF_DSS_PROV, PROV_DSS, 0)) {
+					::CryptAcquireContext(&hProv, NULL, MS_DEF_DSS_PROV, PROV_DSS,
+					CRYPT_NEWKEYSET);
+				}
+			}
 		}
 	}
 	if (hHash) {
@@ -68,7 +74,8 @@ BOOL TDigest::Init(TDigest::Type _type)
 	used	= false;
 	updated	= false;
 
-	return	::CryptCreateHash(hProv, type == SHA1 ? CALG_SHA : CALG_MD5, 0, 0, &hHash);
+	return	::CryptCreateHash(hProv, type == MD5 ? CALG_MD5 :
+		type == SHA256 ? CALG_SHA_256 : CALG_SHA, 0, 0, &hHash);
 }
 
 BOOL TDigest::Reset()
@@ -104,15 +111,24 @@ BOOL TDigest::GetRevVal(void *data)
 
 void TDigest::GetEmptyVal(void *data)
 {
-#define EMPTY_MD5	"\xd4\x1d\x8c\xd9\x8f\x00\xb2\x04\xe9\x80\x09\x98\xec\xf8\x42\x7e"
-#define EMPTY_SHA1	"\xda\x39\xa3\xee\x5e\x6b\x4b\x0d\x32\x55\xbf\xef\x95\x60\x18\x90" \
-					"\xaf\xd8\x07\x09"
+#define EMPTY_MD5		"\xd4\x1d\x8c\xd9\x8f\x00\xb2\x04\xe9\x80\x09\x98\xec\xf8\x42\x7e"
+#define EMPTY_SHA1		"\xda\x39\xa3\xee\x5e\x6b\x4b\x0d\x32\x55\xbf\xef\x95\x60\x18\x90" \
+						"\xaf\xd8\x07\x09"
+#define EMPTY_SHA256	"\xe3\xb0\xc4\x42\x98\xfc\x1c\x14\x9a\xfb\xf4\xc8\x99\x6f\xb9\x24" \
+						"\x27\xae\x41\xe4\x64\x9b\x93\x4c\xa4\x95\x99\x1b\x78\x52\xb8\x55"
 
-	if (type == MD5) {
-		memcpy(data, EMPTY_MD5,  sizeof(EMPTY_MD5));
-	}
-	else {
-		memcpy(data, EMPTY_SHA1, sizeof(EMPTY_SHA1));
+	switch (type) {
+	case MD5:
+		memcpy(data, EMPTY_MD5,  MD5_SIZE);
+		break;
+
+	case SHA1:
+		memcpy(data, EMPTY_SHA1, SHA1_SIZE);
+		break;
+
+	case SHA256:
+		memcpy(data, EMPTY_SHA256, SHA256_SIZE);
+		break;
 	}
 }
 
@@ -362,6 +378,7 @@ u_int MakeHash(const void *data, int size, u_int iv)
 	case 1:	mod_val = 0x11111111; memcpy(&mod_val, p, 1); break;
 	case 2:	mod_val = 0x22222222; memcpy(&mod_val, p, 2); break;
 	case 3:	mod_val = 0x33333333; memcpy(&mod_val, p, 3); break;
+	default: mod_val = 0; break;
 	}
 
 	return	MAKE_HASH_CORE(val, mod_val, offset + mod);
@@ -399,6 +416,7 @@ uint64 MakeHash64(const void *data, int size, uint64 iv)
 	case 5:	mod_val = 0x5555555555555555; memcpy(&mod_val, p, 5); break;
 	case 6:	mod_val = 0x6666666666666666; memcpy(&mod_val, p, 6); break;
 	case 7: mod_val = 0x7777777777777777; memcpy(&mod_val, p, 7); break;
+	default: mod_val = 0; break;
 	}
 
 	return	MAKE_HASH_CORE64(val, mod_val, offset + mod);
@@ -412,7 +430,7 @@ extern void CheckHashQuality64();
 
 void tapi32_test()
 {
-	CheckHashQuality();
+//	CheckHashQuality();
 	CheckHashQuality64();
 }
 
@@ -490,6 +508,20 @@ void CheckHashQuality()
 	delete [] obj;
 }
 
+
+void swap_s(char *s, int len)
+{
+	int		mid = len / 2;
+
+	for (int i=0; i < mid; i++) {
+		char	&c1 = s[i];
+		char	&c2 = s[len-i-1];
+		char	tmp = c1;
+		c1 = c2;
+		c2 = tmp;
+	}
+}
+
 void CheckHashQuality64()
 {
 	THtest64	ht;
@@ -523,9 +555,11 @@ void CheckHashQuality64()
 	Debug("Start %s mode=%s num=%d\n", hash_name, mode, MAX_HASH64);
 
 	for (uint64 i=0; i < MAX_HASH64; i++) {
-#if 0
-		len = sprintf(buf, "str___________________%08lldn", (int64)i) + 1;
-#elif 1
+#if 1
+		len = sprintf(buf, "%08lld", (int64)i);
+	//	swap_s(buf, len);
+		len += sprintf(buf+len, "___________________________str");
+#elif 0
 		val = i;
 #else
 		val = (rand64_data1[i % THASH_RAND_NUM1]);
@@ -542,7 +576,7 @@ void CheckHashQuality64()
 		hash_id = *(u_int *)data; // 32bit空間でテスト
 #endif
 		if (ht.Search(NULL, hash_id)) {
-			if (col < 10) Debug("reduced val is %016llx (%d)\n", hash_id, len);
+			if (col < 10) Debug("reduced val is %016llx (%d) %s\n", hash_id, len, buf);
 			col++;
 		}
 		else {

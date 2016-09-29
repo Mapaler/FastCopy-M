@@ -1,5 +1,5 @@
 ﻿static char *tmisc_id = 
-	"@(#)Copyright (C) 1996-2015 H.Shirouzu		tmisc.cpp	Ver0.99";
+	"@(#)Copyright (C) 1996-2016 H.Shirouzu		tmisc.cpp	Ver0.99";
 /* ========================================================================
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Application Frame Class
@@ -10,6 +10,7 @@
 	Modify					: Mapaler 2015-09-09
 	======================================================================== */
 
+#define EX_TRACE
 #include "tlib.h"
 
 #include <stdio.h>
@@ -284,7 +285,7 @@ void InitInstanceForLoadStr(HINSTANCE hI)
 	defaultStrInstance = hI;
 }
 
-LPSTR GetLoadStrA(UINT resId, HINSTANCE hI)
+LPSTR LoadStrA(UINT resId, HINSTANCE hI)
 {
 	static TResHash	*hash;
 
@@ -304,7 +305,7 @@ LPSTR GetLoadStrA(UINT resId, HINSTANCE hI)
 	return	obj ? (char *)obj->val : NULL;
 }
 
-LPWSTR GetLoadStrW(UINT resId, HINSTANCE hI)
+LPWSTR LoadStrW(UINT resId, HINSTANCE hI)
 {
 	static TResHash	*hash;
 
@@ -365,7 +366,7 @@ int MakePath(char *dest, const char *dir, const char *file)
 	ssize_t	len;
 
 	if ((len = strlen(dir)) == 0)
-		return	wsprintf(dest, "%s", file);
+		return	sprintf(dest, "%s", file);
 
 	if (dir[len -1] == '\\')	// 表など、2byte目が'\\'で終る文字列対策
 	{
@@ -379,7 +380,7 @@ int MakePath(char *dest, const char *dir, const char *file)
 				separetor = FALSE;
 		}
 	}
-	return	wsprintf(dest, "%s%s%s", dir, separetor ? "\\" : "", file);
+	return	sprintf(dest, "%s%s%s", dir, separetor ? "\\" : "", file);
 }
 
 /*=========================================================================
@@ -390,9 +391,9 @@ int MakePathU8(char *dest, const char *dir, const char *file)
 	ssize_t	len;
 
 	if ((len = strlen(dir)) == 0)
-		return	wsprintf(dest, "%s", file);
+		return	sprintf(dest, "%s", file);
 
-	return	wsprintf(dest, "%s%s%s", dir, dir[len -1] ? "\\" : "", file);
+	return	sprintf(dest, "%s%s%s", dir, dir[len -1] ? "\\" : "", file);
 }
 
 /*=========================================================================
@@ -403,9 +404,9 @@ int MakePathW(WCHAR *dest, const WCHAR *dir, const WCHAR *file)
 	ssize_t	len;
 
 	if ((len = wcslen(dir)) == 0)
-		return	wsprintfW(dest, L"%s", file);
+		return	swprintf(dest, L"%s", file);
 
-	return	wsprintfW(dest, L"%s%s%s", dir, dir[len -1] == '\\' ? L"" : L"\\" , file);
+	return	swprintf(dest, L"%s%s%s", dir, dir[len -1] == '\\' ? L"" : L"\\" , file);
 }
 
 
@@ -733,7 +734,14 @@ const WCHAR *FmtW(const WCHAR *fmt,...)
 =========================================================================*/
 static char *ExceptionTitle;
 static char *ExceptionLogFile;
+static char *ExceptionShellArg;
 static char *ExceptionLogInfo;
+static char *ExceptionVerInfo;
+static char *ExceptionTrace;
+static char *ExceptionTracePtr;
+static char *ExceptionTraceEnd;
+static SYSTEMTIME ExceptionTm;
+
 #define STACKDUMP_SIZE			256
 #ifdef _WIN64
 #define MAX_STACKDUMP_SIZE		2048
@@ -772,115 +780,213 @@ inline int reg_info(char *buf, DWORD_PTR target, const char *name)
 	return	len < 50 ? 0 : len;	// target データがない場合は 0 に
 }
 
+void InitExTrace(int trace_len)
+{
+	if (ExceptionTrace) {
+		free(ExceptionTrace);
+		ExceptionTrace = ExceptionTracePtr = ExceptionTraceEnd = NULL;
+	}
+	if (trace_len <= 0) {
+		return;
+	}
+	ExceptionTrace = (char *)calloc(1, trace_len);
+	ExceptionTracePtr = ExceptionTrace;
+	ExceptionTraceEnd = ExceptionTrace + trace_len;
+}
+
+BOOL ExTrace(const char *fmt,...)
+{
+	if (!ExceptionTrace) {
+		return	FALSE;
+	}
+
+	char buf[8192];
+
+	va_list	ap;
+	va_start(ap, fmt);
+	int len = (int)_vsnprintf(buf, sizeof(buf) - 3, fmt, ap);
+	va_end(ap);
+
+	if (len <= 0) {
+		return FALSE;
+	}
+	if (buf[0] != '[' && buf[len-1] != '\n') {
+		len += strcpyz(buf + len, "\r\n");
+	}
+
+	if (ExceptionTracePtr + len <= ExceptionTraceEnd) {
+		memcpy(ExceptionTracePtr, buf, len);
+		ExceptionTracePtr += len;
+		if (ExceptionTracePtr == ExceptionTraceEnd) {
+			ExceptionTracePtr = ExceptionTrace;
+		}
+	}
+	else {
+		size_t	remain = ExceptionTraceEnd - ExceptionTracePtr;
+		memcpy(ExceptionTracePtr, buf, remain);
+		ExceptionTracePtr = ExceptionTrace;
+		memcpy(ExceptionTracePtr, buf + remain, len - remain);
+		ExceptionTracePtr += len - remain;
+	}
+
+	return	TRUE;
+}
+
 LONG WINAPI Local_UnhandledExceptionFilter(struct _EXCEPTION_POINTERS *info)
 {
-	static char			buf[MAX_DUMPBUF_SIZE];
-	static HANDLE		hFile;
-	static SYSTEMTIME	tm;
-	static CONTEXT		*context;
-	static DWORD		len, i, j;
-	static char			*stack, *esp;
+	static char	buf[MAX_DUMPBUF_SIZE];
+	HANDLE		hFile;
+	SYSTEMTIME	&stm = ExceptionTm;
+	SYSTEMTIME	tm;
+	CONTEXT		*ctx;
+	DWORD		len, i, j;
+	char		*stack;
+	char		*esp;
 
 	hFile = ::CreateFile(ExceptionLogFile, GENERIC_WRITE, 0, 0, OPEN_ALWAYS, 0, 0);
 	::SetFilePointer(hFile, 0, 0, FILE_END);
 	::GetLocalTime(&tm);
-	context = info->ContextRecord;
 
 	len = sprintf(buf,
-#ifdef _WIN64
-		"------ %s -----\r\n"
+		"------ %.100s -----\r\n"
 		" Date        : %d/%02d/%02d %02d:%02d:%02d\r\n"
-		" Code/Addr   : %x / %p\r\n"
-		" AX/BX/CX/DX : %p / %p / %p / %p\r\n"
-		" SI/DI/BP/SP : %p / %p / %p / %p\r\n"
-		" 08/09/10/11 : %p / %p / %p / %p\r\n"
-		" 12/13/14/15 : %p / %p / %p / %p\r\n"
-		"------- pre stack info -----\r\n"
-		, ExceptionTitle
-		, tm.wYear, tm.wMonth, tm.wDay, tm.wHour, tm.wMinute, tm.wSecond
-		, info->ExceptionRecord->ExceptionCode, (void *)info->ExceptionRecord->ExceptionAddress
-		, (void *)context->Rax, (void *)context->Rbx, (void *)context->Rcx, (void *)context->Rdx
-		, (void *)context->Rsi, (void *)context->Rdi, (void *)context->Rbp, (void *)context->Rsp
-		, (void *)context->R8,  (void *)context->R9,  (void *)context->R10, (void *)context->R11
-		, (void *)context->R12, (void *)context->R13, (void *)context->R14, (void *)context->R15
-#else
-		"------ %s -----\r\n"
-		" Date        : %d/%02d/%02d %02d:%02d:%02d\r\n"
-		" Code/Addr   : %X / %p\r\n"
-		" AX/BX/CX/DX : %08x / %08x / %08x / %08x\r\n"
-		" SI/DI/BP/SP : %08x / %08x / %08x / %08x\r\n"
-		"----- pre stack info ---\r\n"
-		, ExceptionTitle
-		, tm.wYear, tm.wMonth, tm.wDay, tm.wHour, tm.wMinute, tm.wSecond
-		, info->ExceptionRecord->ExceptionCode, info->ExceptionRecord->ExceptionAddress
-		, context->Eax, context->Ebx, context->Ecx, context->Edx
-		, context->Esi, context->Edi, context->Ebp, context->Esp
-#endif
-		);
+		" Start       : %d/%02d/%02d %02d:%02d:%02d\r\n"
+		" OS Infos    : %.100s\r\n"
+			, ExceptionTitle
+			, tm.wYear,  tm.wMonth,  tm.wDay,  tm.wHour,  tm.wMinute,  tm.wSecond
+			, stm.wYear, stm.wMonth, stm.wDay, stm.wHour, stm.wMinute, stm.wSecond
+			, ExceptionVerInfo);
 	::WriteFile(hFile, buf, len, &len, 0);
 
+	if (info) {
+		ctx = info->ContextRecord;
+
+		len = sprintf(buf,
 #ifdef _WIN64
-		esp = (char *)context->Rsp;
+			" Code/Adr/DC : %X / %p / %p\r\n"
+			" AX/BX/CX/DX : %p / %p / %p / %p\r\n"
+			" SI/DI/BP/SP : %p / %p / %p / %p\r\n"
+			" 08/09/10/11 : %p / %p / %p / %p\r\n"
+			" 12/13/14/15 : %p / %p / %p / %p\r\n"
+			" BT/BF/ET/EF : %p / %p / %p / %p\r\n"
+			"------- pre stack info -----\r\n"
+			, info->ExceptionRecord->ExceptionCode, (void *)info->ExceptionRecord->ExceptionAddress
+			, (void *)ctx->DebugControl
+			, (void *)ctx->Rax, (void *)ctx->Rbx, (void *)ctx->Rcx, (void *)ctx->Rdx
+			, (void *)ctx->Rsi, (void *)ctx->Rdi, (void *)ctx->Rbp, (void *)ctx->Rsp
+			, (void *)ctx->R8,  (void *)ctx->R9,  (void *)ctx->R10, (void *)ctx->R11
+			, (void *)ctx->R12, (void *)ctx->R13, (void *)ctx->R14, (void *)ctx->R15
+			, (void *)ctx->LastBranchToRip, (void *)ctx->LastBranchFromRip
+			, (void *)ctx->LastExceptionToRip, (void *)ctx->LastExceptionFromRip
 #else
-		esp = (char *)context->Esp;
+			" Code/Addr   : %X / %p\r\n"
+			" AX/BX/CX/DX : %08x / %08x / %08x / %08x\r\n"
+			" SI/DI/BP/SP : %08x / %08x / %08x / %08x\r\n"
+			"----- pre stack info ---\r\n"
+			, info->ExceptionRecord->ExceptionCode, info->ExceptionRecord->ExceptionAddress
+			, ctx->Eax, ctx->Ebx, ctx->Ecx, ctx->Edx
+			, ctx->Esi, ctx->Edi, ctx->Ebp, ctx->Esp
+#endif
+			);
+		::WriteFile(hFile, buf, len, &len, 0);
+
+#ifdef _WIN64
+			esp = (char *)ctx->Rsp;
+#else
+			esp = (char *)ctx->Esp;
 #endif
 
-	for (i=0; i < MAX_PRE_STACKDUMP_SIZE / STACKDUMP_SIZE; i++) {
-		stack = (esp - MAX_PRE_STACKDUMP_SIZE) + (i * STACKDUMP_SIZE);
-		if (::IsBadReadPtr(stack, STACKDUMP_SIZE)) continue;
-		len = 0;
-		for (j=0; j < STACKDUMP_SIZE / sizeof(void *); j++)
-			len += sprintf(buf + len, "%p%s", ((void **)stack)[j],
-							((j+1)%(32/sizeof(void *))) ? " " : "\r\n");
+		for (i=0; i < MAX_PRE_STACKDUMP_SIZE / STACKDUMP_SIZE; i++) {
+			stack = (esp - MAX_PRE_STACKDUMP_SIZE) + (i * STACKDUMP_SIZE);
+			if (::IsBadReadPtr(stack, STACKDUMP_SIZE)) continue;
+			len = 0;
+			for (j=0; j < STACKDUMP_SIZE / sizeof(void *); j++)
+				len += sprintf(buf + len, "%p%s", ((void **)stack)[j],
+								((j+1)%(32/sizeof(void *))) ? " " : "\r\n");
+			::WriteFile(hFile, buf, len, &len, 0);
+		}
+
+		len = sprintf(buf, "------- stack info -----\r\n");
+		::WriteFile(hFile, buf, len, &len, 0);
+
+		for (i=0; i < MAX_STACKDUMP_SIZE / STACKDUMP_SIZE; i++) {
+			stack = esp + (i * STACKDUMP_SIZE);
+			if (::IsBadReadPtr(stack, STACKDUMP_SIZE))
+				break;
+			len = 0;
+			for (j=0; j < STACKDUMP_SIZE / sizeof(void *); j++)
+				len += sprintf(buf + len, "%p%s", ((void **)stack)[j],
+								((j+1)%(32/sizeof(void *))) ? " " : "\r\n");
+			::WriteFile(hFile, buf, len, &len, 0);
+		}
+
+		len = sprintf(buf, "---- reg point info ----\r\n");
+#ifdef _WIN64
+		len += reg_info(buf+len, ctx->Rax, "Rax"); len += reg_info(buf+len, ctx->Rbx, "Rbx");
+		len += reg_info(buf+len, ctx->Rcx, "Rcx"); len += reg_info(buf+len, ctx->Rdx, "Rdx");
+		len += reg_info(buf+len, ctx->Rsi, "Rsi"); len += reg_info(buf+len, ctx->Rdi, "Rdi");
+		len += reg_info(buf+len, ctx->Rbp, "Rbp"); len += reg_info(buf+len, ctx->Rsp, "Rsp");
+		len += reg_info(buf+len, ctx->R8 , "R8 "); len += reg_info(buf+len, ctx->R9 , "R9 ");
+		len += reg_info(buf+len, ctx->R10, "R10"); len += reg_info(buf+len, ctx->R11, "R11");
+		len += reg_info(buf+len, ctx->R12, "R12"); len += reg_info(buf+len, ctx->R13, "R13");
+		len += reg_info(buf+len, ctx->R14, "R14"); len += reg_info(buf+len, ctx->R15, "R15");
+		len += reg_info(buf+len, ctx->Rip, "Rip");
+#else
+		len += reg_info(buf+len, ctx->Eax, "Eax"); len += reg_info(buf+len, ctx->Ebx, "Ebx");
+		len += reg_info(buf+len, ctx->Ecx, "Ecx"); len += reg_info(buf+len, ctx->Edx, "Edx");
+		len += reg_info(buf+len, ctx->Esi, "Esi"); len += reg_info(buf+len, ctx->Edi, "Edi");
+		len += reg_info(buf+len, ctx->Ebp, "Ebp"); len += reg_info(buf+len, ctx->Esp, "Esp");
+		len += reg_info(buf+len, ctx->Eip, "Eip");
+#endif
+
 		::WriteFile(hFile, buf, len, &len, 0);
 	}
 
-	len = sprintf(buf, "------- stack info -----\r\n");
-	::WriteFile(hFile, buf, len, &len, 0);
-
-	for (i=0; i < MAX_STACKDUMP_SIZE / STACKDUMP_SIZE; i++) {
-		stack = esp + (i * STACKDUMP_SIZE);
-		if (::IsBadReadPtr(stack, STACKDUMP_SIZE))
-			break;
-		len = 0;
-		for (j=0; j < STACKDUMP_SIZE / sizeof(void *); j++)
-			len += sprintf(buf + len, "%p%s", ((void **)stack)[j],
-							((j+1)%(32/sizeof(void *))) ? " " : "\r\n");
+	if (ExceptionTrace) {
+		len = sprintf(buf, "---- trace log info ----\r\n");
+		::WriteFile(hFile, buf, len, &len, 0);
+		if (ExceptionTracePtr != ExceptionTrace && ExceptionTracePtr[0] == 0 &&
+			ExceptionTracePtr[1]) {
+			if ((len = (DWORD)(ExceptionTraceEnd - ExceptionTracePtr - 1)) > 0) {
+				::WriteFile(hFile, ExceptionTracePtr + 1, len, &len, 0);
+			}
+		}
+		if (ExceptionTrace[0]) {
+			if ((len = (DWORD)(ExceptionTracePtr - ExceptionTrace)) > 0) {
+				::WriteFile(hFile, ExceptionTrace, len, &len, 0);
+			}
+		}
+		len = sprintf(buf, "\r\n");
 		::WriteFile(hFile, buf, len, &len, 0);
 	}
 
-	len = sprintf(buf, "---- reg point info ----\r\n");
-#ifdef _WIN64
-	len += reg_info(buf+len, context->Rax, "Rax"); len += reg_info(buf+len, context->Rbx, "Rbx");
-	len += reg_info(buf+len, context->Rcx, "Rcx"); len += reg_info(buf+len, context->Rdx, "Rdx");
-	len += reg_info(buf+len, context->Rsi, "Rsi"); len += reg_info(buf+len, context->Rdi, "Rdi");
-	len += reg_info(buf+len, context->Rbp, "Rbp"); len += reg_info(buf+len, context->Rsp, "Rsp");
-	len += reg_info(buf+len, context->R8 , "R8 "); len += reg_info(buf+len, context->R9 , "R9 ");
-	len += reg_info(buf+len, context->R10, "R10"); len += reg_info(buf+len, context->R11, "R11");
-	len += reg_info(buf+len, context->R12, "R12"); len += reg_info(buf+len, context->R13, "R13");
-	len += reg_info(buf+len, context->R14, "R14"); len += reg_info(buf+len, context->R15, "R15");
-	len += reg_info(buf+len, context->Rip, "Rip");
-#else
-	len += reg_info(buf+len, context->Eax, "Eax"); len += reg_info(buf+len, context->Ebx, "Ebx");
-	len += reg_info(buf+len, context->Ecx, "Ecx"); len += reg_info(buf+len, context->Edx, "Edx");
-	len += reg_info(buf+len, context->Esi, "Esi"); len += reg_info(buf+len, context->Edi, "Edi");
-	len += reg_info(buf+len, context->Ebp, "Ebp"); len += reg_info(buf+len, context->Esp, "Esp");
-	len += reg_info(buf+len, context->Eip, "Eip");
-#endif
-
-	len += sprintf(buf+len, "------------------------\r\n\r\n");
+	len = sprintf(buf, "------------------------\r\n\r\n");
 	::WriteFile(hFile, buf, len, &len, 0);
 	::CloseHandle(hFile);
 
-	sprintf(buf, ExceptionLogInfo, ExceptionLogFile);
-	::MessageBox(0, buf, ExceptionTitle, MB_OK);
+	if (!info) {
+		return EXCEPTION_EXECUTE_HANDLER;
+	}
+
+	static BOOL	once = FALSE;
+	if (once) {
+		return EXCEPTION_EXECUTE_HANDLER;
+	}
+	once = TRUE;
+
+	snprintf(buf, sizeof(buf), ExceptionLogInfo, ExceptionLogFile);
+	if (::MessageBox(0, buf, ExceptionTitle, MB_OKCANCEL) == IDOK) {
+		::ShellExecute(0, 0, "explorer", ExceptionShellArg, 0, SW_SHOW);
+	}
 
 	return	EXCEPTION_EXECUTE_HANDLER;
 }
 
 BOOL InstallExceptionFilter(const char *title, const char *info, const char *fname)
 {
-	char	buf[MAX_PATH];
+	::GetLocalTime(&ExceptionTm);
+
+	char	buf[MAX_PATH_U8];
 
 	if (fname && *fname) {
 		strcpy(buf, fname);
@@ -889,13 +995,28 @@ BOOL InstallExceptionFilter(const char *title, const char *info, const char *fna
 		strcpy(strrchr(buf, '.'), "_exception.log");
 	}
 	ExceptionLogFile = strdup(buf);
+
+	snprintf(buf, sizeof(buf), "/select,%s", ExceptionLogFile);
+	ExceptionShellArg = strdup(buf);
+
 	ExceptionTitle = strdup(title);
 	ExceptionLogInfo = strdup(info);
+
+	OSVERSIONINFOEX	ovi = { sizeof(OSVERSIONINFOEX) };
+	::GetVersionEx((OSVERSIONINFO *)&ovi);
+	snprintf(buf, sizeof(buf), "%02x/%02x/%02x/%02x/%02x/%02x",
+		ovi.dwMajorVersion, ovi.dwMinorVersion, ovi.dwBuildNumber,
+		ovi.wServicePackMajor, ovi.wServicePackMinor, ovi.wSuiteMask);
+	ExceptionVerInfo = strdup(buf);
 
 	::SetUnhandledExceptionFilter(&Local_UnhandledExceptionFilter);
 	return	TRUE;
 }
 
+void ForceFlushExceptionLog()
+{
+	Local_UnhandledExceptionFilter(NULL);
+}
 
 /*
 	nul文字を必ず付与する strcpy かつ return は 0 を除くコピー文字数
@@ -1424,8 +1545,10 @@ BOOL InitHtmlHelpCore()
 	if (hHtmlHelp)
 		pHtmlHelpW = (HWND (WINAPI *)(HWND, WCHAR *, UINT, DWORD_PTR))
 					::GetProcAddress(hHtmlHelp, "HtmlHelpW");
-	if (pHtmlHelpW)
+
+	if (pHtmlHelpW) {
 		pHtmlHelpW(NULL, NULL, HH_INITIALIZE, (DWORD_PTR)&cookie);
+	}
 
 	return	pHtmlHelpW ? TRUE : FALSE;;
 }
@@ -1438,10 +1561,22 @@ BOOL InitHtmlHelp()
 
 #endif
 
+HWND TransMsgHelp(MSG *msg)
+{
+#if defined(ENABLE_HTML_HELP)
+	if (pHtmlHelpW) {
+		return	pHtmlHelpW(0, 0, HH_PRETRANSLATEMESSAGE, (DWORD_PTR)msg);
+	}
+#endif
+	return	NULL;
+}
+
 HWND CloseHelpAll()
 {
 #if defined(ENABLE_HTML_HELP)
-	if (!pHtmlHelpW) return NULL;
+	if (!pHtmlHelpW) {
+		return NULL;
+	}
 	return	pHtmlHelpW(0, 0, HH_CLOSE_ALL, 0);
 #else
 	return NULL;
@@ -1467,14 +1602,17 @@ HWND ShowHelpW(HWND hOwner, WCHAR *help_dir, WCHAR *help_file, WCHAR *section)
 		//从help_file中未发现“http”字符，打开chm
 		//Not found "http" in help_file string, open chm file.
 #if defined(ENABLE_HTML_HELP)
-		if (!pHtmlHelpW) InitHtmlHelp();
+		if (!pHtmlHelpW) {
+			InitHtmlHelp();
+		}
 
 		if (pHtmlHelpW) {
 			WCHAR	path[MAX_PATH];
 
 			MakePathW(path, help_dir, help_file);
-			if (section)
+			if (section) {
 				wcscpy(path + wcslen(path), section);
+			}
 			return	pHtmlHelpW(hOwner, path, HH_HELP_FINDER, 0);
 		}
 #endif
@@ -1730,6 +1868,9 @@ BOOL ForceSetTrayIcon(HWND hWnd, UINT id, DWORD pref)
 	return	ret;
 }
 
+/* =======================================================================
+	Application ID Functions
+ ======================================================================= */
 #include <Shellapi.h>
 #include <propkey.h>
 #include <propvarutil.h>
@@ -1761,149 +1902,488 @@ BOOL SetWinAppId(HWND hWnd, const WCHAR *app_id)
 	return	SUCCEEDED(hr);
 }
 
-
-#include <Iads.h>
-#include <Adshlp.h>
-
-#pragma comment (lib, "ADSIid.lib")
-#pragma comment (lib, "Activeds.lib")
-
-BOOL GetDomainAndUid(WCHAR *domain, WCHAR *uid)
+static int CALLBACK font_enum_proc(ENUMLOGFONTEXW *elf, NEWTEXTMETRICEX *ntm,
+	DWORD fontType, LPARAM found_p)
 {
-	HANDLE		hToken;
-	BYTE		info[1024];
-	DWORD		infoSize = sizeof(info);
-	TOKEN_USER	*tu = (TOKEN_USER *)info;
-	DWORD		uidSize    = 200;	// KB 111544
-	DWORD		domainSize = 200;	// KB 111544
-	SID_NAME_USE snu;
+	BOOL	&found = *(BOOL *)found_p;
 
-	if (!::OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken)) {
-		return	FALSE;
-	}
-	BOOL ret = ::GetTokenInformation(hToken,TokenUser, info, infoSize, &infoSize);
-	::CloseHandle(hToken);
+	found = TRUE;
 
-	if (!ret) {
-		return	FALSE;
-	}
-
-	return	::LookupAccountSidW(NULL, tu->User.Sid, uid, &uidSize, domain, &domainSize, &snu);
+	return	0;
 }
 
-BOOL GetDomainFullName(const WCHAR *domain, const WCHAR *uid, WCHAR *full_name)
+BOOL IsInstalledFont(HDC hDc, const WCHAR *face_name, BYTE charset)
 {
-	WCHAR	nt_domain[256];
+	LOGFONTW	lf = {};
+	BOOL		found = FALSE;
 
-	swprintf(nt_domain, L"WinNT://%s", domain);
+	lf.lfCharSet = charset;
+	wcscpy(lf.lfFaceName, face_name);
 
-	IADsContainer*	ads = NULL;
-	if (!SUCCEEDED(::ADsGetObject(nt_domain, IID_IADsContainer, (void**)&ads))) {
-		return	FALSE;
+	::EnumFontFamiliesExW(hDc, &lf, (FONTENUMPROCW)font_enum_proc, (LPARAM)&found, 0);
+
+	return	found;
+}
+
+/* =======================================================================
+	Firewall Functions (require CoInitialize())
+ ======================================================================= */
+#include <netfw.h>
+#include <OleAuto.h>
+
+BOOL Is3rdPartyFwEnabled()
+{
+	INetFwProducts	*fwProd = NULL;
+
+	CoCreateInstance(__uuidof(NetFwProducts), 0, CLSCTX_INPROC_SERVER,
+		__uuidof(INetFwProducts), (void **)&fwProd);
+
+	if (!fwProd) {
+		return FALSE;
+	}
+	long	cnt = 0;
+	fwProd->get_Count(&cnt);
+	fwProd->Release();
+
+	return	cnt > 0 ? TRUE : FALSE;
+}
+
+static INetFwProfile* GetFwProfile()
+{
+	INetFwMgr		*fwMgr  = NULL;
+	INetFwPolicy	*fwPlcy = NULL;
+	INetFwProfile	*fwProf = NULL;
+
+	::CoCreateInstance(__uuidof(NetFwMgr), NULL, CLSCTX_INPROC_SERVER,
+		__uuidof(INetFwMgr), (void **)&fwMgr );
+
+	if (fwMgr) {
+		fwMgr->get_LocalPolicy(&fwPlcy);
+		if (fwPlcy) {
+			fwPlcy->get_CurrentProfile(&fwProf);
+			fwPlcy->Release();
+		}
+		fwMgr->Release();
 	}
 
-	BOOL		ret = FALSE;
-	BSTR		buid = ::SysAllocString(uid);
-	IDispatch	*udis = NULL;
+    return fwProf;
+}
 
-	if (SUCCEEDED(ads->GetObject(L"User", buid, &udis))) {
-		IADsUser	*user = NULL;
 
-		if (SUCCEEDED(udis->QueryInterface(IID_IADsUser, (void**)&user))) {
-			BSTR	bstr = NULL;
+static BSTR GetSysFileName(const WCHAR *path)
+{
+	WCHAR	wpath[MAX_PATH];
 
-			if (SUCCEEDED(user->get_FullName(&bstr))) {
-				wcscpy(full_name, bstr);
-				::SysFreeString(bstr);
-				ret = TRUE;
+	if (!path) {
+		::GetModuleFileNameW(0, wpath, wsizeof(wpath));
+		path = wpath;
+	}
+	return	::SysAllocString(path);
+}
+
+BOOL GetFwStatus(const WCHAR *path, FwStatus *fs)
+{
+	fs->Init();
+
+	INetFwProfile	*fwProf = GetFwProfile();
+	if (!fwProf) {
+		return FALSE;
+	}
+	VARIANT_BOOL	vfw_enable = VARIANT_FALSE;
+	fwProf->get_FirewallEnabled(&vfw_enable);
+	fs->fwEnable = (vfw_enable != VARIANT_FALSE);
+
+	INetFwAuthorizedApplications	*fwApps = NULL;
+	fwProf->get_AuthorizedApplications(&fwApps);
+
+	if (fwApps) {
+		INetFwAuthorizedApplication	*app = NULL;
+		BSTR	bpath = GetSysFileName(path);
+
+		fwApps->Item(bpath, &app);
+		if (app) {
+			fs->entryCnt  = 1;
+			fs->enableCnt = 1;
+			VARIANT_BOOL	vent_enable = VARIANT_FALSE;
+			app->get_Enabled(&vent_enable);
+			if (vent_enable != VARIANT_FALSE) {
+				fs->allowCnt++;
 			}
-			user->Release();
+			else {
+				fs->blockCnt++;
+			}
+			app->Release();
 		}
-		udis->Release();
+		::SysFreeString(bpath);
+		fwApps->Release();
 	}
-	ads->Release();
-	::SysFreeString(buid);
 
-	return	ret;
-}
+	fwProf->Release();
 
-BOOL IsAsciiStr(const WCHAR *s)
-{
-	for ( ; *s; s++) {
-		if (*s >= 128) {
-			return	FALSE;
-		}
-	}
 	return	TRUE;
 }
 
-BOOL GetDomainGroup(const WCHAR *domain, const WCHAR *uid, WCHAR *group)
+BOOL SetFwStatus(const WCHAR *path, const WCHAR *label, BOOL enable)
 {
-	WCHAR	nt_domain[256];
+	INetFwProfile	*fwProf = GetFwProfile();
 
-	swprintf(nt_domain, L"WinNT://%s", domain);
-
-	IADsContainer*	ads = NULL;
-	if (!SUCCEEDED(ADsGetObject(nt_domain, IID_IADsContainer, (void**)&ads))) {
-		return	FALSE;
+	if (!fwProf) {
+		return FALSE;
 	}
-
 	BOOL	ret = FALSE;
-	BSTR	buid = ::SysAllocString(uid);
-	IDispatch	*udis = NULL;
 
-	if (SUCCEEDED(ads->GetObject(L"User", buid, &udis))) {
-		IADsUser	*user = NULL;
+	INetFwAuthorizedApplications	*fwApps = NULL;
+	fwProf->get_AuthorizedApplications(&fwApps);
 
-		if (SUCCEEDED(udis->QueryInterface(IID_IADsUser, (void**)&user))) {
-			IADsMembers	*grps = NULL;
+	if (fwApps) {
+		INetFwAuthorizedApplication	*app = NULL;
 
-			if (SUCCEEDED(user->Groups(&grps))) {
-				IUnknown *pUnk = NULL;
+		::CoCreateInstance( __uuidof(NetFwAuthorizedApplication), NULL, CLSCTX_INPROC_SERVER,
+			__uuidof(INetFwAuthorizedApplication), (void **)&app);
+		if (app) {
+			BSTR	bpath  = GetSysFileName(path);
+			BSTR	blabel = GetSysFileName(label ? label : path);
 
-				if (SUCCEEDED(grps->get__NewEnum(&pUnk))) {
-					IEnumVARIANT	*pEnum = NULL;
-
-					if (SUCCEEDED(pUnk->QueryInterface(IID_IEnumVARIANT, (void **)&pEnum))) {
-						VARIANT	var;
-						ULONG	lFetch = 0;
-
-						while (!ret && pEnum->Next(1, &var, &lFetch) == S_OK) {
-							if (lFetch == 1) {
-								IDispatch	*pDisp = V_DISPATCH(&var);
-								IADs		*grp = NULL;
-
-								if (SUCCEEDED(pDisp->QueryInterface(IID_IADs, (void **)&grp))) {
-									BSTR	bstr = NULL;
-
-									if (SUCCEEDED(grp->get_Name(&bstr))) {
-										if (!IsAsciiStr(bstr)) {
-											wcscpy(group, bstr);
-											ret = TRUE;
-										}
-										SysFreeString(bstr);
-									}
-									grp->Release();
-								}
-							}
-							VariantClear(&var);
-						}
-						pEnum->Release();
-					}
-					pUnk->Release();
-				}
-				grps->Release();
+			app->put_ProcessImageFileName(bpath);
+			app->put_Name(blabel);
+			if (!enable) {
+				app->put_Enabled(VARIANT_FALSE);
 			}
-			user->Release();
+			app->put_Name(blabel);
+			if (fwApps->Add(app) >= S_OK) {
+				ret = TRUE;
+			}
+			::SysFreeString(blabel);
+			::SysFreeString(bpath);
+			app->Release();
 		}
-		udis->Release();
+		fwApps->Release();
 	}
-	ads->Release();
-	::SysFreeString(buid);
+	fwProf->Release();
 
 	return	ret;
 }
 
+BOOL DelFwStatus(const WCHAR *path)
+{
+	INetFwProfile	*fwProf = GetFwProfile();
 
+	if (!fwProf) {
+		return FALSE;
+	}
+	BOOL	ret = FALSE;
 
+	INetFwAuthorizedApplications	*fwApps = NULL;
+	fwProf->get_AuthorizedApplications(&fwApps);
+
+	if (fwApps) {
+		BSTR	bpath = GetSysFileName(path);
+		ret = fwApps->Remove(bpath) >= S_OK;
+		::SysFreeString(bpath);
+		fwApps->Release();
+	}
+	fwProf->Release();
+
+	return	ret;
+}
+
+static BOOL CheckFwRule(BSTR bpath, INetFwRule *rule, FwStatus *fs)
+{
+	long	profTypes = 0;
+
+	if (rule->get_Profiles(&profTypes) < S_OK) {
+		return	FALSE;
+	}
+	if ((fs->profTypes & profTypes) == 0) {	// 現在のプロファイルに合致しない
+		return	FALSE;
+	}
+
+	BSTR	bapp = NULL;
+	WCHAR	app[MAX_PATH];
+
+	if (rule->get_ApplicationName(&bapp) < S_OK) {
+		return	FALSE;
+	}
+
+	if (::ExpandEnvironmentStringsW(bapp, app, wsizeof(app)) > 0) {
+		if (wcsicmp(app, bpath) == 0) {
+			VARIANT_BOOL	vb = VARIANT_FALSE;
+			rule->get_Enabled(&vb);
+			fs->entryCnt++;
+
+			if (vb != VARIANT_FALSE) {
+				fs->enableCnt++;
+				NET_FW_ACTION nfa;
+				if (rule->get_Action(&nfa) >= S_OK) {
+					if (nfa == NET_FW_ACTION_ALLOW) {
+						fs->allowCnt++;
+					}
+					else {
+						fs->blockCnt++;
+					}
+				}
+			}
+			else {
+				fs->disableCnt++;
+			}
+		}
+	}
+	::SysFreeString(bapp);
+	return	TRUE;
+}
+
+BOOL GetFwStatusEx(const WCHAR *path, FwStatus *fs)
+{
+	fs->Init();
+
+	INetFwPolicy2	*plcy = NULL;
+
+	if (::CoCreateInstance(__uuidof(NetFwPolicy2), NULL, CLSCTX_INPROC_SERVER,
+		__uuidof(INetFwPolicy2), (void **)&plcy) < S_OK) {
+		return	FALSE;
+	}
+
+	long	ptype = 0;
+	plcy->get_CurrentProfileTypes(&ptype);
+	fs->profTypes = ptype;
+
+	for (DWORD i=1; ptype; i <<= 1) {
+		if ((ptype & i) == 0) {
+			continue;
+		}
+		ptype &= ~i;
+
+		VARIANT_BOOL vfw_enable = VARIANT_FALSE;
+		plcy->get_FirewallEnabled((NET_FW_PROFILE_TYPE2)i, &vfw_enable);
+		fs->fwEnable = (vfw_enable != VARIANT_FALSE) ? TRUE : FALSE;
+	}
+
+	if (fs->fwEnable) {
+		INetFwRules	*rules = NULL;
+
+		if (plcy->get_Rules(&rules) >= S_OK) {
+			IUnknown *pUnk = NULL;
+
+			if (rules->get__NewEnum(&pUnk) >= S_OK) {
+				IEnumVARIANT	*pEnum = NULL;
+
+				if (pUnk->QueryInterface(IID_IEnumVARIANT, (void **)&pEnum) >= S_OK) {
+					long	count = 0;
+					VARIANT	var;
+					ULONG	lFetch = 0;
+					::VariantInit(&var);
+					rules->get_Count(&count);
+					BSTR	bpath = GetSysFileName(path);
+
+					for (int i=0; i < count && pEnum->Next(1, &var, &lFetch) >= S_OK; i++) {
+						INetFwRule	*rule = NULL;
+						if (V_DISPATCH(&var)->QueryInterface(IID_INetFwRule, (void **)&rule)
+							>= S_OK) {
+							CheckFwRule(bpath, rule, fs);
+							rule->Release();
+						}
+						::VariantClear(&var);
+					}
+					::SysFreeString(bpath);
+				}
+			}
+			rules->Release();
+		}
+	}
+	plcy->Release();
+
+	return	TRUE;
+}
+
+static BOOL SetFwRule(BSTR bpath, BSTR blabel, INetFwRule *rule, long prof_type)
+{
+//	long	local_ptype = 0;
+//
+//	if (rule->get_Profiles(&local_ptype) < S_OK) {
+//		return	FALSE;
+//	}
+//	if ((prof_type & local_ptype) == 0) {	// 現在のプロファイルに合致しない
+//		return	FALSE;
+//	}
+
+	BSTR	bapp = NULL;
+	WCHAR	app[MAX_PATH];
+
+	if (rule->get_ApplicationName(&bapp) < S_OK) {
+		return	FALSE;
+	}
+
+	if (::ExpandEnvironmentStringsW(bapp, app, wsizeof(app)) > 0) {
+		if (wcsicmp(app, bpath) == 0) {
+			VARIANT_BOOL	vb = VARIANT_FALSE;
+			rule->get_Enabled(&vb);
+
+			if (vb != VARIANT_FALSE) {
+				NET_FW_ACTION nfa;
+				if (rule->get_Action(&nfa) >= S_OK) {
+					if (nfa == NET_FW_ACTION_BLOCK) {
+						rule->put_Action(NET_FW_ACTION_ALLOW);
+					}
+				}
+			}
+		}
+	}
+	::SysFreeString(bapp);
+	return	TRUE;
+}
+
+BOOL SetFwStatusEx(const WCHAR *path, const WCHAR *label, BOOL enable)
+{
+	SetFwStatus(path, label, enable);
+
+	INetFwPolicy2	*plcy = NULL;
+
+	if (::CoCreateInstance(__uuidof(NetFwPolicy2), NULL, CLSCTX_INPROC_SERVER,
+		__uuidof(INetFwPolicy2), (void **)&plcy) < S_OK) {
+		return	FALSE;
+	}
+
+	INetFwRules	*rules = NULL;
+	long		ptype = 0;
+	plcy->get_CurrentProfileTypes(&ptype);
+
+	if (plcy->get_Rules(&rules) >= S_OK) {
+		IUnknown *pUnk = NULL;
+
+		if (rules->get__NewEnum(&pUnk) >= S_OK) {
+			IEnumVARIANT	*pEnum = NULL;
+
+			if (pUnk->QueryInterface(IID_IEnumVARIANT, (void **)&pEnum) >= S_OK) {
+				long	count = 0;
+				VARIANT	var;
+				ULONG	lFetch = 0;
+				::VariantInit(&var);
+				rules->get_Count(&count);
+				BSTR	bpath  = GetSysFileName(path);
+				BSTR	blabel = GetSysFileName(label ? label : path);
+
+				for (int i=0; i < count && pEnum->Next(1, &var, &lFetch) >= S_OK; i++) {
+					INetFwRule	*rule = NULL;
+					if (V_DISPATCH(&var)->QueryInterface(IID_INetFwRule, (void **)&rule)
+						>= S_OK) {
+						SetFwRule(bpath, blabel, rule, ptype);
+						rule->Release();
+					}
+					::VariantClear(&var);
+				}
+				::SysFreeString(blabel);
+				::SysFreeString(bpath);
+			}
+		}
+		rules->Release();
+	}
+	plcy->Release();
+
+	return	TRUE;
+}
+
+// 正確な GetTextExtentExPointW
+BOOL TGetTextWidth(HDC hDc, const WCHAR *s, int len, int width, int *rlen, int *rcx)
+{
+	TRect	rc;
+	TSize	sz;
+
+	if (!::GetTextExtentExPointW(hDc, s, len, width, rlen, NULL, &sz)) {
+		return	FALSE;
+	}
+//	if (!::GetTextExtentExPointW(hDc, s, *rlen, width, rlen, NULL, &sz)) {
+//		return	FALSE;
+//	}
+	::DrawTextW(hDc, s, *rlen, &rc, DT_CALCRECT|DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+
+//	if (rc.cx() <= width) {
+//		if (rc.cx() != sz.cx) {
+//			DebugW(L" GetTextWidth: %d %d %.*s\n", rc.cx(), sz.cx, *rlen, s);
+//		}
+//	}
+	*rcx = rc.cx();
+	return	TRUE;
+}
+
+HBITMAP TDIBtoDDB(HBITMAP hDibBmp) // 8bit には非対応
+{
+	HBITMAP		hDdbBmp  = NULL;
+	HWND		hDesktop = ::GetDesktopWindow();
+	HDC			hDc = ::GetDC(hDesktop);
+	DIBSECTION	ds;
+
+	if (::GetObject(hDibBmp, sizeof(DIBSECTION), &ds)) {
+		hDdbBmp = ::CreateDIBitmap(hDc, &ds.dsBmih, CBM_INIT, ds.dsBm.bmBits,
+			(BITMAPINFO *)&ds.dsBmih, DIB_RGB_COLORS);
+	}
+	::ReleaseDC(hDesktop, hDc);
+
+	return	hDdbBmp;
+}
+
+// CoInitialize系必須
+BOOL TOpenExplorerSel(const WCHAR *dir, WCHAR **path, int num)
+{
+	BOOL	ret = FALSE;
+	size_t	len = wcslen(dir);
+
+	if (PIDLIST_ABSOLUTE iDir = ::ILCreateFromPathW(dir)) {
+		if (PIDLIST_ABSOLUTE *items = new ITEMIDLIST *[num]) {
+			memset(items, 0, sizeof(ITEMIDLIST *) * num);
+			for (int i=0; i < num; i++) {
+				if (wcslen(path[i]) + len + 2 < MAX_PATH) {
+					WCHAR	buf[MAX_PATH];
+					MakePathW(buf, dir, path[i]);
+					items[i] = ::ILCreateFromPathW(buf);
+				}
+			}
+
+			HRESULT hr = ::SHOpenFolderAndSelectItems(iDir, num, (LPCITEMIDLIST *)items, 0);
+			if (hr >= S_OK || hr == E_INVALIDARG) {
+				ret = TRUE; // items のエラーの場合は、shell は開く
+			}
+			for (int i=0; i < num; i++) {
+				if (items[i]) {
+					::ILFree(items[i]);
+				}
+			}
+			delete [] items;
+		}
+		::ILFree(iDir);
+	}
+	return	ret;
+}
+
+BOOL TSetClipBoardTextW(HWND hWnd, const WCHAR *s, int len)
+{
+	if (len < 0) {
+		len = (int)wcslen(s);
+	}
+	HANDLE	hGlobal = ::GlobalAlloc(GHND, (len + 1) * sizeof(WCHAR));
+
+	if (!hGlobal) {
+		return FALSE;
+	}
+
+	BOOL	ret = FALSE;
+	WCHAR	*p = (WCHAR *)::GlobalLock(hGlobal);
+
+	if (p) {
+		wcsncpyz(p, s, len+1);
+		::GlobalUnlock(hGlobal);
+		::OpenClipboard(hWnd);
+		::EmptyClipboard();
+
+		if (::SetClipboardData(CF_UNICODETEXT, hGlobal)) {
+			ret = TRUE;
+		}
+		::CloseClipboard();
+	}
+
+	if (!ret) {
+		::GlobalFree(hGlobal);
+	}
+
+	return ret;
+}
 

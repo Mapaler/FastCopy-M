@@ -1,9 +1,9 @@
-﻿/* @(#)Copyright (C) 2005-2015 H.Shirouzu		install.h	Ver3.00 */
+﻿/* @(#)Copyright (C) 2005-2016 H.Shirouzu		install.h	Ver3.20 */
 /* ========================================================================
 	Project  Name			: Installer for IPMSG32
 	Module Name				: Main Header
 	Create					: 2005-02-02(Wed)
-	Update					: 2015-06-22(Mon)
+	Update					: 2016-09-28(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify  				: Mapaler 2015-10-08

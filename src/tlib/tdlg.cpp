@@ -1,5 +1,5 @@
 ﻿static char *tdlg_id = 
-	"@(#)Copyright (C) 1996-2015 H.Shirouzu		tdlg.cpp	Ver0.99";
+	"@(#)Copyright (C) 1996-2016 H.Shirouzu		tdlg.cpp	Ver0.99";
 /* ========================================================================
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Dialog Class
@@ -21,7 +21,9 @@ TDlg::TDlg(UINT _resId, TWin *_parent) : TWin(_parent)
 
 TDlg::~TDlg()
 {
-	if (hWnd) EndDialog(IDCANCEL);
+	if (hWnd) {
+		EndDialog(IDCANCEL);
+	}
 	delete [] dlgItems;
 }
 
@@ -29,7 +31,7 @@ BOOL TDlg::Create(HINSTANCE hInstance)
 {
 	TApp::GetApp()->AddWin(this);
 
-	hWnd = ::CreateDialogW(hInstance ? hInstance : TApp::GetInstance(), (WCHAR *)(DWORD_PTR)resId,
+	hWnd = ::CreateDialogW(hInstance ? hInstance : TApp::hInst(), (WCHAR *)(DWORD_PTR)resId,
 				parent ? parent->hWnd : NULL, (DLGPROC)TApp::WinProc);
 
 	if (hWnd)
@@ -44,7 +46,7 @@ int TDlg::Exec(void)
 	modalFlg = TRUE;
 	if (parent) parent->modalCount++;
 
-	int result = (int)::DialogBoxW(TApp::GetInstance(), (WCHAR *)(DWORD_PTR)resId,
+	int result = (int)::DialogBoxW(TApp::hInst(), (WCHAR *)(DWORD_PTR)resId,
 							parent ? parent->hWnd : NULL, (DLGPROC)TApp::WinProc);
 
 	if (parent) parent->modalCount--;
@@ -93,7 +95,9 @@ LRESULT TDlg::WinProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		return	0;
 
 	case WM_NCDESTROY:
-		if (!::IsIconic(hWnd)) GetWindowRect(&rect);
+		if (!::IsIconic(hWnd)) {
+			GetWindowRect(&rect);
+		}
 		EvNcDestroy();
 		TApp::GetApp()->DelWin(this);
 		hWnd = 0;
@@ -106,6 +110,10 @@ LRESULT TDlg::WinProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	case WM_ENDSESSION:
 		EvEndSession((BOOL)wParam, (BOOL)lParam);
+		return	0;
+
+	case WM_POWERBROADCAST:
+		EvPowerBroadcast(wParam, lParam);
 		return	0;
 
 	case WM_QUERYOPEN:
@@ -325,12 +333,17 @@ BOOL TDlg::EvCreate(LPARAM lParam)
 
 void TDlg::EndDialog(int result)
 {
-	if (::IsWindow(hWnd))
-	{
-		if (modalFlg)
+	if (hTipWnd) {
+		CloseTipWnd();
+	}
+
+	if (hWnd) {
+		if (modalFlg) {
 			::EndDialog(hWnd, result);
-		else
+		}
+		else {
 			::DestroyWindow(hWnd);
+		}
 	}
 }
 
@@ -370,6 +383,10 @@ int TDlg::SetDlgItem(UINT ctl_id, DWORD flags)
 
 BOOL TDlg::FitDlgItems()
 {
+	if (::IsIconic(hWnd)) {
+		return	FALSE;
+	}
+
 	GetWindowRect(&rect);
 	int	xdiff = (rect.right - rect.left) - (orgRect.right - orgRect.left);
 	int ydiff = (rect.bottom - rect.top) - (orgRect.bottom - orgRect.top);

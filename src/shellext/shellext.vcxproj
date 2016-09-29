@@ -18,6 +18,12 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="shellext.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="shellext.rc" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{DD8C289F-DDEB-4664-A8CD-65A2B067A1DF}</ProjectGuid>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
@@ -27,19 +33,25 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <PlatformToolset>v140_xp</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <PlatformToolset>v140</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <PlatformToolset>v140_xp</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <PlatformToolset>v140</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -61,24 +73,24 @@
     <_ProjectFileVersion>12.0.21005.1</_ProjectFileVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>Output\$(Configuration)\$(PlatformShortName)</OutDir>
-    <IntDir>Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj</IntDir>
+    <OutDir>..\..\Output\$(Configuration)\$(PlatformShortName)</OutDir>
+    <IntDir>..\..\Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj</IntDir>
     <TargetName>FastExt1</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>Output\$(Configuration)\$(PlatformShortName)</OutDir>
-    <IntDir>Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj</IntDir>
+    <OutDir>..\..\Output\$(Configuration)\$(PlatformShortName)</OutDir>
+    <IntDir>..\..\Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj</IntDir>
     <TargetName>FastEx64</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>Output\$(Configuration)\$(PlatformShortName)</OutDir>
-    <IntDir>Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj</IntDir>
+    <OutDir>..\..\Output\$(Configuration)\$(PlatformShortName)</OutDir>
+    <IntDir>..\..\Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj</IntDir>
     <LinkIncremental>false</LinkIncremental>
     <TargetName>FastExt1</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>Output\$(Configuration)\$(PlatformShortName)</OutDir>
-    <IntDir>Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj</IntDir>
+    <OutDir>..\..\Output\$(Configuration)\$(PlatformShortName)</OutDir>
+    <IntDir>..\..\Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj</IntDir>
     <LinkIncremental>false</LinkIncremental>
     <TargetName>FastEx64</TargetName>
   </PropertyGroup>
@@ -90,10 +102,13 @@
       <ProgramDataBaseFileName>$(IntDir)</ProgramDataBaseFileName>
       <EnableEnhancedInstructionSet>StreamingSIMDExtensions</EnableEnhancedInstructionSet>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <Optimization>
+      </Optimization>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>crypt32.lib;winmm.lib;Shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>crypt32.lib;winmm.lib;Shlwapi.lib;..\..\Output\$(Configuration)\$(PlatformShortName)\lib\tlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <ModuleDefinitionFile>shellext.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -106,11 +121,13 @@
       <ProgramDataBaseFileName>$(IntDir)</ProgramDataBaseFileName>
       <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <Optimization />
     </ClCompile>
     <Link>
-      <AdditionalDependencies>crypt32.lib;winmm.lib;Shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>crypt32.lib;winmm.lib;Shlwapi.lib;..\..\Output\$(Configuration)\$(PlatformShortName)\lib\tlib_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <TargetMachine>MachineX64</TargetMachine>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <ModuleDefinitionFile>shell64.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -122,7 +139,7 @@
       <HeaderFileName />
     </Midl>
     <ClCompile>
-      <Optimization>MaxSpeed</Optimization>
+      <Optimization>Full</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
@@ -143,9 +160,9 @@
       <Culture>0x0411</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>crypt32.lib;winmm.lib;Shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <SuppressStartupBanner>true</SuppressStartupBanner>
-      <ModuleDefinitionFile>src\shellext\shellext.def</ModuleDefinitionFile>
+      <AdditionalDependencies>crypt32.lib;winmm.lib;Shlwapi.lib;..\..\Output\$(Configuration)\$(PlatformShortName)\lib\tlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <SuppressStartupBanner>false</SuppressStartupBanner>
+      <ModuleDefinitionFile>shellext.def</ModuleDefinitionFile>
       <ProgramDatabaseFile>$(IntDir)\$(TargetName).pdb</ProgramDatabaseFile>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(IntDir)\$(TargetName).map</MapFileName>
@@ -153,6 +170,9 @@
       <ImportLibrary>$(IntDir)\$(TargetName).lib</ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <OptimizeReferences>true</OptimizeReferences>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -168,7 +188,7 @@
       <HeaderFileName />
     </Midl>
     <ClCompile>
-      <Optimization>MaxSpeed</Optimization>
+      <Optimization>Full</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
@@ -189,46 +209,25 @@
       <Culture>0x0411</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>crypt32.lib;winmm.lib;Shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <SuppressStartupBanner>true</SuppressStartupBanner>
-      <ModuleDefinitionFile>src\shellext\shell64.def</ModuleDefinitionFile>
-      <ProgramDatabaseFile>$(IntDir)\$(TargetName).pdb</ProgramDatabaseFile>
+      <AdditionalDependencies>crypt32.lib;winmm.lib;Shlwapi.lib;..\..\Output\$(Configuration)\$(PlatformShortName)\lib\tlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <SuppressStartupBanner>false</SuppressStartupBanner>
+      <ModuleDefinitionFile>shell64.def</ModuleDefinitionFile>
+      <ProgramDatabaseFile>$(IntDir)FastEx64.pdb</ProgramDatabaseFile>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(IntDir)\$(TargetName).map</MapFileName>
       <SubSystem>Windows</SubSystem>
       <ImportLibrary>$(IntDir)\$(TargetName).lib</ImportLibrary>
       <TargetMachine>MachineX64</TargetMachine>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <OptimizeReferences>true</OptimizeReferences>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <OutputFile>$(IntDir)\$(TargetName).bsc</OutputFile>
     </Bscmake>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="src\shellext\shellext.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="src\shellext\shellext.def" />
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="src\shellext\shellext.rc">
-      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">src\shellext;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">src\shellext;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ResourceCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="src\shellext\resource.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="src\TLib\TLib.vcxproj">
-      <Project>{e99ee17d-136c-4c37-b78a-18d324e7119c}</Project>
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="src\shellext\MenuLogo.bmp" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

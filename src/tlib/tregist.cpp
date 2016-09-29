@@ -1,5 +1,5 @@
 ﻿static char *tregist_id = 
-	"@(#)Copyright (C) 1996-2015 H.Shirouzu		tregist.cpp	Ver0.99";
+	"@(#)Copyright (C) 1996-2016 H.Shirouzu		tregist.cpp	Ver0.99";
 /* ========================================================================
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Registry Class

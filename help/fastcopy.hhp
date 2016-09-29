@@ -1,5 +1,5 @@
 [OPTIONS]
-Binary Index=No
+Binary Index=Yes
 Compatibility=1.1 or later
 Compiled file=FastCopy.chm
 Contents file=FastCopy.hhc
@@ -9,10 +9,10 @@ Default topic=FastCopy.htm
 Display compile progress=No
 Full-text search=Yes
 Language=0x411 “ú–{Œê
-Title=FastCopy ver3.13 Help
+Title=FastCopy ver3.21 Help
 
 [WINDOWS]
-Main=,"FastCopy.hhc",,"FastCopy.htm","FastCopy.htm",,,,,0x2120,,0x10100e,,,,,0,,,0
+Main=,"FastCopy.hhc",,"FastCopy.htm","FastCopy.htm",,,,,0x2160,,0x10100e,,,,,0,,,0
 
 
 [FILES]

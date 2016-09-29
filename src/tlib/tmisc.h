@@ -1,4 +1,4 @@
-﻿/* @(#)Copyright (C) 1996-2015 H.Shirouzu		tlib.h	Ver0.99 */
+﻿/* @(#)Copyright (C) 1996-2016 H.Shirouzu		tlib.h	Ver0.99 */
 /* ========================================================================
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Main Header
@@ -438,9 +438,9 @@ public:
 
 void InitInstanceForLoadStr(HINSTANCE hI);
 
-LPSTR GetLoadStrA(UINT resId, HINSTANCE hI=NULL);
-LPSTR GetLoadStrU8(UINT resId, HINSTANCE hI=NULL);
-LPWSTR GetLoadStrW(UINT resId, HINSTANCE hI=NULL);
+LPSTR LoadStrA(UINT resId, HINSTANCE hI=NULL);
+LPSTR LoadStrU8(UINT resId, HINSTANCE hI=NULL);
+LPWSTR LoadStrW(UINT resId, HINSTANCE hI=NULL);
 
 void TSetDefaultLCID(LCID id=0);
 HMODULE TLoadLibrary(LPSTR dllname);
@@ -524,35 +524,36 @@ public:
 };
 
 /* UNIX - Windows 文字コード変換 */
-template<class T> int LocalNewLineToUnixT(const T *src, T *dest, int maxlen) {
-	T	*sv_dest = dest;
-	T	*max_dest = dest + maxlen - 1;
-	int	len = 0;
+template<class T> int LocalNewLineToUnixT(const T *src, T *dst, int max_dstlen, int len=-1) {
+	T		*sv_dst  = dst;
+	T		*max_dst = dst + max_dstlen - 1;
+	const T	*max_src = src + ((len >= 0) ? len : (max_dstlen * 2));
 
-	while (*src && dest < max_dest) {
-		if ((*dest = *src++) != '\r') {
-			dest++;
+	while (src < max_src && *src && dst < max_dst) {
+		if ((*dst = *src++) != '\r') {
+			dst++;
 		}
 	}
-	*dest = 0;
+	*dst = 0;
 
-	return	int(dest - sv_dest);
+	return	int(dst - sv_dst);
 }
 
-template<class T> int UnixNewLineToLocalT(const T *src, T *dest, int maxlen) {
-	T	*sv_dest = dest;
-	T	*max_dest = dest + maxlen - 1;
+template<class T> int UnixNewLineToLocalT(const T *src, T *dst, int max_dstlen, int len=-1) {
+	T		*sv_dst  = dst;
+	T		*max_dst = dst + max_dstlen - 1;
+	const T	*max_src = src + ((len >= 0) ? len : max_dstlen);
 
-	while (*src && dest < max_dest) {
-		if ((*dest = *src++) == '\n' && dest + 1 < max_dest) {
-			*dest++ = '\r';
-			*dest++ = '\n';
+	while (src < max_src && *src && dst < max_dst) {
+		if ((*dst = *src++) == '\n' && dst + 1 < max_dst) {
+			*dst++ = '\r';
+			*dst++ = '\n';
 		}
-		else dest++;
+		else dst++;
 	}
-	*dest = 0;
+	*dst = 0;
 
-	return	int(dest - sv_dest);
+	return	int(dst - sv_dst);
 }
 
 #define LocalNewLineToUnix  LocalNewLineToUnixT<char>
@@ -560,8 +561,8 @@ template<class T> int UnixNewLineToLocalT(const T *src, T *dest, int maxlen) {
 #define LocalNewLineToUnixW LocalNewLineToUnixT<WCHAR>
 #define UnixNewLineToLocalW UnixNewLineToLocalT<WCHAR>
 
-//int LocalNewLineToUnix(const char *src, char *dest, int maxlen);
-//int UnixNewLineToLocal(const char *src, char *dest, int maxlen);
+//int LocalNewLineToUnix(const char *src, char *dest, int max_dstlen);
+//int UnixNewLineToLocal(const char *src, char *dest, int max_dstlen);
 
 BOOL TIsWow64();
 BOOL TRegEnableReflectionKey(HKEY hBase);
@@ -575,8 +576,35 @@ BOOL TSetPrivilege(LPSTR privName, BOOL bEnable);
 BOOL TSetThreadLocale(int lcid);
 BOOL TChangeWindowMessageFilter(UINT msg, DWORD flg);
 void TSwitchToThisWindow(HWND hWnd, BOOL flg);
+BOOL TGetTextWidth(HDC hDc, const WCHAR *s, int len, int width, int *rlen, int *rcx);
+HBITMAP TDIBtoDDB(HBITMAP hDibBmp); // 8bit には非対応
+BOOL TOpenExplorerSel(const WCHAR *dir, WCHAR **path, int num);
 
+#define EXTRACE2 ExTrace("[%s (%d) %7.2f] ", __FUNCTION__, __LINE__, \
+	((double)(GetTickCount() % 10000000))/1000), ExTrace
+#define EXTRACE ExTrace("[%7.2f] ", ((double)(GetTickCount() % 10000000))/1000), ExTrace
+
+#if defined(_DEBUG)
+#ifndef EX_TRACE
+#define EX_TRACE
+#endif
+#endif
+
+#ifdef EX_TRACE
+#define DBT  EXTRACE
+#define DBT2 EXTRACE2
+void InitExTrace(int trace_len);
+BOOL ExTrace(const char *fmt,...);
+#else
+#define DBT(...)
+#define DBT2(...)
+#define InitExTrace(...)
+#define ExTrace(...)
+#endif
+
+void ForceFlushExceptionLog();
 BOOL InstallExceptionFilter(const char *title, const char *info, const char *fname=NULL);
+
 void Debug(const char *fmt,...);
 void DebugW(const WCHAR *fmt,...);
 void DebugU8(const char *fmt,...);
@@ -611,14 +639,58 @@ BOOL GetParentDirW(const WCHAR *srcfile, WCHAR *dir);
 BOOL GetParentDirU8(const char *srcfile, char *dir);
 HWND ShowHelpW(HWND hOwner, WCHAR *help_dir, WCHAR *help_file, WCHAR *section=NULL);
 HWND ShowHelpU8(HWND hOwner, const char *help_dir, const char *help_file, const char *section=NULL);
+HWND TransMsgHelp(MSG *msg);
 HWND CloseHelpAll();
+
+BOOL TSetClipBoardTextW(HWND hWnd, const WCHAR *s, int len=-1);
 
 BOOL ForceSetTrayIcon(HWND hWnd, UINT id, DWORD pref=2);
 BOOL SetWinAppId(HWND hWnd, const WCHAR *app_id);
 
+// ADS/domain
+BOOL IsDomainEnviron();
 BOOL GetDomainAndUid(WCHAR *domain, WCHAR *uid);
 BOOL GetDomainFullName(const WCHAR *domain, const WCHAR *uid, WCHAR *full_name);
 BOOL GetDomainGroup(const WCHAR *domain, const WCHAR *uid, WCHAR *group);
+
+BOOL IsInstalledFont(HDC hDc, const WCHAR *face_name, BYTE charset=DEFAULT_CHARSET);
+
+// Firewall
+BOOL Is3rdPartyFwEnabled();
+struct FwStatus {
+	BOOL	fwEnable;
+	DWORD	entryCnt;
+	DWORD	enableCnt;
+	DWORD	disableCnt;
+	DWORD	allowCnt;
+	DWORD	blockCnt;
+	DWORD	profTypes;	// NET_FW_PROFILE_TYPE2 bits
+
+	FwStatus() {
+		Init();
+	}
+	void Init() {
+		fwEnable = FALSE;
+		entryCnt = 0;
+		enableCnt = 0;
+		disableCnt = 0;
+		allowCnt = 0;
+		blockCnt = 0;
+		profTypes = 0;
+	}
+	BOOL IsAllowed() {
+		return	(blockCnt == 0 && allowCnt > 0) ? TRUE : FALSE;
+	}
+	BOOL IsBlocked() {
+		return	(blockCnt > 0) ? TRUE : FALSE;
+	}
+};
+
+BOOL GetFwStatus(const WCHAR *path, FwStatus *fs);
+BOOL GetFwStatusEx(const WCHAR *path, FwStatus *fs);
+BOOL SetFwStatus(const WCHAR *path=NULL, const WCHAR *label=NULL, BOOL enable=TRUE);
+BOOL SetFwStatusEx(const WCHAR *path=NULL, const WCHAR *label=NULL, BOOL enable=TRUE);
+BOOL DelFwStatus(const WCHAR *path=NULL);
 
 #endif
 

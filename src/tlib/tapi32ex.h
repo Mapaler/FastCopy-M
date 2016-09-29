@@ -1,4 +1,4 @@
-﻿/* @(#)Copyright (C) 1996-2015 H.Shirouzu		tapi32ex.h	Ver0.99 */
+﻿/* @(#)Copyright (C) 1996-2016 H.Shirouzu		tapi32ex.h	Ver0.99 */
 /* ========================================================================
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Main Header
@@ -18,8 +18,9 @@
 DEFINE_GUID(IID_IShellLinkW, 0x000214F9, \
 	0x0000, 0000, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46);
 
-#define SHA1_SIZE 20
-#define MD5_SIZE  16
+#define SHA256_SIZE 32
+#define SHA1_SIZE   20
+#define MD5_SIZE    16
 
 #ifndef REGSTR_SHELLFOLDERS
 #define REGSTR_SHELLFOLDERS		REGSTR_PATH_EXPLORER "\\Shell Folders"
@@ -125,7 +126,7 @@ protected:
 	bool		used;
 
 public:
-	enum Type { SHA1, MD5 /*, SHA1_LOCAL */ } type;
+	enum Type { SHA1, MD5, SHA256 } type;
 
 	TDigest();
 	~TDigest();
@@ -134,14 +135,14 @@ public:
 	BOOL Update(void *data, int size);
 	BOOL GetVal(void *data);
 	BOOL GetRevVal(void *data);
-	int  GetDigestSize() { return type == MD5 ? MD5_SIZE : SHA1_SIZE; }
+	int  GetDigestSize() { return type == MD5 ? MD5_SIZE : type == SHA256 ? SHA256_SIZE : SHA1_SIZE; }
 	void GetEmptyVal(void *data);
 };
 
 #ifdef UNICODE
-#define GetLoadStr GetLoadStrW
+#define LoadStr LoadStrW
 #else
-#define GetLoadStr GetLoadStrA
+#define LoadStr LoadStrA
 #endif
 
 #if _MSC_VER != 1200

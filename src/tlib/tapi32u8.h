@@ -1,4 +1,4 @@
-﻿/* @(#)Copyright (C) 1996-2015 H.Shirouzu		tapi32u8.h	Ver0.99 */
+﻿/* @(#)Copyright (C) 1996-2016 H.Shirouzu		tapi32u8.h	Ver0.99 */
 /* ========================================================================
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Main Header
@@ -125,6 +125,21 @@ public:
 		Init(w);
 		return *this;
 	}
+	Wstr &operator +=(const WCHAR *_str) {
+		if (_str && *_str) {
+			int		len_l = Len();
+			int		len_s = int(wcslen(_str));
+			WCHAR	*buf  = new WCHAR [len_l + len_s + 1];
+			if (str) {
+				memcpy(buf, str, len_l * sizeof(WCHAR));
+				delete [] str;
+			}
+			str = buf;
+			memcpy(str + len_l, _str, (len_s + 1) * sizeof(WCHAR));
+			len = len_l + len_s;
+		}
+		return	*this;
+	}
 	bool operator ==(const WCHAR *_str) const {
 		if (!_str) {
 			return IsEmpty();
@@ -167,6 +182,19 @@ public:
 			return 0;
 		}
 		return (len = (int)wcslen(str));
+	}
+	int StripLen() const {
+		if (len < 0) {
+			Len();
+		}
+		int	strip_len = len;
+		for ( ; strip_len > 0; strip_len--) {
+			WCHAR	ch = str[strip_len-1];
+			if (ch != '\n' && ch != '\r') {
+				break;
+			}
+		}
+		return	strip_len;
 	}
 };
 
@@ -419,6 +447,22 @@ BOOL StrictUTF8(char *s);
 
 BOOL StrictUTF8(char *s);
 int U8Len(const char *s, int max_size=-1);
+
+inline BOOL IsSurrogate(WCHAR ch) {
+	return (ch >= 0xd800 && ch < 0xe000);
+}
+
+inline BOOL IsSurrogateL(WCHAR ch) {
+	return (ch >= 0xd800 && ch < 0xdc00);
+}
+
+inline BOOL IsSurrogateR(WCHAR ch) {
+	return (ch >= 0xdc00 && ch < 0xe000);
+}
+
+inline BOOL IsSurrogatePair(const WCHAR *s) {
+	return IsSurrogateL(*s) && IsSurrogateR(*(s+1));
+}
 
 HWND CreateWindowU8(const char *class_name, const char *window_name, DWORD style,
 	int x, int y, int width, int height, HWND hParent, HMENU hMenu, HINSTANCE hInst, void *param);

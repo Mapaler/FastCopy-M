@@ -1,10 +1,10 @@
 ﻿static char *install_id = 
-	"@(#)Copyright (C) 2005-2015 H.Shirouzu		install.cpp	Ver3.1.2.31";
+	"@(#)Copyright (C) 2005-2016 H.Shirouzu		install.cpp	Ver3.20";
 /* ========================================================================
 	Project  Name			: Installer for FastCopy
 	Module Name				: Installer Application Class
 	Create					: 2005-02-02(Wed)
-	Update					: 2015-08-05(Wed)
+	Update					: 2016-09-28(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify  				: Mapaler 2015-09-23
@@ -294,7 +294,7 @@ BOOL TInstDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl)
 		return	TRUE;
 
 	case FILE_BUTTON:
-		BrowseDirDlg(this, FILE_EDIT, GetLoadStr(IDS_SELECTPATH));
+		BrowseDirDlg(this, FILE_EDIT, LoadStr(IDS_SELECTPATH));
 		return	TRUE;
 
 	case SETUP_RADIO:
@@ -338,21 +338,58 @@ BOOL IsSameFile(char *src, char *dst)
 	 &&	*(int64 *)&dst_dat.ftLastWriteTime - 20000000 <= *(int64 *)&src_dat.ftLastWriteTime;
 }
 
-BOOL MiniCopy(char *src, char *dst)
+BOOL RotateFile(char *path, int max_cnt, BOOL with_delete)
+{
+	BOOL	ret = TRUE;
+
+	for (int i=max_cnt-1; i >= 0; i--) {
+		char	src[MAX_PATH];
+		char	dst[MAX_PATH];
+
+		_snprintf(src, sizeof(src), (i == 0) ? "%s" : "%s.%d", path, i);
+		_snprintf(dst, sizeof(dst), "%s.%d", path, i+1);
+
+		if (::GetFileAttributes(src) == 0xffffffff) {
+			continue;
+		}
+		if (::MoveFileEx(src, dst, MOVEFILE_REPLACE_EXISTING)) {
+			if (with_delete) {
+				::MoveFileEx(dst, NULL, MOVEFILE_DELAY_UNTIL_REBOOT); // require admin priv...
+			}
+		}
+		else {
+			ret = FALSE;
+		}
+	}
+	return	ret;
+}
+
+BOOL MiniCopy(char *src, char *dst, BOOL *is_rotate=NULL)
 {
 	HANDLE		hSrc, hDst, hMap;
 	BOOL		ret = FALSE;
 	DWORD		srcSize, dstSize;
 	void		*view;
 	FILETIME	ct, la, ft;
+	BOOL		isRotate = FALSE;
 
 	if ((hSrc = ::CreateFile(src, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0))
-				== INVALID_HANDLE_VALUE)
+				== INVALID_HANDLE_VALUE) {
+		Debug("src(%s) open err(%x)\n", src, GetLastError());
 		return	FALSE;
+	}
 	srcSize = ::GetFileSize(hSrc, 0);
 
-	if ((hDst = ::CreateFile(dst, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0))
-				!= INVALID_HANDLE_VALUE) {
+	hDst = ::CreateFile(dst, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+	if (hDst == INVALID_HANDLE_VALUE) {
+		RotateFile(dst, 10, TRUE);
+		if (is_rotate) {
+			*is_rotate = TRUE;
+		}
+		hDst = ::CreateFile(dst, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+	}
+
+	if (hDst != INVALID_HANDLE_VALUE) {
 		if ((hMap = ::CreateFileMapping(hSrc, 0, PAGE_READONLY, 0, 0, 0)) != NULL) {
 			if ((view = ::MapViewOfFile(hMap, FILE_MAP_READ, 0, 0, 0)) != NULL) {
 				if (::WriteFile(hDst, view, srcSize, &dstSize, 0) && srcSize == dstSize) {
@@ -366,6 +403,10 @@ BOOL MiniCopy(char *src, char *dst)
 		}
 		::CloseHandle(hDst);
 	}
+	else {
+		Debug("dst(%s) open err(%x)\n", dst, GetLastError());
+		return	FALSE;
+	}
 	::CloseHandle(hSrc);
 
 	return	ret;
@@ -376,7 +417,7 @@ BOOL DelayCopy(char *src, char *dst)
 	char	tmp_file[MAX_PATH];
 	BOOL	ret = FALSE;
 
-	wsprintf(tmp_file, "%s.new", dst);
+	sprintf(tmp_file, "%s.new", dst);
 
 	if (MiniCopy(src, tmp_file) == FALSE)
 		return	FALSE;
@@ -447,6 +488,7 @@ BOOL TInstDlg::Install(void)
 {
 	char	buf[MAX_PATH], setupDir[MAX_PATH], setupPath[MAX_PATH];
 	BOOL	is_delay_copy = FALSE;
+	BOOL	is_rotate = FALSE;
 	int		len;
 
 // インストールパス設定
@@ -459,7 +501,7 @@ BOOL TInstDlg::Install(void)
 			return	RunAsAdmin(TRUE);
 		}
 		else if (cfg.runImme && cfg.setupDir && lstrcmpiW(w_setup.Buf(), cfg.setupDir)) {
-			return	MessageBox(GetLoadStr(IDS_ADMINCHANGE)), FALSE;
+			return	MessageBox(LoadStr(IDS_ADMINCHANGE)), FALSE;
 		}
 	}
 
@@ -467,10 +509,10 @@ BOOL TInstDlg::Install(void)
 	DWORD	attr = GetFileAttributes(setupDir);
 
 	if (attr == 0xffffffff || (attr & FILE_ATTRIBUTE_DIRECTORY) == 0)
-		return	MessageBox(GetLoadStr(IDS_NOTCREATEDIR)), FALSE;
+		return	MessageBox(LoadStr(IDS_NOTCREATEDIR)), FALSE;
 	MakePath(setupPath, setupDir, FASTCOPY_EXE);
 
-	if (MessageBox(GetLoadStr(IDS_START), INSTALL_STR, MB_OKCANCEL|MB_ICONINFORMATION) != IDOK)
+	if (MessageBox(LoadStr(IDS_START), INSTALL_STR, MB_OKCANCEL|MB_ICONINFORMATION) != IDOK)
 		return	FALSE;
 
 // ファイルコピー
@@ -484,7 +526,7 @@ BOOL TInstDlg::Install(void)
 			MakePath(buf, orgDir, SetupFiles[cnt]);
 			MakePath(installPath, setupDir, SetupFiles[cnt]);
 
-			if (MiniCopy(buf, installPath) || IsSameFile(buf, installPath))
+			if (MiniCopy(buf, installPath, &is_rotate) || IsSameFile(buf, installPath))
 				continue;
 
 			if ((strcmp(SetupFiles[cnt], CURRENT_SHEXTDLL_EX) == 0 ||
@@ -492,7 +534,10 @@ BOOL TInstDlg::Install(void)
 				is_delay_copy = TRUE;
 				continue;
 			}
-			return	MessageBox(installPath, GetLoadStr(IDS_NOTCREATEFILE)), FALSE;
+			else {
+				Debug("mincopy fail path\n%s\n%s\n%s\n%d %d\n", SetupFiles[cnt], CURRENT_SHEXTDLL_EX, CURRENT_SHEXTDLL, strcmp(SetupFiles[cnt], CURRENT_SHEXTDLL_EX), strcmp(SetupFiles[cnt], CURRENT_SHEXTDLL));
+			}
+			return	MessageBox(installPath, LoadStr(IDS_NOTCREATEFILE)), FALSE;
 		}
 	}
 
@@ -503,7 +548,7 @@ BOOL TInstDlg::Install(void)
 	for (int cnt=0; linkPath[cnt]; cnt++) {
 		strcpy(buf, linkPath[cnt]);
 		if (cnt != 0 || RemoveSameLink(linkPath[cnt], buf) == FALSE) {
-			::wsprintf(buf + strlen(buf), "\\%s", FASTCOPY_SHORTCUT);
+			::sprintf(buf + strlen(buf), "\\%s", FASTCOPY_SHORTCUT);
 		}
 		if (execFlg[cnt]) {
 			Wstr	w_setup(setupPath, BY_MBCS);
@@ -548,7 +593,8 @@ BOOL TInstDlg::Install(void)
 	}
 
 // コピーしたアプリケーションを起動
-	const char *msg = GetLoadStr(is_delay_copy ? IDS_DELAYSETUPCOMPLETE : IDS_SETUPCOMPLETE);
+	const char *msg = LoadStr(is_delay_copy ? IDS_DELAYSETUPCOMPLETE :
+							  is_rotate ? IDS_REPLACECOMPLETE : IDS_SETUPCOMPLETE);
 	int			flg = MB_OKCANCEL|MB_ICONINFORMATION;
 
 	TLaunchDlg	dlg(msg, this);
@@ -610,7 +656,7 @@ BOOL TInstDlg::UnInstall(void)
 		return	TRUE;
 	}
 
-	if (MessageBox(GetLoadStr(IDS_START), UNINSTALL_STR, MB_OKCANCEL|MB_ICONINFORMATION) != IDOK)
+	if (MessageBox(LoadStr(IDS_START), UNINSTALL_STR, MB_OKCANCEL|MB_ICONINFORMATION) != IDOK)
 		return	FALSE;
 
 // スタートメニュー＆デスクトップから削除
@@ -622,7 +668,7 @@ BOOL TInstDlg::UnInstall(void)
 			if (reg.GetStr(regStr[cnt], buf, sizeof(buf))) {
 				if (cnt == 0)
 					RemoveSameLink(buf);
-				::wsprintf(buf + strlen(buf), "\\%s", FASTCOPY_SHORTCUT);
+				::sprintf(buf + strlen(buf), "\\%s", FASTCOPY_SHORTCUT);
 				Wstr	w_buf(buf, BY_MBCS);
 				DeleteLinkW(w_buf.Buf());
 			}
@@ -658,7 +704,7 @@ BOOL TInstDlg::UnInstall(void)
 	}
 
 // 終了メッセージ
-	MessageBox(is_shext ? GetLoadStr(IDS_UNINSTSHEXTFIN) : GetLoadStr(IDS_UNINSTFIN));
+	MessageBox(is_shext ? LoadStr(IDS_UNINSTSHEXTFIN) : LoadStr(IDS_UNINSTFIN));
 
 // インストールディレクトリを開く
 	if (GetFileAttributes(setupDir) != 0xffffffff) {
@@ -724,12 +770,12 @@ BOOL TInstDlg::RemoveSameLink(const char *dir, char *remove_path)
 	WIN32_FIND_DATA	data;
 	BOOL			ret = FALSE;
 
-	::wsprintf(path, "%s\\*.*", dir);
+	::sprintf(path, "%s\\*.*", dir);
 	if ((fh = ::FindFirstFile(path, &data)) == INVALID_HANDLE_VALUE)
 		return	FALSE;
 
 	do {
-		::wsprintf(path, "%s\\%s", dir, data.cFileName);
+		::sprintf(path, "%s\\%s", dir, data.cFileName);
 		if (ReadLink(path, dest, arg) && *arg == 0) {
 			int		dest_len = (int)strlen(dest);
 			int		fastcopy_len = (int)strlen(FASTCOPY_EXE);
@@ -961,9 +1007,9 @@ BOOL TBrowseDirDlg::AttachWnd(HWND _hWnd)
 	::ScreenToClient(hWnd, &pt);
 	int		cx = (pt.x - 30) / 2, cy = tmp_rect.bottom - tmp_rect.top;
 
-	::CreateWindow(BUTTON_CLASS, GetLoadStr(IDS_MKDIR), WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON, 10,
+	::CreateWindow(BUTTON_CLASS, LoadStr(IDS_MKDIR), WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON, 10,
 		pt.y, cx, cy, hWnd, (HMENU)MKDIR_BUTTON, TApp::GetInstance(), NULL);
-	::CreateWindow(BUTTON_CLASS, GetLoadStr(IDS_RMDIR), WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,
+	::CreateWindow(BUTTON_CLASS, LoadStr(IDS_RMDIR), WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,
 		18 + cx, pt.y, cx, cy, hWnd, (HMENU)RMDIR_BUTTON, TApp::GetInstance(), NULL);
 
 	HFONT	hDlgFont = (HFONT)SendDlgItemMessage(IDOK, WM_GETFONT, 0, 0L);

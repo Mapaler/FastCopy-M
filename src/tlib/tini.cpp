@@ -1,5 +1,5 @@
 ﻿static char *tini_id = 
-	"@(#)Copyright (C) 1996-2015 H.Shirouzu		tini.cpp	Ver0.99";
+	"@(#)Copyright (C) 1996-2016 H.Shirouzu		tini.cpp	Ver0.99";
 /* ========================================================================
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Registry Class
@@ -299,9 +299,11 @@ BOOL TInifile::DelSection(const char *section)
 
 	if (!sec) return FALSE;
 
+	if (sec == curSec) {
+		curSec = NULL;
+	}
 	DelObj(sec);
 	delete sec;
-	if (sec == curSec) curSec = NULL;
 	return	TRUE;
 }
 

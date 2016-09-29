@@ -1,40 +1,21 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Source Files">
-      <UniqueIdentifier>{552161d8-d929-4879-9537-07e961c5d740}</UniqueIdentifier>
-      <Extensions>cpp;c;cxx;rc;def;r;odl;idl;hpj;bat</Extensions>
-    </Filter>
     <Filter Include="Header Files">
-      <UniqueIdentifier>{fd6c0f88-dcaa-4bad-9a09-859f61bc2292}</UniqueIdentifier>
-      <Extensions>h;hpp;hxx;hm;inl</Extensions>
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="tapi32ex.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="tapi32u8.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="tapp.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="tdlg.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="tini.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="tmisc.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="tregist.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="twin.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
+    <ClCompile Include="tads.cpp" />
+    <ClCompile Include="tapi32ex.cpp" />
+    <ClCompile Include="tapi32u8.cpp" />
+    <ClCompile Include="tapp.cpp" />
+    <ClCompile Include="tdlg.cpp" />
+    <ClCompile Include="tini.cpp" />
+    <ClCompile Include="tmisc.cpp" />
+    <ClCompile Include="tregist.cpp" />
+    <ClCompile Include="twin.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="tapi32ex.h">

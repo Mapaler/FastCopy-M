@@ -72,11 +72,11 @@
 <body bgcolor="#eeffff">
 
 <div align="center">
-<h1 class="help_head1">FastCopy ver3.13</h1>
+<h1 class="help_head1">FastCopy ver3.21</h1>
 </div>
 <div class="help_all">
 
-<div align="right">2016/03/15 H.Shirouzu</div>
+<div align="right">2016/09/28 H.Shirouzu</div>
 
 <center>
 <strong>Warning :</strong> This document was made with the Japanese-English translation software. <br>
@@ -110,7 +110,7 @@ I want to correct this document. (If you made corrections, please send to <a hre
 	<a href="#cmdline">7. CommandLine</a><br>
 	<a href="#warning">8. Warning</a><br>
 	<a href="#contact">9. Latest Version/Contact</a><br>
-	<a href="#misc">10. Misc</a><br>
+	<a href="#misc">10. Misc (setting file, etc)</a><br>
 	<a href="#todo">11. ToDo</a><br>
 	<a href="#history">12. History</a><br>
 </div>
@@ -282,7 +282,8 @@ I want to correct this document. (If you made corrections, please send to <a hre
 		<table class="help_table" border="4">
 		<tr><td><strong>ACL</strong></td>
 		<td>Copy Access Control List (ACL). (Only applicable to NTFS)<br>
-		<strong>(It is recommended to use with <a href="#elevate">Administrative privilege</a>)</strong></td></tr> 
+		<strong>(It is recommended to use with <a href="#elevate">Administrative privilege</a>)</strong><br>
+		And Extended Attribute(EA) will also be copied.</td></tr> 
 		<tr><td><strong>Alt Stream</strong></td>
 		<td>Copy Alternate Stream. (Only applicable to NTFS)</td></tr>
 		<tr><td><strong>Wipe & Delete (prevent deleted files reviving)</strong></td>
@@ -310,7 +311,7 @@ It can be specified include filter strings(<a href="#wild_card">UNIX wildcard fo
 		<tr><td colspan="2"><strong>The following filters are enabled when check "Option" -> "Show Extended filter".</strong></td></tr>
 		<tr><td><strong>FromDate</strong></td>
 		<td>Don't copy the files that timestamp are older than specified date(<a href="#date_filter">format</a>).<br>
-		This can be specified by not only absolute format ("20090322") but also by relative format (10days before ... "-10D").</td></tr>
+		This can be specified by not only absolute format ("20090322" or "2016/09/26 12:30:56") but also by relative format (10days before ... "-10D").</td></tr>
 		<tr><td><strong>ToDate</strong></td>
 		<td>Don't copy files with timestamps newer than this specified date.</td></tr>
 		<tr><td><strong>MinSize</strong></td>
@@ -359,7 +360,7 @@ It can be specified include filter strings(<a href="#wild_card">UNIX wildcard fo
 		<a name="date_filter"/>
 		<strong>FromDate/ToDate filter format.</strong>
 		<table class="help_table" border="4">
-		<tr><td>Absolute</td><td>Specify "YYYYMMDD"(year/month/day).<br> ex) "20090101"</td>
+		<tr><td>Absolute</td><td>Specify "YYYYMMDD[hhmmss]"(year/month/day/hours/minutes/seconds).<br> ex) "20090322" or "2016/09/26 12:30:56"</td>
 		<tr><td>Relative</td><td>Specify "+|- number W|D|h|m|s".<br>
 		W|D|h|m|s means Weeks/Days/hours/minutes/seconds.<br>
 		ex) "-12h" <strong>(This is case sensitive.)</strong></td>
@@ -577,15 +578,17 @@ demerit points are same as read, but sometimes many head seeks occur in writing 
 			<tr><td><strong>Use taskbar instead of tasktray at minimizing</strong></td><td>using taskbar</td></tr>
 			<tr><td nowrap><strong>Info Update span</strong></td><td>It can be specified information update span.</td></tr>
 			<tr><td><strong>Balloon Notification at the finish</td><td>Enable balloon notification at the finish, if it is minimized.</td></tr>
+			<tr><td><strong>Prevent auto sleep during copying</td><td>Prevent auto sleep(by OS) during copying.<br>(Note: If an error dialog is shown, FastCopy doesn't prevent auto sleep)</td></tr>
 			<tr><td nowrap><strong>English UI</strong></td><td>(Meaningless in English OS) It requires restarting FastCopy.</td></tr>
 			</table>
 		</div>
 	</div>
 
 	<a name="shell"/>
-	<h3 class="help_head3">Option -> Extensions -> Shell Extension</h3>
+	<h3 class="help_head3">Option -> Extensions -> Shell Extension (Personal/AllUsers)</h3>
 	<div class="help_sub_section">
 		Register copy/delete menu items with Explorer's right click menu and right drag&drop menu.<br>
+		("AllUsers" requires administrator privilege (elevate))
 	</div>
 
 	<h3 class="help_head3">Option -> Extensions -> Change/Reset Main Font</h3>
@@ -701,7 +704,8 @@ demerit points are same as read, but sometimes many head seeks occur in writing 
 	<tr><td nowrap><strong>/auto_close</strong></td><td>Close automatically after execution is finished with no errors.</td></tr>
 	<tr><td nowrap><strong>/force_close</strong></td><td>Close automatically and forcedly after execution is finished.</td></tr>
 	<tr><td nowrap><strong>/open_window</strong></td><td>Don't stored in the task tray.</td></tr>
-	<tr><td nowrap><strong>/estimate</strong></td><td>Estimate complete time.</td></tr>
+	<tr><td nowrap><strong>/estimate</strong></td><td>Estimate complete time.(to disable, /estimate=FALSE)</td></tr>
+	<tr><td nowrap><strong>/balloon(=FALSE)</strong></td><td>Show balloon notification at finish. (to disable, /balloon=FALSE)</td></tr>
 	<tr><td nowrap><strong>/no_ui</strong></td><td><a name="#no_ui"/>Don't show confirm dialogs. for background task. if /no_ui is used, /no_confirm_del /no_confirm_stop /force_close is setted automatically. If FastCopy run in session 0(kicked by task scheduler), /no_ui is setted automatically. But even if /no_ui is setted, standby/hibernate/shutdown count-down dialog will not prevent.</td></tr>
 	<tr><td nowrap><strong>/no_confirm_del</strong></td><td>Don't confirm before deleting.</td></tr>
 	<tr><td nowrap><strong>/no_confirm_stop</strong></td><td>Don't Show error dialog, Even if critical errors occurred.</td></tr>
@@ -712,9 +716,9 @@ demerit points are same as read, but sometimes many head seeks occur in writing 
 	<tr><td nowrap><strong>/logfile=filename</strong></td><td>Specify the filename of logfile.</td></tr>
 	<tr><td nowrap><strong>/filelog</strong></td><td>Write to the filelog(detail of copy/delete files). It is stored TIMESTAMP.log in FastCopy/Log directory. If using verify mode, write digest data(default:md5) as additional data. (To specify filelogname, /filelog=filename)</td></tr>
 	<tr><td nowrap><strong>/utf8</strong></td><td>Write to the logfile using UTF-8 encoding (supports Unicode).</td></tr>
-	<tr><td nowrap><strong>/skip_empty_dir</strong></td><td>Skip to create empty directories when /include or /exclude option is used. (to disable, /log=FALSE)</td></tr>
+	<tr><td nowrap><strong>/skip_empty_dir</strong></td><td>Skip to create empty directories when /include or /exclude option is used. (to disable, /skip_empty_dir=FALSE)</td></tr>
 	<tr><td nowrap><strong>/job=job_name</strong></td><td>Specify the job that is already registered.</td></tr>
-	<tr><td nowrap><strong>/force_start</strong></td><td>Start at once without waiting for the finish of other FastCopy executing.</td></tr>
+	<tr><td nowrap><strong>/force_start(=N)</strong></td><td>Start at once without waiting for the finish of other FastCopy executing. (/force_start=2-N ... specify number of max parallel process)</td></tr>
 	<tr><td nowrap><strong>/disk_mode=(auto|same|diff)</strong></td><td>Specify <a href="#disk_mode">Auto/Same/Diff HDD mode</a>. (default: Auto)</td></tr>
 	<tr><td nowrap><strong>/speed=(full|autoslow|<br>&nbsp;9-1(90%-10%)|suspend)</strong></td><td>Specify speed control level.</td></tr>
 	<tr><td nowrap><strong>/srcfile="files.txt"</strong></td><td>Specify source files by textfile. User is able to describe 1 filename per line. (<strong>Attention:</strong> If a lot of files are specified, it will take many times to display/refresh Source combobox.)</td></tr>
@@ -726,7 +730,7 @@ demerit points are same as read, but sometimes many head seeks occur in writing 
 	<tr><td nowrap><strong>/min_size="..."</strong></td><td>Specify minimum size filter. (<a href="#filter">details</a>)</td></tr>
 	<tr><td nowrap><strong>/max_size="..."</strong></td><td>Specify maximum size filter. (<a href="#filter">details</a>)</td></tr>
 	<tr><td nowrap><strong>/wipe_del</strong></td><td>Rename filename and wipe(overwrite Random data) before deleting.</td></tr>
-	<tr><td nowrap><strong>/acl</strong></td><td>Copy ACL (only NTFS) (to disable, /acl=FALSE)</td></tr>
+	<tr><td nowrap><strong>/acl</strong></td><td>Copy ACL/EA (only NTFS)(to disable, /acl=FALSE)</td></tr>
 	<tr><td nowrap><strong>/stream</strong></td><td>Copy Alternate Stream (only NTFS) (to disable, /stream=FALSE)</td></tr>
 	<tr><td nowrap><strong>/reparse</strong></td><td>Copy junction/mountpoint/symlink itself(to disable, /reparse=FALSE) (<a href="#reparse">details</a>)</td></tr>
 	<tr><td nowrap><strong>/verify</strong></td><td>Verify written files data by MD5(or SHA-1) (to disable, /verify=FALSE) (<a href="#verify">details</a>)</td></tr>
@@ -793,7 +797,22 @@ demerit points are same as read, but sometimes many head seeks occur in writing 
 <table class="help_table" border="4">
 <tr><th>Version</th><th>Detail</th></tr>
 
-<tr><td>v3.13</td><td>
+<tr><td>v3.21</td><td>
+Fix not to recognize cmd=(sync|move) option
+</td></tr>
+<tr><td>v3.20</td><td>
+Support UserMode(not Admin) Shell Extension.<br>
+Add "Prevent auto-sleep during copying" option.<br>
+Improve speed for listing directory entries. (using FIND_FIRST_EX_LARGE_FETCH for high-latency environment or huge number of directory entries)<br>
+Add "Min Sector size is regareded as 4096" settings. (for using a Junction and that points big sector HDD in DestDir drive)<br>
+Disable estimate if NoUI mode is enabled. (to prevent this behavior, /estimate=TRUE)<br>
+Add SHA-256 hash mode for verify. (fastcopy2.ini [main] hash_mode=2)<br>
+Add /balloon option. (to prevent, /balloon=FALSE)<br>
+Expand /force_start option. (/force_start=2-N ... specify number of max parallel process)<br>
+Expand /from_date(to_date) option for hours/minutes/seconds. (/from_date="YYYYMMDD[hhmmss]" or "YYYY/MM/DD [hh:mm:ss]")
+</td></tr>
+
+<tr><td>v3.13-v3.14</td><td>
 Fix an exception at starting in few environment.
 </td></tr>
 <tr><td>v3.12</td><td>

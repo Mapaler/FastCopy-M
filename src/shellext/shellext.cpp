@@ -1,9 +1,9 @@
 ﻿static char *shellext_id = 
-	"@(#)Copyright (C) 2005-2015 H.Shirouzu		shellext.cpp	Ver3.0.3.12";
+	"@(#)Copyright (C) 2005-2016 H.Shirouzu		shellext.cpp	Ver3.20";
 /* ========================================================================
 	Project  Name			: Shell Extension for Fast Copy
 	Create					: 2005-01-23(Sun)
-	Update					: 2015-06-22(Mon)
+	Update					: 2016-09-28(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-09
@@ -42,6 +42,7 @@ static char	*DllRegKeys[] = {
 };
 
 static WCHAR	*FMT_TOSTR;
+static BOOL		isAdminDll = TRUE;
 
 //#define SHEXT_DEBUG_LOG
 
@@ -49,8 +50,15 @@ static WCHAR	*FMT_TOSTR;
 
 static CRITICAL_SECTION cs;
 
+static BOOL cs_init()
+{
+	::InitializeCriticalSection(&cs);
+	return	TRUE;
+}
+
 DWORD DbgLog(char *fmt,...)
 {
+	static BOOL once = cs_init();
 	static HANDLE hLogFile = INVALID_HANDLE_VALUE;
 	DWORD	ret = 0;
 
@@ -63,7 +71,7 @@ DWORD DbgLog(char *fmt,...)
 	if (hLogFile != INVALID_HANDLE_VALUE) {
 		char	buf[16384];
 
-		DWORD	len = wsprintf(buf, "%04x: ", ::GetCurrentThreadId());
+		DWORD	len = sprintf(buf, "%04x: ", ::GetCurrentThreadId());
 
 		va_list	va;
 		va_start(va, fmt);
@@ -103,17 +111,18 @@ DWORD DbgLogW(WCHAR *fmt,...)
   説  明 ： 
   注  意 ： 
 =========================================================================*/
-
-ShellExt::ShellExt(void):
+ShellExt::ShellExt(BOOL _isAdmin):
 	_bitmap(NULL)
 {
 	refCnt = 0;
+	isAdmin = _isAdmin;
 	isCut = FALSE;
 	dataObj = NULL;
 	_bitmap = ::LoadBitmap(g_hInstance, MAKEINTRESOURCE(IDB_MENU_LOGO)); //从资源载入bmp
 	//_bitmap = (HBITMAP)::LoadImage(g_hInstance, MAKEINTRESOURCE(IDB_MENU_LOGO), IMAGE_BITMAP, 0, 0, LR_LOADTRANSPARENT); //从资源载入bmp
-	if (SysObj)
-		SysObj->DllRefCnt++;
+	if (SysObj) {
+		SysObj->AddDllRef(isAdmin);
+	}
 	::CoInitialize(0);
 }
 
@@ -121,10 +130,12 @@ ShellExt::~ShellExt()
 {
 	if (_bitmap != NULL)
 		DeleteObject(_bitmap); //删除bmp
-	if (dataObj)
+	if (dataObj) {
+		if (SysObj) {
+			SysObj->RelDllRef(isAdmin);
+		}
 		dataObj->Release();
-	if (SysObj)
-		SysObj->DllRefCnt--;
+	}
 
 	::CoUninitialize();
 }
@@ -244,11 +255,12 @@ STDMETHODIMP ShellExt::QueryContextMenu(HMENU hMenu, UINT iMenu, UINT cmdFirst, 
 {
 	HMENU	hTargetMenu = hMenu;
 	BOOL	is_dd = dstArray.Num() && srcArray.Num();
-	int		menu_flags = GetMenuFlags();
+	int		menu_flags = GetMenuFlags(isAdmin);
 	int		mask_menu_flags = (menu_flags & (is_dd ? SHEXT_DD_MENUS : SHEXT_RIGHT_MENUS));
 	BOOL	is_submenu = (menu_flags & (is_dd ? SHEXT_SUBMENU_DD : SHEXT_SUBMENU_RIGHT));
 	BOOL	is_separator = (menu_flags & SHEXT_SUBMENU_NOSEP) ? FALSE : TRUE;
-
+	BOOL	ref_cnt = SysObj->GetDllRef(isAdmin);
+	
 	HBITMAP bitmap = NULL;
 	bitmap = _bitmap; //载入bmp
 
@@ -256,13 +268,13 @@ STDMETHODIMP ShellExt::QueryContextMenu(HMENU hMenu, UINT iMenu, UINT cmdFirst, 
 		return	ResultFromScode(MAKE_SCODE(SEVERITY_SUCCESS, 0, 0));
 	}
 
-	if (SysObj->DllRefCnt >= 2 && hMenu == SysObj->lastMenu) {
-		DbgLogW(L" skip cnt=%d self=%x menu=%x/%x\n",
-			SysObj->DllRefCnt, hMenu, this, SysObj->lastMenu);
+	if (ref_cnt >= 2 && hMenu == SysObj->lastMenu) {
+		DbgLogW(L" skip cnt=%d self=%x menu=%x/%x\r\n",
+			ref_cnt, hMenu, this, SysObj->lastMenu);
 		return	ResultFromScode(MAKE_SCODE(SEVERITY_SUCCESS, 0, 0));
 	}
-	DbgLogW(L" add cnt=%d self=%x menu=%x/%x\n",
-		SysObj->DllRefCnt, hMenu, this, SysObj->lastMenu);
+	DbgLogW(L" add cnt=%d self=%x menu=%x/%x\r\n",
+		ref_cnt, hMenu, this, SysObj->lastMenu);
 
 	isCut = FALSE;
 
@@ -305,26 +317,24 @@ STDMETHODIMP ShellExt::QueryContextMenu(HMENU hMenu, UINT iMenu, UINT cmdFirst, 
 
 		if (mask_menu_flags & SHEXT_RIGHT_PASTE) {
 			::InsertMenu(hTargetMenu, iMenu++, MF_STRING|MF_BYPOSITION,
-				cmdFirst + SHEXT_MENU_PASTE, GetLoadStr(IDS_RIGHTPASTE));
+				cmdFirst + SHEXT_MENU_PASTE, LoadStr(IDS_RIGHTPASTE));
 			::SetMenuItemBitmaps(hTargetMenu, iMenu - 1, MF_BYPOSITION, bitmap, bitmap);
 		}
 
 		if ((mask_menu_flags & (SHEXT_RIGHT_COPY|SHEXT_DD_COPY)) && srcArray.Num() > 0) {
 			::InsertMenu(hTargetMenu, iMenu++, MF_STRING|MF_BYPOSITION,
-				cmdFirst + SHEXT_MENU_COPY,
-				is_dd ? GetLoadStr(IDS_DDCOPY) : GetLoadStr(IDS_RIGHTCOPY));
+				cmdFirst + SHEXT_MENU_COPY, is_dd ? LoadStr(IDS_DDCOPY) : LoadStr(IDS_RIGHTCOPY));
 			::SetMenuItemBitmaps(hTargetMenu, iMenu - 1, MF_BYPOSITION, bitmap, bitmap);
 		}
 
 		if ((mask_menu_flags & (SHEXT_RIGHT_DELETE|SHEXT_DD_MOVE)) && srcArray.Num() > 0) {
 			::InsertMenu(hTargetMenu, iMenu++, MF_STRING|MF_BYPOSITION,
-				cmdFirst + SHEXT_MENU_DELETE,
-				is_dd ? GetLoadStr(IDS_DDMOVE) : GetLoadStr(IDS_RIGHTDEL));
+				cmdFirst + SHEXT_MENU_DELETE, is_dd ? LoadStr(IDS_DDMOVE) : LoadStr(IDS_RIGHTDEL));
 			::SetMenuItemBitmaps(hTargetMenu, iMenu - 1, MF_BYPOSITION, bitmap, bitmap);
 		}
 		SysObj->lastMenu = hMenu;
-		DbgLogW(L" added cnt=%d self=%x set menu=%x/%x\n",
-			SysObj->DllRefCnt, this, hMenu, SysObj->lastMenu);
+		DbgLogW(L" added cnt=%d self=%x set menu=%x/%x\r\n",
+			ref_cnt, this, hMenu, SysObj->lastMenu);
 	}
 
 	return	ResultFromScode(MAKE_SCODE(SEVERITY_SUCCESS, 0, SHEXT_MENU_MAX));
@@ -334,84 +344,85 @@ STDMETHODIMP ShellExt::InvokeCommand(CMINVOKECOMMANDINFO *info)
 {
 	int		cmd = LOWORD(info->lpVerb);
 
-	if (cmd >= 0 && cmd <= 2 && srcArray.Num() >= 0) {
-		HANDLE	hRead, hWrite;
-		SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), 0, TRUE };
-
-		SysObj->lastMenu   = 0;
-
-		::CreatePipe(&hRead, &hWrite, &sa, 0);
-		::DuplicateHandle(::GetCurrentProcess(), hWrite, ::GetCurrentProcess(), &hWrite,
-			0, FALSE, DUPLICATE_CLOSE_SOURCE|DUPLICATE_SAME_ACCESS);
-
-		STARTUPINFO			st_info;
-		memset(&st_info, 0, sizeof(st_info));
-		st_info.cb = sizeof(st_info);
-		st_info.dwFlags = STARTF_USESTDHANDLES;
-		st_info.hStdInput = hRead;
-		st_info.hStdOutput = ::GetStdHandle(STD_OUTPUT_HANDLE);
-		st_info.hStdError = ::GetStdHandle(STD_ERROR_HANDLE);
-
-		BOOL	is_dd = dstArray.Num();
-		char	arg[MAX_PATH_EX], *cmd_str = "";
-		PROCESS_INFORMATION	pr_info;
-		BOOL	isClip = cmd == 2;
-		BOOL	is_del = FALSE;
-		int		menu_flags = GetMenuFlags();
-
-		if (isClip && isCut || cmd == 1 && is_dd) {
-			cmd_str = "/cmd=move";
-		}
-		else if (cmd == 1 && !is_dd) {
-			cmd_str = "/cmd=delete";
-			is_del = TRUE;
-		}
-
-		wsprintf(arg, "\"%s\" %s %s=%x", SysObj->ExeName, cmd_str, SHELLEXT_OPT, menu_flags);
-
-		DbgLog("CreateProcess(%s)\r\n", arg);
-
-		BOOL ret = ::CreateProcess(SysObj->ExeName, arg, 0, 0, TRUE, CREATE_DEFAULT_ERROR_MODE,
-					0, 0, &st_info, &pr_info);
-		::CloseHandle(hRead);
-
-		if (ret) {
-			PathArray	&src = isClip ? clipArray : srcArray;
-			PathArray	&dst = (isClip && dstArray.Num() == 0) ? srcArray : dstArray;
-			DWORD		len = src.GetMultiPathLen();
-			WCHAR		*buf = new WCHAR[max(len, MAX_PATH_EX)];
-			// dstArray が無い場合は、\0 まで出力
-			len = src.GetMultiPath(buf, len) + (!is_dd && !isClip ? 1 : 0);
-
-			DbgLogW(L"send fastcopy src=%s\r\n", buf);
-
-			::WriteFile(hWrite, buf, len * sizeof(WCHAR), &len, 0);
-
-			if (is_dd || isClip) {
-				WCHAR	dir[MAX_PATH_EX];
-				WCHAR	path[MAX_PATH_EX];
-				WCHAR	*dstPath = (isClip && ReadLinkW(dst.Path(0), path)) ? path : dst.Path(0);
-
-				MakePathW(dir, dstPath, L"");	// 末尾に \\ を付与
-				len = swprintf(buf, FMT_TOSTR, dir) + 1;
-				DbgLogW(L"send fastcopy dst=%s\r\n", buf);
-				::WriteFile(hWrite, buf, len * sizeof(WCHAR *), &len, 0);
-			}
-			delete [] buf;
-			::CloseHandle(pr_info.hProcess);
-			::CloseHandle(pr_info.hThread);
-
-			if (isClip) {
-				if (::OpenClipboard(NULL)) {
-					::EmptyClipboard();
-					::CloseClipboard();
-				}
-			}
-		}
-		::CloseHandle(hWrite);
-		return NOERROR;
+	if (cmd < 0 || cmd > 2) {
+		return	E_INVALIDARG;
 	}
-	return	E_INVALIDARG;
+
+	HANDLE	hRead, hWrite;
+	SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), 0, TRUE };
+
+	SysObj->lastMenu   = 0;
+
+	::CreatePipe(&hRead, &hWrite, &sa, 0);
+	::DuplicateHandle(::GetCurrentProcess(), hWrite, ::GetCurrentProcess(), &hWrite,
+		0, FALSE, DUPLICATE_CLOSE_SOURCE|DUPLICATE_SAME_ACCESS);
+
+	STARTUPINFO			st_info;
+	memset(&st_info, 0, sizeof(st_info));
+	st_info.cb = sizeof(st_info);
+	st_info.dwFlags = STARTF_USESTDHANDLES;
+	st_info.hStdInput = hRead;
+	st_info.hStdOutput = ::GetStdHandle(STD_OUTPUT_HANDLE);
+	st_info.hStdError = ::GetStdHandle(STD_ERROR_HANDLE);
+
+	BOOL	is_dd = dstArray.Num();
+	char	arg[MAX_PATH_EX], *cmd_str = "";
+	PROCESS_INFORMATION	pr_info;
+	BOOL	isClip = cmd == 2;
+	BOOL	is_del = FALSE;
+	int		menu_flags = GetMenuFlags(isAdmin);
+
+	if (isClip && isCut || cmd == 1 && is_dd) {
+		cmd_str = "/cmd=move";
+	}
+	else if (cmd == 1 && !is_dd) {
+		cmd_str = "/cmd=delete";
+		is_del = TRUE;
+	}
+
+	sprintf(arg, "\"%s\" %s %s=%x", SysObj->ExeName, cmd_str, SHELLEXT_OPT, menu_flags);
+
+	DbgLog("CreateProcess(%s)\r\n", arg);
+
+	BOOL ret = ::CreateProcess(SysObj->ExeName, arg, 0, 0, TRUE, CREATE_DEFAULT_ERROR_MODE,
+				0, 0, &st_info, &pr_info);
+	::CloseHandle(hRead);
+
+	if (ret) {
+		PathArray	&src = isClip ? clipArray : srcArray;
+		PathArray	&dst = (isClip && dstArray.Num() == 0) ? srcArray : dstArray;
+		DWORD		len = src.GetMultiPathLen();
+		WCHAR		*buf = new WCHAR[max(len, MAX_PATH_EX)];
+		// dstArray が無い場合は、\0 まで出力
+		len = src.GetMultiPath(buf, len) + (!is_dd && !isClip ? 1 : 0);
+
+		DbgLogW(L"send fastcopy src=%s\r\n", buf);
+
+		::WriteFile(hWrite, buf, len * sizeof(WCHAR), &len, 0);
+
+		if (is_dd || isClip) {
+			WCHAR	dir[MAX_PATH_EX];
+			WCHAR	path[MAX_PATH_EX];
+			WCHAR	*dstPath = (isClip && ReadLinkW(dst.Path(0), path)) ? path : dst.Path(0);
+
+			MakePathW(dir, dstPath, L"");	// 末尾に \\ を付与
+			len = swprintf(buf, FMT_TOSTR, dir) + 1;
+			DbgLogW(L"send fastcopy dst=%s\r\n", buf);
+			::WriteFile(hWrite, buf, len * sizeof(WCHAR *), &len, 0);
+		}
+		delete [] buf;
+		::CloseHandle(pr_info.hProcess);
+		::CloseHandle(pr_info.hThread);
+
+		if (isClip) {
+			if (::OpenClipboard(NULL)) {
+				::EmptyClipboard();
+				::CloseClipboard();
+			}
+		}
+	}
+	::CloseHandle(hWrite);
+	return NOERROR;
 }
 
 STDMETHODIMP ShellExt::GetCommandString(UINT_PTR cmd, UINT flg, UINT *, char *name, UINT cchMax)
@@ -421,13 +432,13 @@ STDMETHODIMP ShellExt::GetCommandString(UINT_PTR cmd, UINT flg, UINT *, char *na
 	if (flg == GCS_HELPTEXT) {
 		switch (cmd) {
 		case 0:
-			strncpy(name, is_dd ? GetLoadStr(IDS_DDCOPY) : GetLoadStr(IDS_RIGHTCOPY), cchMax);
+			strncpy(name, is_dd ? LoadStr(IDS_DDCOPY) : LoadStr(IDS_RIGHTCOPY), cchMax);
 			return	S_OK;
 		case 1:
-			strncpy(name, is_dd ? GetLoadStr(IDS_DDMOVE) : GetLoadStr(IDS_RIGHTDEL), cchMax);
+			strncpy(name, is_dd ? LoadStr(IDS_DDMOVE) : LoadStr(IDS_RIGHTDEL), cchMax);
 			return	S_OK;
 		case 2:
-			strncpy(name, GetLoadStr(IDS_RIGHTPASTE), cchMax);
+			strncpy(name, LoadStr(IDS_RIGHTPASTE), cchMax);
 			return	S_OK;
 		}
 	}
@@ -441,8 +452,12 @@ STDMETHODIMP_(ULONG) ShellExt::AddRef()
 
 STDMETHODIMP_(ULONG) ShellExt::Release()
 {
-	if (--refCnt)
+	if (refCnt <= 0) {
+		return	0;
+	}
+	if (--refCnt > 0) {
 		return refCnt;
+	}
 
 	delete this;
 	return	0;
@@ -455,29 +470,35 @@ STDMETHODIMP_(ULONG) ShellExt::Release()
   説  明 ： 
   注  意 ： 
 =========================================================================*/
-ShellExtClassFactory::ShellExtClassFactory(void)
+ShellExtClassFactory::ShellExtClassFactory(BOOL _isAdmin)
 {
 	refCnt = 0;
-	if (SysObj)
-		SysObj->DllRefCnt++;
+	isAdmin = _isAdmin;
+
+	if (SysObj) {
+		SysObj->AddDllRef(isAdmin);
+	}
 }
 
 ShellExtClassFactory::~ShellExtClassFactory()
 {
-	if (SysObj)
-		SysObj->DllRefCnt--;
+	if (SysObj) {
+		SysObj->RelDllRef(isAdmin);
+	}
 }
 
 STDMETHODIMP ShellExtClassFactory::CreateInstance(IUnknown *pUnkOuter, REFIID riid, void **ppvObj)
 {
 	*ppvObj = NULL;
 
-	if (pUnkOuter)
+	if (pUnkOuter) {
 		return CLASS_E_NOAGGREGATION;
+	}
 
-	ShellExt *shellExt = new ShellExt;
-	if (NULL == shellExt)
+	ShellExt *shellExt = new ShellExt(isAdmin);
+	if (NULL == shellExt) {
 		return E_OUTOFMEMORY;
+	}
 
 	return shellExt->QueryInterface(riid, ppvObj);
 }
@@ -506,8 +527,12 @@ STDMETHODIMP_(ULONG) ShellExtClassFactory::AddRef()
 
 STDMETHODIMP_(ULONG) ShellExtClassFactory::Release()
 {
-	if (--refCnt)
+	if (refCnt <= 0) {
+		return	0;
+	}
+	if (--refCnt > 0) {
 		return refCnt;
+	}
 	delete this;
 	return 0;
 }
@@ -520,15 +545,19 @@ STDMETHODIMP_(ULONG) ShellExtClassFactory::Release()
 =========================================================================*/
 STDAPI DllCanUnloadNow(void)
 {
-	return SysObj && SysObj->DllRefCnt == 0 ? S_OK : S_FALSE;
+	return (SysObj && SysObj->GetDllAllRef() == 0) ? S_OK : S_FALSE;
 }
 
 STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID *ppvOut)
 {
 	*ppvOut = NULL;
+	BOOL	is_admin =	IsEqualIID(rclsid, CLSID_FcShExt) ||
+						IsEqualIID(rclsid, CLSID_FcLnkExt);
+	BOOL	is_user  =	IsEqualIID(rclsid, CLSID_FcShExtLocal) ||
+						IsEqualIID(rclsid, CLSID_FcLnkExtLocal);
 
-	if (IsEqualIID(rclsid, CURRENT_SHEXT_CLSID) || IsEqualIID(rclsid, CURRENT_SHEXTLNK_CLSID)) {
-		ShellExtClassFactory	*cf = new ShellExtClassFactory;
+	if (is_admin || is_user) {
+		ShellExtClassFactory	*cf = new ShellExtClassFactory(is_admin);
 		return cf->QueryInterface(riid, ppvOut);
 	}
 	return CLASS_E_CLASSNOTAVAILABLE;
@@ -541,8 +570,9 @@ BOOL GetClsId(REFIID cls_name, char *cls_id, int size)
 
 	::StringFromIID(cls_name, &w_cls_id);
 
-	if (w_cls_id)
+	if (w_cls_id) {
 		WtoA(w_cls_id, cls_id, size);
+	}
 
 	::CoGetMalloc(1, &im);
 	im->Free(w_cls_id);
@@ -555,23 +585,23 @@ STDAPI DllRegisterServer(void)
 	if (SHGetPathFromIDListW == NULL)
 		return	E_FAIL;
 
-	TShellExtRegistry	reg;
+	TShellExtRegistry	reg(isAdminDll);
 
 // CLASSKEY 登録
 	if (reg.CreateClsKey()) {
-		reg.SetStr(NULL, FASTCOPY);
+		reg.SetStr(NULL, isAdminDll ? FASTCOPY : FASTCOPYUSER);
 		if (reg.CreateKey("InProcServer32")) {
 			reg.SetStr(NULL, SysObj->DllName);
 			reg.SetStr("ThreadingModel", "Apartment");
 			reg.CloseKey();
 		}
+		reg.CloseKey();
 	}
 
 // 関連付け
-	reg.ChangeTopKey(HKEY_CLASSES_ROOT);
 	for (int i=0; DllRegKeys[i]; i++) {
 		if (reg.CreateKey(DllRegKeys[i])) {
-			if (reg.CreateKey(FASTCOPY)) {
+			if (reg.CreateKey(isAdminDll ? FASTCOPY : FASTCOPYUSER)) {
 				reg.SetStr(NULL, reg.clsId);
 				reg.CloseKey();
 			}
@@ -580,7 +610,7 @@ STDAPI DllRegisterServer(void)
 	}
 
 // NT系の追加
-	if (IsWinNT())  {
+	if (isAdminDll)  {
 		reg.ChangeTopKey(HKEY_LOCAL_MACHINE);
 		if (reg.OpenKey(REG_SHELL_APPROVED)) {
 			reg.SetStr(reg.clsId, FASTCOPY);
@@ -592,26 +622,25 @@ STDAPI DllRegisterServer(void)
 
 STDAPI DllUnregisterServer(void)
 {
-	TShellExtRegistry	reg;
+	TShellExtRegistry	reg(isAdminDll);
 
 // CLASS_KEY 削除
-	reg.DeleteChildTree(reg.clsId);
+	reg.DeleteClsKey();
 
 // 関連付け 削除
-	reg.ChangeTopKey(HKEY_CLASSES_ROOT);
 	for (int i=0; DllRegKeys[i]; i++) {
 		if (reg.OpenKey(DllRegKeys[i])) {
-			reg.DeleteChildTree(FASTCOPY);
+			reg.DeleteChildTree(isAdminDll ? FASTCOPY : FASTCOPYUSER);
 			reg.CloseKey();
 		}
 	}
 
 // 旧バージョン用 (.lnk 専用)
-	TShellExtRegistry	linkreg(CURRENT_SHEXTLNK_CLSID);
-	linkreg.DeleteChildTree(linkreg.clsId);
+	TShellExtRegistry	linkreg(isAdminDll, TRUE);
+	linkreg.DeleteClsKey();
 
 // NT系の追加
-	if (IsWinNT())  {
+	if (isAdminDll)  {
 		reg.ChangeTopKey(HKEY_LOCAL_MACHINE);
 		if (reg.OpenKey(REG_SHELL_APPROVED)) {
 			reg.DeleteValue(reg.clsId);
@@ -623,80 +652,87 @@ STDAPI DllUnregisterServer(void)
 	return S_OK;
 }
 
+STDAPI DllRegisterServerUser()
+{
+	isAdminDll = FALSE;
+	return	DllRegisterServer();
+}
+
+STDAPI DllUnregisterServerUser()
+{
+	isAdminDll = FALSE;
+	return	DllUnregisterServer();
+}
+
 /*=========================================================================
   関  数 ： FastCopy 用 export 関数
   概  要 ： 
   説  明 ： 
   注  意 ： 
 =========================================================================*/
-BOOL WINAPI SetMenuFlags(int flags)
+BOOL WINAPI SetMenuFlags(BOOL isAdmin, int flags)
 {
-	TRegistry	reg(HKEY_CLASSES_ROOT);
+	TShellExtRegistry	reg(isAdmin);
+	BOOL				ret = FALSE;
 
-	BOOL	ret = FALSE;
-
-	if (reg.OpenKey(SysObj->MenuFlgRegKey)) {
-		ret = reg.SetInt((flags & SHEXT_MENUFLG_EX) ? MENU_FLAGS : MENU_FLAGS_OLD, flags);
+	if (reg.OpenMenuFlagKey()) {
+		if (isAdmin) {
+			flags |= SHEXT_ISADMIN;
+		} else {
+			flags &= ~SHEXT_ISADMIN;
+		}
+		ret = reg.SetInt(MENU_FLAGS, flags);
 	}
 
 	return	ret;
 }
 
-int WINAPI GetMenuFlagsCore(BOOL *is_present)
+int WINAPI GetMenuFlagsCore(BOOL isAdmin, BOOL *is_present=NULL)
 {
-	TRegistry	reg(HKEY_CLASSES_ROOT);
-	int			val = SHEXT_MENU_DEFAULT;
-	BOOL		_is_present;
+	TShellExtRegistry	reg(isAdmin);
+	int					flags = SHEXT_MENU_DEFAULT;
+	BOOL				_is_present;
 
-	if (!is_present) is_present = &_is_present;
+	if (!is_present) {
+		is_present = &_is_present;
+	}
 
 	*is_present = FALSE;
 
-	if (reg.OpenKey(SysObj->MenuFlgRegKey)) {
-		if (reg.GetInt(MENU_FLAGS, &val)) {
+	if (reg.OpenMenuFlagKey()) {
+		if (reg.GetInt(MENU_FLAGS, &flags)) {
 			*is_present = TRUE;
 		}
-		else if (reg.GetInt(MENU_FLAGS_OLD, &val)) {
-			val |= SHEXT_MENU_NEWDEF;
+		else if (reg.GetInt(MENU_FLAGS_OLD, &flags)) {
+			flags |= SHEXT_MENU_NEWDEF;
 			*is_present = TRUE;
 		}
 	}
 
-	return	val | SHEXT_MENUFLG_EX;
-}
-
-int WINAPI GetMenuFlags(void)
-{
-	return	GetMenuFlagsCore(NULL);
-}
-
-BOOL WINAPI UpdateDll(void)
-{
-	BOOL	is_present;
-	int		val = GetMenuFlagsCore(&is_present);
-
-	const GUID *oldiids[] = {
-		&CLSID_ShellExtID1, // ID1 には lnkid はない
-		&CLSID_ShellExtID2, &CLSID_ShellExtLinkID2,
-		&CLSID_ShellExtID3, &CLSID_ShellExtLinkID3,
-		&CLSID_ShellExtID4, &CLSID_ShellExtLinkID4,
-		NULL };
-
-	for (int i=0; oldiids[i]; i++) {
-		TShellExtRegistry	oldReg(*oldiids[i]);
-		oldReg.DeleteChildTree(oldReg.clsId);
+	if (isAdmin) {
+		flags |= SHEXT_ISADMIN;
+	} else {
+		flags &= ~SHEXT_ISADMIN;
 	}
 
-	if (is_present) {
-		DllRegisterServer();
-		SetMenuFlags(val);
-	}
+	return	flags | SHEXT_MENUFLG_EX;
+}
+
+int WINAPI GetMenuFlags(BOOL isAdmin)
+{
+	return	GetMenuFlagsCore(isAdmin);
+}
+
+BOOL WINAPI SetAdminMode(BOOL isAdmin)
+{
+	isAdminDll = isAdmin;
 	return	TRUE;
 }
 
-BOOL WINAPI IsRegistServer(void)
+
+BOOL WINAPI IsRegistServer(BOOL isAdmin)
 {
-	return	TShellExtRegistry().OpenClsKey();
+	return	TShellExtRegistry(isAdmin).OpenClsKey();
 }
 
 /*=========================================================================
@@ -755,12 +791,40 @@ BOOL PathArray::RegisterPath(const WCHAR *path)
 	return	TRUE;
 }
 
-TShellExtRegistry::TShellExtRegistry(REFIID cls_name) : TRegistry(HKEY_CLASSES_ROOT)
+TShellExtRegistry::TShellExtRegistry(BOOL _isAdmin, BOOL isLink)
+	: TRegistry(_isAdmin ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER)
 {
+	isAdmin = _isAdmin;
 	SetStrMode(BY_MBCS);
-	GetClsId(cls_name, clsId, sizeof(clsId));
-	OpenKey("CLSID");
+
+	OpenKey("SOFTWARE\\Classes");
+
+	GetClsId(isLink ? (isAdmin ? CLSID_FcLnkExt : CLSID_FcLnkExtLocal) :
+					  (isAdmin ? CLSID_FcShExt  : CLSID_FcShExtLocal)
+			, clsId, sizeof(clsId));
+
+	sprintf(clsIdEx, "CLSID\\%s", clsId);
 }
+
+BOOL TShellExtRegistry::DeleteClsKey()
+{
+	BOOL ret = FALSE;
+	if (*clsId && OpenKey("CLSID")) {
+		ret = DeleteChildTree(clsId);	// CLASS_ROOT は clsIdEx で直接消せない…
+		CloseKey();
+	}
+	return	ret;
+}
+
+BOOL TShellExtRegistry::OpenMenuFlagKey()
+{
+	char	path[MAX_PATH];
+
+	sprintf(path, "%s\\%s", DllRegKeys[0], isAdmin ? FASTCOPY : FASTCOPYUSER);
+
+	return	OpenKey(path);
+}
+
 
 DEFINE_GUID(IID_IShellLinkW, 0x000214F9, 0x0000, 0000, 0xC0, 0x00, 0x00, 0x00, \
 	0x00, 0x00, 0x00, 0x46);
@@ -783,7 +847,8 @@ ShellExtSystem::ShellExtSystem(HINSTANCE hI)
 	}
 */
 	HInstance = hI;
-	DllRefCnt = 0;
+	DllRefAdminCnt = 0;
+	DllRefUserCnt = 0;
 	lastMenu  = 0;
 
 // GetSystemDefaultLCID() に基づいたリソース文字列を事前にロードしておく
@@ -796,7 +861,7 @@ ShellExtSystem::ShellExtSystem(HINSTANCE hI)
 
 	InitInstanceForLoadStr(hI);
 	for (UINT id=IDS_RIGHTCOPY; id <= IDS_DDMOVE; id++) {
-		GetLoadStr(id);
+		LoadStr(id);
 	}
 	if (curLcid != newLcid) {
 		TSetThreadLocale(curLcid);
@@ -812,12 +877,11 @@ ShellExtSystem::ShellExtSystem(HINSTANCE hI)
 */
 	DllName = strdup(path);
 
-	if (fname)	strcpy(fname, FASTCOPY_EXE);
+	if (fname) {
+		strcpy(fname, FASTCOPY_EXE);
+	}
 
 	ExeName = strdup(path);
-
-	wsprintf(path, "%s\\%s", DllRegKeys[0], FASTCOPY);
-	MenuFlgRegKey = strdup(path);
 }
 
 ShellExtSystem::~ShellExtSystem()
@@ -837,7 +901,6 @@ int APIENTRY DllMain(HINSTANCE hI, DWORD reason, PVOID)
 {
 	switch (reason) {
 	case DLL_PROCESS_ATTACH:
-		g_hInstance = (HINSTANCE)hI; //载入当前dll的instance
 		if (SysObj == NULL)
 			SysObj = new ShellExtSystem(hI);
 		DbgLog("DLL_PROCESS_ATTACH\r\n");
