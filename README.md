@@ -1,6 +1,43 @@
 ﻿FastCopy-M
 ===========
-"M" is Multilanguage or Mapaler
+"FastCopy-M" 是免费开源软件 "FastCopy" 的一个二次开发分支。<br />
+"FastCopy-M" is a branch of open source soft "FastCopy", "M" is Multilanguage or Mapaler.
+
+## FastCopy feature | FastCopy特点
+
+* FastCopy 是Windows上最快的复制/删除软件。<br />
+FastCopy is the Fastest Copy/Delete Software on Windows.
+
+* 它支持UNICODE和超过MAX_PATH(260字符)的文件路径名。<br />
+It supports UNICODE and over MAX_PATH (260 characters) file pathnames.
+
+* 它会根据来源与目录在相同或不同的硬盘自动选择不同的方法。<br />
+
+| 不同硬盘 | 相同硬盘 |
+| --- | --- |
+| 读写分别由单独的线程并行处理。 | 首先做连续读取直到充满缓冲区。当缓冲区填满时，才开始大块数据写入。 |
+
+It automatically selects different methods according to whether Source and DestDir are in the same or different HDD(or SSD).<br />
+
+| Diff HDD | Same HDD |
+| --- | --- |
+| Reading and writing are processed respectively in parallel by separate threads. | Reading is processed until the big buffer fills. When the big buffer is filled, writing is started and processed in bulk. |
+	
+
+* 因为根本没有使用操作系统缓存来处理读/写，其他应用程序就不容易变得缓慢。<br />
+Reading/Writing are processed with no OS cache, as such other applications do not become slow.
+
+* 它可以实现接近设备极限的读写性能。<br />
+It can achieve Reading/Writing performance that is close to device limit.
+
+* 可以使用 包含/排除 筛选器 (UNIX通配符样式)。<br />
+Include/Exclude Filter (UNIX Wildcard style) can be specified. ver3.0 or later, Relative Path can be specified.
+
+* 仅使用Win32 API和C 运行时，没有使用MFC等框架，因此可以轻量、紧凑、轻快的运行。（注：XP下也不需要安装运行库）——所以也导致无法支持手机的MTP模式<br />
+It runs fast and does not hog resources, because MFC is not used. (Designed using Win32 API and C Runtime only)
+
+* 你可以修改此款软件，所有源代码都以GPLv3许可开源。<br />
+You can modify this software, because all source code has been opened to the public under the GPL ver3 license.
 
 ## FastCopy-M feature | FastCopy-M特点
 
