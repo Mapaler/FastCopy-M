@@ -6,7 +6,6 @@
 	Update					: 2016-09-28(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
-	Modify					: Mapaler 2015-09-09
 	======================================================================== */
 
 #include "../tlib/tlib.h"
@@ -22,8 +21,6 @@
 #pragma data_seg()
 
 static ShellExtSystem	*SysObj = NULL;
-
-HINSTANCE g_hInstance = 0; //初始化Instance为0
 
 // レジストリ登録キー（Ref: tortoise subversion）
 static char	*DllRegKeys[] = {
@@ -111,15 +108,12 @@ DWORD DbgLogW(WCHAR *fmt,...)
   説  明 ： 
   注  意 ： 
 =========================================================================*/
-ShellExt::ShellExt(BOOL _isAdmin):
-	_bitmap(NULL)
+ShellExt::ShellExt(BOOL _isAdmin)
 {
 	refCnt = 0;
 	isAdmin = _isAdmin;
 	isCut = FALSE;
 	dataObj = NULL;
-	_bitmap = ::LoadBitmap(g_hInstance, MAKEINTRESOURCE(IDB_MENU_LOGO)); //从资源载入bmp
-	//_bitmap = (HBITMAP)::LoadImage(g_hInstance, MAKEINTRESOURCE(IDB_MENU_LOGO), IMAGE_BITMAP, 0, 0, LR_LOADTRANSPARENT); //从资源载入bmp
 	if (SysObj) {
 		SysObj->AddDllRef(isAdmin);
 	}
@@ -128,8 +122,6 @@ ShellExt::ShellExt(BOOL _isAdmin):
 
 ShellExt::~ShellExt()
 {
-	if (_bitmap != NULL)
-		DeleteObject(_bitmap); //删除bmp
 	if (dataObj) {
 		if (SysObj) {
 			SysObj->RelDllRef(isAdmin);
@@ -260,9 +252,6 @@ STDMETHODIMP ShellExt::QueryContextMenu(HMENU hMenu, UINT iMenu, UINT cmdFirst, 
 	BOOL	is_submenu = (menu_flags & (is_dd ? SHEXT_SUBMENU_DD : SHEXT_SUBMENU_RIGHT));
 	BOOL	is_separator = (menu_flags & SHEXT_SUBMENU_NOSEP) ? FALSE : TRUE;
 	BOOL	ref_cnt = SysObj->GetDllRef(isAdmin);
-	
-	HBITMAP bitmap = NULL;
-	bitmap = _bitmap; //载入bmp
 
 	if (!is_dd && (flg == CMF_NORMAL) || (flg & (CMF_VERBSONLY|CMF_DEFAULTONLY))) {
 		return	ResultFromScode(MAKE_SCODE(SEVERITY_SUCCESS, 0, 0));
@@ -302,35 +291,29 @@ STDMETHODIMP ShellExt::QueryContextMenu(HMENU hMenu, UINT iMenu, UINT cmdFirst, 
 //			mask_menu_flags, srcArray.Num(), dstArray.Num(), clipArray.Num());
 		if (!is_dd && is_separator)
 			::InsertMenu(hMenu, iMenu++, MF_SEPARATOR|MF_BYPOSITION, 0, 0);
-			::SetMenuItemBitmaps(hMenu, iMenu - 1, MF_BYPOSITION, bitmap, bitmap);
 
 		if (is_separator)
 			::InsertMenu(hMenu, iMenu, MF_SEPARATOR|MF_BYPOSITION, 0, 0);
-			::SetMenuItemBitmaps(hMenu, iMenu, MF_BYPOSITION, bitmap, bitmap);
 
 		if (is_submenu) {
 			hTargetMenu = ::CreatePopupMenu();
 			::InsertMenu(hMenu, iMenu, MF_POPUP|MF_BYPOSITION, (LONG_PTR)hTargetMenu, FASTCOPY);
-			::SetMenuItemBitmaps(hMenu, iMenu, MF_BYPOSITION, bitmap, bitmap);
 			iMenu = 0;
 		}
 
 		if (mask_menu_flags & SHEXT_RIGHT_PASTE) {
 			::InsertMenu(hTargetMenu, iMenu++, MF_STRING|MF_BYPOSITION,
 				cmdFirst + SHEXT_MENU_PASTE, LoadStr(IDS_RIGHTPASTE));
-			::SetMenuItemBitmaps(hTargetMenu, iMenu - 1, MF_BYPOSITION, bitmap, bitmap);
 		}
 
 		if ((mask_menu_flags & (SHEXT_RIGHT_COPY|SHEXT_DD_COPY)) && srcArray.Num() > 0) {
 			::InsertMenu(hTargetMenu, iMenu++, MF_STRING|MF_BYPOSITION,
 				cmdFirst + SHEXT_MENU_COPY, is_dd ? LoadStr(IDS_DDCOPY) : LoadStr(IDS_RIGHTCOPY));
-			::SetMenuItemBitmaps(hTargetMenu, iMenu - 1, MF_BYPOSITION, bitmap, bitmap);
 		}
 
 		if ((mask_menu_flags & (SHEXT_RIGHT_DELETE|SHEXT_DD_MOVE)) && srcArray.Num() > 0) {
 			::InsertMenu(hTargetMenu, iMenu++, MF_STRING|MF_BYPOSITION,
 				cmdFirst + SHEXT_MENU_DELETE, is_dd ? LoadStr(IDS_DDMOVE) : LoadStr(IDS_RIGHTDEL));
-			::SetMenuItemBitmaps(hTargetMenu, iMenu - 1, MF_BYPOSITION, bitmap, bitmap);
 		}
 		SysObj->lastMenu = hMenu;
 		DbgLogW(L" added cnt=%d self=%x set menu=%x/%x\r\n",

@@ -773,7 +773,7 @@ protected:
 	BOOL InitDstPath(void);
 	BOOL InitDepthBuf(void);
 	FsType GetFsType(const WCHAR *root_dir);
-	int GetSectorSize(const WCHAR *root_dir);
+	int GetSectorSize(const WCHAR *root_dir, BOOL use_cluster=FALSE);
 	int MakeUnlimitedPath(WCHAR *buf);
 	BOOL PutList(WCHAR *path, DWORD opt, DWORD lastErr=0, int64 wtime=-1, int64 size=-1,
 			BYTE *digest=NULL);

@@ -1367,7 +1367,7 @@ BOOL TMainDlg::IsDestDropFiles(HDROP hDrop)
 	return	TRUE;
 }
 
-int64 ParseDateTime(const WCHAR *s, BOOL *is_abs)
+BOOL ParseDateTime(const WCHAR *s, int64 *val, BOOL *is_abs)
 {
 	WCHAR	tmp[MINI_BUF];
 
@@ -1380,12 +1380,12 @@ int64 ParseDateTime(const WCHAR *s, BOOL *is_abs)
 		for ( ; *s; s++) {
 			if (*s == ' ' || *s == '/' || *s == ':') {
 				if (cont % 2) {
-					return -1;
+					return	FALSE;
 				}
 				cont = 0;
 			}
 			else if (*s < '0' || *s > '9') {
-				return -1;
+				return	FALSE;
 			}
 			else {
 				cont++;
@@ -1395,10 +1395,11 @@ int64 ParseDateTime(const WCHAR *s, BOOL *is_abs)
 		*d = 0;
 	}
 	else {
-		wcsncpyz(tmp, s+1, MINI_BUF);
+		wcsncpyz(tmp, s, MINI_BUF);
 	}
 
-	return	wcstoll(tmp, 0, 10);
+	*val = wcstoll(tmp, 0, 10);
+	return	TRUE;
 }
 
 int64 TMainDlg::GetDateInfo(WCHAR *buf, BOOL is_end)
@@ -1411,7 +1412,7 @@ int64 TMainDlg::GetDateInfo(WCHAR *buf, BOOL is_end)
 	WCHAR		*p;
 	WCHAR		*tok = strtok_pathW(buf, L"", &p);
 
-	if (!tok || (val = ParseDateTime(tok, &is_abs)) <= 0) {
+	if (!tok || !ParseDateTime(tok, &val, &is_abs)) {
 		return	-1;
 	}
 

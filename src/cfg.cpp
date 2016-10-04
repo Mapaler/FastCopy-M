@@ -737,6 +737,8 @@ BOOL Cfg::WriteIni(void)
 	ini.SetInt(MAXOVLNUM_KEY, maxOvlNum);
 //	ini.SetInt(MAXOVLSIZE_KEY, maxOvlSize);
 
+	ini.SetInt(MINSECTOR_KEY, minSectorSize);
+
 //	ini.SetInt(MAXOPENFILES_KEY, maxOpenFiles);
 	ini.SetInt(NONBUFMINSIZENTFS_KEY, nbMinSizeNtfs);
 	ini.SetInt(NONBUFMINSIZEFAT_KEY, nbMinSizeFat);

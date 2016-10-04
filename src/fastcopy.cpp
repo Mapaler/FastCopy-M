@@ -1,9 +1,9 @@
 ﻿static char *fastcopy_id = 
-	"@(#)Copyright (C) 2004-2016 H.Shirouzu		fastcopy.cpp	ver3.20";
+	"@(#)Copyright (C) 2004-2016 H.Shirouzu		fastcopy.cpp	ver3.22";
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2016-09-27(Tue)
+	Update					: 2016-10-03(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-09
@@ -99,14 +99,21 @@ FastCopy::FsType FastCopy::GetFsType(const WCHAR *root_dir)
 	return	wcsicmp(fs, NTFS_STR) == 0 ? FSTYPE_NTFS : FSTYPE_FAT;
 }
 
-int FastCopy::GetSectorSize(const WCHAR *root_dir)
+int FastCopy::GetSectorSize(const WCHAR *root_dir, BOOL use_cluster)
 {
 	DWORD	spc, bps, fc, cl;
+	int		ret = BIG_SECTOR_SIZE;
 
-	if (::GetDiskFreeSpaceW(root_dir, &spc, &bps, &fc, &cl) == FALSE) {
-		return	BIG_SECTOR_SIZE;
+	if (::GetDiskFreeSpaceW(root_dir, &spc, &bps, &fc, &cl)) {
+		ret = bps;
+		if (use_cluster && spc) {
+			ret = bps * spc;
+			if (ret > BIG_SECTOR_SIZE) {
+				ret = max(bps, BIG_SECTOR_SIZE);
+			}
+		}
 	}
-	return	bps;
+	return	ret;
 }
 
 int FastCopy::MakeUnlimitedPath(WCHAR *buf)
@@ -160,9 +167,10 @@ BOOL FastCopy::InitDstPath(void)
 	dstBaseLen = (int)wcslen(dst);
 
 	// dst ファイルシステム情報取得
-	dstSectorSize = GetSectorSize(dst_root);
-	dstSectorSize = max(dstSectorSize, info.minSectorSize);
 	dstFsType = GetFsType(dst_root);
+	dstSectorSize = GetSectorSize(dst_root,
+		(dstFsType == FSTYPE_NETWORK || info.minSectorSize) ? FALSE : TRUE);
+	dstSectorSize = max(dstSectorSize, info.minSectorSize);
 	nbMinSize = (dstFsType == FSTYPE_NTFS) ? info.nbMinSizeNtfs : info.nbMinSizeFat;
 
 	// 差分コピー用dst先ファイル確認
@@ -263,9 +271,10 @@ BOOL FastCopy::InitSrcPath(int idx)
 
 	// src ファイルシステム情報取得
 	if (wcsicmp(src_root_cur, src_root)) {
-		srcSectorSize = GetSectorSize(src_root_cur);
-		srcSectorSize = max(srcSectorSize, info.minSectorSize);
 		srcFsType = GetFsType(src_root_cur);
+		srcSectorSize = GetSectorSize(src_root_cur,
+			(srcFsType == FSTYPE_NETWORK || info.minSectorSize) ? FALSE : TRUE);
+		srcSectorSize = max(srcSectorSize, info.minSectorSize);
 
 		sectorSize = max(srcSectorSize, dstSectorSize);		// 大きいほうに合わせる
 		sectorSize = max(sectorSize, MIN_SECTOR_SIZE);
@@ -353,8 +362,10 @@ BOOL FastCopy::InitDeletePath(int idx)
 	|| (info.flags & (OVERWRITE_DELETE|OVERWRITE_DELETE_NSA))) {
 		GetRootDirW(dst, dst_root);
 		if (info.flags & (OVERWRITE_DELETE|OVERWRITE_DELETE_NSA)) {
-			dstSectorSize = GetSectorSize(dst_root);
 			dstFsType = GetFsType(dst_root);
+			dstSectorSize = GetSectorSize(dst_root,
+				(dstFsType == FSTYPE_NETWORK || info.minSectorSize) ? FALSE : TRUE);
+			dstSectorSize = max(dstSectorSize, info.minSectorSize);
 			nbMinSize = dstFsType == FSTYPE_NTFS ? info.nbMinSizeNtfs : info.nbMinSizeFat;
 		}
 	}
@@ -3708,8 +3719,11 @@ BOOL FastCopy::MakeDigestAsync(DigestObj *obj)
 
 		while (OverLap	*ovl_tmp = wOvl.GetObj(USED_LIST)) {
 			wOvl.PutObj(FREE_LIST, ovl_tmp);
-			if (!(ret = WaitOvlIo(hFile, ovl_tmp, &total_size, &order_total))) break;
-
+			if (!(ret = WaitOvlIo(hFile, ovl_tmp, &total_size, &order_total))) {
+				if (ovl_tmp->calc) PutDigestCalc(ovl_tmp->calc, DigestCalc::PASS);
+				ConfirmErr(L"ReadFile(digest2)", obj->path + dstPrefixLen);
+				break;
+			}
 			ovl_tmp->calc->dataSize = ovl_tmp->transSize;
 			total.verifyTrans += ovl_tmp->transSize;
 			PutDigestCalc(ovl_tmp->calc, total_size >= file_size ? DigestCalc::DONE
