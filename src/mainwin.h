@@ -3,7 +3,7 @@
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2016-09-27(Tue)
+	Update					: 2016-10-17(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-16
@@ -77,6 +77,7 @@ protected:
 	enum { RUNAS_IMMEDIATE=1, RUNAS_SHELLEXT=2, RUNAS_AUTOCLOSE=4 };
 	enum { READ_LVIDX, WRITE_LVIDX, VERIFY_LVIDX, SKIP_LVIDX, DEL_LVIDX, OVWR_LVIDX };
 	enum FileLogMode { NO_FILELOG, AUTO_FILELOG, FIX_FILELOG };
+	enum DebugMainFlags { GSHACK_SKIP=1 };
 
 	FastCopy		fastCopy;
 	FastCopy::Info	info;

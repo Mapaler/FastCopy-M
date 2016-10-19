@@ -1,9 +1,9 @@
 ﻿/* static char *fastcopy_id = 
-	"@(#)Copyright (C) 2004-2016 H.Shirouzu		fastcopy.h	Ver3.20"; */
+	"@(#)Copyright (C) 2004-2016 H.Shirouzu		fastcopy.h	Ver3.23"; */
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2016-09-27(Tue)
+	Update					: 2016-10-17(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-09
@@ -307,8 +307,8 @@ public:
 		int		debugFlags;		// (I/ )	// 1: timestamp debug
 		uint64	bufSize;		// (I/ )
 		int		maxOpenFiles;	// (I/ )
-		int		maxTransSize;	// (I/ )
-		int		maxOvlSize;		// (I/ )
+		int64	maxTransSize;	// (I/ )
+		int64	maxOvlSize;		// (I/ )
 		DWORD	maxOvlNum;		// (I/ )
 		int		maxAttrSize;	// (I/ )
 		int		maxDirSize;		// (I/ )
@@ -403,8 +403,8 @@ protected:
 	struct ReqHead : public TListObj {	// request header
 		int64		reqId;
 		Command		cmd;
-		int			bufSize;
-		int			readSize;	// 普通ファイルのみ有効
+		DWORD		bufSize;
+		DWORD		readSize;	// 普通ファイルのみ有効
 		BYTE		*buf;
 		int			reqSize;	// request header size
 		FileStat	stat;		// 可変長
@@ -477,8 +477,8 @@ protected:
 
 	struct RandomDataBuf {	// 上書き削除用
 		BOOL	is_nsa;
-		int		base_size;
-		int		buf_size;
+		DWORD	base_size;
+		DWORD	buf_size;
 		BYTE	*buf[3];
 	};
 
@@ -744,7 +744,7 @@ protected:
 	BOOL CaseAlignProc(int dir_len=-1, BOOL need_log=FALSE);
 	BOOL WriteDirProc(int dir_len);
 	BOOL SetDirExtData(FileStat *stat);
-	DigestCalc *GetDigestCalc(DigestObj *obj, int require_size);
+	DigestCalc *GetDigestCalc(DigestObj *obj, DWORD require_size);
 	BOOL PutDigestCalc(DigestCalc *obj, DigestCalc::Status status);
 	BOOL MakeDigestAsync(DigestObj *obj);
 	BOOL CheckDigests(CheckDigestMode mode);

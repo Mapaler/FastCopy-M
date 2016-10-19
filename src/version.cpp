@@ -1,10 +1,10 @@
 ﻿static char *version_id =
-	"@(#)Copyright (C) 2004-2016 H.Shirouzu	Version.cpp ver3.2.2.35";
+	"@(#)Copyright (C) 2004-2016 H.Shirouzu	Version.cpp ver3.2.5.36";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Module Name				: Version
 	Create					: 2010-06-13(Sun)
-	Update					: 2016-10-03(Mon)
+	Update					: 2016-10-19(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-23

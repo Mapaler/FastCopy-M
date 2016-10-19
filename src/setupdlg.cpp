@@ -1,9 +1,9 @@
 ﻿static char *setuplg_id = 
-	"@(#)Copyright (C) 2015-2016 H.Shirouzu		setupdlg.cpp	ver3.20";
+	"@(#)Copyright (C) 2015-2016 H.Shirouzu		setupdlg.cpp	ver3.25";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2015-07-17(Fri)
-	Update					: 2016-09-28(Wed)
+	Update					: 2016-10-19(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-08-13
@@ -57,6 +57,10 @@ BOOL TSetupSheet::CheckData()
 	else if (resId == IO_SHEET) {
 		if (GetDlgItemInt(MAXTRANS_EDIT) <= 0 || GetDlgItemInt(MAXOVL_EDIT) <= 0) {
 			MessageBox(LoadStr(IDS_SMALLVAL_SETERR));
+			return	FALSE;
+		}
+		if (GetDlgItemInt(MAXTRANS_EDIT) > 4095) { // under 4GB
+			MessageBox(LoadStr(IDS_BIGVAL_SETERR));
 			return	FALSE;
 		}
 		if (GetDlgItemInt(MAXTRANS_EDIT) % GetDlgItemInt(MAXOVL_EDIT)) {
@@ -162,6 +166,10 @@ BOOL TSetupSheet::SetData()
 		CheckDlgButton(MOVEATTR_CHECK, cfg->enableMoveAttr);
 		CheckDlgButton(SERIALMOVE_CHECK, cfg->serialMove);
 		CheckDlgButton(SERIALVERIFYMOVE_CHECK, cfg->serialVerifyMove);
+		SendDlgItemMessage(HASH_COMBO, CB_ADDSTRING, 0, (LPARAM)"MD5");
+		SendDlgItemMessage(HASH_COMBO, CB_ADDSTRING, 0, (LPARAM)"SHA-1");
+		SendDlgItemMessage(HASH_COMBO, CB_ADDSTRING, 0, (LPARAM)"SHA-256");
+		SendDlgItemMessage(HASH_COMBO, CB_SETCURSEL, cfg->hashMode, 0);
 		SetDlgItemInt(TIMEGRACE_EDIT, cfg->timeDiffGrace);
 	}
 	else if (resId == DEL_SHEET) {
@@ -280,6 +288,7 @@ BOOL TSetupSheet::GetData()
 		cfg->enableMoveAttr   = IsDlgButtonChecked(MOVEATTR_CHECK);
 		cfg->serialMove       = IsDlgButtonChecked(SERIALMOVE_CHECK);
 		cfg->serialVerifyMove = IsDlgButtonChecked(SERIALVERIFYMOVE_CHECK);
+		cfg->hashMode         = (int)SendDlgItemMessage(HASH_COMBO, CB_GETCURSEL, 0, 0);
 		cfg->timeDiffGrace    = GetDlgItemInt(TIMEGRACE_EDIT);
 	}
 	else if (resId == DEL_SHEET) {

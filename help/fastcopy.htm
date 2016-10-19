@@ -72,11 +72,11 @@
 <body bgcolor="#eeffff">
 
 <div align="center">
-<h1 class="help_head1">FastCopy ver3.22</h1>
+<h1 class="help_head1">FastCopy ver3.25</h1>
 </div>
 <div class="help_all">
 
-<div align="right">2016/10/03 H.Shirouzu (白水啓章)</div>
+<div align="right">2016/10/19 H.Shirouzu (白水啓章)</div>
 
 <a name="index"/>
 <h2 class="help_head2">Index</h2>
@@ -259,9 +259,9 @@
 		<td>Read/Write/Delete等で、エラーが発生しても、中断せず、可能な限り動作を続けます。<br>
 		（ただし、エラー表示欄やエラーログには残ります）</td></tr>
 		<tr><td nowrap><strong>ベリファイ</strong></td>
-		<td><a name="hash_mode"/>MD5 (SHA-1/SHA-256) による書き込みデータのベリファイを行います。<br><br>
-		<strong>SHA-1 を利用する場合は、fastcopy2.ini の [main] に hash_mode=1 に、SHA-256の場合、hash_mode=2 に設定します</strong>。<br>
-		なお、安全性としては MD5 でも十分ですが、ログに記録されるハッシュ値を別用途で利用したい場合にお使いください。<br><br>
+		<td><a name="hash_mode"/>MD5 (SHA-1/SHA-256) による書き込みデータのベリファイを行います。<br>
+		（SHA-1/SHA-256 を利用する場合は、設定の<a href="#setting_copyopt">コピー・移動関連オプション</a>から変更できます。
+		安全性としてはMD5 で十分ですが、ログに記録されるハッシュ値を別用途で利用したい場合にお使いください）<br><br>
 		 なお、具体的には、次のような比較を行います。<br>
 		 Read(Src) -> MD5(Src) -> Write(Dst) -> Read(Dst) -> MD5(Dst) -> MD5比較(Src/Dst) <br>
 		 （各ステージが、複数のファイルを跨ったパイプラインのように並列して処理されます）
@@ -528,6 +528,7 @@
 			  <td>移動先に日付・サイズが同じファイルがあれば同一と見做して、コピーすることなく移動元から削除します</td></tr>
 			<tr><td><strong>移動を逐次方式に</strong></td><td>通常は移動予定リスト（数千～数万ファイル）が一杯にならない限り、コピー元の削除を始めませんが、これをチェックするとファイルコピー終了毎に終わり次第（なるべく）即座にコピー元を削除します</td></tr>
 			<tr><td  nowrap><strong>移動（ベリファイ時）</strong></td><td>上と同じ動作ですが、ベリファイが終わり次第、となります</td></tr>
+			<tr><td  nowrap><strong>ハッシュ方式（ベリファイ用）</strong></td><td>ベリファイ用ハッシュ方式(MD5/SHA-1/SHA-256)を選択します</td></tr>
 			<tr><td><strong>タイムスタンプ比較時の許容誤差</strong></td><td>差分（日付・サイズ）や差分（最新日付）で、src/dst の更新日付差の許容時間を指定します。<br>
 			通常はファイルシステム種類に基づくタイムスタンプ精度（NTFS=100ns単位、FAT=2秒単位等）の差を自動補正して判定しますが、一部のNAS等で秒未満の更新日付が正確でない環境では手動で同一と見做す更新日付の許容範囲を設定してください。（msec単位）</td></tr>
 			</table>
@@ -790,6 +791,18 @@
 
 <table class="help_table" border="4">
 <tr><th>Version</th><th>説明</th></tr>
+<tr><td>v3.25</td><td>
+ベリファイ用ハッシュ（MD5/SHA-1/SHA-256）を設定から選択可能に。<br>
+32bit版で、ベリファイ中にエラー終了することがあったのを修正。
+</td></tr>
+<tr><td>v3.24</td><td>
+ごく一部の環境で、終了時に例外が発生することがあったのを修正。
+</td></tr>
+<tr><td>v3.23</td><td>
+64bit版で、I/OバッファをAPI上限の4095MBまで設定可能に。<br>
+複数プロセスを動作させた場合に、稀に他のFastCopyの終了待ちが発生することがあったのを修正。<br>
+各種リファイン。
+</td></tr>
 <tr><td>v3.22</td><td>
 512eHDD での若干の高速化（512byteセクタでも4KBセクタHDDとしてDirectI/Oを行う）。<br>
 拡張フィルタでの相対日付でマイナス指定が無効だったのを修正。<br>

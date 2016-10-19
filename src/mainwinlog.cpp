@@ -1,9 +1,9 @@
 ﻿static char *mainwinlog_id = 
-	"@(#)Copyright (C) 2015 H.Shirouzu		mainwinlog.cpp	ver3.03";
+	"@(#)Copyright (C) 2015 H.Shirouzu		mainwinlog.cpp	ver3.23";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2015-05-28(Thu)
-	Update					: 2015-08-30(Sun)
+	Update					: 2016-10-13(Thu)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-08-17
@@ -104,20 +104,24 @@ void TMainDlg::SetFileLogInfo()
 =========================================================================*/
 BOOL TMainDlg::EnableErrLogFile(BOOL on)
 {
+	BOOL	ret = TRUE;
+
 	if (on && hErrLog == INVALID_HANDLE_VALUE) {
-		hErrLogMutex = ::CreateMutex(NULL, FALSE, FASTCOPYLOG_MUTEX);
 		::WaitForSingleObject(hErrLogMutex, INFINITE);
 		hErrLog = ::CreateFileW(errLogPath, GENERIC_WRITE, FILE_SHARE_READ|FILE_SHARE_WRITE, 0,
 					OPEN_ALWAYS, 0, 0);
+		if (hErrLog == INVALID_HANDLE_VALUE) {
+			::ReleaseMutex(hErrLogMutex);
+			ret = FALSE;
+		}
 	}
 	else if (!on && hErrLog != INVALID_HANDLE_VALUE) {
 		::CloseHandle(hErrLog);
 		hErrLog = INVALID_HANDLE_VALUE;
-
-		::CloseHandle(hErrLogMutex);
-		hErrLogMutex = NULL;
+		::ReleaseMutex(hErrLogMutex);
 	}
-	return	TRUE;
+
+	return	ret;
 }
 
 BOOL TMainDlg::WriteErrLogCore()

@@ -2387,3 +2387,57 @@ BOOL TSetClipBoardTextW(HWND hWnd, const WCHAR *s, int len)
 	return ret;
 }
 
+// バッファオーバーフロー検出用テストルーチン
+void bo_test_core(char *buf)
+{
+	static char *p;
+
+	p = buf;
+	memset(p, 0x33, 200);
+}
+
+void bo_test()
+{
+	static char *p;
+	char buf[100];
+
+	p = buf;
+	bo_test_core(p);
+}
+
+#if _MSC_VER == 1900
+extern "C" __declspec(noreturn) void __cdecl __raise_securityfailure(PEXCEPTION_POINTERS const exception_pointers);
+// バッファオーバーフローをApp側例外ハンドラでキャッチするためのhack
+// Prevent to avoid FastCopy's ExceptionFilter by __report_gsfailure/__report_securityfailure
+//  like a _set_security_error_handler
+void TGsFailureHack()
+{
+#ifndef _DEBUG
+	DWORD	flag = 0;
+	BYTE	*p = NULL;
+
+//	__raise_securityfailure(NULL);
+	p = (BYTE *)&__raise_securityfailure;
+	if (::VirtualProtect(p, 8, PAGE_EXECUTE_READWRITE, &flag)) {
+#ifdef _WIN64
+		memcpy(p+11, "\x90\x90\x90\x90\x90\x90", 6); // nop (overwrite SetUnhandledFilter call)
+#else
+		memcpy(p+5, "\x90\x90\x90\x90\x90\x90", 6);	// nop (overwrite SetUnhandledFilter call)
+#endif
+		::VirtualProtect(p, 8, flag, &flag);
+
+		p = (BYTE *)&__report_gsfailure;
+		if (::VirtualProtect(p, 8, PAGE_EXECUTE_READWRITE, &flag)) {
+#ifdef _WIN64
+			memcpy(p+9, "\xeb\x13", 2);		// jump 0x13 (skip to select deubbger)
+#else
+			memcpy(p+9, "\x74\x10", 2);		// jump 0x10 (skip to select deubbger)
+#endif
+			::VirtualProtect(p, 8, flag, &flag);
+		}
+	}
+#endif
+}
+#endif
+
+

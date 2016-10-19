@@ -1,9 +1,9 @@
 ﻿/* static char *cfg_id = 
-	"@(#)Copyright (C) 2005-2016 H.Shirouzu		cfg.h	Ver3.20"; */
+	"@(#)Copyright (C) 2005-2016 H.Shirouzu		cfg.h	Ver3.23"; */
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2005-01-23(Sun)
-	Update					: 2016-09-28(Wed)
+	Update					: 2016-10-17(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -131,10 +131,10 @@ protected:
 
 public:
 	int		iniVersion;
-	int		bufSize;
+	int		bufSize;		// MB
 	int		maxRunNum;
-	int		maxTransSize;
-	int		maxOvlSize;
+	int		maxTransSize;	// MB
+	int		maxOvlSize;		// MB
 	int		maxOvlNum;
 	int		maxOpenFiles;
 	int		maxAttrSize;
@@ -194,6 +194,7 @@ public:
 	BOOL	aclErrLog;
 	BOOL	streamErrLog;
 	int		debugFlags;
+	int		debugMainFlags;
 	BOOL	isRunasButton;
 	BOOL	isSameDirRename;
 

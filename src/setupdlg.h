@@ -1,9 +1,9 @@
 ﻿/* static char *setupdlg_id = 
-	"@(#)Copyright (C) 2015-2016 H.Shirouzu		setupdlg.h	Ver3.20"; */
+	"@(#)Copyright (C) 2015-2016 H.Shirouzu		setupdlg.h	Ver3.25"; */
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2015-07-17(Fri)
-	Update					: 2016-09-28(Wed)
+	Update					: 2016-10-19(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */

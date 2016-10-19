@@ -1,9 +1,9 @@
 ﻿static char *mainwin_id = 
-	"@(#)Copyright (C) 2004-2016 H.Shirouzu		mainwin.cpp	ver3.20";
+	"@(#)Copyright (C) 2004-2016 H.Shirouzu		mainwin.cpp	ver3.24";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2016-09-28(Wed)
+	Update					: 2016-10-17(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-29
@@ -183,7 +183,8 @@ TMainDlg::TMainDlg() : TDlg(MAIN_DIALOG), aboutDlg(this), setupDlg(&cfg, this),
 	isAbort = FALSE;
 	endTick = 0;
 	hErrLog = INVALID_HANDLE_VALUE;
-	hErrLogMutex = NULL;
+	hErrLogMutex = ::CreateMutex(NULL, FALSE, FASTCOPYLOG_MUTEX);
+
 	memset(&ti, 0, sizeof(ti));
 }
 
@@ -458,6 +459,11 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 	MakePathW(user_log, cfg.userDir, L"fastcopy_exception.log");
 
 	InstallExceptionFilter(title, LoadStr(IDS_EXCEPTIONLOG), WtoAs(user_log));
+#if _MSC_VER == 1900
+	if ((cfg.debugMainFlags & GSHACK_SKIP) == 0) {
+		TGsFailureHack();
+	}
+#endif
 
 	if (IsWinVista()) {
 		HMENU	hMenu = ::GetMenu(hWnd);
@@ -484,7 +490,6 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 	pathEdit.AttachWnd(GetDlgItem(PATH_EDIT));
 	errEdit.AttachWnd(GetDlgItem(ERR_EDIT));
 
-	//初始化图标
 	int		i;
 	for (i=0; i < MAX_FASTCOPY_ICON; i++) {
 		hMainIcon[i] = ::LoadIcon(TApp::GetInstance(), (LPCSTR)(LONG_PTR)(FASTCOPY_ICON + i));
@@ -768,6 +773,8 @@ BOOL TMainDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl)
 		else if (CancelCopy()) {
 			autoCloseLevel = NO_CLOSE;
 		}
+//		extern void bo_test(void);
+//		bo_test();
 		return	TRUE;
 
 	case SRC_COMBO: case DST_COMBO:
@@ -1574,7 +1581,7 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 
 	info.bufSize		= (int64)GetDlgItemInt(BUFSIZE_EDIT) * 1024 * 1024;
 	info.maxRunNum		= MaxRunNum();
-	info.maxTransSize	= cfg.maxTransSize * 1024 * 1024;
+	info.maxTransSize	= (int64)cfg.maxTransSize * 1024 * 1024;
 	info.netDrvMode		= cfg.netDrvMode;
 	info.aclReset		= cfg.aclReset;
 	info.maxOvlSize		= cfg.maxOvlSize > 0 ? (cfg.maxOvlSize * 1024 * 1024) : -1;

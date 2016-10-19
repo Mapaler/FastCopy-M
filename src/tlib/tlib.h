@@ -3,7 +3,7 @@
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Main Header
 	Create					: 1996-06-01(Sat)
-	Update					: 2015-11-01(Sun)
+	Update					: 2016-10-17(Mon)
 	Copyright				: H.Shirouzu
 	Reference				: 
 	======================================================================== */
@@ -1004,5 +1004,9 @@ public:
 
 
 #include "tapi32u8.h"
+
+#if _MSC_VER == 1900
+void TGsFailureHack();
+#endif
 
 #endif

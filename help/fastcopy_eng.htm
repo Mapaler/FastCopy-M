@@ -72,11 +72,11 @@
 <body bgcolor="#eeffff">
 
 <div align="center">
-<h1 class="help_head1">FastCopy ver3.22</h1>
+<h1 class="help_head1">FastCopy ver3.25</h1>
 </div>
 <div class="help_all">
 
-<div align="right">2016/10/03 H.Shirouzu</div>
+<div align="right">2016/10/19 H.Shirouzu</div>
 
 <center>
 <strong>Warning :</strong> This document was made with the Japanese-English translation software. <br>
@@ -263,7 +263,9 @@ I want to correct this document. (If you made corrections, please send to <a hre
 		<tr><td nowrap><strong>Verify</strong></td>
 		<td>
 		<a name="verify"/>
-		Verify written files data by MD5(or SHA-1. If you want to use SHA-1, write [main] Using_MD5=0 in FastCopy2.ini)<br>
+		Verify written files data by MD5 (/SHA-1/SHA-256). <br>
+		(If you want to use SHA-1/SHA-256, it can selected in <a href="#setting_copyopt">Copy/Move Options</a> of settings.)<br>
+
 		... Action detail: Read(Src) -> MD5(Src) -> Write(Dst) -> Read(Dst) -> MD5(Dst) -> Compare MD5(Src/Dst) (Of course, all actions are processed in parallel as much as possible)
 		</td></tr>
 		<tr><td nowrap><strong>Estimate</strong></td>
@@ -528,6 +530,8 @@ demerit points are same as read, but sometimes many head seeks occur in writing 
 					This option changes the behavior to "a file has copied, and remove copied source file"</td></tr>
 			<tr><td><strong>Move one by one (verify)</strong></td>
 				<td>It is the same as "Move one by one" except "remove copied source files" -> "remove verified source files"</td></tr>
+			<tr><td><strong>Hash mode (for verify)</strong></td>
+				<td>Select Hash mode (MD5/SHA-1/SHA-256) for verifying.</td></tr>
 			<tr><td><strong>Tolerance at the timestamp comparison</strong></td><td>Specify tolerance timestamp difference as same date in Diff(Date/Size) or Diff(Newer).<br>
 			Normally, FastCopy corrects timestamp difference on the different filesystem(NTFS timestamp precision is 100ns, FAT is 2sec or etc), automatically.<br>
 			But some NAS timestamp precision is very strange, so manual settings(in msec) are available.</td></tr>
@@ -797,6 +801,17 @@ demerit points are same as read, but sometimes many head seeks occur in writing 
 <table class="help_table" border="4">
 <tr><th>Version</th><th>Detail</th></tr>
 
+<tr><td>v3.25</td><td>
+Support hash mode(MD5/SHA-1/SHA-256) for verifying in settings dialog.<br>
+(32bit version only)Fix to stop copying verifying.
+</td></tr>
+<tr><td>v3.24</td><td>
+Fix an exception at terminating in rare environment.
+</td></tr>
+<tr><td>v3.23</td><td>
+Expand limitaion of I/O buffer settings as 4095MB (x64).<br>
+Misc refine.
+</td></tr>
 <tr><td>v3.22</td><td>
 Improve performance for 512e HDD.<br>
 Fix not to ignore minus-relative-date(-1D or etc) in extend filter.<br>

@@ -1,9 +1,9 @@
 ﻿static char *utility_id = 
-	"@(#)Copyright (C) 2004-2016 H.Shirouzu		utility.cpp	ver3.20";
+	"@(#)Copyright (C) 2004-2016 H.Shirouzu		utility.cpp	ver3.25";
 /* ========================================================================
 	Project  Name			: general routine
 	Create					: 2004-09-15(Wed)
-	Update					: 2016-09-28(Wed)
+	Update					: 2016-10-19(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -858,14 +858,14 @@ DataList::Head *DataList::Alloc(void *data, ssize_t data_size, ssize_t need_size
 				if (need_grow > 0) {
 					if (!buf.Grow(ALIGN_SIZE(need_grow, PAGE_SIZE))) {
 						//MessageBox(0, "can't alloc mem", "", MB_OK);
-						goto END;
+						return	NULL;
 					}
 				}
 			}
 			else {
 				if ((BYTE *)end < buf.Buf() + alloc_size) {	// for debug
 					//MessageBox(0, "buf is too small", "", MB_OK);
-					goto END;
+					return	NULL;
 				}
 				cur = (Head *)buf.Buf();
 			}
@@ -873,10 +873,16 @@ DataList::Head *DataList::Alloc(void *data, ssize_t data_size, ssize_t need_size
 		else {
 			if ((BYTE *)end < (BYTE *)top + top->alloc_size + alloc_size) {	// for debug
 				//MessageBox(0, "buf is too small2", "", MB_OK);
-				goto END;
+				return	NULL;
 			}
 			cur = (Head *)((BYTE *)top + top->alloc_size);
 		}
+		//Head *buf_end = (Head *)(buf.Buf() + buf.Size());
+		//if (buf_end < cur || buf_end < top || cur < (Head *)buf.Buf()) {
+		//	MessageBox(0, "illigal datalist", "", MB_OK);
+		//	goto END;
+		//}
+
 		top->next = cur;
 		cur->prev = top;
 		cur->next = NULL;
@@ -889,7 +895,6 @@ DataList::Head *DataList::Alloc(void *data, ssize_t data_size, ssize_t need_size
 	}
 	num++;
 
-END:
 	return	cur;
 }
 
@@ -904,8 +909,18 @@ DataList::Head *DataList::Get()
 	}
 	else {
 		top = cur->prev;
+
+		//if (top && top < (Head *)buf.Buf()) {
+		//	MessageBox(0, "illigal datalist", "", MB_OK);
+		//	goto END;
+		//}
 	}
 	end = cur->next;
+
+	//if (end && end < (Head *)buf.Buf()) {
+	//	MessageBox(0, "illigal datalist", "", MB_OK);
+	//	goto END;
+	//}
 
 	num--;
 
@@ -940,7 +955,11 @@ ssize_t DataList::RemainSize()
 		ret = buf.MaxSize();
 	}
 
-	if (ret > 0) ret -= sizeof(Head);
+	ret -= sizeof(Head);
+
+	if (ret < 0) {
+		ret = 0;
+	}
 
 	return	ret;
 }

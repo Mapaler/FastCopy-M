@@ -1,9 +1,9 @@
 ﻿static char *fastcopy_id = 
-	"@(#)Copyright (C) 2004-2016 H.Shirouzu		fastcopy.cpp	ver3.22";
+	"@(#)Copyright (C) 2004-2016 H.Shirouzu		fastcopy.cpp	ver3.25";
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2016-10-03(Mon)
+	Update					: 2016-10-19(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-09
@@ -76,6 +76,19 @@ FastCopy::FastCopy()
 
 FastCopy::~FastCopy()
 {
+	if (hWDigestThread) {
+		::TerminateThread(hWDigestThread, 0);
+	}
+	if (hRDigestThread) {
+		::TerminateThread(hRDigestThread, 0);
+	}
+	if (hWriteThread) {
+		::TerminateThread(hWriteThread, 0);
+	}
+	if (hReadThread) {
+		::TerminateThread(hReadThread, 0);
+	}
+
 	delete [] confirmDst;
 	delete [] dst;
 	delete [] src;
@@ -296,7 +309,7 @@ BOOL FastCopy::InitSrcPath(int idx)
 	wcscpy(src_root, src_root_cur);
 
 	// 最大転送サイズ
-	ssize_t tmpSize = ssize_t(isSameDrv ? info.bufSize : info.bufSize / 4);
+	int64 tmpSize = ssize_t(isSameDrv ? info.bufSize : info.bufSize / 4);
 	if (tmpSize < maxReadSize) maxReadSize = (DWORD)tmpSize;
 	maxReadSize = max(MIN_BUF, maxReadSize);
 	maxReadSize = maxReadSize / BIGTRANS_ALIGN * BIGTRANS_ALIGN;
@@ -520,7 +533,8 @@ BOOL FastCopy::RegisterInfo(const PathArray *_srcArray, const PathArray *_dstArr
 		info.maxOvlSize = (info.maxTransSize / info.maxOvlNum) + MIN_BUF - 1;
 		info.maxOvlSize = info.maxOvlSize / MIN_BUF * MIN_BUF;
 	}
-	maxReadSize = maxWriteSize = maxDigestReadSize = info.maxTransSize = info.maxOvlSize;
+	info.maxTransSize = info.maxOvlSize;
+	maxReadSize = maxWriteSize = maxDigestReadSize = (DWORD)info.maxOvlSize;
 
 	// reg filter
 	RegisterRegFilter(_includeArray, _excludeArray);
@@ -595,13 +609,13 @@ BOOL FastCopy::AllocBuf(void)
 	}
 	usedOffset = freeOffset = mainBuf.Buf();	// リングバッファ用オフセット初期化
 #ifdef _DEBUG
-	if (need_mainbuf /*&& info.mode == TESTWRITE_MODE*/) {
-		uint64 *end = (uint64 *)(mainBuf.Buf() + allocSize);
-		uint64 val  = 0xf7f6f5f4f3f2f1f0ULL;
-		for (uint64 *p = (uint64 *)mainBuf.Buf(); p < end; p++) {
-			*p = val++;
-		}
-	}
+//	if (need_mainbuf /*&& info.mode == TESTWRITE_MODE*/) {
+//		uint64 *end = (uint64 *)(mainBuf.Buf() + allocSize);
+//		uint64 val  = 0xf7f6f5f4f3f2f1f0ULL;
+//		for (uint64 *p = (uint64 *)mainBuf.Buf(); p < end; p++) {
+//			*p = val++;
+//		}
+//	}
 #endif
 
 	if (errBuf.AllocBuf(MIN_ERR_BUF, MAX_ERR_BUF) == FALSE) {
@@ -628,7 +642,7 @@ BOOL FastCopy::AllocBuf(void)
 
 	if (IsUsingDigestList()) {
 		digestList.Init(MIN_DIGEST_LIST, MAX_DIGEST_LIST, MIN_DIGEST_LIST);
-		int require_size = (maxReadSize + BIGTRANS_ALIGN) * (info.maxOvlNum + 1);
+		ssize_t require_size = ((ssize_t)maxReadSize + BIGTRANS_ALIGN) * (info.maxOvlNum + 1);
 		require_size = ALIGN_SIZE(require_size, BIGTRANS_ALIGN);
 		if (!wDigestList.Init(MIN_BUF, require_size, PAGE_SIZE))
 			return	ConfirmErr(L"Can't alloc memory(digest)", NULL, CEF_STOP), FALSE;
@@ -721,10 +735,8 @@ BOOL FastCopy::Start(TransInfo *ti)
 	startTick = ::GetTickCount();
 	if (ti) GetTransInfo(ti, FALSE);
 
-#define STACK_SIZE (8 * 1024)
-
 	if (info.mode == DELETE_MODE) {
-		hReadThread = (HANDLE)_beginthreadex(0, 0, DeleteThread, this, STACK_SIZE, &id);
+		hReadThread = (HANDLE)_beginthreadex(0, 0, DeleteThread, this, 0, &id);
 		if (!hReadThread) goto ERR;
 		return	TRUE;
 	}
@@ -732,20 +744,20 @@ BOOL FastCopy::Start(TransInfo *ti)
 #ifdef _DEBUG
 	if (info.mode == TESTWRITE_MODE) {
 		if (isListingOnly) goto ERR;
-		hWriteThread  = (HANDLE)_beginthreadex(0, 0, WriteThread, this, STACK_SIZE, &id);
-		hReadThread   = (HANDLE)_beginthreadex(0, 0, TestThread, this, STACK_SIZE, &id);
+		hWriteThread  = (HANDLE)_beginthreadex(0, 0, WriteThread, this, 0, &id);
+		hReadThread   = (HANDLE)_beginthreadex(0, 0, TestThread, this, 0, &id);
 		if (!hWriteThread || !hReadThread) goto ERR;
 		return	TRUE;
 	}
 #endif
 
-	hWriteThread  = (HANDLE)_beginthreadex(0, 0, WriteThread, this, STACK_SIZE, &id);
-	hReadThread   = (HANDLE)_beginthreadex(0, 0, ReadThread, this, STACK_SIZE, &id);
+	hWriteThread  = (HANDLE)_beginthreadex(0, 0, WriteThread, this, 0, &id);
+	hReadThread   = (HANDLE)_beginthreadex(0, 0, ReadThread, this, 0, &id);
 	if (!hWriteThread || !hReadThread) goto ERR;
 
 	if (IsUsingDigestList()) {
-		hRDigestThread = (HANDLE)_beginthreadex(0, 0, RDigestThread, this, STACK_SIZE, &id);
-		hWDigestThread = (HANDLE)_beginthreadex(0, 0, WDigestThread, this, STACK_SIZE, &id);
+		hRDigestThread = (HANDLE)_beginthreadex(0, 0, RDigestThread, this, 0, &id);
+		hWDigestThread = (HANDLE)_beginthreadex(0, 0, WDigestThread, this, 0, &id);
 		if (!hRDigestThread || !hWDigestThread) goto ERR;
 	}
 	return	TRUE;
@@ -1195,7 +1207,10 @@ BOOL FastCopy::MakeDigest(WCHAR *path, DigestBuf *dbuf, FileStat *stat)
 
 		while (OverLap	*ovl_tmp = ovl_list.GetObj(USED_LIST)) {
 			ovl_list.PutObj(FREE_LIST, ovl_tmp);
-			if (!(ret = WaitOvlIo(hFile, ovl_tmp, &total_size, &order_total))) break;
+			if (!(ret = WaitOvlIo(hFile, ovl_tmp, &total_size, &order_total))) {
+				ConfirmErr(L"MakeDigest(WaitOvl)", path + (is_src ? srcPrefixLen : dstPrefixLen));
+				break;
+			}
 			ret = dbuf->Update(ovl_tmp->buf, ovl_tmp->transSize);
 			verifyTrans += ovl_tmp->transSize; 
 			if (!is_flush || !ret || isAbort) break;
@@ -3051,7 +3066,7 @@ void FastCopy::SetupRandomDataBuf(void)
 	if (data->is_nsa) {
 		data->buf_size /= 3;
 		data->buf_size = (data->buf_size / data->base_size) * data->base_size;
-		data->buf_size = min(info.maxTransSize, data->buf_size);
+		data->buf_size = min((DWORD)info.maxTransSize, data->buf_size);
 
 		data->buf[1] = data->buf[0] + data->buf_size;
 		data->buf[2] = data->buf[1] + data->buf_size;
@@ -3067,7 +3082,7 @@ void FastCopy::SetupRandomDataBuf(void)
 		memset(data->buf[2], 0, data->buf_size);
 	}
 	else {
-		data->buf_size = min(info.maxTransSize, data->buf_size);
+		data->buf_size = min((DWORD)info.maxTransSize, data->buf_size);
 		if (info.flags & OVERWRITE_PARANOIA) {
 			TGenRandom(data->buf[0], data->buf_size);	// CryptAPIのrandは遅い...
 		}
@@ -3327,7 +3342,7 @@ BOOL FastCopy::WriteDirProc(int dir_len)
 	BOOL		ret = TRUE;
 	BOOL		is_mkdir = writeReq->cmd == MKDIR;
 	BOOL		is_reparse = IsReparseEx(writeReq->stat.dwFileAttributes);
-	int			buf_size = writeReq->bufSize;
+	DWORD		buf_size = writeReq->bufSize;
 	int			new_dir_len;
 	FileStat	sv_stat;
 
@@ -3387,7 +3402,7 @@ BOOL FastCopy::WriteDirProc(int dir_len)
 	}
 
 	if (buf_size) {
-		dstDirExtBuf.AddUsedSize(-buf_size);
+		dstDirExtBuf.AddUsedSize(-(ssize_t)buf_size);
 	}
 
 END:
@@ -3588,7 +3603,7 @@ BOOL FastCopy::VerifyErrPostProc(DigestCalc *calc)
 	return	ret;
 }
 
-FastCopy::DigestCalc *FastCopy::GetDigestCalc(DigestObj *obj, int io_size)
+FastCopy::DigestCalc *FastCopy::GetDigestCalc(DigestObj *obj, DWORD io_size)
 {
 	if (wDigestList.Size() != wDigestList.MaxSize() && !isAbort) {
 		BOOL	is_eof = FALSE;
@@ -3606,7 +3621,7 @@ FastCopy::DigestCalc *FastCopy::GetDigestCalc(DigestObj *obj, int io_size)
 	}
 	DataList::Head	*head = NULL;
 	DigestCalc		*calc = NULL;
-	int				require_size = sizeof(DigestCalc) + (obj ? obj->pathLen * sizeof(WCHAR) : 0);
+	DWORD			require_size = sizeof(DigestCalc) + (obj ? obj->pathLen * sizeof(WCHAR) : 0);
 
 	if (io_size) {
 		require_size += io_size + dstSectorSize;
@@ -4283,7 +4298,7 @@ FastCopy::ReqHead *FastCopy::AllocReqBuf(int req_size, int64 _data_size)
 {
 	ReqHead	*req = NULL;
 	ssize_t	max_trans  = (waitTick && (info.flags & AUTOSLOW_IOLIMIT)) ? MIN_BUF :
-						 (flagOvl ? info.maxOvlSize : maxReadSize);
+						 (flagOvl ? (ssize_t)info.maxOvlSize : maxReadSize);
 	ssize_t	data_size  = (_data_size > max_trans) ? max_trans : (ssize_t)_data_size;
 
 	ssize_t	used_size        = usedOffset - mainBuf.Buf();
@@ -4329,7 +4344,7 @@ FastCopy::ReqHead *FastCopy::AllocReqBuf(int req_size, int64 _data_size)
 	req           = (ReqHead *)(mainBuf.Buf() + align_offset + sector_data_size);
 	req->reqId    = 0;
 	req->buf      = mainBuf.Buf() + align_offset;
-	req->bufSize  = (int)sector_data_size;
+	req->bufSize  = (DWORD)sector_data_size;
 	req->readSize = 0;
 	req->reqSize  = req_size;
 	readInterrupt = isSameDrv
@@ -4916,7 +4931,8 @@ BOOL FastCopy::TestWrite()
 				ReqHead	*req = PrepareReqBuf(offsetof(ReqHead, stat) + fstat.minSize,
 					remain_size, fstat.fileID);
 				if (req) {
-					req->readSize = (remain_size > req->bufSize) ? req->bufSize : (int)remain_size;
+					req->readSize = (remain_size > req->bufSize) ?
+						req->bufSize : (DWORD)remain_size;
 					remain_size -= req->readSize;
 					SendRequest(cmd, req, &fstat);
 					cmd = WRITE_FILE_CONT;

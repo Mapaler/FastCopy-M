@@ -1,9 +1,9 @@
 ﻿static char *cfg_id = 
-	"@(#)Copyright (C) 2004-2016 H.Shirouzu		cfg.cpp	ver3.20";
+	"@(#)Copyright (C) 2004-2016 H.Shirouzu		cfg.cpp	ver3.25";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2016-09-28(Wed)
+	Update					: 2016-10-19(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-08-23
@@ -51,6 +51,7 @@
 #define ACLERRLOG_KEY			"aclerr_log"
 #define STREAMERRLOG_KEY		"streamerr_log"
 #define DEBUGFLAGS_KEY			"debug_flags"
+#define DEBUGMAINFLAGS_KEY		"debug_main_flags"
 #define ISRUNASBUTTON_KEY		"is_runas_button"
 #define ISSAMEDIRRENAME_KEY		"is_samedir_rename"
 #define BUFSIZE_KEY				"bufsize"
@@ -462,8 +463,11 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 	bufSize			= ini.GetInt(BUFSIZE_KEY, DEFAULT_BUFSIZE);
 	maxRunNum		= ini.GetInt(MAXRUNNUM_KEY, DEFAULT_MAXRUNNUM);
 	maxTransSize	= ini.GetInt(MAXTRANSSIZE_KEY, DEFAULT_MAXTRANSSIZE);
+	maxTransSize	= min(maxTransSize, 4095);
 	maxOvlNum		= ini.GetInt(MAXOVLNUM_KEY, DEFAULT_MAXOVLNUM);
 	maxOvlSize		= ini.GetInt(MAXOVLSIZE_KEY, -1);
+	maxOvlSize		= min(maxOvlSize, 4095);
+
 	if ((maxTransSize % maxOvlNum)) {
 		maxTransSize = (maxTransSize + maxOvlNum - 1) / maxOvlNum * maxOvlNum;
 	}
@@ -514,6 +518,7 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 	aclErrLog		= ini.GetInt(ACLERRLOG_KEY, FALSE);
 	streamErrLog	= ini.GetInt(STREAMERRLOG_KEY, FALSE);
 	debugFlags		= ini.GetInt(DEBUGFLAGS_KEY, 0);
+	debugMainFlags	= ini.GetInt(DEBUGMAINFLAGS_KEY, 0);
 	isRunasButton	= ini.GetInt(ISRUNASBUTTON_KEY, FALSE);
 	isSameDirRename	= ini.GetInt(ISSAMEDIRRENAME_KEY, TRUE);
 
@@ -786,7 +791,7 @@ BOOL Cfg::WriteIni(void)
 	ini.SetInt(VERIFY_KEY, enableVerify);
 	ini.SetInt(USEOVERLAPIO_KEY, useOverlapIo);
 //	ini.SetInt(USEMD5_KEY, usingMD5);
-//	ini.SetInt(HASHMODE_KEY, hashMode);
+	ini.SetInt(HASHMODE_KEY, hashMode);
 	ini.SetInt(NSA_KEY, enableNSA);
 	ini.SetInt(DELDIR_KEY, delDirWithFilter);
 	ini.SetInt(MOVEATTR_KEY, enableMoveAttr);
