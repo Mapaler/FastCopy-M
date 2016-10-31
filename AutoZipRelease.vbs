@@ -77,7 +77,7 @@ Do While oExec.StdOut.AtEndOfStream <> True
 	WScript.Echo ReadLine
 Loop
 
-
+curDir = osh.CurrentDirectory + "\"
 For xi = 0 To 1
 	Select Case xi
 		Case 0:
@@ -85,25 +85,38 @@ For xi = 0 To 1
 		Case 1:
 			bit = "x64"
 	End Select
-	zipName = "FastCopy-M_" + verNum + "_" + bit + ".zip"
-	WScript.Echo "Add files to " + zipName + ""
-	curDir = osh.CurrentDirectory + "\"
+	zipName = "FastCopy-M_" & verNum & "_" & bit & ".zip"
+	WScript.Echo "Add files to " & zipName & ""
 	'7-Zip解压文件的命令行
 	command = """" & p_7zip & """ a -tzip"
-	command = command & " """ + zipName + """ " '压缩包地址
+	command = command & " """ & zipName & """ " '压缩包地址
 	command = command & " readme_chs.txt  readme_cht.txt readme_eng.txt readme_ja.txt license-gpl3.txt "
-	command = command & " """ & curDir + "help\FastCopy.chm"" "
-	command = command & " """ & curDir + "Output\Release\x86\FastExt1.dll"" "
-	command = command & " """ & curDir + "Output\Release\x64\FastEx64.dll"" "
-	command = command & " """ & curDir + "Output\Release\" + bit + "\FastCopy.exe"" "
-	command = command & " """ & curDir + "Output\Release\" + bit + "\setup.exe"" "
+	command = command & " """ & curDir & "help\FastCopy.chm"" "
+	command = command & " """ & curDir & "Output\Release\x86\FastExt1.dll"" "
+	command = command & " """ & curDir & "Output\Release\x64\FastEx64.dll"" "
+	command = command & " """ & curDir & "Output\Release\" & bit & "\FastCopy.exe"" "
+	command = command & " """ & curDir & "Output\Release\" & bit & "\setup.exe"" "
 	Set oExec = osh.Exec(command)
 	Do While oExec.StdOut.AtEndOfStream <> True
 		'可加入删除符，解压状态保留在同一行
 		ReadLine = oExec.StdOut.ReadLine
 		WScript.Echo ReadLine
 	Loop
+	
 Next
+
+osh.CurrentDirectory = "Output\XP_Release"
+command = """" & p_7zip & """ a -tzip"
+command = command & " """ & curDir & "FastCopy-M_" & verNum & "_Main_EXEC_For_WinXP.zip"" " '压缩包地址
+command = command & " x86\FastCopy.exe "
+command = command & " x64\FastCopy.exe "
+Set oExec = osh.Exec(command)
+Do While oExec.StdOut.AtEndOfStream <> True
+	'可加入删除符，解压状态保留在同一行
+	ReadLine = oExec.StdOut.ReadLine
+	WScript.Echo ReadLine
+Loop
+	
 Msgbox "Done."
 Set fso=Nothing
 Set osh=Nothing
