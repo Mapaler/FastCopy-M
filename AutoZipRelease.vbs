@@ -105,17 +105,17 @@ For xi = 0 To 1
 	
 Next
 
-osh.CurrentDirectory = "Output\XP_Release"
-command = """" & p_7zip & """ a -tzip"
-command = command & " """ & curDir & "FastCopy-M_" & verNum & "_Main_EXEC_For_WinXP.zip"" " '压缩包地址
-command = command & " x86\FastCopy.exe "
-command = command & " x64\FastCopy.exe "
-Set oExec = osh.Exec(command)
-Do While oExec.StdOut.AtEndOfStream <> True
+'osh.CurrentDirectory = "Output\XP_Release"
+'command = """" & p_7zip & """ a -tzip"
+'command = command & " """ & curDir & "FastCopy-M_" & verNum & "_Main_EXEC_For_WinXP.zip"" " '压缩包地址
+'command = command & " x86\FastCopy.exe "
+'command = command & " x64\FastCopy.exe "
+'Set oExec = osh.Exec(command)
+'Do While oExec.StdOut.AtEndOfStream <> True
 	'可加入删除符，解压状态保留在同一行
-	ReadLine = oExec.StdOut.ReadLine
-	WScript.Echo ReadLine
-Loop
+'	ReadLine = oExec.StdOut.ReadLine
+'	WScript.Echo ReadLine
+'Loop
 	
 Msgbox "Done."
 Set fso=Nothing
