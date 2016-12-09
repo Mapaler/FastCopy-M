@@ -58,8 +58,8 @@ The main window icon displayed animation when runing copy process. And allows to
 Support use http url to replace "chm" help files, change "IDS_FASTCOPYHELP" in resource to your URL.<br />
 ![URL help](http://ww4.sinaimg.cn/large/6c84b2d6gw1ewbd1y0bygj20rw0le4bq.jpg)
 
-* ~~外壳扩展加入图标。~~3.2.x开始不支持<br />
-~~Shell Extension add icon.~~Not support after 3.2.x<br />
+* ~~外壳扩展加入图标。~~3.2.6开始使用官方原生图标支持（其实是我不会改啦）<br />
+~~Shell Extension add icon.~~Official support after 3.2.6<br />
 ![Shell Extension icon](http://ww3.sinaimg.cn/large/6c84b2d6gw1ewbd5egv8jj20rj0hpjxc.jpg)
 
 ### Build | 编译
