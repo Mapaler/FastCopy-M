@@ -1,9 +1,9 @@
 ﻿static char *setuplg_id = 
-	"@(#)Copyright (C) 2015-2016 H.Shirouzu		setupdlg.cpp	ver3.25";
+	"@(#)Copyright (C) 2015-2016 H.Shirouzu		setupdlg.cpp	ver3.26";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2015-07-17(Fri)
-	Update					: 2016-10-19(Wed)
+	Update					: 2016-12-08(Thu)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-08-13
@@ -586,6 +586,8 @@ BOOL TShellExtDlg::ReflectStatus(void)
 		shCfg->autoClose	= (flags & SHEXT_AUTOCLOSE) ? TRUE : FALSE;
 	}
 
+	CheckDlgButton(SHICON_CHECK, flags & SHEXT_MENUICON);
+
 	CheckDlgButton(RIGHT_COPY_CHECK, flags & SHEXT_RIGHT_COPY);
 	CheckDlgButton(RIGHT_DELETE_CHECK, flags & SHEXT_RIGHT_DELETE);
 	CheckDlgButton(RIGHT_PASTE_CHECK, flags & SHEXT_RIGHT_PASTE);
@@ -695,6 +697,9 @@ BOOL TShellExtDlg::RegisterShellExt(BOOL is_register)
 //	else {	// for old shell ext
 //		flags &= ~SHEXT_MENUFLG_EX;
 //	}
+
+	if (!IsDlgButtonChecked(SHICON_CHECK))
+		flags &= ~SHEXT_MENUICON;
 
 	if (!IsDlgButtonChecked(RIGHT_COPY_CHECK))
 		flags &= ~SHEXT_RIGHT_COPY;

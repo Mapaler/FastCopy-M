@@ -1,9 +1,9 @@
 ﻿static char *mainwinlog_id = 
-	"@(#)Copyright (C) 2015 H.Shirouzu		mainwinlog.cpp	ver3.23";
+	"@(#)Copyright (C) 2015 H.Shirouzu		mainwinlog.cpp	ver3.26";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2015-05-28(Thu)
-	Update					: 2016-10-13(Thu)
+	Update					: 2016-11-21(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-08-17
@@ -96,6 +96,9 @@ void TMainDlg::SetFileLogInfo()
 
 //	::UnlockFile(hFile, low, high, size, 0);
 	ti.listBuf->SetUsedSize(0);
+	if (WCHAR *p = (WCHAR *)ti.listBuf->Buf()) {
+		*p = 0;
+	}
 }
 
 

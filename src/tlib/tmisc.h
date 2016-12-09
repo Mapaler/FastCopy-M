@@ -638,11 +638,14 @@ BOOL DeleteLinkW(WCHAR *path);
 BOOL GetParentDirW(const WCHAR *srcfile, WCHAR *dir);
 BOOL GetParentDirU8(const char *srcfile, char *dir);
 HWND ShowHelpW(HWND hOwner, WCHAR *help_dir, WCHAR *help_file, WCHAR *section=NULL);
-HWND ShowHelpU8(HWND hOwner, const char *help_dir, const char *help_file, const char *section=NULL);
+HWND ShowHelpU8(HWND hOwner, const char *help_dir, const char *help_file, const char *section=NULL);void UnInitShowHelp();
+
 HWND TransMsgHelp(MSG *msg);
 HWND CloseHelpAll();
 
 BOOL TSetClipBoardTextW(HWND hWnd, const WCHAR *s, int len=-1);
+
+HBITMAP TIconToBmp(HICON hIcon, int cx, int cy);
 
 BOOL ForceSetTrayIcon(HWND hWnd, UINT id, DWORD pref=2);
 BOOL SetWinAppId(HWND hWnd, const WCHAR *app_id);

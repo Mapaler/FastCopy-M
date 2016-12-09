@@ -1,9 +1,9 @@
 ﻿static char *fastcopy_id = 
-	"@(#)Copyright (C) 2004-2016 H.Shirouzu		fastcopy.cpp	ver3.25";
+	"@(#)Copyright (C) 2004-2016 H.Shirouzu		fastcopy.cpp	ver3.26";
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2016-10-19(Wed)
+	Update					: 2016-12-08(Thu)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-09
@@ -511,6 +511,11 @@ BOOL FastCopy::RegisterRegFilter(const PathArray *incArray, const PathArray *exc
 BOOL FastCopy::RegisterInfo(const PathArray *_srcArray, const PathArray *_dstArray, Info *_info,
 	const PathArray *_includeArray, const PathArray *_excludeArray)
 {
+#ifdef TRACE_DBG
+	trclog_init();
+	Trl(__FUNCTIONW__, __LINE__);
+#endif
+
 	info = *_info;
 
 	isAbort = FALSE;
@@ -807,22 +812,38 @@ BOOL FastCopy::ReadThreadCore(void)
 	}
 
 	while (hWriteThread || hRDigestThread || hWDigestThread) {
+		DWORD	wret = 0;
 		if (hWriteThread) {
-			if (::WaitForSingleObject(hWriteThread, 1000) != WAIT_TIMEOUT) {
+			if ((wret = ::WaitForSingleObject(hWriteThread, 1000)) == WAIT_OBJECT_0) {
 				::CloseHandle(hWriteThread);
 				hWriteThread = NULL;
 			}
+			else if (wret != WAIT_TIMEOUT) {
+				ConfirmErr(FmtW(L"Illegal WaitForSingleObject w(%x) %p ab=%d",
+					wret, hWriteThread, isAbort), NULL, CEF_STOP);
+				break;
+			}
 		}
 		else if (hRDigestThread) {
-			if (::WaitForSingleObject(hRDigestThread, 1000) != WAIT_TIMEOUT) {
+			if ((wret = ::WaitForSingleObject(hRDigestThread, 1000)) == WAIT_OBJECT_0) {
 				::CloseHandle(hRDigestThread);
 				hRDigestThread = NULL;
 			}
+			else if (wret != WAIT_TIMEOUT) {
+				ConfirmErr(FmtW(L"Illegal WaitForSingleObject rd(%x) %p ab=%d",
+					wret, hRDigestThread, isAbort), NULL, CEF_STOP);
+				break;
+			}
 		}
 		else if (hWDigestThread) {
-			if (::WaitForSingleObject(hWDigestThread, 1000) != WAIT_TIMEOUT) {
+			if ((wret = ::WaitForSingleObject(hWDigestThread, 1000)) == WAIT_OBJECT_0) {
 				::CloseHandle(hWDigestThread);
 				hWDigestThread = NULL;
+			}
+			else if (wret != WAIT_TIMEOUT) {
+				ConfirmErr(FmtW(L"Illegal WaitForSingleObject wd(%x) %p ab=%d",
+					wret, hWDigestThread, isAbort), NULL, CEF_STOP);
+				break;
 			}
 		}
 	}
@@ -3230,8 +3251,10 @@ BOOL FastCopy::CheckAndCreateDestDir(int dst_len)
 
 		ret = parent_dst_len ? CheckAndCreateDestDir(parent_dst_len) : FALSE;
 
-		if (isListingOnly || ::CreateDirectoryW(dst, NULL) && isListing) {
-			PutList(dst + dstPrefixLen, PL_DIRECTORY);
+		if (isListingOnly || ::CreateDirectoryW(dst, NULL)) {
+			if (isListingOnly || isListing) {
+				PutList(dst + dstPrefixLen, PL_DIRECTORY);
+			}
 			total.writeDirs++;
 		}
 		else ret = FALSE;
@@ -3243,6 +3266,16 @@ BOOL FastCopy::CheckAndCreateDestDir(int dst_len)
 
 BOOL FastCopy::FinishNotify(void)
 {
+#ifdef TRACE_DBG
+	PutList(L"\r\nTrace log", PL_ERRMSG);
+
+	for (DWORD i=0; WCHAR *targ = trclog_get(i); i++) {
+		if (*targ) {
+			PutList(targ, PL_ERRMSG);
+		}
+	}
+#endif
+
 	endTick = ::GetTickCount();
 	return	::PostMessage(info.hNotifyWnd, info.uNotifyMsg, END_NOTIFY, 0);
 }
@@ -3500,7 +3533,9 @@ BOOL FastCopy::WDigestThreadCore(void)
 		|| (calc = (DigestCalc *)head->data)->status == DigestCalc::INIT) && !isAbort) {
 			wDigestList.Wait(CV_WAIT_TICK);
 		}
-		if (isAbort) break;
+		if (isAbort) {
+			break;
+		}
 		if (calc->status == DigestCalc::FIN) {
 			wDigestList.Get();
 			wDigestList.Notify();
@@ -3566,6 +3601,12 @@ BOOL FastCopy::WDigestThreadCore(void)
 		else if (calc->status == DigestCalc::PASS) {
 			// pass for async io error
 		}
+		else if (calc->status == DigestCalc::CONT) {
+			// cont
+		}
+//		else {
+//			ConfirmErr(FmtW(L"WDigest calc status err(%d)", calc->status), calc->path, CEF_STOP);
+//		}
 		wDigestList.Get();	// remove from wDigestList
 		wDigestList.Notify();
 		calc = NULL;
@@ -3790,7 +3831,9 @@ BOOL FastCopy::CheckDigests(CheckDigestMode mode)
 
 	if (mode == CD_FINISH) {
 		DigestCalc	*calc = GetDigestCalc(NULL, 0);
-		if (calc) PutDigestCalc(calc, DigestCalc::FIN);
+		if (calc) {
+			PutDigestCalc(calc, DigestCalc::FIN);
+		}
 	}
 
 	if (mode == CD_WAIT || mode == CD_FINISH) {
@@ -3941,14 +3984,15 @@ BOOL FastCopy::WriteFileProcCore(HANDLE *_fh, FileStat *stat, WInfo *_wi)
 	DWORD	share = FILE_SHARE_READ|FILE_SHARE_WRITE;
 	DWORD	flg = (wi.is_nonbuf ? FILE_FLAG_NO_BUFFERING : 0) | FILE_FLAG_SEQUENTIAL_SCAN
 					| (enableBackupPriv ? FILE_FLAG_BACKUP_SEMANTICS : 0);
-	BOOL	useOvl = (flagOvl && wi.file_size > info.maxOvlSize) && (dstFsType != FSTYPE_NETWORK
-		|| wi.cmd == WRITE_FILE);
+	BOOL	useOvl = (flagOvl && wi.file_size > info.maxOvlSize) &&
+						((info.flags & NET_BKUPWR_NOOVL) == 0 ||
+						  (dstFsType != FSTYPE_NETWORK || wi.cmd == WRITE_FILE));
 
 	if (wi.cmd == WRITE_BACKUP_FILE || wi.cmd == WRITE_BACKUP_ALTSTREAM) {
 		if (stat->acl && stat->aclSize && enableAcl) mode |= WRITE_OWNER|WRITE_DAC;
 	}
 
-	if (useOvl && wi.cmd != WRITE_BACKUP_FILE) {
+	if (useOvl /* && wi.cmd != WRITE_BACKUP_FILE*/) {
 		flg |= flagOvl;		// BackupWrite しないなら OVERLAPPED モードで開く
 	}
 	if (wi.is_reparse) {
@@ -4546,28 +4590,49 @@ BOOL FastCopy::End(void)
 		cv.Notify();
 		cv.UnLock();
 
+		DWORD wret = 0;
 		if (hReadThread) {
-			if (::WaitForSingleObject(hReadThread, 1000) != WAIT_TIMEOUT) {
+			if ((wret = ::WaitForSingleObject(hReadThread, 1000)) == WAIT_OBJECT_0) {
 				::CloseHandle(hReadThread);
 				hReadThread = NULL;
 			}
+			else if (wret != WAIT_TIMEOUT) {
+				ConfirmErr(FmtW(L"Illegal WaitForSingleObject r2(%x) %p ab=%d",
+					wret, hReadThread, isAbort), NULL, CEF_STOP);
+				break;
+			}
 		}
 		else if (hWriteThread) {	// hReadThread が生きている場合は、hReadTread に Closeさせる
-			if (::WaitForSingleObject(hWriteThread, 1000) != WAIT_TIMEOUT) {
+			if ((wret = ::WaitForSingleObject(hWriteThread, 1000)) == WAIT_OBJECT_0) {
 				::CloseHandle(hWriteThread);
 				hWriteThread = NULL;
 			}
+			else if (wret != WAIT_TIMEOUT) {
+				ConfirmErr(FmtW(L"Illegal WaitForSingleObject w2(%x) %p ab=%d",
+					wret, hWriteThread, isAbort), NULL, CEF_STOP);
+				break;
+			}
 		}
 		else if (hRDigestThread) {
-			if (::WaitForSingleObject(hRDigestThread, 1000) != WAIT_TIMEOUT) {
+			if ((wret = ::WaitForSingleObject(hRDigestThread, 1000)) == WAIT_OBJECT_0) {
 				::CloseHandle(hRDigestThread);
 				hRDigestThread = NULL;
 			}
+			else if (wret != WAIT_TIMEOUT) {
+				ConfirmErr(FmtW(L"Illegal WaitForSingleObject rd2(%x) %p ab=%d",
+					wret, hRDigestThread, isAbort), NULL, CEF_STOP);
+				break;
+			}
 		}
 		else if (hWDigestThread) {
-			if (::WaitForSingleObject(hWDigestThread, 1000) != WAIT_TIMEOUT) {
+			if ((wret = ::WaitForSingleObject(hWDigestThread, 1000)) == WAIT_OBJECT_0) {
 				::CloseHandle(hWDigestThread);
 				hWDigestThread = NULL;
+			}
+			else if (wret != WAIT_TIMEOUT) {
+				ConfirmErr(FmtW(L"Illegal WaitForSingleObject wd2(%x) %p ab=%d",
+					wret, hWDigestThread, isAbort), NULL, CEF_STOP);
+				break;
 			}
 		}
 	}
@@ -4735,9 +4800,9 @@ FastCopy::Confirm::Result FastCopy::ConfirmErr(const WCHAR *msg, const WCHAR *pa
 	BOOL	is_abort = (flags & CEF_STOP);
 	BOOL	is_data_modified = (flags & CEF_DATACHANGED);
 
-#ifndef _DEBUG
-	if (is_abort) isAbort = is_abort;
-#endif
+	if (is_abort) {
+		isAbort = is_abort;
+	}
 
 	WCHAR	path_buf[MAX_PATH_EX], msg_buf[MAX_PATH_EX + 100];
 	WCHAR	*p = msg_buf;
@@ -4788,9 +4853,6 @@ FastCopy::Confirm::Result FastCopy::ConfirmErr(const WCHAR *msg, const WCHAR *pa
 	else {
 		confirm.result = Confirm::CANCEL_RESULT;
 	}
-#ifndef _DEBUG
-	if (is_abort) isAbort = is_abort;
-#endif
 
 	switch (confirm.result) {
 	case Confirm::IGNORE_RESULT:
@@ -4799,7 +4861,10 @@ FastCopy::Confirm::Result FastCopy::ConfirmErr(const WCHAR *msg, const WCHAR *pa
 		break;
 
 	case Confirm::CANCEL_RESULT:
-		isAbort = TRUE;
+		if (!isAbort) {
+			Aborting((info.ignoreEvent & FASTCOPY_STOP_EVENT) ? TRUE : FALSE);
+			total.abortCnt++;
+		}
 		break;
 	}
 	return	confirm.result;
@@ -4837,12 +4902,15 @@ BOOL FastCopy::WriteErrLog(const WCHAR *message, int len)
 	return	ret;
 }
 
-void FastCopy::Aborting(void)
+void FastCopy::Aborting(BOOL is_auto)
 {
 	isAbort = TRUE;
-	WCHAR	*err_msg = LoadStrW(IDS_Err_Aborting);//L" Aborted by User"
+	WCHAR	err_msg[256];
+	swprintf(err_msg, L"%s%s", LoadStrW(IDS_Err_Aborting), is_auto ? L" (automatic)" : L"");//L" Aborted by User"
 	WriteErrLog(err_msg);
-	if (!isListingOnly && isListing) PutList(err_msg, PL_ERRMSG);
+	if (!isListingOnly && isListing) {
+		PutList(err_msg, PL_ERRMSG);
+	}
 }
 
 BOOL FastCopy::Wait(DWORD tick)

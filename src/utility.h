@@ -1,9 +1,9 @@
 ﻿/* static char *utility_id = 
-	"@(#)Copyright (C) 2004-2016 H.Shirouzu		utility.h	Ver3.20"; */
+	"@(#)Copyright (C) 2004-2016 H.Shirouzu		utility.h	Ver3.26"; */
 /* ========================================================================
 	Project  Name			: Utility
 	Create					: 2004-09-15(Wed)
-	Update					: 2016-09-27(Tue)
+	Update					: 2016-11-21(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -191,6 +191,25 @@ ssize_t comma_int64(WCHAR *s, int64);
 ssize_t comma_double(WCHAR *s, double, int precision);
 ssize_t comma_int64(char *s, int64);
 ssize_t comma_double(char *s, double, int precision);
+
+//#define TRACE_DBG
+#ifdef TRACE_DBG
+void trclog_init();
+void trclog(const WCHAR *func, int lines);
+WCHAR *trclog_get(DWORD idx);
+struct Trl {
+	const WCHAR *func;
+	Trl(const WCHAR *_func, int line) {
+		func = _func;
+		trclog(func, line);
+	}
+	~Trl() {
+		trclog(func, 0);
+	}
+};
+#else
+#define Trl(...)
+#endif
 
 #endif
 

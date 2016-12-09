@@ -72,11 +72,11 @@
 <body bgcolor="#eeffff">
 
 <div align="center">
-<h1 class="help_head1">FastCopy ver3.25</h1>
+<h1 class="help_head1">FastCopy ver3.26</h1>
 </div>
 <div class="help_all">
 
-<div align="right">2016/10/19 H.Shirouzu (白水啓章)</div>
+<div align="right">2016/12/08 H.Shirouzu (白水啓章)</div>
 
 <a name="index"/>
 <h2 class="help_head2">Index</h2>
@@ -142,9 +142,9 @@
 <h2 class="help_head2">2. ライセンス</h2>
 <div class="help_section">
 	<div class="help_license">
-	FastCopy ver3.0 Copyright(C) 2004-2016 by SHIROUZU Hiroaki<br>
+	FastCopy ver3.x Copyright(C) 2004-2016 by SHIROUZU Hiroaki<br>
 	<br>
-	FastCopy ver3.0 は GNU Public License ver3 のオープンソースソフトウェアです。<br>
+	FastCopy ver3.x は GNU Public License ver3 のオープンソースソフトウェアです。<br>
 	詳細は同梱の <a href="license-gpl3.txt">license-gpl3.txt</a> をご覧ください。<br>
 	（改変版バイナリ配布を、配布先に対してソースコード非公開で行いたい場合や、バンドル版や特別版開発等のご要望がありましたら、作者(shirouzu@ipmsg.org)までお問い合わせください）
 	</div>
@@ -154,8 +154,8 @@
 <a name="environment"/>
 <h2 class="help_head2">3. 動作環境</h2>
 <div class="help_section">
-	Windows XP/Vista/7/8/8.1/10<br>
-	Windows Server 2003(&R2)/2008(&R2)/2012(&R2)
+	Windows XP SP3/Vista/7/8/8.1/10<br>
+	Windows Server 2003(&R2)/2008(&R2)/2012(&R2)/2016
 </div>
 
 <a name="install"/>
@@ -791,6 +791,14 @@
 
 <table class="help_table" border="4">
 <tr><th>Version</th><th>説明</th></tr>
+<tr><td>v3.26</td><td>
+ACL/副次Stream有効時の速度を改善<br>
+シェル拡張にアイコンを表示するように。<br>
+ジョブ管理画面のジョブリスト順をメニューのジョブ順と合わせるように。<br>
+手動（or nouiによる自動）中断の場合、abortをログに記録するように。<br>
+動作環境に Windows Server 2016を追加<br>
+インストーラ改良。
+</td></tr>
 <tr><td>v3.25</td><td>
 ベリファイ用ハッシュ（MD5/SHA-1/SHA-256）を設定から選択可能に。<br>
 32bit版で、ベリファイ中にエラー終了することがあったのを修正。

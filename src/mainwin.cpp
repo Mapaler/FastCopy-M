@@ -1,9 +1,9 @@
 ﻿static char *mainwin_id = 
-	"@(#)Copyright (C) 2004-2016 H.Shirouzu		mainwin.cpp	ver3.24";
+	"@(#)Copyright (C) 2004-2016 H.Shirouzu		mainwin.cpp	ver3.26";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2016-10-17(Mon)
+	Update					: 2016-12-08(Thu)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-29
@@ -29,6 +29,7 @@ TFastCopyApp::TFastCopyApp(HINSTANCE _hI, LPSTR _cmdLine, int _nCmdShow)
 	: TApp(_hI, _cmdLine, _nCmdShow)
 {
 	LoadLibrary("RICHED20.DLL");
+	LoadLibrary("msftedit.DLL");
 //	LoadLibrary("SHELL32.DLL");
 //	LoadLibrary("COMCTL32.DLL");
 //	LoadLibrary("COMDLG32.dll");
@@ -609,6 +610,7 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 BOOL TMainDlg::EvNcDestroy(void)
 {
 	TaskTray(NIM_DELETE);
+	UnInitShowHelp();
 	PostQuitMessage(resultStatus ? 0 : -1);
 	return	TRUE;
 }
@@ -844,6 +846,13 @@ BOOL TMainDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl)
 		cfg.WriteIni();
 		break;
 
+//	case TOPLEVEL_MENUITEM:
+//		cfg.isTopLevel = !cfg.isTopLevel;
+//		SetWindowPos(cfg.isTopLevel ? HWND_TOPMOST :
+//			HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOSIZE|SWP_NOACTIVATE|SWP_NOMOVE);
+//		cfg.WriteIni();
+//		break;
+
 	case MODE_COMBO:
 		if (wNotifyCode == CBN_SELCHANGE) {
 			BOOL	is_delete = GetCopyMode() == FastCopy::DELETE_MODE;
@@ -1059,8 +1068,12 @@ BOOL TMainDlg::EventInitMenu(UINT uMsg, HMENU hMenu, UINT uPos, BOOL fSystemMenu
 			MF_BYCOMMAND|(IS_INVALID_POINT(cfg.winpos) ? MF_UNCHECKED : MF_CHECKED));
 		::CheckMenuItem(GetSubMenu(hMenu, 0), FIXSIZE_MENUITEM,
 			MF_BYCOMMAND|(IS_INVALID_SIZE(cfg.winsize) ? MF_UNCHECKED : MF_CHECKED));
+//		::CheckMenuItem(GetSubMenu(hMenu, 0), TOPLEVEL_MENUITEM,
+//			MF_BYCOMMAND|(cfg.isTopLevel ? MF_CHECKED : MF_UNCHECKED));
+//
 		::EnableMenuItem(GetSubMenu(hMenu, 2), SWAPTARGET_MENUITEM,
 			MF_BYCOMMAND|(SwapTarget(TRUE) ? MF_ENABLED : MF_GRAYED));
+
 		return	TRUE;
 	}
 	return	FALSE;
@@ -1915,7 +1928,7 @@ BOOL TMainDlg::EndCopy(void)
 	if (is_starting) {
 		SetInfo(TRUE);
 
-		if (ti.total.errFiles == 0 && ti.total.errDirs == 0) {
+		if (ti.total.errFiles == 0 && ti.total.errDirs == 0 && ti.total.abortCnt == 0) {
 			resultStatus = TRUE;
 		}
 
@@ -1978,7 +1991,7 @@ BOOL TMainDlg::ExecFinalAction(BOOL is_sound_wait)
 	if (finActIdx < 0) return FALSE;
 
 	FinAct	*act = cfg.finActArray[finActIdx];
-	BOOL	is_err = ti.total.errFiles || ti.total.errDirs;
+	BOOL	is_err = ti.total.errFiles || ti.total.errDirs || ti.total.abortCnt;
 
 	if (act->sound[0] && (!(act->flags & FinAct::ERR_SOUND) || is_err)) {
 		::PlaySoundW(act->sound, 0, SND_FILENAME|(is_sound_wait ? 0 : SND_ASYNC));

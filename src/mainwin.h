@@ -1,9 +1,9 @@
 ﻿/* static char *mainwin_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		mainwin.h	Ver3.20"; */
+	"@(#)Copyright (C) 2004-2016 H.Shirouzu		mainwin.h	Ver3.26"; */
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2016-10-17(Mon)
+	Update					: 2016-12-08(Thu)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-16
@@ -52,7 +52,11 @@
 #define MINI_BUF 128
 
 #define SHELLEXT_MIN_ALLOC		(16 * 1024)
-#define SHELLEXT_MAX_ALLOC		(4 * 1024 * 1024)
+#ifdef _WIN64
+#define SHELLEXT_MAX_ALLOC		(1024 * 1024 * 1024)
+#else
+#define SHELLEXT_MAX_ALLOC		(64 * 1024 * 1024)
+#endif
 
 struct CopyInfo {
 	UINT				resId;

@@ -233,8 +233,8 @@ BOOL TInstDlg::EvCreate(LPARAM lParam)
 	propertySheet = new TInstSheet(this, &cfg);
 
 // 現在ディレクトリ設定
-	char		buf[MAX_PATH], setupDir[MAX_PATH];
-	TRegistry	reg(HKEY_LOCAL_MACHINE, BY_MBCS);
+	char	buf[MAX_PATH] = "";
+	char	setupDir[MAX_PATH] = "";
 
 // タイトル設定
 	if (IsWinVista() && ::IsUserAnAdmin()) {
@@ -243,22 +243,23 @@ BOOL TInstDlg::EvCreate(LPARAM lParam)
 		SetWindowText(buf);
 	}
 
-// Program Filesのパス取り出し
-	if (reg.OpenKey(REGSTR_PATH_SETUP)) {
-		if (reg.GetStr(REGSTR_PROGRAMFILES, buf, sizeof(buf)))
-			MakePath(setupDir, buf, FASTCOPY);
-		reg.CloseKey();
-	}
-
 // 既にセットアップされている場合は、セットアップディレクトリを読み出す
-	if (reg.OpenKey(REGSTR_PATH_UNINSTALL)) {
+	if (!*setupDir) {
+		TRegistry	reg(HSTOOLS_STR, NULL, BY_MBCS);
 		if (reg.OpenKey(FASTCOPY)) {
-			if (reg.GetStr(REGSTR_VAL_UNINSTALLER_COMMANDLINE, setupDir, sizeof(setupDir))) {
-				GetParentDir(setupDir, setupDir);
-			}
+			reg.GetStr("Path", setupDir, sizeof(setupDir));
 			reg.CloseKey();
 		}
-		reg.CloseKey();
+	}
+
+// Program Filesのパス取り出し
+	if (!*setupDir) {
+		TRegistry	reg(HKEY_LOCAL_MACHINE, BY_MBCS);
+		if (reg.OpenKey(REGSTR_PATH_SETUP)) {
+			if (reg.GetStr(REGSTR_PROGRAMFILES, buf, sizeof(buf)))
+				MakePath(setupDir, buf, FASTCOPY);
+			reg.CloseKey();
+		}
 	}
 
 	if (!cfg.startMenu || !cfg.deskTop) {
@@ -539,6 +540,11 @@ BOOL TInstDlg::Install(void)
 			}
 			return	MessageBox(installPath, LoadStr(IDS_NOTCREATEFILE)), FALSE;
 		}
+		TRegistry	reg(HSTOOLS_STR, 0, BY_MBCS);
+		if (reg.CreateKey(FASTCOPY)) {
+			reg.SetStr("Path", setupDir);
+			reg.CloseKey();
+		}
 	}
 
 // スタートメニュー＆デスクトップに登録
@@ -693,6 +699,16 @@ BOOL TInstDlg::UnInstall(void)
 	}
 
 // レジストリからアンインストール情報を削除
+	if (reg.OpenKey("Software")) {
+		if (reg.OpenKey(HSTOOLS_STR)) {
+			reg.DeleteKey(FASTCOPY);
+			reg.CloseKey();
+		}
+		reg.CloseKey();
+	}
+
+#if 0
+// レジストリからアンインストール情報を削除
 	if (reg.OpenKey(REGSTR_PATH_UNINSTALL)) {
 		if (reg.OpenKey(FASTCOPY)) {
 			if (reg.GetStr(REGSTR_VAL_UNINSTALLER_COMMANDLINE, setupDir, sizeof(setupDir)))
@@ -702,6 +718,7 @@ BOOL TInstDlg::UnInstall(void)
 		reg.DeleteKey(FASTCOPY);
 		reg.CloseKey();
 	}
+#endif
 
 // 終了メッセージ
 	MessageBox(is_shext ? LoadStr(IDS_UNINSTSHEXTFIN) : LoadStr(IDS_UNINSTFIN));

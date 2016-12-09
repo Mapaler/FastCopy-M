@@ -1,9 +1,9 @@
 ﻿/* static char *fastcopy_id = 
-	"@(#)Copyright (C) 2004-2016 H.Shirouzu		fastcopy.h	Ver3.23"; */
+	"@(#)Copyright (C) 2004-2016 H.Shirouzu		fastcopy.h	Ver3.26"; */
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2016-10-17(Mon)
+	Update					: 2016-12-08(Thu)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-09
@@ -115,6 +115,7 @@ struct TotalTrans {
 	int64	errStreamTrans;
 	int		errAclStream;
 	int		openRetry;
+	BOOL	abortCnt;
 };
 
 struct TransInfo {
@@ -272,6 +273,7 @@ public:
 		RESTORE_HARDLINK	=	0x00040000,
 		DEL_BEFORE_CREATE	=	0x00080000,
 		DELDIR_WITH_FILTER	=	0x00100000,
+		NET_BKUPWR_NOOVL	=	0x00200000,
 		WRITESHARE_OPEN		=	0x00800000,
 		//
 		LISTING				=	0x01000000,
@@ -362,7 +364,7 @@ public:
 	BOOL IsStarting(void) { return hReadThread || hWriteThread; }
 	BOOL Suspend(void);
 	BOOL Resume(void);
-	void Aborting(void);
+	void Aborting(BOOL is_auto=FALSE);
 	BOOL WriteErrLog(const WCHAR *message, int len=-1);
 	BOOL IsAborting(void) { return isAbort; }
 	void SetWaitTick(DWORD wait) { waitTick = wait; }

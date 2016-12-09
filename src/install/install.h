@@ -147,6 +147,9 @@ public:
 #define INSTALL_STR			"Install"
 #define UNINSTALL_STR		"UnInstall"
 
+#define HKCUSW_STR			"\\HKEY_CURRENT_USER\\Software"
+#define HSTOOLS_STR			"HSTools"
+
 // function prototype
 void BrowseDirDlg(TWin *parentWin, UINT editCtl, char *title);
 int CALLBACK BrowseDirDlg_Proc(HWND hWnd, UINT uMsg, LPARAM lParam, LPARAM data);

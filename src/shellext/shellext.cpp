@@ -1,9 +1,9 @@
 ﻿static char *shellext_id = 
-	"@(#)Copyright (C) 2005-2016 H.Shirouzu		shellext.cpp	Ver3.20";
+	"@(#)Copyright (C) 2005-2016 H.Shirouzu		shellext.cpp	Ver3.26";
 /* ========================================================================
 	Project  Name			: Shell Extension for Fast Copy
 	Create					: 2005-01-23(Sun)
-	Update					: 2016-09-28(Wed)
+	Update					: 2016-12-08(Thu)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -251,6 +251,7 @@ STDMETHODIMP ShellExt::QueryContextMenu(HMENU hMenu, UINT iMenu, UINT cmdFirst, 
 	int		mask_menu_flags = (menu_flags & (is_dd ? SHEXT_DD_MENUS : SHEXT_RIGHT_MENUS));
 	BOOL	is_submenu = (menu_flags & (is_dd ? SHEXT_SUBMENU_DD : SHEXT_SUBMENU_RIGHT));
 	BOOL	is_separator = (menu_flags & SHEXT_SUBMENU_NOSEP) ? FALSE : TRUE;
+	int		ico_off = (menu_flags & SHEXT_MENUICON) ? 1 : 0;
 	BOOL	ref_cnt = SysObj->GetDllRef(isAdmin);
 
 	if (!is_dd && (flg == CMF_NORMAL) || (flg & (CMF_VERBSONLY|CMF_DEFAULTONLY))) {
@@ -297,23 +298,39 @@ STDMETHODIMP ShellExt::QueryContextMenu(HMENU hMenu, UINT iMenu, UINT cmdFirst, 
 
 		if (is_submenu) {
 			hTargetMenu = ::CreatePopupMenu();
-			::InsertMenu(hMenu, iMenu, MF_POPUP|MF_BYPOSITION, (LONG_PTR)hTargetMenu, FASTCOPY);
+			::InsertMenu(hMenu, iMenu, MF_POPUP|MF_BYPOSITION, (LONG_PTR)hTargetMenu,
+				LoadStr(IDS_FC_SUBMENU + ico_off));
+			if (SysObj->hMenuBmp && ico_off) {
+				::SetMenuItemBitmaps(hMenu, iMenu, MF_BYPOSITION, SysObj->hMenuBmp, 0);
+			}
 			iMenu = 0;
 		}
 
 		if (mask_menu_flags & SHEXT_RIGHT_PASTE) {
-			::InsertMenu(hTargetMenu, iMenu++, MF_STRING|MF_BYPOSITION,
-				cmdFirst + SHEXT_MENU_PASTE, LoadStr(IDS_RIGHTPASTE));
+			::InsertMenu(hTargetMenu, iMenu, MF_STRING|MF_BYPOSITION,
+				cmdFirst + SHEXT_MENU_PASTE, LoadStr(IDS_RIGHTPASTE + ico_off));
+			if (!is_submenu && SysObj->hMenuBmp && ico_off) {
+				::SetMenuItemBitmaps(hTargetMenu, iMenu, MF_BYPOSITION, SysObj->hMenuBmp, 0);
+			}
+			iMenu++;
 		}
 
 		if ((mask_menu_flags & (SHEXT_RIGHT_COPY|SHEXT_DD_COPY)) && srcArray.Num() > 0) {
-			::InsertMenu(hTargetMenu, iMenu++, MF_STRING|MF_BYPOSITION,
-				cmdFirst + SHEXT_MENU_COPY, is_dd ? LoadStr(IDS_DDCOPY) : LoadStr(IDS_RIGHTCOPY));
+			::InsertMenu(hTargetMenu, iMenu, MF_STRING|MF_BYPOSITION, cmdFirst + SHEXT_MENU_COPY,
+				LoadStr((is_dd ? IDS_DDCOPY : IDS_RIGHTCOPY) + ico_off));
+			if (!is_submenu && SysObj->hMenuBmp && ico_off) {
+				::SetMenuItemBitmaps(hTargetMenu, iMenu, MF_BYPOSITION, SysObj->hMenuBmp, 0);
+			}
+			iMenu++;
 		}
 
 		if ((mask_menu_flags & (SHEXT_RIGHT_DELETE|SHEXT_DD_MOVE)) && srcArray.Num() > 0) {
-			::InsertMenu(hTargetMenu, iMenu++, MF_STRING|MF_BYPOSITION,
-				cmdFirst + SHEXT_MENU_DELETE, is_dd ? LoadStr(IDS_DDMOVE) : LoadStr(IDS_RIGHTDEL));
+			::InsertMenu(hTargetMenu, iMenu, MF_STRING|MF_BYPOSITION, cmdFirst + SHEXT_MENU_DELETE,
+				LoadStr((is_dd ? IDS_DDMOVE : IDS_RIGHTDEL) + ico_off));
+			if (!is_submenu && SysObj->hMenuBmp && ico_off) {
+				::SetMenuItemBitmaps(hTargetMenu, iMenu, MF_BYPOSITION, SysObj->hMenuBmp, 0);
+			}
+			iMenu++;
 		}
 		SysObj->lastMenu = hMenu;
 		DbgLogW(L" added cnt=%d self=%x set menu=%x/%x\r\n",
@@ -410,18 +427,20 @@ STDMETHODIMP ShellExt::InvokeCommand(CMINVOKECOMMANDINFO *info)
 
 STDMETHODIMP ShellExt::GetCommandString(UINT_PTR cmd, UINT flg, UINT *, char *name, UINT cchMax)
 {
+	int		menu_flags = GetMenuFlags(isAdmin);
+	int		ico_off = (menu_flags & SHEXT_MENUICON) ? 1 : 0;
 	BOOL	is_dd = dstArray.Num();
 
 	if (flg == GCS_HELPTEXT) {
 		switch (cmd) {
 		case 0:
-			strncpy(name, is_dd ? LoadStr(IDS_DDCOPY) : LoadStr(IDS_RIGHTCOPY), cchMax);
+			strncpy(name, LoadStr((is_dd ? IDS_DDCOPY : IDS_RIGHTCOPY) + ico_off), cchMax);
 			return	S_OK;
 		case 1:
-			strncpy(name, is_dd ? LoadStr(IDS_DDMOVE) : LoadStr(IDS_RIGHTDEL), cchMax);
+			strncpy(name, LoadStr((is_dd ? IDS_DDMOVE : IDS_RIGHTDEL) + ico_off), cchMax);
 			return	S_OK;
 		case 2:
-			strncpy(name, LoadStr(IDS_RIGHTPASTE), cchMax);
+			strncpy(name, LoadStr(IDS_RIGHTPASTE + ico_off), cchMax);
 			return	S_OK;
 		}
 	}
@@ -833,6 +852,12 @@ ShellExtSystem::ShellExtSystem(HINSTANCE hI)
 	DllRefAdminCnt = 0;
 	DllRefUserCnt = 0;
 	lastMenu  = 0;
+	hMenuBmp = NULL;
+
+	if (HICON hMenuIcon = (HICON)::LoadImage(hI, (LPCSTR)FCSHEXT_ICON, IMAGE_ICON, 16, 16, 0)) {
+		hMenuBmp = TIconToBmp(hMenuIcon, 16, 16);
+		::DestroyIcon(hMenuIcon);
+	}
 
 // GetSystemDefaultLCID() に基づいたリソース文字列を事前にロードしておく
 	LCID	curLcid = ::GetThreadLocale();
@@ -843,7 +868,7 @@ ShellExtSystem::ShellExtSystem(HINSTANCE hI)
 	}
 
 	InitInstanceForLoadStr(hI);
-	for (UINT id=IDS_RIGHTCOPY; id <= IDS_DDMOVE; id++) {
+	for (UINT id=IDS_RIGHTCOPY; id <= IDS_FC_SUBMENU_ICO; id++) {
 		LoadStr(id);
 	}
 	if (curLcid != newLcid) {

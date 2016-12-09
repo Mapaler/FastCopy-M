@@ -24,6 +24,12 @@
   <ItemGroup>
     <ResourceCompile Include="shellext.rc" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="fcshext.ico" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{DD8C289F-DDEB-4664-A8CD-65A2B067A1DF}</ProjectGuid>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>

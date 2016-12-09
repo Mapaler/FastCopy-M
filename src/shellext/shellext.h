@@ -1,9 +1,9 @@
 ﻿/* static char *shellext_id = 
-	"@(#)Copyright (C) 2005-2015 H.Shirouzu		shellext.h	Ver3.00"; */
+	"@(#)Copyright (C) 2005-2016 H.Shirouzu		shellext.h	Ver3.26"; */
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2005-01-23(Sun)
-	Update					: 2015-06-22(Mon)
+	Update					: 2016-12-08(Thu)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -138,6 +138,7 @@ public:
 	char		*DllName;
 	char		*ExeName;
 	HMENU		lastMenu;
+	HBITMAP		hMenuBmp;
 
 	ShellExtSystem(HINSTANCE hI);
 	~ShellExtSystem();

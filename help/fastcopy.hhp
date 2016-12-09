@@ -9,7 +9,7 @@ Default topic=FastCopy.htm
 Display compile progress=No
 Full-text search=Yes
 Language=0x411 “ú–{Œê
-Title=FastCopy ver3.25 Help
+Title=FastCopy Help
 
 [WINDOWS]
 Main=,"FastCopy.hhc",,"FastCopy.htm","FastCopy.htm",,,,,0x2160,,0x10100e,,,,,0,,,0

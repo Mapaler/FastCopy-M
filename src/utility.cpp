@@ -1,9 +1,9 @@
 ﻿static char *utility_id = 
-	"@(#)Copyright (C) 2004-2016 H.Shirouzu		utility.cpp	ver3.25";
+	"@(#)Copyright (C) 2004-2016 H.Shirouzu		utility.cpp	ver3.26";
 /* ========================================================================
 	Project  Name			: general routine
 	Create					: 2004-09-15(Wed)
-	Update					: 2016-10-19(Wed)
+	Update					: 2016-11-21(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -1052,3 +1052,60 @@ void DBGWriteW(WCHAR *fmt,...)
 	::WriteFile(hDbgFile, buf, len * 2, &len, 0);
 }
 #endif
+
+
+#ifdef TRACE_DBG
+#define MAX_LOG 8192
+static WCHAR logbuf[MAX_LOG][256];
+static DWORD logbuf_idx;
+static DWORD logbuf_nest;
+
+static BOOL trclog_firstinit(CRITICAL_SECTION *cs)
+{
+	InitializeCriticalSection(cs);
+	logbuf_nest = ::TlsAlloc();
+	return TRUE;
+}
+
+void trclog_init()
+{
+	memset(logbuf, 0, sizeof(logbuf));
+	logbuf_idx = 0;
+	logbuf_nest = 0;
+}
+
+void trclog(const WCHAR *func, int lines)
+{
+	static CRITICAL_SECTION	cs;
+	static BOOL		firstInit = trclog_firstinit(&cs);
+
+	::EnterCriticalSection(&cs);
+
+	DWORD nest = (DWORD)(DWORD_PTR)::TlsGetValue(logbuf_nest);
+
+	if (lines == 0 && nest > 0) {
+		nest--;
+	}
+
+	WCHAR *targ = logbuf[logbuf_idx++ % MAX_LOG];
+	_snwprintf(targ, MAX_LOG, L"%05x:%.*s %s%s:%d", GetCurrentThreadId(), min(nest, 30),
+		L"                              ", lines ? L"" : L"-- end of ", func, lines);
+
+	if (lines) {
+		nest++;
+	}
+	::TlsSetValue(logbuf_nest, (LPVOID)(DWORD_PTR)nest);
+
+	::LeaveCriticalSection(&cs);
+}
+
+WCHAR *trclog_get(DWORD idx)
+{
+	if (idx >= MAX_LOG) {
+		return	NULL;
+	}
+	return	logbuf[(logbuf_idx + idx) % MAX_LOG];
+}
+
+#endif
+

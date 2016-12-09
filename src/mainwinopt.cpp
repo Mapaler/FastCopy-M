@@ -330,18 +330,20 @@ BOOL TMainDlg::CommandLineExecW(int argc, WCHAR **argv)
 			autoCloseLevel = shCfg->autoClose ? NOERR_CLOSE : NO_CLOSE;
 			HANDLE	hStdInput = ::GetStdHandle(STD_INPUT_HANDLE);
 			DWORD	read_size;
-			BOOL	convertErr = FALSE;
 
 			shellExtBuf.AllocBuf(SHELLEXT_MIN_ALLOC, SHELLEXT_MAX_ALLOC);
 			while (::ReadFile(hStdInput, shellExtBuf.UsedEnd(),
 					(DWORD)shellExtBuf.RemainSize(), &read_size, 0) && read_size > 0) {
-				if (shellExtBuf.AddUsedSize(read_size) == shellExtBuf.Size())
+				if (shellExtBuf.AddUsedSize(read_size) == shellExtBuf.Size()) {
 					shellExtBuf.Grow(SHELLEXT_MIN_ALLOC);
+				}
+			}
+			if (shellExtBuf.UsedSize() == shellExtBuf.MaxSize()) {
+				MessageBoxW(L"Too long arguments");
+				return	FALSE;
 			}
 			shellExtBuf.UsedEnd()[0] = 0;
 
-			if (convertErr)
-				return	FALSE;
 			if ((argv = CommandLineToArgvExW(shellExtBuf.WBuf(), &argc)) == NULL)
 				break;
 			continue;	// 再 parse
