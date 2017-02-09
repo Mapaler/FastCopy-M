@@ -1,12 +1,12 @@
 ﻿static char *mainwinlog_id = 
-	"@(#)Copyright (C) 2015 H.Shirouzu		mainwinlog.cpp	ver3.26";
+	"@(#)Copyright (C) 2015-2017 H.Shirouzu		mainwinlog.cpp	ver3.27";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2015-05-28(Thu)
-	Update					: 2016-11-21(Mon)
+	Update					: 2017-01-23(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
-	Modify					: Mapaler 2015-08-17
+	Modify					: Mapaler 2017-02-09
 	======================================================================== */
 
 #include "mainwin.h"
@@ -152,10 +152,17 @@ void TMainDlg::WriteErrLogAtStart()
 	WriteLogHeader(hErrLog);
 
 	if (!errBufOffset) {
-		DWORD	len;
-		char	*msg = LoadStr(IDS_ErrLog_Initialize); //Initialize Error (Can't alloc memory or create/access DestDir)\r\n
+		if (!ti.errBuf) {
+			ti.errBuf = fastCopy.GetErrBuf();
+			errBufOffset = (int)ti.errBuf->UsedSize();
+		}
+		if (errBufOffset) {
+			WriteErrLogCore();
+		}
 
-		::WriteFile(hErrLog, msg, (DWORD)strlen(msg), &len, 0);
+		char  *msg = LoadStr(IDS_ErrLog_Initialize); //"Initialize Error\r\n\r\n"
+		DWORD len = (DWORD)strlen(msg);
+		::WriteFile(hErrLog, msg, len, &len, 0);
 	}
 
 	EnableErrLogFile(FALSE);

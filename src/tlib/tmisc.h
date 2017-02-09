@@ -445,9 +445,19 @@ LPWSTR LoadStrW(UINT resId, HINSTANCE hI=NULL);
 void TSetDefaultLCID(LCID id=0);
 HMODULE TLoadLibrary(LPSTR dllname);
 HMODULE TLoadLibraryW(WCHAR *dllname);
-int MakePath(char *dest, const char *dir, const char *file);
-int MakePathU8(char *dest, const char *dir, const char *file);
-int MakePathW(WCHAR *dest, const WCHAR *dir, const WCHAR *file);
+int MakePath(char *dest, const char *dir, const char *file, int max_len=INT_MAX);
+int MakePathU8(char *dest, const char *dir, const char *file, int max_len=INT_MAX);
+int MakePathW(WCHAR *dest, const WCHAR *dir, const WCHAR *file, int max_len=INT_MAX);
+
+inline int AddPath(char *dest, const char *file, int max_len=INT_MAX) {
+	return MakePath(dest, NULL, file, max_len);
+}
+inline int AddPathU8(char *dest, const char *file, int max_len=INT_MAX) {
+	return MakePathU8(dest, NULL, file, max_len);
+}
+inline int AddPathW(WCHAR *dest, const WCHAR *file, int max_len=INT_MAX) {
+	return MakePathW(dest, NULL, file, max_len);
+}
 
 int64 hex2ll(char *buf);
 int bin2hexstr(const BYTE *bindata, int len, char *buf);
@@ -578,7 +588,7 @@ BOOL TChangeWindowMessageFilter(UINT msg, DWORD flg);
 void TSwitchToThisWindow(HWND hWnd, BOOL flg);
 BOOL TGetTextWidth(HDC hDc, const WCHAR *s, int len, int width, int *rlen, int *rcx);
 HBITMAP TDIBtoDDB(HBITMAP hDibBmp); // 8bit には非対応
-BOOL TOpenExplorerSel(const WCHAR *dir, WCHAR **path, int num);
+BOOL TOpenExplorerSelW(const WCHAR *dir, WCHAR **path, int num);
 
 #define EXTRACE2 ExTrace("[%s (%d) %7.2f] ", __FUNCTION__, __LINE__, \
 	((double)(GetTickCount() % 10000000))/1000), ExTrace
@@ -632,9 +642,17 @@ public:
 				char *defaultExt=NULL);
 };
 
-BOOL SymLinkW(WCHAR *src, WCHAR *dest, WCHAR *arg=L"");
-BOOL ReadLinkW(WCHAR *src, WCHAR *dest, WCHAR *arg=NULL);
-BOOL DeleteLinkW(WCHAR *path);
+BOOL SymLinkW(const WCHAR *target, const WCHAR *link, const WCHAR *arg=NULL,
+	const WCHAR *desc=NULL);
+BOOL SymLinkU8(const char *target, const char *link, const char *arg=NULL, const char *desc=NULL);
+BOOL ReadLinkW(const WCHAR *link, WCHAR *target, WCHAR *arg=NULL, WCHAR *desc=NULL);
+BOOL ReadLinkU8(const char *link, char *target, char *arg=NULL, char *desc=NULL);
+HRESULT UpdateLinkW(const WCHAR *link, const WCHAR *arg=NULL, const WCHAR *desc=NULL,
+	DWORD flags=SLR_NO_UI|SLR_UPDATE|SLR_NOSEARCH, HWND hWnd=0);
+HRESULT UpdateLinkU8(const char *link, const char *arg=NULL, const char *desc=NULL,
+	DWORD flags=SLR_NO_UI|SLR_UPDATE|SLR_NOSEARCH, HWND hWnd=0);
+BOOL DeleteLinkW(const WCHAR *link);
+BOOL DeleteLinkU8(const char *link);
 BOOL GetParentDirW(const WCHAR *srcfile, WCHAR *dir);
 BOOL GetParentDirU8(const char *srcfile, char *dir);
 HWND ShowHelpW(HWND hOwner, WCHAR *help_dir, WCHAR *help_file, WCHAR *section=NULL);

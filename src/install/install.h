@@ -155,8 +155,6 @@ public:
 // function prototype
 void BrowseDirDlg(TWin *parentWin, UINT editCtl, char *title);
 int CALLBACK BrowseDirDlg_Proc(HWND hWnd, UINT uMsg, LPARAM lParam, LPARAM data);
-int MakePath(char *dest, const char *dir, const char *file);
-UINT GetDriveTypeEx(const char *file);
 
 // inline function
 inline BOOL IsUncFile(const char *path) { return strnicmp(path, UNC_PREFIX, 2) == 0; }

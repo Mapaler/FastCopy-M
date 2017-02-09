@@ -360,53 +360,84 @@ HMODULE TLoadLibraryW(WCHAR *dllname)
 /*=========================================================================
 	パス合成（ANSI 版）
 =========================================================================*/
-int MakePath(char *dest, const char *dir, const char *file)
+int MakePath(char *dest, const char *dir, const char *file, int max_len)
 {
-	BOOL	separetor = TRUE;
+	if (!dir) {
+		dir = dest;
+	}
+
 	ssize_t	len;
+	if (dest == dir) {
+		len = strlen(dir);
+	} else {
+		len = strcpyz(dest, dir);
+	}
 
-	if ((len = strlen(dir)) == 0)
-		return	sprintf(dest, "%s", file);
+	if (len > 0) {
+		bool	need_sep = (dest[len -1] != '\\');
 
-	if (dir[len -1] == '\\')	// 表など、2byte目が'\\'で終る文字列対策
-	{
-		if (len >= 2 && !IsDBCSLeadByte(dir[len -2]))
-			separetor = FALSE;
-		else {
-			u_char *p=(u_char *)dir;
-			for (; *p && p[1]; IsDBCSLeadByte(*p) ? p+=2 : p++)
-				;
-			if (*p == '\\')
-				separetor = FALSE;
+		if (len >= 2 && !need_sep) {	// 表などで終端の場合は sep必要
+			BYTE	*p = (BYTE *)dest;
+			while (*p) {
+				if (IsDBCSLeadByte(*p) && *(p+1)) {
+					p += 2;
+					if (!*p) {
+						need_sep = true;
+					}
+				} else {
+					p++;
+				}
+			}
+		}
+		if (need_sep) {
+			dest[len++] = '\\';
 		}
 	}
-	return	sprintf(dest, "%s%s%s", dir, separetor ? "\\" : "", file);
+	return	(int)len + strncpyz(dest + len, file, max_len - (int)len);
 }
 
 /*=========================================================================
 	パス合成（UTF-8 版）
 =========================================================================*/
-int MakePathU8(char *dest, const char *dir, const char *file)
+int MakePathU8(char *dest, const char *dir, const char *file, int max_len)
 {
+	if (!dir) {
+		dir = dest;
+	}
+
 	ssize_t	len;
 
-	if ((len = strlen(dir)) == 0)
-		return	sprintf(dest, "%s", file);
-
-	return	sprintf(dest, "%s%s%s", dir, dir[len -1] ? "\\" : "", file);
+	if (dest == dir) {
+		len = strlen(dir);
+	} else {
+		len = strcpyz(dest, dir);
+	}
+	if (len > 0 && dest[len -1] != '\\') {
+		dest[len++] = '\\';
+	}
+	return	(int)len + strncpyz(dest + len, file, max_len - (int)len);
 }
 
 /*=========================================================================
 	パス合成（UNICODE 版）
 =========================================================================*/
-int MakePathW(WCHAR *dest, const WCHAR *dir, const WCHAR *file)
+int MakePathW(WCHAR *dest, const WCHAR *dir, const WCHAR *file, int max_len)
 {
+	if (!dir) {
+		dir = dest;
+	}
+
 	ssize_t	len;
 
-	if ((len = wcslen(dir)) == 0)
-		return	swprintf(dest, L"%s", file);
-
-	return	swprintf(dest, L"%s%s%s", dir, dir[len -1] == '\\' ? L"" : L"\\" , file);
+	if (dest == dir) {
+		len = wcslen(dir);
+	} else {
+		len = wcscpyz(dest, dir);
+	}
+	if (len > 0 && dest[len -1] != '\\') {
+		dest[len++] = '\\';
+	}
+	return	(int)len + wcsncpyz(dest + len, file, max_len - (int)len);
 }
 
 
@@ -1425,27 +1456,31 @@ float GetMonitorScaleFactor()
 /*
 	リンク
 	あらかじめ、CoInitialize(NULL); を実行しておくこと
-	src  ... old_path
-	dest ... new_path
+	target ... target_path
+	link   ... new_symlink_path
 */
-BOOL SymLinkW(WCHAR *src, WCHAR *dest, WCHAR *arg)
+BOOL SymLinkW(const WCHAR *target, const WCHAR *link, const WCHAR *arg, const WCHAR *desc)
 {
 	IShellLinkW		*shellLink;
 	IPersistFile	*persistFile;
-	WCHAR			*ps_dest = dest;
 	BOOL			ret = FALSE;
 	WCHAR			buf[MAX_PATH];
 
 	if (SUCCEEDED(CoCreateInstance(CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER, IID_IShellLinkW,
 			(void **)&shellLink))) {
-		shellLink->SetPath(src);
-		shellLink->SetArguments(arg);
-		GetParentDirW(src, buf);
+		shellLink->SetPath(target);
+		if (arg) {
+			shellLink->SetArguments(arg);
+		}
+		if (desc) {
+			shellLink->SetDescription(desc);
+		}
+		GetParentDirW(target, buf);
 		shellLink->SetWorkingDirectory(buf);
 		if (SUCCEEDED(shellLink->QueryInterface(IID_IPersistFile, (void **)&persistFile))) {
-			if (SUCCEEDED(persistFile->Save(ps_dest, TRUE))) {
+			if (SUCCEEDED(persistFile->Save(link, TRUE))) {
 				ret = TRUE;
-				GetParentDirW(dest, buf);
+				GetParentDirW(link, buf);
 				::SHChangeNotify(SHCNE_UPDATEDIR, SHCNF_PATHW|SHCNF_FLUSH, buf, NULL);
 			}
 			persistFile->Release();
@@ -1455,7 +1490,17 @@ BOOL SymLinkW(WCHAR *src, WCHAR *dest, WCHAR *arg)
 	return	ret;
 }
 
-BOOL ReadLinkW(WCHAR *src, WCHAR *dest, WCHAR *arg)
+BOOL SymLinkU8(const char *target, const char *link, const char *arg, const char *desc)
+{
+	Wstr	wtarg(target);
+	Wstr	wlink(link);
+	Wstr	warg(arg);
+	Wstr	wdesc(desc);
+
+	return	SymLinkW(wtarg.s(), wlink.s(), warg.s(), wdesc.s());
+}
+
+BOOL ReadLinkW(const WCHAR *link, WCHAR *target, WCHAR *arg, WCHAR *desc)
 {
 	IShellLinkW		*shellLink;		// 実際は IShellLinkA or IShellLinkW
 	IPersistFile	*persistFile;
@@ -1464,10 +1509,13 @@ BOOL ReadLinkW(WCHAR *src, WCHAR *dest, WCHAR *arg)
 	if (SUCCEEDED(CoCreateInstance(CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER, IID_IShellLinkW,
 			(void **)&shellLink))) {
 		if (SUCCEEDED(shellLink->QueryInterface(IID_IPersistFile, (void **)&persistFile))) {
-			if (SUCCEEDED(persistFile->Load((WCHAR *)src, STGM_READ))) {
-				if (SUCCEEDED(shellLink->GetPath(dest, MAX_PATH, NULL, 0))) {
+			if (SUCCEEDED(persistFile->Load(link, STGM_READ))) {
+				if (SUCCEEDED(shellLink->GetPath(target, MAX_PATH, NULL, 0))) {
 					if (arg) {
 						shellLink->GetArguments(arg, MAX_PATH);
+					}
+					if (desc) {
+						shellLink->GetDescription(desc, INFOTIPSIZE);
 					}
 					ret = TRUE;
 				}
@@ -1479,20 +1527,90 @@ BOOL ReadLinkW(WCHAR *src, WCHAR *dest, WCHAR *arg)
 	return	ret;
 }
 
+BOOL ReadLinkU8(const char *link, char *targ, char *arg, char *desc)
+{
+	Wstr	wlink(link);
+	Wstr	wtarg(MAX_PATH);
+	Wstr	warg(INFOTIPSIZE);
+	Wstr	wdesc(INFOTIPSIZE);
+
+	if (!ReadLinkW(wlink.s(), wtarg.Buf(), arg ? warg.Buf() : NULL, desc ? wdesc.Buf() : NULL)) {
+		return	FALSE;
+	}
+	WtoU8(wtarg.s(), targ, MAX_PATH_U8);
+	if (arg) {
+		WtoU8(warg.s(), arg, INFOTIPSIZE);
+	}
+	if (desc) {
+		WtoU8(wdesc.s(), desc, INFOTIPSIZE);
+	}
+
+	return	TRUE;
+}
+
+HRESULT UpdateLinkW(const WCHAR *link, const WCHAR *arg, const WCHAR *desc, DWORD flags, HWND hWnd)
+{
+	IPersistFile	*persistFile;
+	IShellLinkW		*shellLink;
+	HRESULT			hr = S_OK;
+
+	hr = CoCreateInstance(CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER, IID_IShellLinkW,
+		(void **)&shellLink);
+	if (hr == S_OK) {
+		// 事前に IPersistFile::Loadしないと、Distribute Link Tracking されない
+		hr = shellLink->QueryInterface(IID_IPersistFile, (void **)&persistFile);
+		if (hr == S_OK) {
+			hr = persistFile->Load(link, STGM_READ);
+			if (hr == S_OK) {
+				hr = shellLink->Resolve(hWnd, flags);
+				if (arg) {
+					shellLink->SetArguments(arg);
+				}
+				if (desc) {
+					shellLink->SetDescription(desc);
+				}
+				if (arg || desc) {
+					persistFile->Save(link, TRUE);
+				}
+			}
+			persistFile->Release();
+		}
+		shellLink->Release();
+	}
+	return	hr;
+}
+
+HRESULT UpdateLinkU8(const char *link, const char *arg, const char *desc, DWORD flags, HWND hWnd)
+{
+	Wstr	wlink(link);
+	Wstr	warg(arg);
+	Wstr	wdesc(desc);
+
+	return	UpdateLinkW(wlink.s(), warg.s(), wdesc.s(), flags, hWnd);
+}
+
+
 /*
 	リンクファイル削除
 */
-BOOL DeleteLinkW(WCHAR *path)
+BOOL DeleteLinkW(const WCHAR *link)
 {
 	WCHAR	dir[MAX_PATH];
 
-	if (!DeleteFileW(path))
+	if (!DeleteFileW(link))
 		return	FALSE;
 
-	GetParentDirW(path, dir);
+	GetParentDirW(link, dir);
 	::SHChangeNotify(SHCNE_UPDATEDIR, SHCNF_PATHW|SHCNF_FLUSH, dir, NULL);
 
 	return	TRUE;
+}
+
+BOOL DeleteLinkU8(const char *link)
+{
+	Wstr	wlink(link);
+
+	return	DeleteLinkW(wlink.s());
 }
 
 /*
@@ -1500,17 +1618,18 @@ BOOL DeleteLinkW(WCHAR *path)
 */
 BOOL GetParentDirW(const WCHAR *srcfile, WCHAR *dir)
 {
-	WCHAR	path[MAX_PATH], *fname=NULL;
+	WCHAR	path[MAX_PATH];
+	WCHAR	*fname=NULL;
 
 	if (GetFullPathNameW(srcfile, MAX_PATH, path, &fname) == 0 || fname == NULL)
-		return	wcscpy(dir, srcfile), FALSE;
+		return	wcsncpyz(dir, srcfile, MAX_PATH), FALSE;
 
 	if ((fname - path) > 3 || path[1] != ':')
 		fname[-1] = 0;
 	else
 		fname[0] = 0;		// C:\ の場合
 
-	wcscpy(dir, path);
+	wcsncpyz(dir, path, MAX_PATH);
 	return	TRUE;
 }
 
@@ -1520,7 +1639,8 @@ BOOL GetParentDirW(const WCHAR *srcfile, WCHAR *dir)
 */
 BOOL GetParentDirU8(const char *org_path, char *target_dir)
 {
-	char	path[MAX_PATH_U8], *fname=NULL;
+	char	path[MAX_PATH_U8];
+	char	*fname=NULL;
 
 	if (GetFullPathNameU8(org_path, sizeof(path), path, &fname) == 0 || fname == NULL)
 		return	strncpyz(target_dir, org_path, MAX_PATH_U8), FALSE;

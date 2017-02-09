@@ -1,9 +1,9 @@
 ﻿/* static char *fastcopy_id = 
-	"@(#)Copyright (C) 2004-2016 H.Shirouzu		fastcopy.h	Ver3.26"; */
+	"@(#)Copyright (C) 2004-2017 H.Shirouzu		fastcopy.h	Ver3.27"; */
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2016-12-08(Thu)
+	Update					: 2017-01-23(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-09

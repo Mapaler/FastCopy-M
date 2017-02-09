@@ -1,9 +1,9 @@
 ﻿static char *fastcopy_id = 
-	"@(#)Copyright (C) 2004-2016 H.Shirouzu		fastcopy.cpp	ver3.26";
+	"@(#)Copyright (C) 2004-2017 H.Shirouzu		fastcopy.cpp	ver3.27";
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2016-12-08(Thu)
+	Update					: 2017-01-23(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-09
@@ -72,6 +72,8 @@ FastCopy::FastCopy()
 	hardLinkDst = NULL;
 	findInfoLv = IsWin7() ? FindExInfoBasic : FindExInfoStandard;
 	findFlags  = IsWin7() ? FIND_FIRST_EX_LARGE_FETCH : 0;
+
+	errBuf.AllocBuf(MIN_ERR_BUF, MAX_ERR_BUF);
 }
 
 FastCopy::~FastCopy()
@@ -149,8 +151,10 @@ BOOL FastCopy::InitDstPath(void)
 {
 	DWORD	attr;
 	WCHAR	wbuf[MAX_PATH_EX];
-	WCHAR	*buf = wbuf, *fname = NULL;
-	const WCHAR	*org_path = dstArray.Path(0), *dst_root;
+	WCHAR	*buf = wbuf;
+	WCHAR	*fname = NULL;
+	const WCHAR	*org_path = dstArray.Path(0);
+	const WCHAR	*dst_root;
 
 	// dst の確認/加工
 	if (org_path[1] == ':' && org_path[2] != '\\')
@@ -563,7 +567,7 @@ BOOL FastCopy::RegisterInfo(const PathArray *_srcArray, const PathArray *_dstArr
 	}
 
 	if ((info.flags & REPARSE_AS_NORMAL) && (info.mode == MOVE_MODE || info.mode == DELETE_MODE)) {
-		return	ConfirmErr(L"Illega Flags (junction/symlink)", NULL, CEF_STOP|CEF_NOAPI), FALSE;
+		return	ConfirmErr(L"Illegal Flags (junction/symlink)", NULL, CEF_STOP|CEF_NOAPI), FALSE;
 	}
 
 	driveMng.Init((DriveMng::NetDrvMode)info.netDrvMode);
@@ -601,6 +605,11 @@ BOOL FastCopy::RegisterInfo(const PathArray *_srcArray, const PathArray *_dstArr
 
 BOOL FastCopy::AllocBuf(void)
 {
+	if (errBuf.UsedSize() > 0) {
+		errBuf.FreeBuf();
+		errBuf.AllocBuf(MIN_ERR_BUF, MAX_ERR_BUF);
+	}
+
 	ssize_t	allocSize = ssize_t(isListingOnly ? MAX_LIST_BUF : info.bufSize + PAGE_SIZE * 4);
 	BOOL	need_mainbuf = info.mode != DELETE_MODE ||
 					((info.flags & (OVERWRITE_DELETE|OVERWRITE_DELETE_NSA)) && !isListingOnly);
@@ -623,9 +632,6 @@ BOOL FastCopy::AllocBuf(void)
 //	}
 #endif
 
-	if (errBuf.AllocBuf(MIN_ERR_BUF, MAX_ERR_BUF) == FALSE) {
-		return	ConfirmErr(L"Can't alloc memory(errBuf)", NULL, CEF_STOP), FALSE;
-	}
 	if (isListing) {
 		if (listBuf.AllocBuf(MIN_PUTLIST_BUF, MAX_PUTLIST_BUF) == FALSE)
 			return	ConfirmErr(L"Can't alloc memory(listBuf)", NULL, CEF_STOP), FALSE;
@@ -1106,9 +1112,12 @@ BOOL FastCopy::PutList(WCHAR *path, DWORD opt, DWORD lastErr, int64 wtime, int64
 				if (wtime >= 0) {
 					__time64_t t = FileTime2UnixTime((FILETIME *)&wtime);
 					struct tm tm;
-					_localtime64_s(&tm, &t);
-					p += swprintf(p, L"%04d%02d%02d-%02d%02d%02d", tm.tm_year+1900,
-						tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+					if (_localtime64_s(&tm, &t) == 0) {
+						p += swprintf(p, L"%04d%02d%02d-%02d%02d%02d", tm.tm_year+1900,
+							tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+					} else {
+						p += swprintf(p, L"raw-%llx", wtime);
+					}
 				}
 				if (fsize >= 0) {
 					if (p != start) *p++ = ' ';
@@ -1201,7 +1210,11 @@ BOOL FastCopy::MakeDigest(WCHAR *path, DigestBuf *dbuf, FileStat *stat)
 
 	HANDLE	hFile = CreateFileWithRetry(path, GENERIC_READ, share, 0, OPEN_EXISTING, flg, 0, 5);
 	if (hFile == INVALID_HANDLE_VALUE) return FALSE;
-	if (useOvl) DisableLocalBuffering(hFile);
+
+	FsType&	fsType = is_src ? srcFsType : dstFsType;
+	if (useOvl && (info.flags & USE_OSCACHE_READ) == 0 && fsType == FSTYPE_NETWORK) {
+		DisableLocalBuffering(hFile);
+	}
 
 	if ((DWORD)dbuf->buf.Size() < MaxReadDigestBuf() && !dbuf->buf.Grow(MaxReadDigestBuf()))
 		goto END;
@@ -1894,6 +1907,12 @@ BOOL FastCopy::SetRenameCount(FileStat *stat, BOOL is_dir)
 	return	TRUE;
 }
 
+inline int64 safe_add(int64 v1, int64 v2) {
+	int64	val = v1 + v2;
+	if (val >= 0 || v1 <= 0 || v2 <= 0) return val;
+	return _I64_MAX;
+}
+
 /*
 	上書き判定
 */
@@ -1901,10 +1920,12 @@ BOOL FastCopy::IsOverWriteFile(FileStat *srcStat, FileStat *dstStat)
 {
 	if (info.debugFlags & OVERWRITE_JUDGE_LOGGING) {
 		WCHAR	buf[512];
-		swprintf(buf, L"DBG(compare): mode:%d flag=%x fs=%x/%x grace=%llx mtime=%llx/%llx"
-			L" ctime=%llx/%llx size=%llx/%llx fname=%.99s", info.overWrite, info.flags
-			, srcFsType, dstFsType, info.timeDiffGrace, srcStat->WriteTime()
-			, dstStat->WriteTime(), srcStat->CreateTime(), dstStat->CreateTime()
+		swprintf(buf, L"DBG(compare): mode:%d flag=%x fs=%x/%x grace=%llx/%llx"
+			L"mtime=%llx/%llx ctime=%llx/%llx size=%llx/%llx fname=%.99s"
+			, info.overWrite, info.flags, srcFsType, dstFsType
+			, timeDiffGrace, info.timeDiffGrace
+			, srcStat->WriteTime(), dstStat->WriteTime()
+			, srcStat->CreateTime(), dstStat->CreateTime()
 			, srcStat->FileSize(), dstStat->FileSize(), srcStat->cFileName);
 		PutList(buf, PL_ERRMSG);
 	}
@@ -1915,11 +1936,11 @@ BOOL FastCopy::IsOverWriteFile(FileStat *srcStat, FileStat *dstStat)
 	if (info.overWrite == BY_ATTR) {
 		if (dstStat->FileSize() == srcStat->FileSize()) {	// サイズが等しく、かつ...
 			// 更新日付が同じ場合は更新しない
-			if (dstStat->WriteTime() + timeDiffGrace >= srcStat->WriteTime() &&
-				dstStat->WriteTime() - timeDiffGrace <= srcStat->WriteTime() &&
+			if (safe_add(dstStat->WriteTime(),  timeDiffGrace) >= srcStat->WriteTime() &&
+				safe_add(dstStat->WriteTime(), -timeDiffGrace) <= srcStat->WriteTime() &&
 				((info.flags & COMPARE_CREATETIME) == 0
-			||	dstStat->CreateTime() + timeDiffGrace >= srcStat->CreateTime() &&
-				dstStat->CreateTime() - timeDiffGrace <= srcStat->CreateTime())) {
+			||	safe_add(dstStat->CreateTime(),  timeDiffGrace) >= srcStat->CreateTime() &&
+				safe_add(dstStat->CreateTime(), -timeDiffGrace) <= srcStat->CreateTime())) {
 				return	FALSE;
 			}
 			// どちらかが NTFS でない場合（ネットワークドライブを含む）
@@ -1928,11 +1949,11 @@ BOOL FastCopy::IsOverWriteFile(FileStat *srcStat, FileStat *dstStat)
 				if ((srcStat->WriteTime() % 10000000) == 0
 				||  (dstStat->WriteTime() % 10000000) == 0) {
 					// タイムスタンプの差が 2 秒以内なら、 同一タイムスタンプとみなす
-					if (dstStat->WriteTime() + 20000000 >= srcStat->WriteTime() &&
-						dstStat->WriteTime() - 20000000 <= srcStat->WriteTime() &&
+					if (safe_add(dstStat->WriteTime(),  20000000) >= srcStat->WriteTime() &&
+						safe_add(dstStat->WriteTime(), -20000000) <= srcStat->WriteTime() &&
 						((info.flags & COMPARE_CREATETIME) == 0
-					||	dstStat->CreateTime() + 10000000 >= srcStat->CreateTime() &&
-						dstStat->CreateTime() - 10000000 <= srcStat->CreateTime()))
+					||	safe_add(dstStat->CreateTime(),  10000000) >= srcStat->CreateTime() &&
+						safe_add(dstStat->CreateTime(), -10000000) <= srcStat->CreateTime()))
 						return	FALSE;
 				}
 			}
@@ -1941,9 +1962,9 @@ BOOL FastCopy::IsOverWriteFile(FileStat *srcStat, FileStat *dstStat)
 	}
 	if (info.overWrite == BY_LASTEST) {
 		// 更新日付が dst と同じか古い場合は更新しない
-		if (dstStat->WriteTime() + timeDiffGrace >= srcStat->WriteTime() &&
+		if (safe_add(dstStat->WriteTime(), timeDiffGrace) >= srcStat->WriteTime() &&
 			((info.flags & COMPARE_CREATETIME) == 0 ||
-			dstStat->CreateTime() + timeDiffGrace >= srcStat->CreateTime())) {
+			safe_add(dstStat->CreateTime(), timeDiffGrace) >= srcStat->CreateTime())) {
 			return	FALSE;
 		}
 		// どちらかが NTFS でない場合（ネットワークドライブを含む）
@@ -1953,9 +1974,9 @@ BOOL FastCopy::IsOverWriteFile(FileStat *srcStat, FileStat *dstStat)
 			||	(dstStat->WriteTime() % 10000000) == 0) {
 				// タイムスタンプの差に 2 秒のマージンを付けた上で、 
 				// 更新日付が dst と同じか古い場合は、上書きしない
-				if (dstStat->WriteTime() + 20000000 >= srcStat->WriteTime() &&
+				if (safe_add(dstStat->WriteTime(), 20000000) >= srcStat->WriteTime() &&
 					((info.flags & COMPARE_CREATETIME) == 0
-				||	dstStat->CreateTime() + 20000000 >= srcStat->CreateTime()))
+				||	safe_add(dstStat->CreateTime(), 20000000) >= srcStat->CreateTime()))
 					return	FALSE;
 			}
 		}
@@ -2084,7 +2105,9 @@ BOOL FastCopy::OpenFileProc(FileStat *stat, int dir_len)
 				stat->hOvlFile = stat->hFile;
 			}
 			if (stat->hOvlFile != INVALID_HANDLE_VALUE) {
-				DisableLocalBuffering(stat->hOvlFile);
+				if ((info.flags & USE_OSCACHE_READ) == 0 && srcFsType == FSTYPE_NETWORK) {
+					DisableLocalBuffering(stat->hOvlFile);
+				}
 			}
 		}
 	}
@@ -2259,7 +2282,9 @@ BOOL FastCopy::OpenFileBackupStreamCore(int src_len, int64 size, WCHAR *altname,
 	}
 	else if (useOvl) {
 		subStat->hOvlFile = subStat->hFile;
-		DisableLocalBuffering(subStat->hFile);
+		if ((info.flags & USE_OSCACHE_READ) == 0 && srcFsType == FSTYPE_NETWORK) {
+			DisableLocalBuffering(subStat->hFile);
+		}
 	}
 
 	return	TRUE;
@@ -4023,8 +4048,9 @@ BOOL FastCopy::WriteFileProcCore(HANDLE *_fh, FileStat *stat, WInfo *_wi)
 			hIoFile = ::CreateFileW(dst, mode, share, 0, CREATE_ALWAYS, flg|flagOvl, 0);
 			if (hIoFile == INVALID_HANDLE_VALUE) hIoFile = fh;
 		}
-		if (useOvl) DisableLocalBuffering(hIoFile);
-
+		if (useOvl && wi.is_nonbuf && dstFsType == FSTYPE_NETWORK) {
+			DisableLocalBuffering(hIoFile);
+		}
 		ret = WriteFileCore(hIoFile, stat, &wi, mode, share, flg);
 
 		if (useOvl && hIoFile != fh && hIoFile != INVALID_HANDLE_VALUE) {
@@ -4651,7 +4677,11 @@ BOOL FastCopy::End(void)
 	dirStatBuf.FreeBuf();
 	fileStatBuf.FreeBuf();
 	listBuf.FreeBuf();
-	errBuf.FreeBuf();
+
+	if (errBuf.UsedSize() > 0) {
+		errBuf.FreeBuf();
+		errBuf.AllocBuf(MIN_ERR_BUF, MAX_ERR_BUF);
+	}
 	srcDepth.FreeBuf();
 	dstDepth.FreeBuf();
 	cnfDepth.FreeBuf();

@@ -40,9 +40,6 @@ DEFINE_GUID(CLSID_FcLnkExtLocal, \
 //#define CLSID_FcShExt CLSID_FcShExtLocal
 //#define CLSID_FcLnkExt CLSID_FcLnkExtLocal
 
-int MakePath(char *dest, const char *dir, const char *file);
-int MakePathW(WCHAR *dest, const WCHAR *dir, const WCHAR *file);
-BOOL GetClsId(REFIID cls_name, char *cls_id, int size);
 BOOL WINAPI SetMenuFlags(BOOL isAdmin, int flags);
 int WINAPI GetMenuFlags(BOOL isAdmin);
 BOOL WINAPI IsRegistServer(BOOL isAdmin);
