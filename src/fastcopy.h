@@ -370,6 +370,7 @@ public:
 	void SetWaitTick(DWORD wait) { waitTick = wait; }
 	DWORD GetWaitTick() { return waitTick; }
 	BOOL GetTransInfo(TransInfo *ti, BOOL fullInfo=TRUE);
+	VBuf *GetErrBuf() { return &errBuf; }
 
 protected:
 	enum Command {
