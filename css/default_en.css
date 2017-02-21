@@ -1,0 +1,68 @@
+.attention {
+	color:red;
+}
+.help_head1 {
+	color:black;
+	background-color:#88bbff;
+}
+.help_head2 {
+	color:black;
+	text-align:center;
+	background-color:#88bbff;
+	margin-bottom:10px;
+}
+.help_head3 {
+	color:black;
+	background-color:#88bbff;
+	margin-bottom:5px;
+}
+.help_head4 {
+	margin-bottom:0px;
+}
+.help_table {
+	border-style:solid;
+	border-collapse: separate;
+	background-color: #ddffdd;
+	border-color: #aaaaaa;
+	font-size: 95%;
+}
+.tr_default {
+	background-color: #aaffaa;
+}
+.help_all {
+}
+.help_section {
+	list-style:decimal;
+}
+.help_sub_section {
+	list-style:decimal;
+}
+.help_mini_section {
+	background-color: #cccccc;
+	padding:2%;
+}
+.help_mini_section2 {
+	margin-top:3px;
+	background-color: #eeffff;
+	padding:2%;
+}
+.help_license {
+	border-color:#777777; 
+	border-style:solid; 
+	padding:2%;
+	background-color: #dddddd;
+}
+.help_license_cond {
+	padding:5%;
+}
+.MPOUT {
+	position: absolute;
+	top: -300px;
+	left: -300px;
+}
+.MCOUT {
+        position: absolute;
+        top: -300px;
+        left: -300px;
+}
+
