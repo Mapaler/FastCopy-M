@@ -94,7 +94,7 @@ You can edit the source and rebuild executable.<br />
 Or more simple:
 * Unzip "FastCopy-M Resources Rebuild & Replace Tools.zip".
 * Use "Update resources source file.vbs" to update the newest source. Attention: Backup your edited file before use update.
-* Use "Visual Studio" or "free soft [ResEdit](http://www.resedit.net/)" for IDE (VS2005 or erlier not support 32bit icon, recommend VS2010 or later),or any Notepad to to edit "fastcopy.rc" directly.
+* Use "Visual Studio" for IDE (VS2010 or later),or any Notepad to to edit "fastcopy.rc" directly.
 * Visual Studio is Easy-to-use,ResEdit is not recommand (rc file saved by the soft , can't open in VS, and can't rebuild by my tools.Use it requir some processing), If you use Notepad edit manually. For example, open "fastcopy.rc" find and copy English part and past at the end.
 ```C
 /////////////////////////////////////////////////////////////////////////////
@@ -118,14 +118,14 @@ If you want add your translate to FastCopy-M, please send your "fastcopy.rc" sou
 ## Website
 ### FastCopy-M website | FastCopy-M网站
 
-http://www.mapaler.com/fastcopy-m/
+http://mapaler.github.io/FastCopy-M/
 
 ### Official website | FastCopy官方网站
 
 http://ipmsg.org/tools/fastcopy.html
  
 ##Official License | FastCopy官方许可
-FastCopy ver3.2 Copyright(C) 2004-2016 by SHIROUZU Hiroaki
+FastCopy ver3.x Copyright(C) 2004-2017 by SHIROUZU Hiroaki
 
 This program is free software. You can redistribute it and/or modify it under the GNU General Public License version 3(GPLv3).<br />
 [license-gpl3.txt](http://ipmsg.org/tools/license-gpl3.txt)

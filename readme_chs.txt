@@ -50,7 +50,7 @@ Copyright(C) 2004-2017 SHIROUZU Hiroaki All rights reserved.
 -------------------------------------------------------------------------
 
 使用方法:
-请参阅 fastcopy.chm
+请参阅 http://mapaler.github.io/FastCopy-M/help-chs.html
 
 生成:
 VS2015 或更高版本
