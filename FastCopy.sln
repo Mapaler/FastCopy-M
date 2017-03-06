@@ -13,6 +13,11 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "shellext", "src\shellext\shellext.vcxproj", "{DD8C289F-DDEB-4664-A8CD-65A2B067A1DF}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TLib", "src\TLib\TLib.vcxproj", "{E99EE17D-136C-4C37-B78A-18D324E7119C}"
+	ProjectSection(ProjectDependencies) = postProject
+		{9CBD28F4-499C-4DCD-B7A3-996ADD4BFF44} = {9CBD28F4-499C-4DCD-B7A3-996ADD4BFF44}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xxhash", "external\xxhash\xxhash.vcxproj", "{9CBD28F4-499C-4DCD-B7A3-996ADD4BFF44}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -54,6 +59,14 @@ Global
 		{E99EE17D-136C-4C37-B78A-18D324E7119C}.Release|Win32.Build.0 = Release|Win32
 		{E99EE17D-136C-4C37-B78A-18D324E7119C}.Release|x64.ActiveCfg = Release|x64
 		{E99EE17D-136C-4C37-B78A-18D324E7119C}.Release|x64.Build.0 = Release|x64
+		{9CBD28F4-499C-4DCD-B7A3-996ADD4BFF44}.Debug|Win32.ActiveCfg = Debug|Win32
+		{9CBD28F4-499C-4DCD-B7A3-996ADD4BFF44}.Debug|Win32.Build.0 = Debug|Win32
+		{9CBD28F4-499C-4DCD-B7A3-996ADD4BFF44}.Debug|x64.ActiveCfg = Debug|x64
+		{9CBD28F4-499C-4DCD-B7A3-996ADD4BFF44}.Debug|x64.Build.0 = Debug|x64
+		{9CBD28F4-499C-4DCD-B7A3-996ADD4BFF44}.Release|Win32.ActiveCfg = Release|Win32
+		{9CBD28F4-499C-4DCD-B7A3-996ADD4BFF44}.Release|Win32.Build.0 = Release|Win32
+		{9CBD28F4-499C-4DCD-B7A3-996ADD4BFF44}.Release|x64.ActiveCfg = Release|x64
+		{9CBD28F4-499C-4DCD-B7A3-996ADD4BFF44}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

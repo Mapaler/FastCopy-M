@@ -67,7 +67,7 @@ int TApp::Run(void)
 
 BOOL TApp::PreProcMsg(MSG *msg)	// for TranslateAccel & IsDialogMessage
 {
-	for (HWND hWnd=msg->hwnd; hWnd; hWnd=::GetParent(hWnd))
+	for (auto hWnd=msg->hwnd; hWnd; hWnd=::GetParent(hWnd))
 	{
 		if (TWin *win = SearchWnd(hWnd)) {
 			return	win->PreProcMsg(msg);

@@ -241,15 +241,5 @@
 			<param name="Local" value="fastcopy_eng.htm#history">
 			</OBJECT>
 	</UL>
-	<LI> <OBJECT type="text/sitemap">
-		<param name="Name" value="License">
-		<param name="WindowName" value="Main">
-		</OBJECT>
-	<UL>
-		<LI> <OBJECT type="text/sitemap">
-			<param name="Name" value="license">
-			<param name="Local" value="license-gpl3.txt">
-			</OBJECT>
-	</UL>
 </UL>
 </BODY></HTML>

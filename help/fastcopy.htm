@@ -72,11 +72,11 @@
 <body bgcolor="#eeffff">
 
 <div align="center">
-<h1 class="help_head1">FastCopy ver3.27</h1>
+<h1 class="help_head1">FastCopy ver3.30</h1>
 </div>
 <div class="help_all">
 
-<div align="right">2017/01/23 H.Shirouzu (白水啓章)</div>
+<div align="right">2017/03/06 H.Shirouzu (白水啓章)</div>
 
 <a name="index"/>
 <h2 class="help_head2">Index</h2>
@@ -147,7 +147,11 @@
 	FastCopy ver3.x は GNU Public License ver3 のオープンソースソフトウェアです。<br>
 	詳細は同梱の <a href="license-gpl3.txt">license-gpl3.txt</a> をご覧ください。<br>
 	（改変版バイナリ配布を、配布先に対してソースコード非公開で行いたい場合や、バンドル版や特別版開発等のご要望がありましたら、作者(shirouzu@ipmsg.org)までお問い合わせください）
-	</div>
+	<br>
+	</div><br>
+	<div class="help_license">
+	xxHash Library Copyright (c) 2012-2014, Yann Collet All rights reserved.<br>
+	<a href="xxhash-LICENSE.txt">ライセンス詳細はこちら</a>。
 	</div>
 </div>
 
@@ -260,7 +264,7 @@
 		（ただし、エラー表示欄やエラーログには残ります）</td></tr>
 		<tr><td nowrap><strong>ベリファイ</strong></td>
 		<td><a name="hash_mode"/>MD5 (SHA-1/SHA-256) による書き込みデータのベリファイを行います。<br>
-		（SHA-1/SHA-256 を利用する場合は、設定の<a href="#setting_copyopt">コピー・移動関連オプション</a>から変更できます。
+		（SHA-1/SHA-256/xxHash を利用する場合は、設定の<a href="#setting_copyopt">コピー・移動関連オプション</a>から変更できます。
 		安全性としてはMD5 で十分ですが、ログに記録されるハッシュ値を別用途で利用したい場合にお使いください）<br><br>
 		 なお、具体的には、次のような比較を行います。<br>
 		 Read(Src) -> MD5(Src) -> Write(Dst) -> Read(Dst) -> MD5(Dst) -> MD5比較(Src/Dst) <br>
@@ -725,7 +729,7 @@
 	<tr><td nowrap><strong>/acl</strong></td><td>アクセスコントロールリスト(ACL)、拡張属性(EA)をコピーします（NTFSのみ有効）（/acl=FALSE で抑止）</td></tr>
 	<tr><td nowrap><strong>/stream</strong></td><td>副次ストリームをコピーします（NTFSのみ有効）（/stream=FALSE で抑止）</td></tr>
 	<tr><td nowrap><strong>/reparse</strong></td><td>ジャンクション・マウントポイント・シンボリックリンクを（配下ではなく）それ自体をコピーします（/reparse=FALSE で配下をコピー）（<a href="#reparse">詳細</a> および <a href="#junction_ps">注意</a>）</td></tr>
-	<tr><td nowrap><strong>/verify</strong></td><td><a href="#hash_mode">MD5(or SHA-1, SHA-256) </a>による書き込みデータのベリファイを行います（/verify=FALSE で抑止）</td></tr>
+	<tr><td nowrap><strong>/verify</strong></td><td><a href="#hash_mode">MD5(or SHA-1, SHA-256, xxHash) </a>による書き込みデータのベリファイを行います（/verify=FALSE で抑止）</td></tr>
 	<tr><td nowrap><strong>/linkdest</strong></td><td><a name="linkdest"/>ハードリンクを可能な限り再現します。詳細は <a href="#hardlink">こちらを参照</a> ください。</td></tr>
 	<tr><td nowrap><strong>/recreate</strong></td><td><a name="recreate"/>ファイル更新の挙動を、既存ファイルの上書きから、既存ファイル削除＆再生成に変更します。（/linkdest 指定時には、/recreate指定の有無に関わらず、この動作を行います）常時、この動作を有効にしたい場合、fastcopy2.ini [main] recreate=1 にします。</td></tr>
 	<tr><td nowrap><strong>/postproc=終了時処理名</strong></td><td>事前に登録してある終了時処理名を指定します。（/postproc=FALSE で抑止）</td></tr>
@@ -791,6 +795,14 @@
 
 <table class="help_table" border="4">
 <tr><th>Version</th><th>説明</th></tr>
+<tr><td>v3.30</td><td>
+ベリファイモード選択にxxHashを追加。<br>
+テスト用ファイル作成モード設定を追加（[読み込みなしでの]非同期I/Oを使った書き込み速度テスト＆ダミーファイル作成）。<br>
+開始パスフィルタで、階層の違うパス指定を複数行うと最も深い指定のみ利用される問題を修正。<br>
+ネットワークドライブの同一判定を間違えることがあったのを修正。<br>
+ジョブ登録では、バッファ設定を個別保存しないポリシーに変更<br>
+その他リファイン
+</td></tr>
 <tr><td>v3.27</td><td>
 No UIモード起動（スケジューラ起動等）で、コピー動作前チェック（パス検査等）でエラーが発生した場合に、詳細内容がログに記録されるように。<br>
 その他リファイン。

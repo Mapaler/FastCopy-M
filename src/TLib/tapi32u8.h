@@ -158,6 +158,9 @@ public:
 	bool operator !=(const Wstr &_w) const {
 		return !(_w == str);
 	}
+	bool operator <(const Wstr &_w) const {
+		return wcscmp(s(), _w.s()) < 0;
+	}
 	WCHAR &operator [](int idx) {
 		return str[idx];
 	}
@@ -207,9 +210,13 @@ class U8str {
 	}
 
 public:
-	U8str(const char *_str=NULL, StrMode mode=BY_UTF8) {
+	U8str(const char *_str, StrMode mode=BY_UTF8, int _len=-1) {
 		FirstInit();
-		Init(_str, mode);
+		Init(_str, mode, _len);
+	}
+	U8str() {
+		FirstInit();
+		Init(NULL, BY_UTF8, -1);
 	}
 	U8str(const WCHAR *_str, int _len=-1) {
 		FirstInit();
@@ -236,9 +243,9 @@ public:
 		str = _str ? WtoU8(_str, len) : NULL;
 		len = -1;
 	}
-	void Init(const char *_str, StrMode mode=BY_UTF8) {
+	void Init(const char *_str, StrMode mode=BY_UTF8, int _len=-1) {
 		UnInit();
-		str = _str ? (mode == BY_UTF8) ? strdupNew(_str) : AtoU8(_str) : NULL;
+		str = _str ? (mode == BY_UTF8) ? strdupNew(_str, _len) : AtoU8(_str) : NULL;
 		len = -1;
 	}
 	void Init(int _len=0) {
@@ -270,6 +277,21 @@ public:
 		Init(w);
 		return *this;
 	}
+	U8str &operator +=(const char *_str) {
+		if (_str && *_str) {
+			int		len_l = Len();
+			int		len_s = int(strlen(_str));
+			char	*buf  = new char [len_l + len_s + 1];
+			if (str) {
+				memcpy(buf, str, len_l * sizeof(char));
+				delete [] str;
+			}
+			str = buf;
+			memcpy(str + len_l, _str, (len_s + 1) * sizeof(char));
+			len = len_l + len_s;
+		}
+		return	*this;
+	}
 	bool operator ==(const char *_str) const {
 		if (!str || !_str) {
 			return str == _str;
@@ -287,6 +309,9 @@ public:
 	}
 	bool operator !=(const U8str &_u) const {
 		return !(_u == str);
+	}
+	bool operator <(const U8str &_u) const {
+		return strcmp(s(), _u.s()) < 0;
 	}
 	char &operator [](int idx) {
 		return str[idx];
@@ -394,14 +419,17 @@ public:
 	operator bool() {
 		return !IsEmpty();
 	}
-	bool operator ==(const MBCSstr &_u) const {
-		return _u == str;
+	bool operator ==(const MBCSstr &_m) const {
+		return _m == str;
 	}
 	bool operator !=(const char *_str) const {
 		return !(*this == _str);
 	}
-	bool operator !=(const MBCSstr &_u) const {
-		return !(_u == str);
+	bool operator !=(const MBCSstr &_m) const {
+		return !(_m == str);
+	}
+	bool operator <(const MBCSstr &_m) const {
+		return strcmp(s(), _m.s()) < 0;
 	}
 	char &operator [](int idx) {
 		return str[idx];
@@ -444,6 +472,7 @@ inline int AtoU8(const char *src, char *dst, int bufsize) {
 
 BOOL IsUTF8(const char *s, BOOL *is_ascii=NULL, char **invalid_point=NULL);
 BOOL StrictUTF8(char *s);
+int u8cpyz(char *d, const char *s, int max_len);
 
 BOOL StrictUTF8(char *s);
 int U8Len(const char *s, int max_size=-1);

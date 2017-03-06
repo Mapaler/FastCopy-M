@@ -689,9 +689,7 @@ BOOL IsUTF8(const char *_s, BOOL *is_ascii, char **invalid_point)
 	*is_ascii = TRUE;
 
 	while (*s) {
-		if (*s <= 0x7f) {
-		}
-		else {
+		if (*s >= 0x80) {
 			*is_ascii = FALSE;
 			*invalid_point = (char *)s;
 
@@ -703,19 +701,6 @@ BOOL IsUTF8(const char *_s, BOOL *is_ascii, char **invalid_point)
 				if ((*++s & 0xc0) != 0x80) return FALSE;
 			}
 			else if (*s <= 0xf7) {
-				if ((*++s & 0xc0) != 0x80) return FALSE;
-				if ((*++s & 0xc0) != 0x80) return FALSE;
-				if ((*++s & 0xc0) != 0x80) return FALSE;
-			}
-			else if (*s <= 0xfb) {
-				if ((*++s & 0xc0) != 0x80) return FALSE;
-				if ((*++s & 0xc0) != 0x80) return FALSE;
-				if ((*++s & 0xc0) != 0x80) return FALSE;
-				if ((*++s & 0xc0) != 0x80) return FALSE;
-			}
-			else if (*s <= 0xfd) {
-				if ((*++s & 0xc0) != 0x80) return FALSE;
-				if ((*++s & 0xc0) != 0x80) return FALSE;
 				if ((*++s & 0xc0) != 0x80) return FALSE;
 				if ((*++s & 0xc0) != 0x80) return FALSE;
 				if ((*++s & 0xc0) != 0x80) return FALSE;
@@ -735,6 +720,16 @@ BOOL StrictUTF8(char *s)
 		return	TRUE;
 	}
 	return	FALSE;
+}
+
+int u8cpyz(char *d, const char *s, int max_len)
+{
+	int len = strncpyz(d, s, max_len);
+
+	if (StrictUTF8(d)) {
+		return	(int)strlen(d);
+	}
+	return	len;
 }
 
 int U8Len(const char *s, int max_size)
@@ -765,21 +760,6 @@ int U8Len(const char *s, int max_size)
 		}
 		else if (*s <= 0xf7) {
 			if ((cur_size += 4) > max_size) break;
-			if ((*++s & 0xc0) != 0x80) return -1;
-			if ((*++s & 0xc0) != 0x80) return -1;
-			if ((*++s & 0xc0) != 0x80) return -1;
-		}
-		else if (*s <= 0xfb) {
-			if ((cur_size += 5) > max_size) break;
-			if ((*++s & 0xc0) != 0x80) return -1;
-			if ((*++s & 0xc0) != 0x80) return -1;
-			if ((*++s & 0xc0) != 0x80) return -1;
-			if ((*++s & 0xc0) != 0x80) return -1;
-		}
-		else if (*s <= 0xfd) {
-			if ((cur_size += 6) > max_size) break;
-			if ((*++s & 0xc0) != 0x80) return -1;
-			if ((*++s & 0xc0) != 0x80) return -1;
 			if ((*++s & 0xc0) != 0x80) return -1;
 			if ((*++s & 0xc0) != 0x80) return -1;
 			if ((*++s & 0xc0) != 0x80) return -1;

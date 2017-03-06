@@ -55,7 +55,6 @@ public:
 		prevHash = nextHash = NULL;
 		return TRUE;
 	}
-	friend THashTblT<T>;
 };
 
 template<class T>
@@ -83,7 +82,7 @@ public:
 			return	FALSE;	// VC4's new don't occur exception
 		}
 		for (int i=0; i < hashNum; i++) {
-			THashObjT<T>	*obj = hashTbl + i;
+			auto obj = hashTbl + i;
 			obj->prevHash = obj->nextHash = obj;
 		}
 		registerNum = 0;
@@ -95,9 +94,9 @@ public:
 		}
 		if (isDeleteObj) {
 			for (int i=0; i < hashNum && registerNum > 0; i++) {
-				THashObjT<T>	*start = hashTbl + i;
-				for (THashObjT<T> *obj=start->nextHash; obj != start; ) {
-					THashObjT<T> *next = obj->nextHash;
+				auto	start = hashTbl + i;
+				for (auto obj=start->nextHash; obj != start; ) {
+					auto next = obj->nextHash;
 					delete obj;
 					obj = next;
 					registerNum--;
@@ -120,8 +119,8 @@ public:
 		}
 	}
 	virtual THashObjT<T> *Search(const void *data, T hash_id) {
-		THashObjT<T> *top = hashTbl + (hash_id % hashNum);
-		for (THashObjT<T> *obj=top->nextHash; obj != top; obj=obj->nextHash) {
+		auto top = hashTbl + (hash_id % hashNum);
+		for (auto obj=top->nextHash; obj != top; obj=obj->nextHash) {
 			if (obj->hashId == hash_id && IsSameVal(obj, data)) {
 				return obj;
 			}
@@ -211,37 +210,37 @@ class VBuf {
 protected:
 	BYTE	*buf;
 	VBuf	*borrowBuf;
-	ssize_t	size;
-	ssize_t	usedSize;
-	ssize_t	maxSize;
+	size_t	size;
+	size_t	usedSize;
+	size_t	maxSize;
 	void	Init();
 
 public:
-	VBuf(ssize_t _size=0, ssize_t _max_size=0, VBuf *_borrowBuf=NULL);
+	VBuf(size_t _size=0, size_t _max_size=0, VBuf *_borrowBuf=NULL);
 	~VBuf();
-	BOOL	AllocBuf(ssize_t _size, ssize_t _max_size=0, VBuf *_borrowBuf=NULL);
+	BOOL	AllocBuf(size_t _size, size_t _max_size=0, VBuf *_borrowBuf=NULL);
 	BOOL	LockBuf();
 	void	FreeBuf();
-	BOOL	Grow(ssize_t grow_size);
+	BOOL	Grow(size_t grow_size);
 	operator bool() { return buf ? true : false; }
 	operator void *() { return buf; }
 	operator BYTE *() { return buf; }
 	operator char *() { return (char *)buf; }
 	BYTE	*Buf() { return	buf; }
 	WCHAR	*WBuf() { return (WCHAR *)buf; }
-	ssize_t	Size() { return size; }
-	ssize_t	MaxSize() { return maxSize; }
-	ssize_t	UsedSize() { return usedSize; }
+	size_t	Size() { return size; }
+	size_t	MaxSize() { return maxSize; }
+	size_t	UsedSize() { return usedSize; }
 	BYTE	*UsedEnd() { return	buf + usedSize; }
-	void	SetUsedSize(ssize_t _used_size) { usedSize = _used_size; }
-	ssize_t	AddUsedSize(ssize_t _used_size) { return usedSize += _used_size; }
-	ssize_t	RemainSize(void) { return size - usedSize; }
+	void	SetUsedSize(size_t _used_size) { usedSize = _used_size; }
+	size_t	AddUsedSize(size_t _used_size) { return usedSize += _used_size; }
+	size_t	RemainSize(void) { return size - usedSize; }
 	VBuf& operator =(const VBuf&);
 };
 
 template <class T>
 class VBVec : public VBuf {
-	ssize_t	growSize;
+	size_t	growSize;
 	int		usedNum;
 
 public:
@@ -250,8 +249,8 @@ public:
 		usedNum = 0;
 	}
 	BOOL Init(int min_num, int max_num, int grow_num=0) {
-		ssize_t min_size = ALIGN_SIZE(min_num * sizeof(T), PAGE_SIZE);
-		ssize_t max_size = ALIGN_SIZE(max_num * sizeof(T), PAGE_SIZE);
+		size_t min_size = ALIGN_SIZE(min_num * sizeof(T), PAGE_SIZE);
+		size_t max_size = ALIGN_SIZE(max_num * sizeof(T), PAGE_SIZE);
 		growSize = grow_num ? ALIGN_SIZE(grow_num * sizeof(T), PAGE_SIZE) : min_size;
 		if (growSize == 0) {
 			growSize = ALIGN_SIZE(sizeof(T), PAGE_SIZE);
@@ -273,7 +272,7 @@ public:
 			return true;
 		}
 
-		ssize_t	need_size = need_num * sizeof(T);
+		size_t	need_size = need_num * sizeof(T);
 		if (need_size > size) {
 			if (need_size > maxSize) {
 				return false;
@@ -328,23 +327,23 @@ class GBuf {
 protected:
 	HGLOBAL	hGlobal;
 	BYTE	*buf;
-	int		size;
+	size_t	size;
 	UINT	flags;
 
 public:
-	GBuf(int _size=0, BOOL with_lock=TRUE, UINT _flags=GMEM_MOVEABLE) {
+	GBuf(size_t _size=0, BOOL with_lock=TRUE, UINT _flags=GMEM_MOVEABLE) {
 		Init(_size, with_lock, _flags);
 	}
 	GBuf(VBuf *vbuf, BOOL with_lock=TRUE, UINT _flags=GMEM_MOVEABLE) {
-		Init((int)vbuf->Size(), with_lock, _flags);
+		Init(vbuf->Size(), with_lock, _flags);
 		if (buf) {
-			memcpy(buf, vbuf->Buf(), (int)vbuf->Size());
+			memcpy(buf, vbuf->Buf(), vbuf->Size());
 		}
 	}
 	~GBuf() {
 		UnInit();
 	}
-	BOOL Init(int _size=0, BOOL with_lock=TRUE, UINT _flags=GMEM_MOVEABLE) {
+	BOOL Init(size_t _size=0, BOOL with_lock=TRUE, UINT _flags=GMEM_MOVEABLE) {
 		hGlobal	= NULL;
 		buf		= NULL;
 		flags	= _flags;
@@ -392,48 +391,80 @@ public:
 		}
 		
 	}
-	int	Size() { return size; }
+	size_t	Size() { return size; }
 	const GBuf& operator =(const GBuf &);	// default definition is none
 };
 
 class DynBuf {
 protected:
 	char	*buf;
-	int		size;
-	int		usedSize;
+	size_t	size;
+	size_t	usedSize;
 
 public:
-	DynBuf(int _size=0)	{
+	DynBuf(size_t _size=0, void *init_buf=NULL) {
 		buf = NULL;
+		size = 0;
 		usedSize = 0;
 
-		if ((size = _size) > 0) {
-			Alloc(size);
+		if (_size > 0) {
+			if (init_buf) {
+				Init(init_buf, _size);
+			} else {
+				Alloc(_size);
+			}
 		}
 	}
 	~DynBuf() {
 		free(buf);
 	}
-	char *Alloc(int _size) {
+	char *Alloc(size_t _size) {
 		if (buf) {
 			free(buf);
 		}
 		buf = NULL;
+		size = 0;
 		usedSize = 0;
-		if ((size = _size) <= 0) {
+		if (_size <= 0) {
 			return NULL;
 		}
-		return	(buf = (char *)malloc(size));
+		if ((buf = (char *)malloc(_size))) {
+			size = _size;
+		}
+		return	buf;
+	}
+	void Init(void *init_buf, size_t _size) {
+		Alloc(_size);
+		if (init_buf) {
+			memcpy(buf, init_buf, _size);
+			usedSize = _size;
+		}
 	}
 	void Free() 		{ Alloc(0); }
+	BYTE *Buf()			{ return (BYTE *)buf; }
+	const char *s()		{ return (const char *)buf; }
 	operator char*()	{ return (char *)buf; }
 	operator BYTE*()	{ return (BYTE *)buf; }
 	operator WCHAR*()	{ return (WCHAR *)buf; }
 	operator void*()	{ return (void *)buf; }
-	int	Size()			{ return size; }
-	int	UsedSize()		{ return usedSize; }
-	int	SetUsedSize(int _usedSize) { usedSize = _usedSize; }
-	const DynBuf& operator =(const DynBuf &);	// default definition is none
+	size_t Size()		{ return size; }
+	size_t UsedSize()	{ return usedSize; }
+	size_t SetUsedSize(size_t _usedSize) { return usedSize = _usedSize; }
+	const DynBuf& operator =(const DynBuf &d) {
+		if (Alloc(d.size) && d.size > 0) {
+			memcpy(buf, d.buf, d.size);
+		}
+		usedSize = d.usedSize;
+		return	*this;
+	}
+	bool operator ==(const DynBuf &d) {
+		if (usedSize != d.usedSize) return false;
+		if (usedSize == 0) return true;
+		return	memcmp(buf, d.buf, usedSize) == 0;
+	}
+	bool operator !=(const DynBuf &d) {
+		return	!(*this == d);
+	}
 };
 
 void InitInstanceForLoadStr(HINSTANCE hI);
@@ -460,27 +491,28 @@ inline int AddPathW(WCHAR *dest, const WCHAR *file, int max_len=INT_MAX) {
 }
 
 int64 hex2ll(char *buf);
-int bin2hexstr(const BYTE *bindata, int len, char *buf);
-int bin2hexstr_revendian(const BYTE *bin, int len, char *buf);
-int bin2hexstrW(const BYTE *bindata, int len, WCHAR *buf);
-BOOL hexstr2bin(const char *buf, BYTE *bindata, int maxlen, int *len);
-BOOL hexstr2bin_revendian(const char *buf, BYTE *bindata, int maxlen, int *len);
-
+int bin2hexstr(const BYTE *bindata, size_t len, char *buf);
+int bin2hexstr_revendian(const BYTE *bin, size_t len, char *buf);
+int bin2hexstrW(const BYTE *bindata, size_t len, WCHAR *buf);
+size_t hexstr2bin(const char *buf, BYTE *bindata, size_t maxlen);
+size_t hexstr2bin_revendian(const char *buf, BYTE *bindata, size_t maxlen);
+size_t hexstr2bin_revendian_ex(const char *buf, BYTE *bindata, size_t maxlen, int slen=-1);
 BYTE hexstr2byte(const char *buf);
 WORD hexstr2word(const char *buf);
 DWORD hexstr2dword(const char *buf);
 int64 hexstr2int64(const char *buf);
 
-int bin2b64str(const BYTE *bindata, int len, char *buf);
-int bin2b64str_revendian(const BYTE *bin, int len, char *buf);
-BOOL b64str2bin(const char *buf, BYTE *bindata, int maxlen, int *len);
-BOOL b64str2bin_revendian(const char *buf, BYTE *bindata, int maxlen, int *len);
+int bin2b64str(const BYTE *bindata, size_t len, char *buf);
+int bin2b64str_revendian(const BYTE *bin, size_t len, char *buf);
+size_t b64str2bin(const char *buf, BYTE *bindata, size_t maxlen);
+size_t b64str2bin_ex(const char *buf, int buf_len, BYTE *bindata, size_t maxlen);
+size_t b64str2bin_revendian(const char *buf, BYTE *bindata, size_t maxlen);
 
-int bin2urlstr(const BYTE *bindata, int len, char *str);
-BOOL urlstr2bin(const char *str, BYTE *bindata, int maxlen, int *len);
+int bin2urlstr(const BYTE *bindata, size_t len, char *str);
+size_t urlstr2bin(const char *str, BYTE *bindata, size_t maxlen);
 
-void rev_order(BYTE *data, int size);
-void rev_order(const BYTE *src, BYTE *dst, int size);
+void rev_order(BYTE *data, size_t size);
+void rev_order(const BYTE *src, BYTE *dst, size_t size);
 
 char *strdupNew(const char *_s, int max_len=-1);
 WCHAR *wcsdupNew(const WCHAR *_s, int max_len=-1);
@@ -489,7 +521,7 @@ int strcpyz(char *dest, const char *src);
 int wcscpyz(WCHAR *dest, const WCHAR *src);
 int strncpyz(char *dest, const char *src, int num);
 int strncatz(char *dest, const char *src, int num);
-const char *wcsnchr(const char *src, char ch, int num);
+const char *strnchr(const char *srs, char ch, int num);
 int wcsncpyz(WCHAR *dest, const WCHAR *src, int num);
 int wcsncatz(WCHAR *dest, const WCHAR *src, int num);
 const WCHAR *wcsnchr(const WCHAR *src, WCHAR ch, int num);
@@ -517,6 +549,46 @@ inline int get_ntz(u_int val) {
 	_BitScanForward(&ret, val);
 	return	ret;
 }
+
+inline int get_nlz64(uint64 val) {
+#ifdef _WIN64
+	u_long	ret = 0;
+	_BitScanReverse64(&ret, val);
+	return	ret;
+#else
+	u_long	ret = 0;
+	u_int	sval = (u_int)(val >> 32);
+	if (_BitScanReverse(&ret, sval)) {
+		return ret;
+	}
+
+	_BitScanReverse(&ret, (u_int)val);
+	ret += 32;
+	return	ret;
+#endif
+}
+
+inline int get_nlz(u_int val) {
+	u_long	ret = 0;
+	_BitScanReverse(&ret, val);
+	return	ret;
+}
+
+inline int len_to_hexlen(int64 len) {
+	int	bits = get_nlz64(len);
+	int	bytes = bits / 4 + 1;
+
+	return	bytes;
+}
+
+inline size_t b64_size(size_t len) {
+	return ((len + 2) / 3) * 4;
+}
+
+inline size_t b64_to_len(size_t len) {
+	return (len / 4) * 3;
+}
+
 
 class TTick {
 	DWORD	tick;
@@ -667,6 +739,7 @@ HBITMAP TIconToBmp(HICON hIcon, int cx, int cy);
 
 BOOL ForceSetTrayIcon(HWND hWnd, UINT id, DWORD pref=2);
 BOOL SetWinAppId(HWND hWnd, const WCHAR *app_id);
+BOOL IsWineEnvironment();
 
 // ADS/domain
 BOOL IsDomainEnviron();

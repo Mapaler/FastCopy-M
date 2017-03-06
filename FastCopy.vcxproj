@@ -123,7 +123,7 @@
       <Culture>0x0411</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>comctl32.lib;crypt32.lib;winmm.lib;mpr.lib;Shlwapi.lib;Output\$(Configuration)\$(PlatformShortName)\lib\tlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>comctl32.lib;crypt32.lib;winmm.lib;mpr.lib;Shlwapi.lib;Output\$(Configuration)\$(PlatformShortName)\lib\tlib.lib;Output\$(Configuration)\$(PlatformShortName)\lib\xxhash.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(IntDir)\$(TargetName).pdb</ProgramDatabaseFile>
@@ -175,7 +175,7 @@
       <Culture>0x0411</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>comctl32.lib;crypt32.lib;winmm.lib;mpr.lib;Shlwapi.lib;Output\$(Configuration)\$(PlatformShortName)\lib\tlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>comctl32.lib;crypt32.lib;winmm.lib;mpr.lib;Shlwapi.lib;Output\$(Configuration)\$(PlatformShortName)\lib\tlib.lib;Output\$(Configuration)\$(PlatformShortName)\lib\xxhash.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -226,7 +226,7 @@
       <Culture>0x0411</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>comctl32.lib;crypt32.lib;winmm.lib;mpr.lib;Shlwapi.lib;Output\$(Configuration)\$(PlatformShortName)\lib\tlib_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>comctl32.lib;crypt32.lib;winmm.lib;mpr.lib;Shlwapi.lib;Output\$(Configuration)\$(PlatformShortName)\lib\tlib_d.lib;Output\$(Configuration)\$(PlatformShortName)\lib\xxhash_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(IntDir)\$(TargetName).pdb</ProgramDatabaseFile>
@@ -270,7 +270,7 @@
       <Culture>0x0411</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>comctl32.lib;crypt32.lib;winmm.lib;mpr.lib;Shlwapi.lib;Output\$(Configuration)\$(PlatformShortName)\lib\tlib_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>comctl32.lib;crypt32.lib;winmm.lib;mpr.lib;Shlwapi.lib;Output\$(Configuration)\$(PlatformShortName)\lib\tlib_d.lib;Output\$(Configuration)\$(PlatformShortName)\lib\xxhash_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>

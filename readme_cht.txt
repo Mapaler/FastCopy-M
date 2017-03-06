@@ -1,8 +1,8 @@
 ﻿======================================================================
-                     FastCopy  ver3.27                 2017/01/23
+                     FastCopy  ver3.30                 2017/03/06
                                             H.Shirouzu（白水啓章）
-                     FastCopy-M branch              2015/09/22
-                                            Mapaler（楓谷劍仙）
+                     FastCopy-M branch                 2017/03/06
+                                            Mapaler   （楓谷劍仙）
 ======================================================================
 
 特點：
@@ -47,6 +47,10 @@ Copyright(C) 2004-2017 SHIROUZU Hiroaki All rights reserved.
 如果你想分發你修改後的二進位檔案，但是你不想要公佈修改後的原始程式碼，或你想請求開發捆綁/特殊版本，請與原作者聯繫。(shirouzu@ipmsg.org) 
 
 詳細資訊請閱讀 license-gpl3.txt
+
+	xxHash library Copyright (C) 2012-2014 Mr.Yann Collet, All rights reserved.
+	  more details: external/xxhash/LICENSE
+
 -------------------------------------------------------------------------
 
 使用方法:

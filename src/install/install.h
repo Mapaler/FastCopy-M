@@ -118,6 +118,7 @@ public:
 #define README_CHS_TXT		"readme_chs.txt"
 #define README_CHT_TXT		"readme_cht.txt"
 #define GPL_TXT				"license-gpl3.txt"
+#define XXHASH_TXT			"xxhash-LICENSE.txt"
 #define HELP_CHM			"FastCopy.chm"
 #define SHELLEXT1_DLL		"FastCopy_shext.dll"
 #define SHELLEXT2_DLL		"FastCopy_shext2.dll"

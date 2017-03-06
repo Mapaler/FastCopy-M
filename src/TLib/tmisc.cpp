@@ -204,7 +204,7 @@ void Condition::Notify(void)	// 現状では、眠っているスレッド全員
   説  明 ： 
   注  意 ： 
 =========================================================================*/
-VBuf::VBuf(ssize_t _size, ssize_t _max_size, VBuf *_borrowBuf)
+VBuf::VBuf(size_t _size, size_t _max_size, VBuf *_borrowBuf)
 {
 	Init();
 
@@ -224,7 +224,7 @@ void VBuf::Init(void)
 	size = usedSize = maxSize = 0;
 }
 
-BOOL VBuf::AllocBuf(ssize_t _size, ssize_t _max_size, VBuf *_borrowBuf)
+BOOL VBuf::AllocBuf(size_t _size, size_t _max_size, VBuf *_borrowBuf)
 {
 	if (buf) FreeBuf();
 
@@ -267,7 +267,7 @@ void VBuf::FreeBuf(void)
 	Init();
 }
 
-BOOL VBuf::Grow(ssize_t grow_size)
+BOOL VBuf::Grow(size_t grow_size)
 {
 	if (size + grow_size > maxSize)
 		return	FALSE;
@@ -366,9 +366,9 @@ int MakePath(char *dest, const char *dir, const char *file, int max_len)
 		dir = dest;
 	}
 
-	ssize_t	len;
+	int	len;
 	if (dest == dir) {
-		len = strlen(dir);
+		len = (int)strlen(dir);
 	} else {
 		len = strcpyz(dest, dir);
 	}
@@ -393,7 +393,7 @@ int MakePath(char *dest, const char *dir, const char *file, int max_len)
 			dest[len++] = '\\';
 		}
 	}
-	return	(int)len + strncpyz(dest + len, file, max_len - (int)len);
+	return	len + strncpyz(dest + len, file, max_len - len);
 }
 
 /*=========================================================================
@@ -405,17 +405,17 @@ int MakePathU8(char *dest, const char *dir, const char *file, int max_len)
 		dir = dest;
 	}
 
-	ssize_t	len;
+	int	len;
 
 	if (dest == dir) {
-		len = strlen(dir);
+		len = (int)strlen(dir);
 	} else {
 		len = strcpyz(dest, dir);
 	}
 	if (len > 0 && dest[len -1] != '\\') {
 		dest[len++] = '\\';
 	}
-	return	(int)len + strncpyz(dest + len, file, max_len - (int)len);
+	return	len + strncpyz(dest + len, file, max_len - len);
 }
 
 /*=========================================================================
@@ -427,17 +427,17 @@ int MakePathW(WCHAR *dest, const WCHAR *dir, const WCHAR *file, int max_len)
 		dir = dest;
 	}
 
-	ssize_t	len;
+	int	len;
 
 	if (dest == dir) {
-		len = wcslen(dir);
+		len = (int)wcslen(dir);
 	} else {
 		len = wcscpyz(dest, dir);
 	}
 	if (len > 0 && dest[len -1] != '\\') {
 		dest[len++] = '\\';
 	}
-	return	(int)len + wcsncpyz(dest + len, file, max_len - (int)len);
+	return	len + wcsncpyz(dest + len, file, max_len - len);
 }
 
 
@@ -458,19 +458,21 @@ inline u_char hexchar2char(u_char ch)
 	return 0xff;
 }
 
-BOOL hexstr2bin(const char *buf, BYTE *bindata, int maxlen, int *len)
+size_t hexstr2bin(const char *buf, BYTE *bindata, size_t maxlen)
 {
-	for (*len=0; buf[0] && buf[1] && *len < maxlen; buf+=2, (*len)++)
+	size_t	len = 0;
+
+	for ( ; buf[0] && buf[1] && len < maxlen; buf+=2, len++)
 	{
 		u_char c1 = hexchar2char(buf[0]);
 		u_char c2 = hexchar2char(buf[1]);
 		if (c1 == 0xff || c2 == 0xff) break;
-		bindata[*len] = (c1 << 4) | c2;
+		bindata[len] = (c1 << 4) | c2;
 	}
-	return	TRUE;
+	return	len;
 }
 
-int bin2hexstr(const BYTE *bindata, int len, char *buf)
+int bin2hexstr(const BYTE *bindata, size_t len, char *buf)
 {
 	for (const BYTE *end=bindata+len; bindata < end; bindata++)
 	{
@@ -478,10 +480,10 @@ int bin2hexstr(const BYTE *bindata, int len, char *buf)
 		*buf++ = hexstr[*bindata & 0x0f];
 	}
 	*buf = 0;
-	return	len * 2;
+	return	int(len * 2);
 }
 
-int bin2hexstrW(const BYTE *bindata, int len, WCHAR *buf)
+int bin2hexstrW(const BYTE *bindata, size_t len, WCHAR *buf)
 {
 	for (const BYTE *end=bindata+len; bindata < end; bindata++)
 	{
@@ -489,41 +491,51 @@ int bin2hexstrW(const BYTE *bindata, int len, WCHAR *buf)
 		*buf++ = hexstr_w[*bindata & 0x0f];
 	}
 	*buf = 0;
-	return	len * 2;
+	return	int(len * 2);
 }
 
 /* little-endian binary to hexstr */
-int bin2hexstr_revendian(const BYTE *bindata, int len, char *buf)
+int bin2hexstr_revendian(const BYTE *bindata, size_t len, char *buf)
 {
-	int		sv_len = len;
+	size_t	sv_len = len;
 	while (len-- > 0)
 	{
 		*buf++ = hexstr[bindata[len] >> 4];
 		*buf++ = hexstr[bindata[len] & 0x0f];
 	}
 	*buf = 0;
-	return	sv_len * 2;
+	return	int(sv_len * 2);
 }
 
-BOOL hexstr2bin_revendian(const char *buf, BYTE *bindata, int maxlen, int *len)
+size_t hexstr2bin_revendian(const char *s, BYTE *bindata, size_t maxlen)
 {
-	*len = 0;
-	for (int buflen = (int)strlen(buf); buflen >= 2 && *len < maxlen; buflen-=2, (*len)++)
-	{
-		u_char c1 = hexchar2char(buf[buflen-1]);
-		u_char c2 = hexchar2char(buf[buflen-2]);
-		if (c1 == 0xff || c2 == 0xff) break;
-		bindata[*len] = c1 | (c2 << 4);
+	return	hexstr2bin_revendian_ex(s, bindata, maxlen);
+}
+
+size_t hexstr2bin_revendian_ex(const char *s, BYTE *bindata, size_t maxlen, int slen)
+{
+	size_t	len = 0;
+
+	if (slen == -1) {
+		slen = (int)strlen(s);
 	}
-	return	TRUE;
+
+	for ( ; slen >= 1 && len < maxlen; slen-=2, len++) {
+		u_char c1 = hexchar2char(s[slen-1]);
+		u_char c2 = (slen >= 2) ? hexchar2char(s[slen-2]) : 0;
+		if (c1 == 0xff || c2 == 0xff) {
+			return FALSE;
+		}
+		bindata[len] = c1 | (c2 << 4);
+	}
+	return	len;
 }
 
 BYTE hexstr2byte(const char *buf)
 {
 	BYTE	val = 0;
-	int		len = 0;
 
-	hexstr2bin_revendian(buf, (BYTE *)&val, sizeof(val), &len);
+	hexstr2bin_revendian(buf, (BYTE *)&val, sizeof(val));
 
 	return	val;
 }
@@ -531,9 +543,8 @@ BYTE hexstr2byte(const char *buf)
 WORD hexstr2word(const char *buf)
 {
 	WORD	val = 0;
-	int		len = 0;
 
-	hexstr2bin_revendian(buf, (BYTE *)&val, sizeof(val), &len);
+	hexstr2bin_revendian(buf, (BYTE *)&val, sizeof(val));
 
 	return	val;
 }
@@ -541,9 +552,8 @@ WORD hexstr2word(const char *buf)
 DWORD hexstr2dword(const char *buf)
 {
 	DWORD	val = 0;
-	int		len = 0;
 
-	hexstr2bin_revendian(buf, (BYTE *)&val, sizeof(val), &len);
+	hexstr2bin_revendian(buf, (BYTE *)&val, sizeof(val));
 
 	return	val;
 }
@@ -551,9 +561,8 @@ DWORD hexstr2dword(const char *buf)
 int64 hexstr2int64(const char *buf)
 {
 	int64	val = 0;
-	int		len = 0;
 
-	hexstr2bin_revendian(buf, (BYTE *)&val, sizeof(val), &len);
+	hexstr2bin_revendian(buf, (BYTE *)&val, sizeof(val));
 
 	return	val;
 }
@@ -571,49 +580,57 @@ int strip_crlf(const char *s, char *d)
 }
 
 /* base64 convert routine */
-BOOL b64str2bin(const char *buf, BYTE *bindata, int maxlen, int *len)
+size_t b64str2bin(const char *s, BYTE *bindata, size_t maxsize)
 {
-	*len = maxlen;
-	return	::CryptStringToBinary(buf, 0, CRYPT_STRING_BASE64, bindata, (DWORD *)len, 0, 0);
+	DWORD	size = (DWORD)maxsize;
+	BOOL ret = ::CryptStringToBinary(s, 0, CRYPT_STRING_BASE64, bindata, &size, 0, 0);
+	return	ret ? size : 0;
 }
 
-int bin2b64str(const BYTE *bindata, int len, char *str)
+size_t b64str2bin_ex(const char *s, int len, BYTE *bindata, size_t maxsize)
 {
-	int		size = len * 2 + 5;
-	char	*b64 = new char [size];
+	DWORD	size = (DWORD)maxsize;
+	BOOL ret = ::CryptStringToBinary(s, len, CRYPT_STRING_BASE64, bindata, &size, 0, 0);
+	return	ret ? size : 0;
+}
 
-	if (!::CryptBinaryToString(bindata, len, CRYPT_STRING_BASE64, b64, (DWORD *)&size)) {
+int bin2b64str(const BYTE *bindata, size_t size, char *str)
+{
+	DWORD	len  = (DWORD)size * 2 + 5;
+	char	*b64 = new char [len];
+
+	if (!::CryptBinaryToString(bindata, (DWORD)size, CRYPT_STRING_BASE64, b64, &len)) {
 		return 0;
 	}
-	size = strip_crlf(b64, str);
+	len = strip_crlf(b64, str);
 
 	delete [] b64;
+	return	len;
+}
+
+size_t b64str2bin_revendian(const char *s, BYTE *bindata, size_t maxsize)
+{
+	size_t	size = b64str2bin(s, bindata, maxsize);
+	rev_order(bindata, size);
 	return	size;
 }
 
-BOOL b64str2bin_revendian(const char *buf, BYTE *bindata, int maxlen, int *len)
+int bin2b64str_revendian(const BYTE *bindata, size_t size, char *buf)
 {
-	if (!b64str2bin(buf, bindata, maxlen, len)) return FALSE;
-	rev_order(bindata, *len);
-	return	TRUE;
-}
-
-int bin2b64str_revendian(const BYTE *bindata, int len, char *buf)
-{
-	BYTE *rev = new BYTE [len];
+	BYTE *rev = new BYTE [size];
 
 	if (!rev) return -1;
 
-	rev_order(bindata, rev, len);
-	int	ret = bin2b64str(rev, len, buf);
+	rev_order(bindata, rev, size);
+	int	ret = bin2b64str(rev, size, buf);
 	delete [] rev;
 
 	return	ret;
 }
 
-int bin2urlstr(const BYTE *bindata, int len, char *str)
+int bin2urlstr(const BYTE *bindata, size_t size, char *str)
 {
-	int ret = bin2b64str(bindata, len, str);
+	int ret = bin2b64str(bindata, size, str);
 
 	for (char *s=str; *s; s++) {
 		switch (*s) {
@@ -636,10 +653,10 @@ int bin2urlstr(const BYTE *bindata, int len, char *str)
 4  6+2
 */
 
-BOOL urlstr2bin(const char *str, BYTE *bindata, int maxlen, int *len)
+size_t urlstr2bin(const char *str, BYTE *bindata, size_t maxsize)
 {
-	ssize_t	size = strlen(str);
-	char	*b64 = new char [size + 4];
+	int		len = (int)strlen(str);
+	char	*b64 = new char [len + 4];
 
 	strcpy(b64, str);
 	for (char *s=b64; *s; s++) {
@@ -648,14 +665,14 @@ BOOL urlstr2bin(const char *str, BYTE *bindata, int maxlen, int *len)
 		case '_': *s = '/'; break;
 		}
 	}
-	if (b64[size-1] != '\n' && (size % 4) && b64[size-1] != '=') {
-		sprintf(b64 + size -1, "%.*s", int(4 - (size % 4)), "===");
+	if (b64[len-1] != '\n' && (len % 4) && b64[len-1] != '=') {
+		sprintf(b64 + len -1, "%.*s", int(4 - (len % 4)), "===");
 	}
 
-	b64str2bin(b64, bindata, maxlen, len);
-
+	size_t	size = b64str2bin(b64, bindata, maxsize);
 	delete [] b64;
-	return	TRUE;
+
+	return	size;
 }
 
 /*
@@ -676,7 +693,7 @@ int64 hex2ll(char *buf)
 	return	ret;
 }
 
-void rev_order(BYTE *data, int size)
+void rev_order(BYTE *data, size_t size)
 {
 	BYTE	*d1 = data;
 	BYTE	*d2 = data + size - 1;
@@ -688,7 +705,7 @@ void rev_order(BYTE *data, int size)
 	}
 }
 
-void rev_order(const BYTE *src, BYTE *dst, int size)
+void rev_order(const BYTE *src, BYTE *dst, size_t size)
 {
 	dst = dst + size - 1;
 
@@ -1101,12 +1118,12 @@ int strncatz(char *dest, const char *src, int num)
 	return strncpyz(dest, src, num);
 }
 
-const char *wcsnchr(const char *dest, char ch, int num)
+const char *strnchr(const char *s, char ch, int num)
 {
-	for ( ; num > 0 && *dest; num--, dest++) {
-		if (*dest == ch) {
-			return	dest;
-		}
+	const char *end = s + num;
+
+	for ( ; s < end && *s; s++) {
+		if (*s == ch) return s;
 	}
 	return	NULL;
 }
@@ -1264,7 +1281,7 @@ BOOL TIsVirtualizedDirW(WCHAR *path)
 
 	for (int i=0; csidl[i] != 0xffffffff; i++) {
 		if (SHGetSpecialFolderPathW(NULL, buf, csidl[i], FALSE)) {
-			ssize_t	len = wcslen(buf);
+			int	len = (int)wcslen(buf);
 			if (wcsnicmp(buf, path, len) == 0) {
 				WCHAR	ch = path[len];
 				if (ch == 0 || ch == '\\' || ch == '/') {
@@ -1798,16 +1815,16 @@ void UnInitShowHelp()
 #undef free
 
 extern "C" {
-void *malloc(ssize_t);
-void *realloc(void *, ssize_t);
+void *malloc(size_t);
+void *realloc(void *, size_t);
 void free(void *);
 }
 
-inline ssize_t align_size(ssize_t size, ssize_t grain) {
+inline size_t align_size(size_t size, size_t grain) {
 	return (size + grain -1) / grain * grain;
 }
 
-inline ssize_t alloc_size(ssize_t size) {
+inline size_t alloc_size(size_t size) {
 	return	align_size((align_size(size, ALLOC_ALIGN) + 16 + PAGE_SIZE), PAGE_SIZE);
 }
 inline void *valloc_base(void *d)
@@ -1819,20 +1836,20 @@ inline void *valloc_base(void *d)
 
 	return	(void *)base;
 }
-inline ssize_t valloc_size(void *d)
+inline size_t valloc_size(void *d)
 {
 	d = valloc_base(d);
 
 	if (((DWORD *)d)[0] != VALLOC_SIG) {
-		return	(ssize_t)-1;
+		return	SIZE_MAX;
 	}
-	return	((ssize_t *)d)[1];
+	return	((size_t *)d)[1];
 }
 
 
-void *valloc(ssize_t size)
+void *valloc(size_t size)
 {
-	ssize_t	s = alloc_size(size);
+	size_t	s = alloc_size(size);
 	void	*d = VirtualAlloc(0, s, MEM_RESERVE, PAGE_NOACCESS);
 
 	if (!d || !VirtualAlloc(d, s - PAGE_SIZE, MEM_COMMIT, PAGE_READWRITE)) {
@@ -1841,16 +1858,16 @@ void *valloc(ssize_t size)
 	}
 
 	((DWORD *)d)[0]  = VALLOC_SIG;
-	((ssize_t *)d)[1] = size;
+	((size_t *)d)[1] = size;
 
 	Debug("valloc (%x %d %d)\n", d, s, size);
 
 	return (void *)((u_char *)d + s - PAGE_SIZE - align_size(size, ALLOC_ALIGN));
 }
 
-void *vcalloc(ssize_t num, ssize_t ele)
+void *vcalloc(size_t num, size_t ele)
 {
-	ssize_t	size = num * ele;
+	size_t	size = num * ele;
 	void	*d = valloc(size);
 
 	if (d) {
@@ -1859,12 +1876,12 @@ void *vcalloc(ssize_t num, ssize_t ele)
 	return	d;
 }
 
-void *vrealloc(void *d, ssize_t size)
+void *vrealloc(void *d, size_t size)
 {
-	ssize_t	old_size = 0;
+	size_t	old_size = 0;
 
 	if (d) {
-		if ((old_size = valloc_size(d)) == -1) {
+		if ((old_size = valloc_size(d)) == SIZE_MAX) {
 			Debug("non vrealloc (%x %d %d)\n", d, old_size, size);
 			return realloc(d, size);
 		}
@@ -1886,9 +1903,9 @@ void vfree(void *d)
 {
 	if (!d) return;
 
-	ssize_t	size = valloc_size(d);
+	size_t	size = valloc_size(d);
 
-	if (size == -1) {
+	if (size == SIZE_MAX) {
 		Debug("vfree non vfree (%x)\n", d);
 		free(d);
 		return;
@@ -1904,7 +1921,7 @@ void vfree(void *d)
 
 char *vstrdup(const char *s)
 {
-	ssize_t	size = strlen(s) + 1;
+	size_t	size = strlen(s) + 1;
 	void	*d = valloc(size);
 	if (d) {
 		memcpy(d, s, size);
@@ -1914,7 +1931,7 @@ char *vstrdup(const char *s)
 
 WCHAR *vwcsdup(const WCHAR *s)
 {
-	ssize_t	size = (wcslen(s) + 1) * sizeof(WCHAR);
+	size_t	size = (wcslen(s) + 1) * sizeof(WCHAR);
 	void	*d = valloc(size);
 	if (d) {
 		memcpy(d, s, size);
@@ -1922,7 +1939,7 @@ WCHAR *vwcsdup(const WCHAR *s)
 	return	(WCHAR *)d;
 }
 
-void *operator new(ssize_t size)
+void *operator new(size_t size)
 {
 	return	valloc(size);
 }
@@ -1933,7 +1950,7 @@ void operator delete(void *d)
 }
 
 #if _MSC_VER >= 1200
-void *operator new [](ssize_t size)
+void *operator new [](size_t size)
 {
 	return	valloc(size);
 }
@@ -2465,7 +2482,7 @@ HBITMAP TDIBtoDDB(HBITMAP hDibBmp) // 8bit には非対応
 }
 
 // CoInitialize系必須
-BOOL TOpenExplorerSel(const WCHAR *dir, WCHAR **path, int num)
+BOOL TOpenExplorerSelW(const WCHAR *dir, WCHAR **path, int num)
 {
 	BOOL	ret = FALSE;
 	size_t	len = wcslen(dir);
@@ -2630,6 +2647,13 @@ HBITMAP TIconToBmp(HICON hIcon, int cx, int cy)
 
 	::DeleteObject(hTmp);
 	return	hBmp;
+}
+
+BOOL IsWineEnvironment()
+{
+	HMODULE	ntdll = ::GetModuleHandle("ntdll.dll");
+
+	return	(ntdll && ::GetProcAddress(ntdll, "wine_get_version")) ? TRUE : FALSE;
 }
 
 

@@ -15,6 +15,8 @@
 #define STRICT
 #endif
 
+#include "../tlib_env.h"
+
 // for debug allocator (like a efence)
 //#define REPLACE_DEBUG_ALLOCATOR
 #ifdef REPLACE_DEBUG_ALLOCATOR
@@ -25,9 +27,9 @@
 #define strdup  vstrdup
 #define wcsdup  vwcsdup
 extern "C" {
-void *valloc(ssize_t size);
-void *vcalloc(ssize_t num, ssize_t ele);
-void *vrealloc(void *d, ssize_t size);
+void *valloc(size_t size);
+void *vcalloc(size_t num, size_t ele);
+void *vrealloc(void *d, size_t size);
 void vfree(void *d);
 char *vstrdup(const char *s);
 //unsigned short *vwcsdup(const unsigned short *s);
@@ -896,7 +898,7 @@ public:
 	TIniSection() { name = NULL; }
 	~TIniSection() {
 		free(name);
-		for (TIniKey *key; (key = TopObj()); ) {
+		while (auto key = TopObj()) {
 			DelObj(key);
 			delete key;
 		}
@@ -906,7 +908,7 @@ public:
 		if (_name) { free(name); name=strdup(_name); }
 	}
 	TIniKey *SearchKey(const char *key_name) {
-		for (TIniKey *key = TopObj(); key; key = NextObj(key)) {
+		for (auto key = TopObj(); key; key = NextObj(key)) {
 			if (key->Key() && strcmpi(key->Key(), key_name) == 0) return key;
 		}
 		return	NULL;

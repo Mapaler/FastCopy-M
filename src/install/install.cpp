@@ -18,7 +18,7 @@
 char *current_shell = TIsWow64() ? CURRENT_SHEXTDLL_EX : CURRENT_SHEXTDLL;
 char *SetupFiles [] = {
 	FASTCOPY_EXE, INSTALL_EXE, CURRENT_SHEXTDLL, CURRENT_SHEXTDLL_EX,
-	README_JA_TXT, README_ENG_TXT, README_CHS_TXT, README_CHT_TXT, GPL_TXT, HELP_CHM, NULL
+	README_JA_TXT, README_ENG_TXT, README_CHS_TXT, README_CHT_TXT, GPL_TXT, XXHASH_TXT, HELP_CHM, NULL
 };
 
 /*
@@ -156,9 +156,9 @@ TInstDlg::TInstDlg(char *cmdLine) : TDlg(INSTALL_DIALOG), staticText(this)
 		WCHAR	*p = wcsstr((WCHAR *)GetCommandLineW(), L"/runas=");
 
 		if (p) {
-			if (p && (p = wcstok(p+7,  L",")))  cfg.hOrgWnd		= (HWND)(LONG_PTR)wcstoull(p, 0, 16);
-			if (p && (p = wcstok(NULL, L",")))  cfg.mode		= (InstMode)wcstoul(p, 0, 10);
-			if (p && (p = wcstok(NULL, L",")))  cfg.runImme		= wcstoul(p, 0, 10);
+			if (p && (p = wcstok(p+7,  L",")))  cfg.hOrgWnd	= (HWND)(LONG_PTR)wcstoull(p, 0, 16);
+			if (p && (p = wcstok(NULL, L",")))  cfg.mode	= (InstMode)wcstoul(p, 0, 10);
+			if (p && (p = wcstok(NULL, L",")))  cfg.runImme	= wcstoul(p, 0, 10);
 			if (p && (p = wcstok(NULL, L",")))  cfg.programLink	= wcstoul(p, 0, 10);
 			if (p && (p = wcstok(NULL, L",")))  cfg.desktopLink	= wcstoul(p, 0, 10);
 			if (p && (p = wcstok(NULL, L"\""))) cfg.startMenu = p; if (p) p = wcstok(NULL, L"\"");
@@ -442,12 +442,12 @@ BOOL DelayCopy(char *src, char *dst)
 BOOL TInstDlg::RunAsAdmin(BOOL is_imme)
 {
 	SHELLEXECUTEINFOW	sei = {0};
-	WCHAR				buf[MAX_PATH * 2];
-	WCHAR				exe_path[MAX_PATH];
-	WCHAR				setup_path[MAX_PATH];
-	WCHAR				app_data[MAX_PATH];
-	WCHAR				virtual_store[MAX_PATH];
-	WCHAR				fastcopy_dir[MAX_PATH];
+	WCHAR				buf[MAX_PATH * 2] = {};
+	WCHAR				exe_path[MAX_PATH] = {};
+	WCHAR				setup_path[MAX_PATH] = {};
+	WCHAR				app_data[MAX_PATH] = {};
+	WCHAR				virtual_store[MAX_PATH] = {};
+	WCHAR				fastcopy_dir[MAX_PATH] = {};
 	WCHAR				*fastcopy_dirname = NULL;
 	int					len;
 
@@ -461,10 +461,15 @@ BOOL TInstDlg::RunAsAdmin(BOOL is_imme)
 	MakePathW(app_data, buf, fastcopy_dirname);
 
 	wcscpy(buf, fastcopy_dir);
+	if (cfg.mode == SETUP_MODE) {
 #ifdef _WIN64
-	ConvertToX86Dir(buf);
+		ConvertToX86Dir(buf);
 #endif
-	if (!TMakeVirtualStorePathW(buf, virtual_store)) return FALSE;
+		if (!TMakeVirtualStorePathW(buf, virtual_store)) return FALSE;
+	}
+	else {
+		wcscpy(virtual_store, L"dummy");
+	}
 
 	swprintf(buf, L"/runas=%p,%d,%d,%d,%d,\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"",
 		hWnd, cfg.mode, is_imme, cfg.programLink, cfg.desktopLink,
@@ -616,7 +621,7 @@ BOOL TInstDlg::Install(void)
 // シェル拡張を解除
 enum ShellExtOpe { CHECK_SHELLEXT, UNREGISTER_SHELLEXT };
 
-int ShellExtFunc(char *setup_dir, ShellExtOpe kind)
+int ShellExtFunc(char *setup_dir, ShellExtOpe kind, BOOL isAdmin)
 {
 	char	buf[MAX_PATH];
 	int		ret = FALSE;
@@ -625,17 +630,20 @@ int ShellExtFunc(char *setup_dir, ShellExtOpe kind)
 	HMODULE		hShellExtDll = TLoadLibrary(buf);
 
 	if (hShellExtDll) {
-		BOOL (WINAPI *IsRegisterDll)(void) = (BOOL (WINAPI *)(void))
+		BOOL (WINAPI *IsRegisterDll)(BOOL) = (BOOL (WINAPI *)(BOOL))
 			GetProcAddress(hShellExtDll, "IsRegistServer");
 		HRESULT (WINAPI *UnRegisterDll)(void) = (HRESULT (WINAPI *)(void))
 			GetProcAddress(hShellExtDll, "DllUnregisterServer");
+		BOOL (WINAPI *SetAdminMode)(BOOL) = (BOOL (WINAPI *)(BOOL))
+			GetProcAddress(hShellExtDll, "SetAdminMode");
 
-		if (IsRegisterDll && UnRegisterDll) {
+		if (IsRegisterDll && UnRegisterDll && SetAdminMode) {
 			switch (kind) {
 			case CHECK_SHELLEXT:
-				ret = IsRegisterDll();
+				ret = IsRegisterDll(isAdmin);
 				break;
 			case UNREGISTER_SHELLEXT:
+				SetAdminMode(isAdmin);
 				ret = UnRegisterDll();
 				break;
 			}
@@ -655,22 +663,22 @@ BOOL TInstDlg::UnInstall(void)
 	GetParentDir(setupDir, setupDir);
 	BOOL	is_shext = FALSE;
 
-	is_shext = ShellExtFunc(setupDir, CHECK_SHELLEXT);
+	is_shext = ShellExtFunc(setupDir, CHECK_SHELLEXT, TRUE);
 
 	if (is_shext && IsWinVista() && !::IsUserAnAdmin()) {
 		RunAsAdmin(TRUE);
 		return	TRUE;
 	}
 
-	if (MessageBox(LoadStr(IDS_START), UNINSTALL_STR, MB_OKCANCEL|MB_ICONINFORMATION) != IDOK)
+	if (MessageBox(LoadStr(IDS_START), UNINSTALL_STR, MB_OKCANCEL | MB_ICONINFORMATION) != IDOK)
 		return	FALSE;
 
-// スタートメニュー＆デスクトップから削除
+	// スタートメニュー＆デスクトップから削除
 	TRegistry	reg(HKEY_CURRENT_USER, BY_MBCS);
 	if (reg.OpenKey(REGSTR_SHELLFOLDERS)) {
-		char	*regStr[]	= { REGSTR_PROGRAMS, REGSTR_DESKTOP, NULL };
+		char	*regStr[] = { REGSTR_PROGRAMS, REGSTR_DESKTOP, NULL };
 
-		for (int cnt=0; regStr[cnt] != NULL; cnt++) {
+		for (int cnt = 0; regStr[cnt] != NULL; cnt++) {
 			if (reg.GetStr(regStr[cnt], buf, sizeof(buf))) {
 				if (cnt == 0)
 					RemoveSameLink(buf);
@@ -682,7 +690,10 @@ BOOL TInstDlg::UnInstall(void)
 		reg.CloseKey();
 	}
 
-	ShellExtFunc(setupDir, UNREGISTER_SHELLEXT);
+	ShellExtFunc(setupDir, UNREGISTER_SHELLEXT, FALSE);
+	if (::IsUserAnAdmin()) {
+		ShellExtFunc(setupDir, UNREGISTER_SHELLEXT, TRUE);
+	}
 
 #ifdef _WIN64
 	if (1) {

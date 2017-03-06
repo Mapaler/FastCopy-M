@@ -43,6 +43,7 @@ DEFINE_GUID(CLSID_FcLnkExtLocal, \
 BOOL WINAPI SetMenuFlags(BOOL isAdmin, int flags);
 int WINAPI GetMenuFlags(BOOL isAdmin);
 BOOL WINAPI IsRegistServer(BOOL isAdmin);
+BOOL WINAPI SetAdminMode(BOOL isAdmin);
 
 class PathArray {
 protected:

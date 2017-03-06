@@ -1,8 +1,8 @@
 ﻿======================================================================
-                     FastCopy  ver3.27                 2017/01/23
+                     FastCopy  ver3.30                 2017/03/06
                                             H.Shirouzu（白水啓章）
-                     FastCopy-M branch              2015/09/22
-                                            Mapaler（枫谷剑仙）
+                     FastCopy-M branch                 2017/03/06
+                                            Mapaler  （枫谷剑仙）
 ======================================================================
 
 特徴：
@@ -42,11 +42,17 @@
     Support use http url to replace "chm" help files.
 
 ライセンス：
-	全ソースコードは GPLv3 で公開しています。
-	VC++ 等をお持ちであれば、ご自由にカスタマイズしてのご利用も
-	可能です。（カスタマイズ版の配布をソースコード非公開で行いたい
-	場合は別途、お問い合わせください）
-	詳しくは同梱の license.txt をご覧ください。
+	FastCopy ver3.x
+	Copyright(C) 2004-2017 SHIROUZU Hiroaki All rights reserved.
+
+	 全ソースコードは GPLv3 で公開しています。
+	 VC++ 等をお持ちであれば、ご自由にカスタマイズしてのご利用も
+	 可能です。（カスタマイズ版の配布をソースコード非公開で行いたい
+	 場合は別途、お問い合わせください）
+	 詳しくは同梱の license.txt をご覧ください。
+
+	xxHash library Copyright (C) 2012-2014 Mr.Yann Collet, All rights reserved.
+	  more details: external/xxhash/LICENSE
 
 使用法等：
 	ヘルプ(fastcopy.chm) を参照してください。
