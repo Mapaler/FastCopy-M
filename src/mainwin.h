@@ -209,7 +209,7 @@ protected:
 	BOOL	EndCopy(void);
 	BOOL	ExecFinalAction(BOOL is_sound_wait);
 	BOOL	CancelCopy(void);
-	void	SetItemEnable(BOOL is_delete);
+	void	SetItemEnable(FastCopy::Mode mode);
 	FastCopy::Mode	GetCopyMode(void);
 	void	SetExtendFilter();
 	void	ReflectFilterCheck(BOOL is_invert=FALSE);
