@@ -13,12 +13,12 @@
 <body>
 
 <div align="center">
-<h1 class="help_head1">FastCopy-M 帮助 ver3.27</h1>
+<h1 class="help_head1">FastCopy-M 帮助 ver3.30</h1>
 </div>
 <div class="help_all">
 
-<div align="right">原著：2017/01/23 H.Shirouzu(白水啓章)</div>
-<div align="right">汉化：2016/12/15 枫谷剑仙 (Mapaler)</div>
+<div align="right">原著：2017/03/05 H.Shirouzu(白水啓章)</div>
+<div align="right">目前的汉化：2017/03/06 枫谷剑仙 (Mapaler)</div>
 
 <center>
 <strong>警告 :</strong> 官方的文档是使用日语写的，英语是用日转英翻译软件写的，中文又是在英语基础上翻译的。
@@ -89,11 +89,14 @@
 	FastCopy ver3.x Copyright(C) 2004-2017 by SHIROUZU Hiroaki<br>
 	<br>
 	此程序是免费软件。你可以将它根据GNU通用公共许可证第三版重新分发和/或修改。<br>
-	<a href="license-gpl3.txt">license-gpl3.txt</a><br>
+	<a href="https://ipmsg.org/tools/license-gpl3.txt">license-gpl3.txt</a><br>
 	<br>
 	如果你想分发你修改后的二进制文件，但是你不想要公布修改后的源代码，或你想请求开发捆绑/特殊版本，请与原作者联系。 (shirouzu@ipmsg.org)
 	<br>
-	</div>
+	</div><br>
+	<div class="help_license">
+	xxHash Library Copyright (c) 2012-2014, Yann Collet All rights reserved.<br>
+	<a href="https://ipmsg.org/tools/xxhash-LICENSE.txt">License details.</a>
 	</div>
 </div>
 
@@ -204,8 +207,8 @@
 		<tr><td nowrap><strong>校验</strong></td>
 		<td>
 		<a name="verify"/>
-		使用 MD5 (/SHA-1/SHA-256)校验写入的文件数据。<br>
-		(如果你想使用 SHA-1/SHA-256，可以在设置面板的<a href="#setting_copyopt">复制/移动设置</a>中修改。)<br>
+		<a name="hash_mode"/>使用 MD5 (/SHA-1/SHA-256/xxHash)校验写入的文件数据。<br>
+		(如果你想使用 SHA-1/SHA-256/xxHash，可以在设置面板的<a href="#setting_copyopt">复制/移动设置</a>中修改。)<br>
 
 		... 步骤详情: 读取(源) -> MD5(源) -> 写入(目标) -> 读取(Dst) -> MD5(目标) -> 比较 MD5(源/目标) (当然，所有的行为都尽可能地并行处理)
 		</td></tr>
@@ -473,7 +476,7 @@ demerit points are same as read, but sometimes many head seeks occur in writing 
 			<tr><td><strong>Move one by one (verify)</strong></td>
 				<td>It is the same as "Move one by one" except "remove copied source files" -> "remove verified source files"</td></tr>
 			<tr><td><strong>Hash mode (for verify)</strong></td>
-				<td>Select Hash mode (MD5/SHA-1/SHA-256) for verifying.</td></tr>
+				<td>Select Hash mode (MD5/SHA-1/SHA-256/xxHash) for verifying.</td></tr>
 			<tr><td><strong>Tolerance at the timestamp comparison</strong></td><td>Specify tolerance timestamp difference as same date in Diff(Date/Size) or Diff(Newer).<br>
 			Normally, FastCopy corrects timestamp difference on the different filesystem(NTFS timestamp precision is 100ns, FAT is 2sec or etc), automatically.<br>
 			But some NAS timestamp precision is very strange, so manual settings(in msec) are available.</td></tr>
@@ -679,7 +682,7 @@ demerit points are same as read, but sometimes many head seeks occur in writing 
 	<tr><td nowrap><strong>/acl</strong></td><td>Copy ACL/EA (only NTFS)(to disable, /acl=FALSE)</td></tr>
 	<tr><td nowrap><strong>/stream</strong></td><td>Copy Alternate Stream (only NTFS) (to disable, /stream=FALSE)</td></tr>
 	<tr><td nowrap><strong>/reparse</strong></td><td>Copy junction/mountpoint/symlink itself(to disable, /reparse=FALSE) (<a href="#reparse">details</a>)</td></tr>
-	<tr><td nowrap><strong>/verify</strong></td><td>Verify written files data by MD5(or SHA-1) (to disable, /verify=FALSE) (<a href="#verify">details</a>)</td></tr>
+	<tr><td nowrap><strong>/verify</strong></td><td>Verify written files data by <a href="">MD5(/SHA-1/SHA-256/xxHash)</a> (to disable, /verify=FALSE) (<a href="#verify">details</a>)</td></tr>
 	<tr><td nowrap><strong>/linkdest</strong></td><td><a name="linkdest"/>Reproduce hardlink as much as possible. (<a href="#hardlink">details</a>)</td></tr>
 	<tr><td nowrap><strong>/recreate</strong></td><td><a name="recreate"/>Change updating behavior "overwrite the target" to "delete and recreate the target". (If /linkdest option is enabled, this option is enabled by default.) If you want always to enable, write [main] recreate=1 in FastCopy2.ini.</td></tr>
 	<tr><td nowrap><strong>/postproc=action_name</strong></td><td>Specify post-process action name (to disable, /postproc=FALSE)</td></tr>
@@ -743,6 +746,14 @@ demerit points are same as read, but sometimes many head seeks occur in writing 
 <table class="help_table" border="4">
 <tr><th>Version</th><th>Detail</th></tr>
 
+<tr><td>v3.30</td><td>
+Add xxHash option for verify.<br>
+Add file creation mode (experimental).<br>
+Fix a Start-path filter problem that only deepest filter was used in multiple depth Start-path filters.<br>
+Fix same/diff network drive detection.<br>
+Misc refine.
+
+</td></tr>
 <tr><td>v3.27</td><td>
 Add recording detail logs when initlizing error occurs in No UI mode. (scheduler or etc).<br>
 Misc refine.
