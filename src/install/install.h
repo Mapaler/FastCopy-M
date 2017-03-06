@@ -6,7 +6,7 @@
 	Update					: 2016-09-28(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
-	Modify  				: Mapaler 2015-10-08
+	Modify  				: Mapaler 2017-03-06
 	======================================================================== */
 
 enum InstMode { SETUP_MODE, UNINSTALL_MODE };

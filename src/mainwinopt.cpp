@@ -1,9 +1,9 @@
 ﻿static char *mainwinopt_id = 
-	"@(#)Copyright (C) 2015-2016 H.Shirouzu			mainwinopt.cpp	ver3.21";
+	"@(#)Copyright (C) 2015-2017 H.Shirouzu			mainwinopt.cpp	ver3.30";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2015-05-27(Wed)
-	Update					: 2016-09-28(Wed)
+	Update					: 2017-03-06(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -47,9 +47,9 @@ struct CopyInfo COPYINFO_LIST [] = {
 //	{ IDS_MUTUAL,		0, CMD_MUTUAL_STR,		FastCopy::MUTUAL_MODE,	FastCopy::BY_LASTEST },
 
 	{ IDS_DELETE,		0, CMD_DELETE_STR,		FastCopy::DELETE_MODE,	FastCopy::BY_ALWAYS  },
-#ifdef _DEBUG
-	{ IDS_TESTWRITE,	0, CMD_TESTWRITE_STR,	FastCopy::TESTWRITE_MODE,FastCopy::BY_ALWAYS  },
-#endif
+
+	{ IDS_TEST,			0, CMD_TEST_STR,		FastCopy::TEST_MODE,	FastCopy::BY_ALWAYS  },
+
 	{ 0,				0, 0,					(FastCopy::Mode)0,	  (FastCopy::OverWrite)0 }
 };
 
@@ -72,6 +72,9 @@ BOOL TMainDlg::SetCopyModeList(void)
 	for (int i=0; COPYINFO_LIST[i].resId; i++) {
 		if (cfg.enableMoveAttr && COPYINFO_LIST[i].resId == IDS_MOVE_FORCE
 		|| !cfg.enableMoveAttr && COPYINFO_LIST[i].resId == IDS_MOVE_ATTR) {
+			continue;
+		}
+		if (!cfg.testMode && COPYINFO_LIST[i].mode == FastCopy::TEST_MODE) {
 			continue;
 		}
 		*ci = COPYINFO_LIST[i];
@@ -415,7 +418,7 @@ BOOL TMainDlg::CommandLineExecW(int argc, WCHAR **argv)
 			ReflectFilterCheck(!IsDlgButtonChecked(FILTER_CHECK));
 		}
 
-		SetItemEnable(is_delete);
+		SetItemEnable(GetCopyMode());
 		if (diskMode)
 			UpdateMenu();
 

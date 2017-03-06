@@ -113,7 +113,7 @@
 #define CMD_WITH_UPDATE		L"update"
 
 #define CMD_MUTUAL_STR		L"mutual"
-#define CMD_TESTWRITE_STR	L"test_write"
+#define CMD_TEST_STR		L"test"
 
 #define STANDBY_STR			L"Standby"
 #define HIBERNATE_STR		L"Hibernate"

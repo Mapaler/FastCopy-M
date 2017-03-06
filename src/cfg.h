@@ -1,9 +1,9 @@
 ﻿/* static char *cfg_id = 
-	"@(#)Copyright (C) 2005-2016 H.Shirouzu		cfg.h	Ver3.23"; */
+	"@(#)Copyright (C) 2005-2017 H.Shirouzu		cfg.h	Ver3.30"; */
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2005-01-23(Sun)
-	Update					: 2016-10-17(Mon)
+	Update					: 2017-03-06(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -161,14 +161,14 @@ public:
 	int		waitTick;
 	int		speedLevel;
 	BOOL	isAutoSlowIo;
-	BOOL	alwaysLowIo;
+	int		priority;
 	BOOL	enableOwdel;
 	BOOL	enableAcl;
 	BOOL	enableStream;
 	BOOL	enableVerify;
 	BOOL	useOverlapIo;
 	BOOL	usingMD5;
-	int		hashMode;
+	enum HashMode { MD5, SHA1, SHA256, SHA512, XXHASH32, XXHASH } hashMode;
 	BOOL	enableNSA;
 	BOOL	delDirWithFilter;
 	BOOL	enableMoveAttr;
@@ -195,6 +195,7 @@ public:
 	BOOL	streamErrLog;
 	int		debugFlags;
 	int		debugMainFlags;
+	int		testMode;
 	BOOL	isRunasButton;
 	BOOL	isSameDirRename;
 

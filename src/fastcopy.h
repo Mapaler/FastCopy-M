@@ -1,9 +1,9 @@
 ﻿/* static char *fastcopy_id = 
-	"@(#)Copyright (C) 2004-2017 H.Shirouzu		fastcopy.h	Ver3.27"; */
+	"@(#)Copyright (C) 2004-2017 H.Shirouzu		fastcopy.h	Ver3.30"; */
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2017-01-23(Mon)
+	Update					: 2017-03-06(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-09
@@ -248,7 +248,7 @@ typedef std::vector<RegExp *> RegExpVec;
 
 class FastCopy {
 public:
-	enum Mode { DIFFCP_MODE, SYNCCP_MODE, MOVE_MODE, MUTUAL_MODE, DELETE_MODE, TESTWRITE_MODE };
+	enum Mode { DIFFCP_MODE, SYNCCP_MODE, MOVE_MODE, MUTUAL_MODE, DELETE_MODE, TEST_MODE };
 	enum OverWrite { BY_NAME, BY_ATTR, BY_LASTEST, BY_CONTENTS, BY_ALWAYS };
 	enum FsType { FSTYPE_NONE, FSTYPE_NTFS, FSTYPE_FAT, FSTYPE_NETWORK };
 	enum Flags {
@@ -287,6 +287,7 @@ public:
 		VERIFY_MD5			=	0x00000001,
 		VERIFY_SHA1			=	0x00000002,
 		VERIFY_SHA256		=	0x00000004,
+		VERIFY_XXHASH		=	0x00000020,
 		VERIFY_FILE			=	0x00001000,
 	};
 	enum FileLogFlags {
@@ -611,7 +612,7 @@ protected:
 	enum	RunMode { RUN_NORMAL, RUN_DIGESTREQ, RUN_FINISH } runMode;
 
 	// ダイジェスト関連
-	class DigestBuf : public TDigest {	// List-V モード用
+	class DigestBuf : public TDigest {
 	public:
 		DigestBuf() : TDigest() {}
 		VBuf	buf;
@@ -658,9 +659,8 @@ protected:
 	static unsigned WINAPI DeleteThread(void *fastCopyObj);
 	static unsigned WINAPI RDigestThread(void *fastCopyObj);
 	static unsigned WINAPI WDigestThread(void *fastCopyObj);
-#ifdef _DEBUG
 	static unsigned WINAPI TestThread(void *fastCopyObj);
-#endif
+
 	BOOL ReadThreadCore(void);
 	BOOL DeleteThreadCore(void);
 	BOOL WriteThreadCore(void);
@@ -719,7 +719,7 @@ protected:
 	void SetTotalErrInfo(BOOL is_stream, int64 err_trans);
 	BOOL ReadFileWithReduce(HANDLE hFile, void *buf, DWORD size, OverLap *ovl=NULL);
 	BOOL ReadFileAltStreamProc(int *open_idx, int dir_len, FileStat *stat);
-	BOOL ReadFilePeparse(Command cmd, int idx, int dir_len, FileStat *stat);
+	BOOL ReadFileReparse(Command cmd, int idx, int dir_len, FileStat *stat);
 	void IoAbortFile(HANDLE hFile, OvlList *ovl_list);
 	BOOL ReadAbortFile(int cur_idx, Command cmd, int dir_len, BOOL is_stream, BOOL is_modify);
 	BOOL ReadFileProc(int *open_idx, int dir_len);
@@ -769,6 +769,7 @@ protected:
 	void SetErrRFileID(int64 file_id);
 	void SetErrWFileID(int64 file_id);
 	BOOL SetFinishFileID(int64 _file_id, MoveObj::Status status);
+	BOOL EndCore(void);
 
 	BOOL SetUseDriveMap(const WCHAR *path);
 	BOOL InitSrcPath(int idx);
@@ -800,9 +801,8 @@ protected:
 	BOOL ConvertExternalPath(const WCHAR *path, WCHAR *buf, int buf_len);
 	BOOL Wait(DWORD tick=0);
 
-#ifdef _DEBUG
 	BOOL TestWrite();
-#endif
+	void TestWriteEnd();
 	void OvlLog(OverLap *ovl, const void *buf, const WCHAR *fmt,...); // for debug
 };
 

@@ -1,9 +1,9 @@
 ﻿static char *setuplg_id = 
-	"@(#)Copyright (C) 2015-2016 H.Shirouzu		setupdlg.cpp	ver3.26";
+	"@(#)Copyright (C) 2015-2017 H.Shirouzu		setupdlg.cpp	ver3.30";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2015-07-17(Fri)
-	Update					: 2016-12-08(Thu)
+	Update					: 2017-03-06(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-08-13
@@ -169,7 +169,9 @@ BOOL TSetupSheet::SetData()
 		SendDlgItemMessage(HASH_COMBO, CB_ADDSTRING, 0, (LPARAM)"MD5");
 		SendDlgItemMessage(HASH_COMBO, CB_ADDSTRING, 0, (LPARAM)"SHA-1");
 		SendDlgItemMessage(HASH_COMBO, CB_ADDSTRING, 0, (LPARAM)"SHA-256");
-		SendDlgItemMessage(HASH_COMBO, CB_SETCURSEL, cfg->hashMode, 0);
+		SendDlgItemMessage(HASH_COMBO, CB_ADDSTRING, 0, (LPARAM)"xxHash");
+		SendDlgItemMessage(HASH_COMBO, CB_SETCURSEL,
+			cfg->hashMode <= Cfg::SHA256 ? int(cfg->hashMode) : 3, 0);
 		SetDlgItemInt(TIMEGRACE_EDIT, cfg->timeDiffGrace);
 	}
 	else if (resId == DEL_SHEET) {
@@ -197,6 +199,7 @@ BOOL TSetupSheet::SetData()
 		CheckDlgButton(FINISH_CHECK, (cfg->finishNotify & 1));
 		CheckDlgButton(SPAN1_RADIO + cfg->infoSpan, 1);
 		CheckDlgButton(PREVENTSLEEP_CHECK, cfg->preventSleep);
+		CheckDlgButton(TEST_CHECK, cfg->testMode);
 
 		if ((cfg->lcid != -1 || GetSystemDefaultLCID() != 0x409)) { // == 0x411 改成 != 0x409 让所有语言都可以切换到英文
 			::ShowWindow(GetDlgItem(LCID_CHECK), SW_SHOW);
@@ -288,7 +291,8 @@ BOOL TSetupSheet::GetData()
 		cfg->enableMoveAttr   = IsDlgButtonChecked(MOVEATTR_CHECK);
 		cfg->serialMove       = IsDlgButtonChecked(SERIALMOVE_CHECK);
 		cfg->serialVerifyMove = IsDlgButtonChecked(SERIALVERIFYMOVE_CHECK);
-		cfg->hashMode         = (int)SendDlgItemMessage(HASH_COMBO, CB_GETCURSEL, 0, 0);
+		int val = (int)SendDlgItemMessage(HASH_COMBO, CB_GETCURSEL, 0, 0);
+		cfg->hashMode = (val <= 2) ? (Cfg::HashMode)val : Cfg::XXHASH;
 		cfg->timeDiffGrace    = GetDlgItemInt(TIMEGRACE_EDIT);
 	}
 	else if (resId == DEL_SHEET) {
@@ -318,6 +322,7 @@ BOOL TSetupSheet::GetData()
 							IsDlgButtonChecked(SPAN2_RADIO) ? 1 : 2;
 
 		cfg->preventSleep = IsDlgButtonChecked(PREVENTSLEEP_CHECK);
+		cfg->testMode = IsDlgButtonChecked(TEST_CHECK);
 
 		if (::IsWindowEnabled(GetDlgItem(LCID_CHECK))) {
 			cfg->lcid = IsDlgButtonChecked(LCID_CHECK) ? 0x409 : -1;

@@ -1,9 +1,9 @@
 ﻿static char *utility_id = 
-	"@(#)Copyright (C) 2004-2016 H.Shirouzu		utility.cpp	ver3.26";
+	"@(#)Copyright (C) 2004-2016 H.Shirouzu		utility.cpp	ver3.30";
 /* ========================================================================
 	Project  Name			: general routine
 	Create					: 2004-09-15(Wed)
-	Update					: 2016-11-21(Mon)
+	Update					: 2017-03-06(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -396,7 +396,7 @@ int DriveMng::SetDriveID(const WCHAR *_root)
 		// ネットワークドライブの場合、\\server\volume\ もしくは \\server\ （設定に依存）
 		// を大文字にした文字列のハッシュ値を識別値(drvId[].data)とする
 		ModifyNetRoot(root);
-		uint64	hash_id = MakeHash64(root, (int)wcslen(root));
+		uint64	hash_id = MakeHash64(root, wcslen(root) * sizeof(WCHAR));
 		if ((idx = shareInfo->RegisterNetDrive(hash_id)) < 0) {
 			return -1;
 		}
@@ -423,7 +423,7 @@ int DriveMng::SetDriveID(const WCHAR *_root)
 		wcscpy(root, pni->lpUniversalName);
 		::CharUpperW(root);
 		ModifyNetRoot(root);
-		uint64	hash_id = MakeHash64(root, (int)wcslen(root));
+		uint64	hash_id = MakeHash64(root, wcslen(root) * sizeof(WCHAR));
 		RegisterDriveID(idx, &hash_id, sizeof(hash_id));
 
 		int	net_idx = shareInfo->RegisterNetDrive(hash_id);

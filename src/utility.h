@@ -1,9 +1,9 @@
 ﻿/* static char *utility_id = 
-	"@(#)Copyright (C) 2004-2016 H.Shirouzu		utility.h	Ver3.26"; */
+	"@(#)Copyright (C) 2004-2017 H.Shirouzu		utility.h	Ver3.30"; */
 /* ========================================================================
 	Project  Name			: Utility
 	Create					: 2004-09-15(Wed)
-	Update					: 2016-11-21(Mon)
+	Update					: 2017-03-06(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -63,7 +63,7 @@ public:
 	BOOL	ReplacePath(int idx, WCHAR *new_path);
 
 	u_int	MakeHashId(const void *data, int len=-1) {
-		return MakeHash(data, (len >= 0 ? len : (int)wcslen((WCHAR *)data)) * (int)sizeof(WCHAR));
+		return MakeHash(data, (len >= 0 ? len : wcslen((WCHAR *)data)) * sizeof(WCHAR));
 	}
 	u_int	MakeHashId(const PathObj *obj) { return MakeHash(obj->path, obj->len * sizeof(WCHAR));}
 };

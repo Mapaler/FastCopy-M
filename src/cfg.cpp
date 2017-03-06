@@ -1,9 +1,9 @@
 ﻿static char *cfg_id = 
-	"@(#)Copyright (C) 2004-2016 H.Shirouzu		cfg.cpp	ver3.25";
+	"@(#)Copyright (C) 2004-2017 H.Shirouzu		cfg.cpp	ver3.30";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2016-10-19(Wed)
+	Update					: 2017-03-06(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-08-23
@@ -52,6 +52,7 @@
 #define STREAMERRLOG_KEY		"streamerr_log"
 #define DEBUGFLAGS_KEY			"debug_flags"
 #define DEBUGMAINFLAGS_KEY		"debug_main_flags"
+#define TESTMODE_KEY			"test_mode"
 #define ISRUNASBUTTON_KEY		"is_runas_button"
 #define ISSAMEDIRRENAME_KEY		"is_samedir_rename"
 #define BUFSIZE_KEY				"bufsize"
@@ -74,7 +75,7 @@
 #define WAITTICK_KEY			"wait_tick"
 #define ISAUTOSLOWIO_KEY		"is_autoslow_io2"
 #define SPEEDLEVEL_KEY			"speed_level"
-#define ALWAYSLOWIO_KEY			"alwaysLowIo"
+#define PRIORITY_KEY			"priority"
 #define DRIVEMAP_KEY			"driveMap"
 #define OWDEL_KEY				"overwrite_del"
 #define ACL_KEY					"acl"
@@ -519,6 +520,7 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 	streamErrLog	= ini.GetInt(STREAMERRLOG_KEY, FALSE);
 	debugFlags		= ini.GetInt(DEBUGFLAGS_KEY, 0);
 	debugMainFlags	= ini.GetInt(DEBUGMAINFLAGS_KEY, 0);
+	testMode		= ini.GetInt(TESTMODE_KEY, 0);
 	isRunasButton	= ini.GetInt(ISRUNASBUTTON_KEY, FALSE);
 	isSameDirRename	= ini.GetInt(ISSAMEDIRRENAME_KEY, TRUE);
 
@@ -534,14 +536,13 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 	waitTick		= ini.GetInt(WAITTICK_KEY, DEFAULT_WAITTICK);
 	isAutoSlowIo	= ini.GetInt(ISAUTOSLOWIO_KEY, TRUE);
 	speedLevel		= ini.GetInt(SPEEDLEVEL_KEY, SPEED_FULL);
-	alwaysLowIo		= ini.GetInt(ALWAYSLOWIO_KEY, FALSE);
+	priority		= ini.GetInt(PRIORITY_KEY, -1);
 	enableOwdel		= ini.GetInt(OWDEL_KEY, FALSE);
 	enableAcl		= ini.GetInt(ACL_KEY, FALSE);
 	enableStream	= ini.GetInt(STREAM_KEY, FALSE);
 	enableVerify	= ini.GetInt(VERIFY_KEY, FALSE);
 	useOverlapIo	= ini.GetInt(USEOVERLAPIO_KEY, TRUE);
-	usingMD5		= ini.GetInt(USEMD5_KEY, TRUE);
-	hashMode		= ini.GetInt(HASHMODE_KEY, usingMD5 ? 0 : 1);
+	hashMode		= (HashMode)ini.GetInt(HASHMODE_KEY, MD5);
 	enableNSA		= ini.GetInt(NSA_KEY, FALSE);
 	delDirWithFilter= ini.GetInt(DELDIR_KEY, FALSE);
 	enableMoveAttr	= ini.GetInt(MOVEATTR_KEY, FALSE);
@@ -772,6 +773,9 @@ BOOL Cfg::WriteIni(void)
 	ini.SetInt(ACLERRLOG_KEY, aclErrLog);
 	ini.SetInt(STREAMERRLOG_KEY, streamErrLog);
 //	ini.SetInt(DEBUGFLAGS_KEY, debugFlags);
+//	ini.SetInt(DEBUGMAINFLAGS_KEY, debugMainFlags);
+	ini.SetInt(TESTMODE_KEY, testMode);
+
 //	ini.SetInt(ISRUNASBUTTON_KEY, isRunasButton);
 	ini.SetInt(ISSAMEDIRRENAME_KEY, isSameDirRename);
 //	ini.SetInt(SHEXTAUTOCLOSE_KEY, shextAutoClose);
@@ -784,7 +788,7 @@ BOOL Cfg::WriteIni(void)
 //	ini.SetInt(WAITTICK_KEY, waitTick);
 //	ini.SetInt(ISAUTOSLOWIO_KEY, isAutoSlowIo);
 	ini.SetInt(SPEEDLEVEL_KEY, speedLevel);
-//	ini.SetInt(ALWAYSLOWIO_KEY, alwaysLowIo);
+//	ini.SetInt(PRIORITY_KEY, priority);
 	ini.SetInt(OWDEL_KEY, enableOwdel);
 	ini.SetInt(ACL_KEY, enableAcl);
 	ini.SetInt(STREAM_KEY, enableStream);
@@ -980,7 +984,7 @@ BOOL Cfg::IniStrToW(char *str, WCHAR *wstr)
 	int		len = (int)strlen(str) + 1;
 
 	if (needIniConvert && *str == '|') { // old style
-		hexstr2bin(str + 1, (BYTE *)wstr, len, &len);
+		len = (int)hexstr2bin(str + 1, (BYTE *)wstr, len);
 	}
 	else {
 		if (needIniConvert && !IsUTF8(str)) {

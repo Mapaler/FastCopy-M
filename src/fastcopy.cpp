@@ -1,9 +1,9 @@
 ﻿static char *fastcopy_id = 
-	"@(#)Copyright (C) 2004-2017 H.Shirouzu		fastcopy.cpp	ver3.27";
+	"@(#)Copyright (C) 2004-2017 H.Shirouzu		fastcopy.cpp	ver3.30";
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2017-01-23(Mon)
+	Update					: 2017-03-06(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-09
@@ -15,11 +15,13 @@
 #include <process.h>
 #include <stdio.h>
 #include <time.h>
-
+#include <random>
 
 #define STRMID_OFFSET	offsetof(WIN32_STREAM_ID, cStreamName)
 #define MAX_ALTSTREAM	1000
 #define REDUCE_SIZE		(1024 * 1024)
+
+using namespace std;
 
 //static BOOL (WINAPI *pSetFileValidData)(HANDLE hFile, LONGLONG ValidDataLength);
 
@@ -400,7 +402,7 @@ BOOL FastCopy::InitDeletePath(int idx)
 	dstPrefixLen = MakeUnlimitedPath((WCHAR *)dst);
 
 	if (::GetFullPathNameW(dst, MAX_PATH_EX, buf, &fname) == 0 || fname == NULL)
-		return	ConfirmErr(L"GetFullPathName2", dst + dstPrefixLen, cef_flg), FALSE;
+		return	ConfirmErr(L"GetFullPathName3", dst + dstPrefixLen, cef_flg), FALSE;
 	fname[0] = 0;
 	dstBaseLen = (int)wcslen(buf);
 
@@ -490,9 +492,15 @@ BOOL FastCopy::RegisterRegFilterCore(const PathArray *_pathArray, bool is_inc)
 		if (len > 0) {
 			int			depth = CountPathDepth(path);
 			RegExpVec	&targ = regExpVec[filedir_idx][incexc_idx][absreg_idx];
-			if (targ.size() < depth + 1) targ.resize(depth + 1, NULL);
-			if (targ[depth] == NULL) targ[depth] = new RegExp();
+
+			if (targ.size() < depth + 1) {
+				targ.resize(depth + 1, NULL);
+			}
+			if (targ[depth] == NULL) {
+				targ[depth] = new RegExp();
+			}
 			if (!targ[depth]->RegisterWildCard(path, RegExp::CASE_INSENSE_SLASH)) goto ERR;
+
 			filterMode |= FilterBits(filedir_idx, incexc_idx);
 		}
 	}
@@ -521,6 +529,8 @@ BOOL FastCopy::RegisterInfo(const PathArray *_srcArray, const PathArray *_dstArr
 #endif
 
 	info = *_info;
+	srcArray.Init();
+	dstArray.Init();
 
 	isAbort = FALSE;
 	isRename = FALSE;
@@ -574,8 +584,10 @@ BOOL FastCopy::RegisterInfo(const PathArray *_srcArray, const PathArray *_dstArr
 	driveMng.SetDriveMap(info.driveMap);
 
 	// set useDrives
-	for (int i=0; i < _srcArray->Num(); i++) {
-		SetUseDriveMap(_srcArray->Path(i));
+	if (info.mode != TEST_MODE) {
+		for (int i=0; i < _srcArray->Num(); i++) {
+			SetUseDriveMap(_srcArray->Path(i));
+		}
 	}
 	if (info.mode != DELETE_MODE) {
 		SetUseDriveMap(_dstArray->Path(0));
@@ -588,6 +600,16 @@ BOOL FastCopy::RegisterInfo(const PathArray *_srcArray, const PathArray *_dstArr
 		srcArray = *_srcArray;
 		if (InitDeletePath(0) == FALSE)
 			return	FALSE;
+	}
+	else if (info.mode == TEST_MODE) {
+		srcArray.RegisterPath(L"C:\\");	// 一旦 C:\ で初期化
+		dstArray = *_dstArray;
+
+		if (InitDstPath() == FALSE)
+			return	FALSE;
+		if (InitSrcPath(0) == FALSE)
+			return	FALSE;
+		srcArray = *_srcArray;
 	}
 	else {
 		srcArray = *_srcArray;
@@ -623,7 +645,7 @@ BOOL FastCopy::AllocBuf(void)
 	}
 	usedOffset = freeOffset = mainBuf.Buf();	// リングバッファ用オフセット初期化
 #ifdef _DEBUG
-//	if (need_mainbuf /*&& info.mode == TESTWRITE_MODE*/) {
+//	if (need_mainbuf /*&& info.mode == TEST_MODE*/) {
 //		uint64 *end = (uint64 *)(mainBuf.Buf() + allocSize);
 //		uint64 val  = 0xf7f6f5f4f3f2f1f0ULL;
 //		for (uint64 *p = (uint64 *)mainBuf.Buf(); p < end; p++) {
@@ -661,10 +683,13 @@ BOOL FastCopy::AllocBuf(void)
 
 	if (info.verifyFlags & VERIFY_FILE) {
 		TDigest::Type	hashType =
-			(info.verifyFlags & VERIFY_SHA256) ? TDigest::SHA256 :
-			(info.verifyFlags & VERIFY_SHA1)   ? TDigest::SHA1   : TDigest::MD5;
-		srcDigest.Init(hashType);
-		dstDigest.Init(hashType);
+			(info.verifyFlags & VERIFY_MD5)    ? TDigest::MD5    :
+			(info.verifyFlags & VERIFY_SHA1)   ? TDigest::SHA1   :
+			(info.verifyFlags & VERIFY_SHA256) ? TDigest::SHA256 : TDigest::XXHASH;
+
+		if (!srcDigest.Init(hashType) || !dstDigest.Init(hashType)) {
+			return	ConfirmErr(L"Can't intialize hash", NULL, CEF_STOP), FALSE;
+		}
 
 		if (isListingOnly) {
 			srcDigest.buf.AllocBuf(0, MaxReadDigestBuf());
@@ -752,15 +777,13 @@ BOOL FastCopy::Start(TransInfo *ti)
 		return	TRUE;
 	}
 
-#ifdef _DEBUG
-	if (info.mode == TESTWRITE_MODE) {
-		if (isListingOnly) goto ERR;
+	if (info.mode == TEST_MODE) {
+	//	if (isListingOnly) goto ERR;
 		hWriteThread  = (HANDLE)_beginthreadex(0, 0, WriteThread, this, 0, &id);
 		hReadThread   = (HANDLE)_beginthreadex(0, 0, TestThread, this, 0, &id);
 		if (!hWriteThread || !hReadThread) goto ERR;
 		return	TRUE;
 	}
-#endif
 
 	hWriteThread  = (HANDLE)_beginthreadex(0, 0, WriteThread, this, 0, &id);
 	hReadThread   = (HANDLE)_beginthreadex(0, 0, ReadThread, this, 0, &id);
@@ -774,7 +797,7 @@ BOOL FastCopy::Start(TransInfo *ti)
 	return	TRUE;
 
 ERR:
-	End();
+	EndCore();
 	return	FALSE;
 }
 
@@ -936,7 +959,7 @@ FilterRes FastCopy::FilterCheck(WCHAR *dir, int dir_len, DWORD attr, const WCHAR
 				}
 			}
 		}
-		if (excAbs.size() == depthNum) {
+		if (depthIdx < excAbs.size()) {
 			if ((regExp = excAbs[depthIdx])) {
 				if (regExp->IsMatch(dir + depth[0])) return FR_UNMATCH;
 			}
@@ -960,10 +983,14 @@ FilterRes FastCopy::FilterCheck(WCHAR *dir, int dir_len, DWORD attr, const WCHAR
 				}
 			}
 		}
-		if (incAbs.size() == depthNum) {
+		if (depthIdx < incAbs.size()) {
 			if ((regExp = incAbs[depthIdx])) {
 				if (regExp->IsMatch(dir + depth[0])) return FR_MATCH;
 			}
+		}
+		// 絶対指定incのみでかつ、絶対指定の最大階層以上のアンマッチの場合、探索終了
+		if (is_dir && incRel.size() == 0 && depthNum >= incAbs.size() && incAbs.size() > 0) {
+			return	FR_UNMATCH;
 		}
 		return	is_dir ? FR_CONT : FR_UNMATCH;
 	}
@@ -1128,8 +1155,10 @@ BOOL FastCopy::PutList(WCHAR *path, DWORD opt, DWORD lastErr, int64 wtime, int64
 					int len = dstDigest.GetDigestSize();
 					if (p != start) *p++ = ' ';
 					p += wcscpyz(p,
-						(len == MD5_SIZE)  ? L"md5=" :
-						(len == SHA1_SIZE) ? L"sha1=" : L"sha256=");
+						(len == MD5_SIZE)    ? L"md5="    :
+						(len == SHA1_SIZE)   ? L"sha1="   :
+						(len == SHA256_SIZE) ? L"sha256=" :
+						(len == XXHASH_SIZE) ? L"xxhash=" : L"none");
 					p += bin2hexstrW(digest, len, p);
 				}
 				*p++ = '>';
@@ -2462,7 +2491,7 @@ void FastCopy::SetTotalErrInfo(BOOL is_stream, int64 err_trans)
 	totalErrTrans += err_trans;
 }
 
-BOOL FastCopy::ReadFilePeparse(Command cmd, int idx, int dir_len, FileStat *stat)
+BOOL FastCopy::ReadFileReparse(Command cmd, int idx, int dir_len, FileStat *stat)
 {
 	BYTE	rd[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
 	ReqHead	*req = NULL;
@@ -2692,7 +2721,7 @@ BOOL FastCopy::ReadFileProc(int *open_idx, int dir_len)
 		goto END;
 	}
 	if (is_reparse) {
-		ret = ReadFilePeparse(cmd, cur_idx, dir_len, stat);
+		ret = ReadFileReparse(cmd, cur_idx, dir_len, stat);
 	}
 	else {
 		ret = ReadFileProcCore(cur_idx, dir_len, cmd, stat);
@@ -3103,7 +3132,6 @@ BOOL FastCopy::RDigestThreadCore(void)
 void FastCopy::SetupRandomDataBuf(void)
 {
 	RandomDataBuf	*data = (RandomDataBuf *)mainBuf.Buf();
-
 	data->is_nsa = (info.flags & OVERWRITE_DELETE_NSA) ? TRUE : FALSE;
 	data->base_size = max(PAGE_SIZE, dstSectorSize);
 	data->buf_size = int(mainBuf.Size() - data->base_size);
@@ -3121,9 +3149,8 @@ void FastCopy::SetupRandomDataBuf(void)
 			TGenRandom(data->buf[1], data->buf_size);
 		}
 		else {
-			for (int i=0, max=data->buf_size / sizeof(int) * 2; i < max; i++) {
-				*((int *)data->buf[0] + i) = rand();
-			}
+			TGenRandomMT(data->buf[0], data->buf_size);
+			TGenRandomMT(data->buf[1], data->buf_size);
 		}
 		memset(data->buf[2], 0, data->buf_size);
 	}
@@ -3133,19 +3160,23 @@ void FastCopy::SetupRandomDataBuf(void)
 			TGenRandom(data->buf[0], data->buf_size);	// CryptAPIのrandは遅い...
 		}
 		else {
-			for (int i=0, max=data->buf_size / sizeof(int); i < max; i++) {
-				*((int *)data->buf[0] + i) = rand();
-			}
+			TGenRandomMT(data->buf[0], data->buf_size);
 		}
 	}
 }
 
 void FastCopy::GenRandomName(WCHAR *path, int fname_len, int ext_len)
 {
-	static char *char_dict = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+	static char *char_dict = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz@$";
+	static mt19937_64	mt64((random_device())());
 
-	for (int i=0; i < fname_len; i++) {
-		path[i] = char_dict[(rand() >> 4) % 62];
+	for (int i=0; i < fname_len; ) {
+		u_int64	val = mt64();
+		int		max_num = min((64/6), fname_len-i); // 64bit / 6bit == 10
+		for (int j=0; j < max_num; i++, j++) {
+			path[i] = char_dict[val & 0x3f];
+			val >>= 6;
+		}
 	}
 	if (ext_len) {
 		path[fname_len - ext_len] =  '.';
@@ -4607,7 +4638,7 @@ BOOL FastCopy::SetFinishFileID(int64 _file_id, MoveObj::Status status)
 }
 
 
-BOOL FastCopy::End(void)
+BOOL FastCopy::EndCore()
 {
 	isAbort = TRUE;
 
@@ -4678,10 +4709,6 @@ BOOL FastCopy::End(void)
 	fileStatBuf.FreeBuf();
 	listBuf.FreeBuf();
 
-	if (errBuf.UsedSize() > 0) {
-		errBuf.FreeBuf();
-		errBuf.AllocBuf(MIN_ERR_BUF, MAX_ERR_BUF);
-	}
 	srcDepth.FreeBuf();
 	dstDepth.FreeBuf();
 	cnfDepth.FreeBuf();
@@ -4693,12 +4720,25 @@ BOOL FastCopy::End(void)
 	wDigestList.UnInit();
 	rOvl.UnInit();
 	wOvl.UnInit();
+	srcArray.Init();
+	dstArray.Init();
 
 	delete [] hardLinkDst;
 	hardLinkDst = NULL;
 	CleanRegFilter();
 
 	return	TRUE;
+}
+
+BOOL FastCopy::End(void)
+{
+	BOOL	ret = EndCore();
+
+	if (errBuf.UsedSize() > 0) {
+		errBuf.FreeBuf();
+		errBuf.AllocBuf(MIN_ERR_BUF, MAX_ERR_BUF);
+	}
+	return	ret;
 }
 
 BOOL FastCopy::Suspend(void)
@@ -4961,9 +5001,6 @@ BOOL FastCopy::Wait(DWORD tick)
 	return	!isAbort;
 }
 
-
-#ifdef _DEBUG
-
 unsigned WINAPI FastCopy::TestThread(void *fastCopyObj)
 {
 	return	((FastCopy *)fastCopyObj)->TestWrite();
@@ -4972,7 +5009,7 @@ unsigned WINAPI FastCopy::TestThread(void *fastCopyObj)
 /*
 	テスト用ファイル作成
 	サンプル例）1025byte のファイルを 10dir * 100個 = 計1000個作成
-	 Source:  C:\temp\; 1k+1,10,100
+	 Source:  1k+1,10,100
 	 DestDir: D:\test\
 */
 int64 CalcFsize(const WCHAR *fsize_str)
@@ -4989,7 +5026,8 @@ int64 CalcFsize(const WCHAR *fsize_str)
 	}
 	int64	fsize = _wtoi64(targ.s());
 
-	if      (wcschr(targ.s(), 'G')) fsize *= 1024 * 1024 * 1024;
+	if      (wcschr(targ.s(), 'T')) fsize *= 1024LL * 1024 * 1024 * 1024;
+	else if (wcschr(targ.s(), 'G')) fsize *= 1024 * 1024 * 1024;
 	else if (wcschr(targ.s(), 'M')) fsize *= 1024 * 1024;
 	else if (wcschr(targ.s(), 'K')) fsize *= 1024;
 
@@ -4998,14 +5036,27 @@ int64 CalcFsize(const WCHAR *fsize_str)
 
 BOOL FastCopy::TestWrite()
 {
-	int64	fsize = CalcFsize(wcstok(srcArray.Path(1), L", "));
-	int		dnum  = _wtoi(wcstok(NULL, L", "));
-	int		fnum  = _wtoi(wcstok(NULL, L", "));
+	int64	fsize = 0;
+	int		dnum  = 0;
+	int		fnum  = 0;
+	BOOL	ret = FALSE;
 
 	FILETIME			cur;
 	UnixTime2FileTime(time(NULL), &cur);
 	WIN32_FIND_DATAW	ddat = { FILE_ATTRIBUTE_DIRECTORY, cur, cur, cur };
 	WIN32_FIND_DATAW	fdat = { FILE_ATTRIBUTE_NORMAL, cur, cur, cur };
+
+	WCHAR	*tok = wcstok(srcArray.Path(0), L"=");
+	if (!tok || wcsicmp(tok, L"w") != 0) goto END;
+
+	if (!(tok = wcstok(NULL, L", "))) goto END;
+	if ((fsize = CalcFsize(tok)) < 0) goto END;
+
+	if (!(tok = wcstok(NULL, L", "))) goto END;
+	if ((dnum = _wtoi(tok)) <= 0) goto END;
+
+	if (!(tok = wcstok(NULL, L", "))) goto END;
+	if ((fnum = _wtoi(tok)) <= 0) goto END;
 
 	for (int i=0; i < dnum && !isAbort; i++) {
 		FileStat	dstat;
@@ -5025,6 +5076,10 @@ BOOL FastCopy::TestWrite()
 			fstat.fileID = nextFileID++;
 			fstat.SetFileSize(fsize);
 
+			if (isListingOnly) {
+				SendRequest(cmd, 0, &fstat);
+				continue;
+			}
 			do {
 				ReqHead	*req = PrepareReqBuf(offsetof(ReqHead, stat) + fstat.minSize,
 					remain_size, fstat.fileID);
@@ -5038,10 +5093,23 @@ BOOL FastCopy::TestWrite()
 			} while (remain_size > 0 && !isAbort);
 		}
 		SendRequest(RETURN_PARENT);
+		ret = isAbort ? FALSE : TRUE;
 	}
 	SendRequest(REQ_EOF);
 
+END:
+	if (!ret) {
+		ConfirmErr(L"format err (w=file-size,n-dirs,n-files only, and r= is not implemented)"
+			, NULL, CEF_STOP|CEF_NOAPI);
+	}
+	TestWriteEnd();
+	return ret;
+}
+
+void FastCopy::TestWriteEnd()
+{
 	ChangeToWriteMode(TRUE);
+
 	while (hWriteThread) {
 		if (hWriteThread) {
 			if (::WaitForSingleObject(hWriteThread, 1000) != WAIT_TIMEOUT) {
@@ -5051,10 +5119,7 @@ BOOL FastCopy::TestWrite()
 		}
 	}
 	FinishNotify();
-	return TRUE;
 }
-
-#endif
 
 void FastCopy::OvlLog(OverLap *ovl, const void *buf, const WCHAR *fmt,...)
 {

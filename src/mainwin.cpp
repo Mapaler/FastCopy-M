@@ -1,9 +1,9 @@
 ﻿static char *mainwin_id = 
-	"@(#)Copyright (C) 2004-2016 H.Shirouzu		mainwin.cpp	ver3.26";
+	"@(#)Copyright (C) 2004-2017 H.Shirouzu		mainwin.cpp	ver3.30";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2016-12-08(Thu)
+	Update					: 2017-03-06(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-29
@@ -30,6 +30,7 @@ TFastCopyApp::TFastCopyApp(HINSTANCE _hI, LPSTR _cmdLine, int _nCmdShow)
 {
 	LoadLibrary("RICHED20.DLL");
 	LoadLibrary("msftedit.DLL");
+
 //	LoadLibrary("SHELL32.DLL");
 //	LoadLibrary("COMCTL32.DLL");
 //	LoadLibrary("COMDLG32.dll");
@@ -167,15 +168,31 @@ TMainDlg::TMainDlg() : TDlg(MAIN_DIALOG), aboutDlg(this), setupDlg(&cfg, this),
 	statusFont = NULL;
 	memset(&statusLogFont, 0, sizeof(statusLogFont));
 
-	curPriority = ::GetPriorityClass(::GetCurrentProcess());
+	curPriority = 0;
 
 	if (IsWinVista()) {	// WinServer2012+ATOM で発生する問題への対処（暫定）
 		::SetPriorityClass(::GetCurrentProcess(), PROCESS_MODE_BACKGROUND_BEGIN);
 		::SetPriorityClass(::GetCurrentProcess(), PROCESS_MODE_BACKGROUND_END);
 	}
 
-	SetPriority(SPEED_AUTO);
-	SetPriority(SPEED_FULL);
+	switch (cfg.priority) {
+	case 1:
+		SetPriority(IDLE_PRIORITY_CLASS);
+		break;
+
+	case 2:
+		SetPriority(NORMAL_PRIORITY_CLASS);
+		break;
+
+	case 3:
+		SetPriority(HIGH_PRIORITY_CLASS);
+		break;
+
+	default:
+		SetPriority(IDLE_PRIORITY_CLASS);
+		SetPriority(NORMAL_PRIORITY_CLASS);
+		break;
+	}
 
 	autoCloseLevel = NO_CLOSE;
 	curIconIndex = 0;
@@ -339,7 +356,7 @@ BOOL TMainDlg::SetupWindow()
 		SetWindowPos(HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE|SWP_NOACTIVATE|SWP_NOMOVE);
 
 	MoveCenter();
-	SetItemEnable(GetCopyMode() == FastCopy::DELETE_MODE);
+	SetItemEnable(GetCopyMode());
 
 	SetMiniWindow();
 	return	TRUE;
@@ -508,7 +525,7 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 			(void **)&taskbarList);
 		if (taskbarList) {
 			taskbarList->SetProgressValue(hWnd, 0, 100);
-			taskbarList->SetProgressState(hWnd, TBPF_NORMAL);
+			taskbarList->SetProgressState(hWnd, TBPF_NOPROGRESS);
 		}
 	}
 
@@ -855,12 +872,21 @@ BOOL TMainDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl)
 
 	case MODE_COMBO:
 		if (wNotifyCode == CBN_SELCHANGE) {
-			BOOL	is_delete = GetCopyMode() == FastCopy::DELETE_MODE;
-			if (is_delete && isNetPlaceSrc) {
+			if (GetCopyMode() == FastCopy::DELETE_MODE && isNetPlaceSrc) {
 				SetDlgItemTextW(SRC_COMBO, L"");
 				isNetPlaceSrc = FALSE;
 			}
-			SetItemEnable(is_delete);
+			if (GetCopyMode() == FastCopy::TEST_MODE) {
+				SetDlgItemTextW(SRC_COMBO, LoadStrW(IDS_TESTSAMPLE));
+			}
+			else if (cfg.testMode) {
+				WCHAR	w[MAX_PATH] = L"";
+				if (GetDlgItemTextW(SRC_COMBO, w, wsizeof(w)) > 0 && !wcsnicmp(w, L"w=", 2)) {
+					SetDlgItemTextW(SRC_COMBO, L"");
+				}
+			}
+
+			SetItemEnable(GetCopyMode());
 		}
 		return	TRUE;
 
@@ -1104,6 +1130,7 @@ void TMainDlg::RefreshWindow(BOOL is_start_stop)
 	DlgItem	*item;
 	int		*target;
 	BOOL	is_delete = GetCopyMode() == FastCopy::DELETE_MODE;
+	BOOL	is_del_test = is_delete || GetCopyMode() == FastCopy::TEST_MODE;
 	BOOL	is_exec = fastCopy.IsStarting() || isDelay;
 	BOOL	is_filter = IsDlgButtonChecked(FILTER_CHECK);
 	BOOL	is_path_grow = (isErrEditHide || IsListing()); // == !err_grow
@@ -1149,9 +1176,9 @@ void TMainDlg::RefreshWindow(BOOL is_start_stop)
 		item = dlgItems + *target;
 		hdwp = ::DeferWindowPos(hdwp, item->hWnd, 0, item->wpos.x + xdiff,
 			item->wpos.y, item->wpos.cx, item->wpos.cy,
-			is_exec && (*target == list_item && !IsListing()
-			|| *target == ok_item && IsListing()) || is_delete
-				&& (*target == estimate_item || *target == verify_item)
+			is_exec &&
+				(*target == list_item && !IsListing() || *target == ok_item && IsListing())
+			|| is_del_test && (*target == estimate_item || *target == verify_item)
 			|| (*target == filterhelp_item && !is_filter)
 			|| (!isExtendFilter && *target >= minsizestatic_item && *target <= maxsizecombo_item)
 				? dwHideFlg : dwFlg);
@@ -1297,11 +1324,14 @@ BOOL TMainDlg::EvDropFiles(HDROP hDrop)
 void TMainDlg::SetPriority(DWORD new_class)
 {
 	if (curPriority != new_class) {
-		::SetPriorityClass(::GetCurrentProcess(), curPriority = new_class);
-		if (IsWinVista()) {
-			::SetPriorityClass(::GetCurrentProcess(), curPriority == IDLE_PRIORITY_CLASS ?
-								PROCESS_MODE_BACKGROUND_BEGIN : PROCESS_MODE_BACKGROUND_END);
+		if (IsWinVista() && curPriority == IDLE_PRIORITY_CLASS) {
+			::SetPriorityClass(::GetCurrentProcess(), PROCESS_MODE_BACKGROUND_END);
 		}
+		::SetPriorityClass(::GetCurrentProcess(), new_class);
+		if (IsWinVista() && new_class == IDLE_PRIORITY_CLASS) {
+			::SetPriorityClass(::GetCurrentProcess(), PROCESS_MODE_BACKGROUND_BEGIN);
+		}
+		curPriority = new_class;
 	}
 }
 
@@ -1525,6 +1555,8 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 {
 	int		idx = (int)SendDlgItemMessage(MODE_COMBO, CB_GETCURSEL, 0, 0);
 	BOOL	is_delete_mode = copyInfo[idx].mode == FastCopy::DELETE_MODE;
+	BOOL	is_move_mode = copyInfo[idx].mode == FastCopy::MOVE_MODE;
+	BOOL	is_test_mode = copyInfo[idx].mode == FastCopy::TEST_MODE;
 	BOOL	is_filter = IsDlgButtonChecked(FILTER_CHECK);
 	BOOL	is_listing = (exec_flags & LISTING_EXEC) ? TRUE : FALSE;
 	BOOL	is_initerr_logging = (noConfirmStop && !is_listing) ? TRUE : FALSE;
@@ -1559,37 +1591,44 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 		| (cfg.isReadOsBuf ? FastCopy::USE_OSCACHE_READ : 0)
 		| (cfg.isWShareOpen ? FastCopy::WRITESHARE_OPEN : 0)
 		| (skipEmptyDir && is_filter ? FastCopy::SKIP_EMPTYDIR : 0)
-		| (!isReparse && info.mode != FastCopy::MOVE_MODE && info.mode != FastCopy::DELETE_MODE ?
-			FastCopy::REPARSE_AS_NORMAL : 0)
-		| (info.mode == FastCopy::MOVE_MODE && cfg.serialMove ? FastCopy::SERIAL_MOVE : 0)
-		| (info.mode == FastCopy::MOVE_MODE && cfg.serialVerifyMove ?
-			FastCopy::SERIAL_VERIFY_MOVE : 0)
+		| (!isReparse && !is_move_mode && !is_delete_mode ? FastCopy::REPARSE_AS_NORMAL : 0)
+		| (is_move_mode && cfg.serialMove ? FastCopy::SERIAL_MOVE : 0)
+		| (is_move_mode && cfg.serialVerifyMove ? FastCopy::SERIAL_VERIFY_MOVE : 0)
 		| (isLinkDest ? FastCopy::RESTORE_HARDLINK : 0)
 		| (isReCreate ? FastCopy::DEL_BEFORE_CREATE : 0)
-		| ((diskMode == 2 || info.mode == FastCopy::TESTWRITE_MODE) ? FastCopy::FIX_DIFFDISK :
-			diskMode == 1 ? FastCopy::FIX_SAMEDISK : 0);
-	info.flags			&= ~cfg.copyUnFlags;
+		| ((diskMode == 2 || is_test_mode) ? FastCopy::FIX_DIFFDISK : (diskMode == 1) ?
+			FastCopy::FIX_SAMEDISK : 0);
 
+	info.flags			&= ~cfg.copyUnFlags;
 	info.verifyFlags	= 0;
-	if ((!is_listing && IsDlgButtonChecked(VERIFY_CHECK)) ||
-		 (is_listing && is_fore && is_ctrkey)) {
-		info.verifyFlags = FastCopy::VERIFY_FILE;
-		switch (cfg.hashMode) {
-		case 0:
-			info.verifyFlags |= FastCopy::VERIFY_MD5;
-			break;
-		case 1:
-			info.verifyFlags |= FastCopy::VERIFY_SHA1;
-			break;
-		case 2:
-			info.verifyFlags |= FastCopy::VERIFY_SHA256;
-			break;
+
+	if (!is_test_mode && !is_delete_mode) {
+		if ((!is_listing && IsDlgButtonChecked(VERIFY_CHECK)) ||
+			(is_listing && is_fore && is_ctrkey)) {
+			info.verifyFlags = FastCopy::VERIFY_FILE;
+			switch (cfg.hashMode) {
+			case Cfg::MD5:
+				info.verifyFlags |= FastCopy::VERIFY_MD5;
+				break;
+			case Cfg::SHA1:
+				info.verifyFlags |= FastCopy::VERIFY_SHA1;
+				break;
+			case Cfg::SHA256:
+				info.verifyFlags |= FastCopy::VERIFY_SHA256;
+				break;
+			case Cfg::XXHASH:
+				info.verifyFlags |= FastCopy::VERIFY_XXHASH;
+				break;
+			}
 		}
 	}
 
 	info.timeDiffGrace	= (int64)cfg.timeDiffGrace * 10000; // 1ms -> 100ns
 
 	info.fileLogFlags	= (!is_listing || is_ctrkey || is_shiftkey) ? cfg.fileLogFlags : 0;
+	if (is_test_mode) {	// テスト作成時は強制で詳細ログ出力
+		info.fileLogFlags |= FastCopy::FILELOG_FILESIZE;
+	}
 	info.debugFlags		= cfg.debugFlags;
 
 	info.bufSize		= (int64)GetDlgItemInt(BUFSIZE_EDIT) * 1024 * 1024;
@@ -1759,14 +1798,16 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 	}
 
 	if (ret) {
-		if (is_delete_mode ? cfg.EntryDelPathHistory(src) : cfg.EntryPathHistory(src, dst)) {
-		//	SetPathHistory(SETHIST_LIST);
+		if (info.mode != FastCopy::TEST_MODE) {
+			if (is_delete_mode ? cfg.EntryDelPathHistory(src) : cfg.EntryPathHistory(src, dst)) {
+			//	SetPathHistory(SETHIST_LIST);
+			}
+			if (is_filter) {
+				cfg.EntryFilterHistory(inc, exc, from_date, to_date, min_size, max_size);
+			//	SetFilterHistory(SETHIST_LIST);
+			}
+			cfg.WriteIni();
 		}
-		if (is_filter) {
-			cfg.EntryFilterHistory(inc, exc, from_date, to_date, min_size, max_size);
-		//	SetFilterHistory(SETHIST_LIST);
-		}
-		cfg.WriteIni();
 	}
 
 	int	pathLogMax = src_len * sizeof(WCHAR) + sizeof(dst);
@@ -1920,7 +1961,9 @@ BOOL TMainDlg::ExecCopyCore(void)
 
 BOOL TMainDlg::EndCopy(void)
 {
-	SetPriority(NORMAL_PRIORITY_CLASS);
+	if (cfg.priority <= 0) {
+		SetPriority(NORMAL_PRIORITY_CLASS);
+	}
 	::KillTimer(hWnd, FASTCOPY_TIMER);
 
 	BOOL	is_starting = fastCopy.IsStarting();
@@ -2301,8 +2344,10 @@ DWORD TMainDlg::UpdateSpeedLevel(BOOL is_timer)
 	fastCopy.SetWaitTick(newWaitCnt);
 
 	if (!is_timer && fastCopy.IsStarting()) {
-		SetPriority((speedLevel != SPEED_FULL || cfg.alwaysLowIo) ?
-						IDLE_PRIORITY_CLASS : NORMAL_PRIORITY_CLASS);
+		if (cfg.priority <= 0) {
+			SetPriority((speedLevel != SPEED_FULL || cfg.priority == 1) ?
+							IDLE_PRIORITY_CLASS : NORMAL_PRIORITY_CLASS);
+		}
 		if (speedLevel == SPEED_SUSPEND) {
 			fastCopy.Suspend();
 		}
@@ -2410,7 +2455,7 @@ BOOL TMainDlg::RunasSync(HWND hOrg)
 /* 内部情報とGUIを無矛盾にする */
 	SetSpeedLevelLabel(this, speedLevel);
 	UpdateMenu();
-	SetItemEnable(GetCopyMode() == FastCopy::DELETE_MODE);
+	SetItemEnable(GetCopyMode());
 	SetExtendFilter();
 
 	isRunAsStart = TRUE;
@@ -3061,8 +3106,10 @@ BOOL TMainDlg::SetWindowTitle()
 		p += swprintf(p, FMT_PERCENT, doneRatePercent);
 	}
 	if (taskbarList) {
-		taskbarList->SetProgressValue(hWnd, int(doneRatePercent >= 0 && fastCopy.IsStarting() ?
-		doneRatePercent : 0), 100);
+		taskbarList->SetProgressState(hWnd, fastCopy.IsStarting() ? TBPF_NORMAL : TBPF_NOPROGRESS);
+		if (fastCopy.IsStarting()) {
+			taskbarList->SetProgressValue(hWnd, doneRatePercent, 100);
+		}
 	}
 
 	WCHAR		_job[MAX_PATH] = L"";
@@ -3090,19 +3137,22 @@ BOOL TMainDlg::SetWindowTitle()
 	return	SetWindowTextW(buf);
 }
 
-void TMainDlg::SetItemEnable(BOOL is_delete)
+void TMainDlg::SetItemEnable(FastCopy::Mode mode)
 {
+	BOOL	is_delete = (mode == FastCopy::DELETE_MODE);
+	BOOL	is_test   = (mode == FastCopy::TEST_MODE);
+
 	::EnableWindow(GetDlgItem(DST_FILE_BUTTON), !is_delete);
 	::EnableWindow(GetDlgItem(DST_COMBO), !is_delete);
-	::ShowWindow(GetDlgItem(ESTIMATE_CHECK), is_delete ? SW_HIDE : SW_SHOW);
-	::ShowWindow(GetDlgItem(VERIFY_CHECK), is_delete ? SW_HIDE : SW_SHOW);
+	::ShowWindow(GetDlgItem(ESTIMATE_CHECK), (is_delete || is_test) ? SW_HIDE : SW_SHOW);
+	::ShowWindow(GetDlgItem(VERIFY_CHECK), (is_delete || is_test) ? SW_HIDE : SW_SHOW);
 
-	::EnableWindow(GetDlgItem(ACL_CHECK), !is_delete);
-	::EnableWindow(GetDlgItem(STREAM_CHECK), !is_delete);
+	::EnableWindow(GetDlgItem(ACL_CHECK), !(is_delete || is_test));
+	::EnableWindow(GetDlgItem(STREAM_CHECK), !(is_delete || is_test));
 	::EnableWindow(GetDlgItem(OWDEL_CHECK), is_delete);
 
-	::ShowWindow(GetDlgItem(ACL_CHECK), is_delete ? SW_HIDE : SW_SHOW);
-	::ShowWindow(GetDlgItem(STREAM_CHECK), is_delete ? SW_HIDE : SW_SHOW);
+	::ShowWindow(GetDlgItem(ACL_CHECK), (is_delete || is_test) ? SW_HIDE : SW_SHOW);
+	::ShowWindow(GetDlgItem(STREAM_CHECK), (is_delete || is_test) ? SW_HIDE : SW_SHOW);
 	::ShowWindow(GetDlgItem(OWDEL_CHECK), is_delete ? SW_SHOW : SW_HIDE);
 
 //	SetPathHistory(SETHIST_LIST);
@@ -3219,7 +3269,7 @@ void TMainDlg::SetJob(int idx)
 
 	SetDlgItemTextW(JOBTITLE_STATIC, job->title);
 	SendDlgItemMessage(MODE_COMBO, CB_SETCURSEL, idx, 0);
-	SetDlgItemInt(BUFSIZE_EDIT, job->bufSize);
+	// SetDlgItemInt(BUFSIZE_EDIT, job->bufSize);
 	CheckDlgButton(ESTIMATE_CHECK, job->estimateMode);
 	CheckDlgButton(VERIFY_CHECK, job->enableVerify);
 	CheckDlgButton(IGNORE_CHECK, job->ignoreErr);
@@ -3235,7 +3285,7 @@ void TMainDlg::SetJob(int idx)
 	SetDlgItemTextW(TODATE_COMBO, job->toDateFilter);
 	SetDlgItemTextW(MINSIZE_COMBO, job->minSizeFilter);
 	SetDlgItemTextW(MAXSIZE_COMBO, job->maxSizeFilter);
-	SetItemEnable(copyInfo[idx].mode == FastCopy::DELETE_MODE);
+	SetItemEnable(copyInfo[idx].mode);
 	SetDlgItemText(PATH_EDIT, "");
 	SetDlgItemText(ERR_EDIT, "");
 	diskMode = job->diskMode;
