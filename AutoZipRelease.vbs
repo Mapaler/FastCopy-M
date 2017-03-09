@@ -90,7 +90,7 @@ For xi = 0 To 1
 	'7-Zip解压文件的命令行
 	command = """" & p_7zip & """ a -tzip"
 	command = command & " """ & zipName & """ " '压缩包地址
-	command = command & " readme_chs.txt  readme_cht.txt readme_eng.txt readme_ja.txt license-gpl3.txt "
+	command = command & " readme_chs.txt  readme_cht.txt readme_eng.txt readme_ja.txt license-gpl3.txt xxhash-LICENSE.txt "
 	command = command & " """ & curDir & "help\FastCopy.chm"" "
 	command = command & " """ & curDir & "Output\Release\x86\FastExt1.dll"" "
 	command = command & " """ & curDir & "Output\Release\x64\FastEx64.dll"" "
