@@ -1,9 +1,19 @@
-﻿FastCopy-M
+FastCopy-M
 ===========
 "FastCopy-M" 是免费开源软件 "FastCopy" 的一个二次开发分支。<br />
 "FastCopy-M" is a branch of open source soft "FastCopy", "M" is Multilanguage or Mapaler.
 
-## FastCopy feature | FastCopy特点
+现在拥有如下语言：<br />
+Now has the following language:
+
+| Language | Detail |
+| --- | --- |
+| Japanese | 日本語,Original |
+| English | Official translation by H.Shirouzu |
+| Chinese, simplified | 简体中文，从英文翻译而来 |
+| Chinese, traditional | 繁体中文，用MS Word從簡中轉換而來，稍加修訂 |
+
+## Original FastCopy feature | 原版FastCopy特点
 
 * FastCopy 是Windows上最快的复制/删除软件。<br />
 FastCopy is the Fastest Copy/Delete Software on Windows.
