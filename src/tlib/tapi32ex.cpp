@@ -1,10 +1,10 @@
 ﻿static char *tap32ex_id = 
-	"@(#)Copyright (C) 1996-2015 H.Shirouzu		tap32ex.cpp	Ver0.99";
+	"@(#)Copyright (C) 1996-2017 H.Shirouzu		tap32ex.cpp	Ver0.99";
 /* ========================================================================
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Application Frame Class
 	Create					: 1996-06-01(Sat)
-	Update					: 2015-08-12(Wed)
+	Update					: 2017-02-24(Fri)
 	Copyright				: H.Shirouzu
 	Reference				: 
 	======================================================================== */
@@ -15,6 +15,11 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <assert.h>
+#include <random>
+
+#ifdef USE_XXHASH
+#include "../../external/xxhash/xxhash.h"
+#endif
 
 NTSTATUS (WINAPI *pNtQueryInformationFile)(HANDLE, PIO_STATUS_BLOCK, PVOID, ULONG,
 	FILE_INFORMATION_CLASS);
@@ -39,36 +44,58 @@ BOOL TLibInit_Ntdll()
 
 TDigest::TDigest()
 {
-	hProv	= NULL;
-	hHash	= NULL;
-	used	= false;
-	updated	= false;
-	type	= MD5;
+	hProv		= NULL;
+	hHash		= NULL;
+	xxHashState = NULL;
+	used		= false;
+	updated		= false;
+	type		= MD5;
 }
 
 TDigest::~TDigest()
 {
 	if (hHash)	::CryptDestroyHash(hHash);
 	if (hProv)	::CryptReleaseContext(hProv, 0);
+
+#ifdef USE_XXHASH
+	if (xxHashState) XXH64_freeState((XXH64_state_t *)xxHashState);
+#endif
 }
 
 BOOL TDigest::Init(TDigest::Type _type)
 {
-	type = _type;
+	type	= _type;
+	used	= false;
+	updated	= false;
 
-	if (hProv == NULL) {
-		if (!::CryptAcquireContext(&hProv, NULL, MS_DEF_DSS_PROV, PROV_DSS, 0)) {
-			::CryptAcquireContext(&hProv, NULL, MS_DEF_DSS_PROV, PROV_DSS, CRYPT_NEWKEYSET);
+	if (type == XXHASH) {
+#ifdef USE_XXHASH
+		if (!xxHashState && !(xxHashState = (XXH64_state_t *)XXH64_createState())) {
+			return	FALSE;
 		}
+		return	XXH64_reset((XXH64_state_t *)xxHashState, 0) == XXH_OK;
+#else
+		return	FALSE;
+#endif
 	}
+
 	if (hHash) {
 		::CryptDestroyHash(hHash);
 		hHash = NULL;
 	}
-	used	= false;
-	updated	= false;
 
-	return	::CryptCreateHash(hProv, type == SHA1 ? CALG_SHA : CALG_MD5, 0, 0, &hHash);
+	if (hProv == NULL) {  
+		DWORD	flags = CRYPT_VERIFYCONTEXT|CRYPT_MACHINE_KEYSET;
+		if (!::CryptAcquireContext(&hProv, NULL, 0, PROV_RSA_AES, flags)) {
+			::CryptAcquireContext(&hProv, NULL, 0, PROV_DSS, flags);
+		}
+	}
+	if (hProv == NULL) {
+		return	FALSE;
+	}
+
+	return	::CryptCreateHash(hProv, type == MD5 ? CALG_MD5 :
+		type == SHA256 ? CALG_SHA_256 : CALG_SHA, 0, 0, &hHash);
 }
 
 BOOL TDigest::Reset()
@@ -82,6 +109,15 @@ BOOL TDigest::Reset()
 BOOL TDigest::Update(void *data, int size)
 {
 	updated = true;
+
+	if (type == XXHASH) {
+#ifdef USE_XXHASH
+		return	XXH64_update((XXH64_state_t *)xxHashState, data, size) == XXH_OK;
+#else
+		return	FALSE;
+#endif
+	}
+
 	return	::CryptHashData(hHash, (BYTE *)data, size, 0);
 }
 
@@ -91,11 +127,31 @@ BOOL TDigest::GetVal(void *data)
 	if (used) return FALSE;
 
 	used = true;
+
+	if (type == XXHASH) {
+#ifdef USE_XXHASH
+		GetRevVal(data);
+		rev_order((BYTE *)data, GetDigestSize());
+		return	TRUE;
+#else
+		return	FALSE;
+#endif
+	}
+
 	return	::CryptGetHashParam(hHash, HP_HASHVAL, (BYTE *)data, &size, 0);
 }
 
 BOOL TDigest::GetRevVal(void *data)
 {
+	if (type == XXHASH) {
+#ifdef USE_XXHASH
+		*(XXH64_hash_t *)data = XXH64_digest((XXH64_state_t *)xxHashState);
+		return	TRUE;
+#else
+		return	FALSE;
+#endif
+	}
+
 	if (!GetVal(data)) return FALSE;
 
 	rev_order((BYTE *)data, GetDigestSize());
@@ -104,36 +160,74 @@ BOOL TDigest::GetRevVal(void *data)
 
 void TDigest::GetEmptyVal(void *data)
 {
-#define EMPTY_MD5	"\xd4\x1d\x8c\xd9\x8f\x00\xb2\x04\xe9\x80\x09\x98\xec\xf8\x42\x7e"
-#define EMPTY_SHA1	"\xda\x39\xa3\xee\x5e\x6b\x4b\x0d\x32\x55\xbf\xef\x95\x60\x18\x90" \
-					"\xaf\xd8\x07\x09"
+#define EMPTY_MD5		"\xd4\x1d\x8c\xd9\x8f\x00\xb2\x04\xe9\x80\x09\x98\xec\xf8\x42\x7e"
+#define EMPTY_SHA1		"\xda\x39\xa3\xee\x5e\x6b\x4b\x0d\x32\x55\xbf\xef\x95\x60\x18\x90" \
+						"\xaf\xd8\x07\x09"
+#define EMPTY_SHA256	"\xe3\xb0\xc4\x42\x98\xfc\x1c\x14\x9a\xfb\xf4\xc8\x99\x6f\xb9\x24" \
+						"\x27\xae\x41\xe4\x64\x9b\x93\x4c\xa4\x95\x99\x1b\x78\x52\xb8\x55"
+#ifdef USE_XXHASH
+#define EMPTY_XXHASH	"\xef\x46\xdb\x37\x51\xd8\xe9\x99"
+#endif
 
-	if (type == MD5) {
-		memcpy(data, EMPTY_MD5,  sizeof(EMPTY_MD5));
-	}
-	else {
-		memcpy(data, EMPTY_SHA1, sizeof(EMPTY_SHA1));
+	switch (type) {
+	case MD5:
+		memcpy(data, EMPTY_MD5,  MD5_SIZE);
+		break;
+
+	case SHA1:
+		memcpy(data, EMPTY_SHA1, SHA1_SIZE);
+		break;
+
+	case SHA256:
+		memcpy(data, EMPTY_SHA256, SHA256_SIZE);
+		break;
+
+#ifdef USE_XXHASH
+	case XXHASH:
+		memcpy(data, EMPTY_XXHASH, XXHASH_SIZE);
+		break;
+#endif
 	}
 }
 
-BOOL TGenRandom(void *buf, int len)
+BOOL TGenRandomMT(void *buf, size_t size)
 {
-	static HCRYPTPROV hProv;
+	std::mt19937_64	mt64((std::random_device())());
 
-	if (hProv == NULL) {
-		if (!::CryptAcquireContext(&hProv, NULL, MS_DEF_DSS_PROV, PROV_DSS, 0)) {
-			::CryptAcquireContext(&hProv, NULL, MS_DEF_DSS_PROV, PROV_DSS, CRYPT_NEWKEYSET);
-		}
+	size_t	remain  = size % sizeof(u_int64);
+
+	if (remain) {
+		BYTE	*d = (BYTE *)buf + (size - remain);
+		u_int64	v = mt64();
+		memcpy(d, &v, remain);
 	}
 
-	if (hProv && ::CryptGenRandom(hProv, (DWORD)len, (BYTE *)buf))
-		return	TRUE;
+	u_int64	*p   = (u_int64 *)buf;
+	u_int64	*end = p + (size / sizeof(u_int64));
 
-	for (int i=0; i < len; i++) {
-		*((BYTE *)buf + i) = (BYTE)(rand() >> 8);
+	while (p < end) {
+		*p++ = mt64();
 	}
 
 	return	 TRUE;
+}
+
+BOOL TGenRandom(void *buf, size_t len)
+{
+	static HCRYPTPROV hProv = ([]() {
+		HCRYPTPROV	hProvTmp = NULL;
+		DWORD	flags = CRYPT_VERIFYCONTEXT|CRYPT_MACHINE_KEYSET;
+		if (!::CryptAcquireContext(&hProvTmp, NULL, 0, PROV_RSA_AES, flags)) {
+			::CryptAcquireContext(&hProvTmp, NULL, 0, PROV_DSS, flags);
+		}
+		return	hProvTmp;
+	})();
+
+	if (hProv && ::CryptGenRandom(hProv, (DWORD)len, (BYTE *)buf)) {
+		return	TRUE;
+	}
+
+	return	 TGenRandomMT(buf, len);
 }
 
 
@@ -343,12 +437,12 @@ inline u_int MAKE_HASH_CORE(u_int sum, u_int data, int offset) {
 			^ rand_data1[(seed ^ offset) % THASH_RAND_NUM1];
 }
 
-u_int MakeHash(const void *data, int size, u_int iv)
+u_int MakeHash(const void *data, size_t size, u_int iv)
 {
 	u_int	val = rand_data1[(size ^ iv) % THASH_RAND_NUM1] ^ 0xe31a021d;
 	u_int	offset = val ^ 0x8f8e053a;
-	int		max_loop = size / sizeof(u_int);
-	int		mod = size % sizeof(u_int);
+	size_t	max_loop = size / sizeof(u_int);
+	size_t	mod = size % sizeof(u_int);
 	u_int	*p = (u_int *)data;
 
 	for (u_int *end = p + max_loop; p < end; p++) {
@@ -362,9 +456,10 @@ u_int MakeHash(const void *data, int size, u_int iv)
 	case 1:	mod_val = 0x11111111; memcpy(&mod_val, p, 1); break;
 	case 2:	mod_val = 0x22222222; memcpy(&mod_val, p, 2); break;
 	case 3:	mod_val = 0x33333333; memcpy(&mod_val, p, 3); break;
+	default: mod_val = 0; break;
 	}
 
-	return	MAKE_HASH_CORE(val, mod_val, offset + mod);
+	return	MAKE_HASH_CORE(val, mod_val, offset + (u_int)mod);
 }
 
 /*
@@ -376,12 +471,12 @@ inline uint64 MAKE_HASH_CORE64(uint64 sum, uint64 data, int64 offset) {
 			^ rand64_data1[(seed ^ offset) % THASH_RAND64_NUM1];
 }
 
-uint64 MakeHash64(const void *data, int size, uint64 iv)
+uint64 MakeHash64(const void *data, size_t size, uint64 iv)
 {
 	uint64	val = rand64_data1[(size ^ iv) % THASH_RAND64_NUM1] ^ 0x313b88a34190944b;
 	uint64	offset = val ^ 0xa0f643cccf82b318;
-	int		max_loop = size / sizeof(uint64);
-	int		mod = size % sizeof(uint64);
+	size_t	max_loop = size / sizeof(uint64);
+	size_t	mod = size % sizeof(uint64);
 	uint64	*p = (uint64 *)data;
 
 	for (uint64 *end = p + max_loop; p < end; p++) {
@@ -399,6 +494,7 @@ uint64 MakeHash64(const void *data, int size, uint64 iv)
 	case 5:	mod_val = 0x5555555555555555; memcpy(&mod_val, p, 5); break;
 	case 6:	mod_val = 0x6666666666666666; memcpy(&mod_val, p, 6); break;
 	case 7: mod_val = 0x7777777777777777; memcpy(&mod_val, p, 7); break;
+	default: mod_val = 0; break;
 	}
 
 	return	MAKE_HASH_CORE64(val, mod_val, offset + mod);
@@ -412,7 +508,7 @@ extern void CheckHashQuality64();
 
 void tapi32_test()
 {
-	CheckHashQuality();
+//	CheckHashQuality();
 	CheckHashQuality64();
 }
 
@@ -490,6 +586,20 @@ void CheckHashQuality()
 	delete [] obj;
 }
 
+
+void swap_s(char *s, int len)
+{
+	int		mid = len / 2;
+
+	for (int i=0; i < mid; i++) {
+		char	&c1 = s[i];
+		char	&c2 = s[len-i-1];
+		char	tmp = c1;
+		c1 = c2;
+		c2 = tmp;
+	}
+}
+
 void CheckHashQuality64()
 {
 	THtest64	ht;
@@ -523,9 +633,11 @@ void CheckHashQuality64()
 	Debug("Start %s mode=%s num=%d\n", hash_name, mode, MAX_HASH64);
 
 	for (uint64 i=0; i < MAX_HASH64; i++) {
-#if 0
-		len = sprintf(buf, "str___________________%08lldn", (int64)i) + 1;
-#elif 1
+#if 1
+		len = sprintf(buf, "%08lld", (int64)i);
+	//	swap_s(buf, len);
+		len += sprintf(buf+len, "___________________________str");
+#elif 0
 		val = i;
 #else
 		val = (rand64_data1[i % THASH_RAND_NUM1]);
@@ -542,7 +654,7 @@ void CheckHashQuality64()
 		hash_id = *(u_int *)data; // 32bit空間でテスト
 #endif
 		if (ht.Search(NULL, hash_id)) {
-			if (col < 10) Debug("reduced val is %016llx (%d)\n", hash_id, len);
+			if (col < 10) Debug("reduced val is %016llx (%d) %s\n", hash_id, len, buf);
 			col++;
 		}
 		else {

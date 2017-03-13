@@ -1,9 +1,9 @@
 ﻿/* static char *cfg_id = 
-	"@(#)Copyright (C) 2005-2015 H.Shirouzu		cfg.h	Ver3.03"; */
+	"@(#)Copyright (C) 2005-2017 H.Shirouzu		cfg.h	Ver3.30"; */
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2005-01-23(Sun)
-	Update					: 2015-08-30(Sun)
+	Update					: 2017-03-06(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -131,14 +131,15 @@ protected:
 
 public:
 	int		iniVersion;
-	int		bufSize;
+	int		bufSize;		// MB
 	int		maxRunNum;
-	int		maxTransSize;
-	int		maxOvlSize;
+	int		maxTransSize;	// MB
+	int		maxOvlSize;		// MB
 	int		maxOvlNum;
 	int		maxOpenFiles;
-	int		maxAttrSize;
-	int		maxDirSize;
+	int		maxAttrSize;	// MB
+	int		maxDirSize;		// MB
+	int		minSectorSize;
 	int		nbMinSizeNtfs;
 	int		nbMinSizeFat;
 	int		timeDiffGrace;
@@ -160,13 +161,14 @@ public:
 	int		waitTick;
 	int		speedLevel;
 	BOOL	isAutoSlowIo;
-	BOOL	alwaysLowIo;
+	int		priority;
 	BOOL	enableOwdel;
 	BOOL	enableAcl;
 	BOOL	enableStream;
 	BOOL	enableVerify;
 	BOOL	useOverlapIo;
 	BOOL	usingMD5;
+	enum HashMode { MD5, SHA1, SHA256, SHA512, XXHASH32, XXHASH } hashMode;
 	BOOL	enableNSA;
 	BOOL	delDirWithFilter;
 	BOOL	enableMoveAttr;
@@ -179,8 +181,9 @@ public:
 	BOOL	isReCreate;
 	BOOL	isExtendFilter;
 	int		taskbarMode; // 0: use tray, 1: use taskbar
-	BOOL	finishNotify;
+	int		finishNotify;
 	int		finishNotifyTout;
+	BOOL	preventSleep;
 
 	int		infoSpan;	// information update timing (0:250msec, 1:500msec, 2:1000sec)
 	BOOL	isTopLevel;
@@ -191,12 +194,20 @@ public:
 	BOOL	aclErrLog;
 	BOOL	streamErrLog;
 	int		debugFlags;
+	int		debugMainFlags;
+	int		testMode;
 	BOOL	isRunasButton;
 	BOOL	isSameDirRename;
-	BOOL	shextAutoClose;
-	BOOL	shextTaskTray;
-	BOOL	shextNoConfirm;
-	BOOL	shextNoConfirmDel;
+
+	struct ShExtCfg {
+		BOOL	autoClose;
+		BOOL	taskTray;
+		BOOL	noConfirm;
+		BOOL	noConfirmDel;
+	};
+	ShExtCfg	shAdmin;
+	ShExtCfg	shUser;
+
 	BOOL	execConfirm;
 	WCHAR	**srcPathHistory;
 	WCHAR	**dstPathHistory;

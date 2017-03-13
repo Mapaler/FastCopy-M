@@ -1,9 +1,9 @@
 ﻿/* static char *fastcopy_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		fastcopy.h	Ver3.11"; */
+	"@(#)Copyright (C) 2004-2017 H.Shirouzu		fastcopy.h	Ver3.30"; */
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-12-05(Sa)
+	Update					: 2017-03-06(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -114,6 +114,7 @@ struct TotalTrans {
 	int64	errStreamTrans;
 	int		errAclStream;
 	int		openRetry;
+	BOOL	abortCnt;
 };
 
 struct TransInfo {
@@ -168,8 +169,8 @@ struct FileStat {
 	int			eadSize;
 	int			repSize;
 
-	// md5/sha1 digest
-	BYTE		digest[SHA1_SIZE];
+	// md5/sha1/sha256 digest
+	BYTE		digest[SHA256_SIZE];
 	WCHAR		cFileName[2];	// 2 == dummy
 
 	int64	FileSize() { return *(int64 *)&nFileSizeLow; } // Low/Highの順序
@@ -193,7 +194,7 @@ inline int64 FileSize(const BY_HANDLE_FILE_INFORMATION &bhi) {
 
 class StatHash {
 	FileStat	**hashTbl;
-	int			hashNum;
+	size_t		hashNum;
 
 public:
 	StatHash() {}
@@ -246,7 +247,7 @@ typedef std::vector<RegExp *> RegExpVec;
 
 class FastCopy {
 public:
-	enum Mode { DIFFCP_MODE, SYNCCP_MODE, MOVE_MODE, MUTUAL_MODE, DELETE_MODE, TESTWRITE_MODE };
+	enum Mode { DIFFCP_MODE, SYNCCP_MODE, MOVE_MODE, MUTUAL_MODE, DELETE_MODE, TEST_MODE };
 	enum OverWrite { BY_NAME, BY_ATTR, BY_LASTEST, BY_CONTENTS, BY_ALWAYS };
 	enum FsType { FSTYPE_NONE, FSTYPE_NTFS, FSTYPE_FAT, FSTYPE_NETWORK };
 	enum Flags {
@@ -271,8 +272,7 @@ public:
 		RESTORE_HARDLINK	=	0x00040000,
 		DEL_BEFORE_CREATE	=	0x00080000,
 		DELDIR_WITH_FILTER	=	0x00100000,
-		VERIFY_MD5			=	0x00200000,
-		VERIFY_FILE			=	0x00400000,
+		NET_BKUPWR_NOOVL	=	0x00200000,
 		WRITESHARE_OPEN		=	0x00800000,
 		//
 		LISTING				=	0x01000000,
@@ -281,6 +281,13 @@ public:
 		REPORT_ACL_ERROR	=	0x20000000,
 		REPORT_STREAM_ERROR	=	0x40000000,
 		//
+	};
+	enum VerifyFlags {
+		VERIFY_MD5			=	0x00000001,
+		VERIFY_SHA1			=	0x00000002,
+		VERIFY_SHA256		=	0x00000004,
+		VERIFY_XXHASH		=	0x00000020,
+		VERIFY_FILE			=	0x00001000,
 	};
 	enum FileLogFlags {
 		FILELOG_TIMESTAMP	=	0x00000001,
@@ -296,16 +303,18 @@ public:
 		Mode	mode;			// (I/ )
 		OverWrite overWrite;	// (I/ )
 		int		flags;			// (I/ )
+		int		verifyFlags;	// (I/ )
 		int64	timeDiffGrace;	// (I )
 		int		fileLogFlags;	// (I/ )
 		int		debugFlags;		// (I/ )	// 1: timestamp debug
-		uint64	bufSize;		// (I/ )
+		size_t	bufSize;		// (I/ )
 		int		maxOpenFiles;	// (I/ )
-		int		maxTransSize;	// (I/ )
-		int		maxOvlSize;		// (I/ )
+		size_t	maxTransSize;	// (I/ )
+		size_t	maxOvlSize;		// (I/ )
 		DWORD	maxOvlNum;		// (I/ )
-		int		maxAttrSize;	// (I/ )
-		int		maxDirSize;		// (I/ )
+		size_t	maxAttrSize;	// (I/ )
+		size_t	maxDirSize;		// (I/ )
+		int		minSectorSize;	// (I/ ) 最小セクタサイズ
 		int		nbMinSizeNtfs;	// (I/ ) FILE_FLAG_NO_BUFFERING でオープンする最小サイズ
 		int		nbMinSizeFat;	// (I/ ) FILE_FLAG_NO_BUFFERING でオープンする最小サイズ (FAT用)
 		int		maxLinkHash;	// (I/ ) Dest Hardlink 用 hash table サイズ
@@ -344,8 +353,8 @@ public:
 	BOOL Start(TransInfo *ti);
 	BOOL End(void);
 
-	BOOL TakeExclusivePriv(bool is_force=FALSE, ShareInfo::CheckInfo *ci=NULL) {
-		return shareInfo.TakeExclusive(useDrives, info.maxRunNum, is_force, ci);
+	BOOL TakeExclusivePriv(int force_mode=0, ShareInfo::CheckInfo *ci=NULL) {
+		return shareInfo.TakeExclusive(useDrives, info.maxRunNum, force_mode, ci);
 	}
 	BOOL ReleaseExclusivePriv() { return shareInfo.ReleaseExclusive(); }
 	BOOL IsTakeExclusivePriv(void) { return shareInfo.IsTaken(); }
@@ -355,12 +364,13 @@ public:
 	BOOL IsStarting(void) { return hReadThread || hWriteThread; }
 	BOOL Suspend(void);
 	BOOL Resume(void);
-	void Aborting(void);
+	void Aborting(BOOL is_auto=FALSE);
 	BOOL WriteErrLog(const WCHAR *message, int len=-1);
 	BOOL IsAborting(void) { return isAbort; }
 	void SetWaitTick(DWORD wait) { waitTick = wait; }
 	DWORD GetWaitTick() { return waitTick; }
 	BOOL GetTransInfo(TransInfo *ti, BOOL fullInfo=TRUE);
+	VBuf *GetErrBuf() { return &errBuf; }
 
 protected:
 	enum Command {
@@ -396,8 +406,8 @@ protected:
 	struct ReqHead : public TListObj {	// request header
 		int64		reqId;
 		Command		cmd;
-		int			bufSize;
-		int			readSize;	// 普通ファイルのみ有効
+		DWORD		bufSize;
+		DWORD		readSize;	// 普通ファイルのみ有効
 		BYTE		*buf;
 		int			reqSize;	// request header size
 		FileStat	stat;		// 可変長
@@ -425,7 +435,7 @@ protected:
 		int64		wTime;
 		DWORD		dwAttr;
 		enum		Status { OK, NG, PASS } status;
-		BYTE		digest[SHA1_SIZE];
+		BYTE		digest[SHA256_SIZE];
 		int			pathLen;
 		WCHAR		path[1];
 	};
@@ -436,7 +446,7 @@ protected:
 		DWORD		dwAttr;
 		enum		Status { INIT, CONT, DONE, PRE_ERR, ERR, PASS, FIN } status;
 		int			dataSize;
-		BYTE		digest[SHA1_SIZE];
+		BYTE		digest[SHA256_SIZE];
 		BYTE		*data;
 		WCHAR		path[1]; // さらに dstSector境界後にデータが続く
 	};
@@ -470,8 +480,8 @@ protected:
 
 	struct RandomDataBuf {	// 上書き削除用
 		BOOL	is_nsa;
-		int		base_size;
-		int		buf_size;
+		DWORD	base_size;
+		DWORD	buf_size;
 		BYTE	*buf[3];
 	};
 
@@ -500,6 +510,11 @@ protected:
 	int64	timeDiffGrace;
 	BOOL	enableAcl;
 	BOOL	enableStream;
+	BOOL	enableBackupPriv;
+
+	FINDEX_INFO_LEVELS
+			findInfoLv; // FindFirstFileEx用info level
+	DWORD	findFlags;  // FindFirstFileEx用flags
 
 	// セクタ情報など
 	int		srcSectorSize;
@@ -596,11 +611,11 @@ protected:
 	enum	RunMode { RUN_NORMAL, RUN_DIGESTREQ, RUN_FINISH } runMode;
 
 	// ダイジェスト関連
-	class DigestBuf : public TDigest {	// List-V モード用
+	class DigestBuf : public TDigest {
 	public:
 		DigestBuf() : TDigest() {}
 		VBuf	buf;
-		BYTE	val[SHA1_SIZE];
+		BYTE	val[SHA256_SIZE];
 	};
 	DigestBuf	srcDigest;
 	DigestBuf	dstDigest;
@@ -616,7 +631,7 @@ protected:
 
 	DataList	digestList;	// ハッシュ/Open記録（WriteThread のみ利用）
 	bool IsUsingDigestList() {
-		return (info.flags & VERIFY_FILE) && (info.flags & LISTING_ONLY) == 0;
+		return (info.verifyFlags & VERIFY_FILE) && (info.flags & LISTING_ONLY) == 0;
 	}
 	bool IsReparseEx(DWORD attr) {
 		return IsReparse(attr) && (info.flags & REPARSE_AS_NORMAL) == 0;
@@ -643,9 +658,8 @@ protected:
 	static unsigned WINAPI DeleteThread(void *fastCopyObj);
 	static unsigned WINAPI RDigestThread(void *fastCopyObj);
 	static unsigned WINAPI WDigestThread(void *fastCopyObj);
-#ifdef _DEBUG
 	static unsigned WINAPI TestThread(void *fastCopyObj);
-#endif
+
 	BOOL ReadThreadCore(void);
 	BOOL DeleteThreadCore(void);
 	BOOL WriteThreadCore(void);
@@ -704,7 +718,7 @@ protected:
 	void SetTotalErrInfo(BOOL is_stream, int64 err_trans);
 	BOOL ReadFileWithReduce(HANDLE hFile, void *buf, DWORD size, OverLap *ovl=NULL);
 	BOOL ReadFileAltStreamProc(int *open_idx, int dir_len, FileStat *stat);
-	BOOL ReadFilePeparse(Command cmd, int idx, int dir_len, FileStat *stat);
+	BOOL ReadFileReparse(Command cmd, int idx, int dir_len, FileStat *stat);
 	void IoAbortFile(HANDLE hFile, OvlList *ovl_list);
 	BOOL ReadAbortFile(int cur_idx, Command cmd, int dir_len, BOOL is_stream, BOOL is_modify);
 	BOOL ReadFileProc(int *open_idx, int dir_len);
@@ -732,7 +746,7 @@ protected:
 	BOOL CaseAlignProc(int dir_len=-1, BOOL need_log=FALSE);
 	BOOL WriteDirProc(int dir_len);
 	BOOL SetDirExtData(FileStat *stat);
-	DigestCalc *GetDigestCalc(DigestObj *obj, int require_size);
+	DigestCalc *GetDigestCalc(DigestObj *obj, DWORD require_size);
 	BOOL PutDigestCalc(DigestCalc *obj, DigestCalc::Status status);
 	BOOL MakeDigestAsync(DigestObj *obj);
 	BOOL CheckDigests(CheckDigestMode mode);
@@ -754,6 +768,7 @@ protected:
 	void SetErrRFileID(int64 file_id);
 	void SetErrWFileID(int64 file_id);
 	BOOL SetFinishFileID(int64 _file_id, MoveObj::Status status);
+	BOOL EndCore(void);
 
 	BOOL SetUseDriveMap(const WCHAR *path);
 	BOOL InitSrcPath(int idx);
@@ -761,7 +776,7 @@ protected:
 	BOOL InitDstPath(void);
 	BOOL InitDepthBuf(void);
 	FsType GetFsType(const WCHAR *root_dir);
-	int GetSectorSize(const WCHAR *root_dir);
+	int GetSectorSize(const WCHAR *root_dir, BOOL use_cluster=FALSE);
 	int MakeUnlimitedPath(WCHAR *buf);
 	BOOL PutList(WCHAR *path, DWORD opt, DWORD lastErr=0, int64 wtime=-1, int64 size=-1,
 			BYTE *digest=NULL);
@@ -785,9 +800,8 @@ protected:
 	BOOL ConvertExternalPath(const WCHAR *path, WCHAR *buf, int buf_len);
 	BOOL Wait(DWORD tick=0);
 
-#ifdef _DEBUG
 	BOOL TestWrite();
-#endif
+	void TestWriteEnd();
 	void OvlLog(OverLap *ovl, const void *buf, const WCHAR *fmt,...); // for debug
 };
 

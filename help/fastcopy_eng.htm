@@ -72,11 +72,11 @@
 <body bgcolor="#eeffff">
 
 <div align="center">
-<h1 class="help_head1">FastCopy ver3.11</h1>
+<h1 class="help_head1">FastCopy ver3.30</h1>
 </div>
 <div class="help_all">
 
-<div align="right">2015/12/06 H.Shirouzu</div>
+<div align="right">2017/03/05 H.Shirouzu</div>
 
 <center>
 <strong>Warning :</strong> This document was made with the Japanese-English translation software. <br>
@@ -110,7 +110,7 @@ I want to correct this document. (If you made corrections, please send to <a hre
 	<a href="#cmdline">7. CommandLine</a><br>
 	<a href="#warning">8. Warning</a><br>
 	<a href="#contact">9. Latest Version/Contact</a><br>
-	<a href="#misc">10. Misc</a><br>
+	<a href="#misc">10. Misc (setting file, etc)</a><br>
 	<a href="#todo">11. ToDo</a><br>
 	<a href="#history">12. History</a><br>
 </div>
@@ -146,22 +146,25 @@ I want to correct this document. (If you made corrections, please send to <a hre
 <h2 class="help_head2">2. License</h2>
 <div class="help_section">
 	<div class="help_license">
-	FastCopy ver3.0 Copyright(C) 2004-2015 by SHIROUZU Hiroaki<br>
+	FastCopy ver3.x Copyright(C) 2004-2017 by SHIROUZU Hiroaki<br>
 	<br>
 	This program is free software. You can redistribute it and/or modify it under the GNU General Public License version 3.<br>
 	<a href="license-gpl3.txt">license-gpl3.txt</a><br>
 	<br>
 	If you want to distribute your modified version, but you do not want to distribute the modified source code, or you want to request to develop bundle/special version, please contact me. (shirouzu@ipmsg.org)
 	<br>
-	</div>
+	</div><br>
+	<div class="help_license">
+	xxHash Library Copyright (c) 2012-2014, Yann Collet All rights reserved.<br>
+	<a href="xxhash-LICENSE.txt">License details.</a>
 	</div>
 </div>
 
 <a name="environment"/>
 <h2 class="help_head2">3. Environment</h2>
 <div class="help_section">
-	Windows XP/Vista/7/8/8.1/10<br>
-	Windows Server 2003/2008/2012
+	Windows XP SP3/Vista/7/8/8.1/10<br>
+	Windows Server 2003(&R2)/2008(&R2)/2012(&R2)/2016
 </div>
 
 <a name="install"/>
@@ -184,7 +187,8 @@ I want to correct this document. (If you made corrections, please send to <a hre
 <h2 class="help_head2">5. Usage & MainWindow</h2>
 <div class="help_section">
 	Main window when minimized appears in task tray. <br>
-	(In addition, the icon rotates while the copy is operation.)<br>
+	Main status be shown at running.<br>
+	(numbers of parens indicates the number of directories)
 
 	<a name="source_dst"/>
 	<h3 class="help_head3">Source / DestDir</h3>
@@ -262,7 +266,9 @@ I want to correct this document. (If you made corrections, please send to <a hre
 		<tr><td nowrap><strong>Verify</strong></td>
 		<td>
 		<a name="verify"/>
-		Verify written files data by MD5(or SHA-1. If you want to use SHA-1, write [main] Using_MD5=0 in FastCopy2.ini)<br>
+		<a name="hash_mode"/>Verify written files data by MD5 (/SHA-1/SHA-256/xxHash). <br>
+		(If you want to use SHA-1/SHA-256/xxHash, it can selected in <a href="#setting_copyopt">Copy/Move Options</a> of settings.)<br>
+
 		... Action detail: Read(Src) -> MD5(Src) -> Write(Dst) -> Read(Dst) -> MD5(Dst) -> Compare MD5(Src/Dst) (Of course, all actions are processed in parallel as much as possible)
 		</td></tr>
 		<tr><td nowrap><strong>Estimate</strong></td>
@@ -281,7 +287,8 @@ I want to correct this document. (If you made corrections, please send to <a hre
 		<table class="help_table" border="4">
 		<tr><td><strong>ACL</strong></td>
 		<td>Copy Access Control List (ACL). (Only applicable to NTFS)<br>
-		<strong>(It is recommended to use with <a href="#elevate">Administrative privilege</a>)</strong></td></tr> 
+		<strong>(It is recommended to use with <a href="#elevate">Administrative privilege</a>)</strong><br>
+		And Extended Attribute(EA) will also be copied.</td></tr> 
 		<tr><td><strong>Alt Stream</strong></td>
 		<td>Copy Alternate Stream. (Only applicable to NTFS)</td></tr>
 		<tr><td><strong>Wipe & Delete (prevent deleted files reviving)</strong></td>
@@ -309,7 +316,7 @@ It can be specified include filter strings(<a href="#wild_card">UNIX wildcard fo
 		<tr><td colspan="2"><strong>The following filters are enabled when check "Option" -> "Show Extended filter".</strong></td></tr>
 		<tr><td><strong>FromDate</strong></td>
 		<td>Don't copy the files that timestamp are older than specified date(<a href="#date_filter">format</a>).<br>
-		This can be specified by not only absolute format ("20090322") but also by relative format (10days before ... "-10D").</td></tr>
+		This can be specified by not only absolute format ("20090322" or "2016/09/26 12:30:56") but also by relative format (10days before ... "-10D").</td></tr>
 		<tr><td><strong>ToDate</strong></td>
 		<td>Don't copy files with timestamps newer than this specified date.</td></tr>
 		<tr><td><strong>MinSize</strong></td>
@@ -358,7 +365,7 @@ It can be specified include filter strings(<a href="#wild_card">UNIX wildcard fo
 		<a name="date_filter"/>
 		<strong>FromDate/ToDate filter format.</strong>
 		<table class="help_table" border="4">
-		<tr><td>Absolute</td><td>Specify "YYYYMMDD"(year/month/day).<br> ex) "20090101"</td>
+		<tr><td>Absolute</td><td>Specify "YYYYMMDD[hhmmss]"(year/month/day/hours/minutes/seconds).<br> ex) "20090322" or "2016/09/26 12:30:56"</td>
 		<tr><td>Relative</td><td>Specify "+|- number W|D|h|m|s".<br>
 		W|D|h|m|s means Weeks/Days/hours/minutes/seconds.<br>
 		ex) "-12h" <strong>(This is case sensitive.)</strong></td>
@@ -526,6 +533,8 @@ demerit points are same as read, but sometimes many head seeks occur in writing 
 					This option changes the behavior to "a file has copied, and remove copied source file"</td></tr>
 			<tr><td><strong>Move one by one (verify)</strong></td>
 				<td>It is the same as "Move one by one" except "remove copied source files" -> "remove verified source files"</td></tr>
+			<tr><td><strong>Hash mode (for verify)</strong></td>
+				<td>Select Hash mode (MD5/SHA-1/SHA-256/xxHash) for verifying.</td></tr>
 			<tr><td><strong>Tolerance at the timestamp comparison</strong></td><td>Specify tolerance timestamp difference as same date in Diff(Date/Size) or Diff(Newer).<br>
 			Normally, FastCopy corrects timestamp difference on the different filesystem(NTFS timestamp precision is 100ns, FAT is 2sec or etc), automatically.<br>
 			But some NAS timestamp precision is very strange, so manual settings(in msec) are available.</td></tr>
@@ -576,15 +585,17 @@ demerit points are same as read, but sometimes many head seeks occur in writing 
 			<tr><td><strong>Use taskbar instead of tasktray at minimizing</strong></td><td>using taskbar</td></tr>
 			<tr><td nowrap><strong>Info Update span</strong></td><td>It can be specified information update span.</td></tr>
 			<tr><td><strong>Balloon Notification at the finish</td><td>Enable balloon notification at the finish, if it is minimized.</td></tr>
+			<tr><td><strong>Prevent auto sleep during copying</td><td>Prevent auto sleep(by OS) during copying.<br>(Note: If an error dialog is shown, FastCopy doesn't prevent auto sleep)</td></tr>
 			<tr><td nowrap><strong>English UI</strong></td><td>(Meaningless in English OS) It requires restarting FastCopy.</td></tr>
 			</table>
 		</div>
 	</div>
 
 	<a name="shell"/>
-	<h3 class="help_head3">Option -> Extensions -> Shell Extension</h3>
+	<h3 class="help_head3">Option -> Extensions -> Shell Extension (Personal/AllUsers)</h3>
 	<div class="help_sub_section">
 		Register copy/delete menu items with Explorer's right click menu and right drag&drop menu.<br>
+		("AllUsers" requires administrator privilege (elevate))
 	</div>
 
 	<h3 class="help_head3">Option -> Extensions -> Change/Reset Main Font</h3>
@@ -670,11 +681,20 @@ demerit points are same as read, but sometimes many head seeks occur in writing 
 	Supported options are as follows. 
 	(Please do not put space characters before and behind "=")<br><br>
 
-	<strong>/cmd=(noexist_only|diff|update|sync|force_copy|move|delete) </strong>... Specify operation mode.<br>
-	(By default, diff mode is used. If delete mode is specified, then "/to=desit_dir" is not used.)
 	<div class="help_sub_section">
 
-		<table class="help_table" border="4">
+	<table class="help_table" border="2">
+	<tr><td nowarp><strong>/cmd=<br>
+		&nbsp;&nbsp;(noexist_only<br>
+		&nbsp;&nbsp;|&nbsp;diff<br>
+		&nbsp;&nbsp;|&nbsp;update<br>
+		&nbsp;&nbsp;|&nbsp;force_copy<br>
+		&nbsp;&nbsp;|&nbsp;sync<br>
+		&nbsp;&nbsp;|&nbsp;move<br>
+		&nbsp;&nbsp;|&nbsp;delete)
+		</strong></td>
+		<td>Specify operation mode. (By default, diff mode is used.<br>&nbsp;If delete mode is specified, then "/to=desit_dir" is not used.)
+		<table class="help_table" border="1">
 		<tr><th nowrap>cmdline</th><th>in GUI</th>
 		<tr><td nowrap><strong>noexist_only</strong></td><td>Diff (No Overwrite)</td></tr>
 		<tr class="tr_default"><td nowrap><strong>diff</strong></td><td>Diff (Size/date)</td></tr>
@@ -684,80 +704,48 @@ demerit points are same as read, but sometimes many head seeks occur in writing 
 		<tr><td nowrap><strong>move</strong></td><td>Move (Overwrite)</td></tr>
 		<tr><td nowrap><strong>delete</strong></td><td>Delete</td></tr>
 		</table>
-	</div>
-	<strong>/auto_close</strong> ... Close automatically after execution is finished with no errors. 
-	<br><br>
-	<strong>/force_close</strong> ... Close automatically and forcedly after execution is finished.
-	<br><br>
-	<strong>/open_window</strong> ... Don't stored in the task tray.
-	<br><br>
-	<strong>/estimate</strong> ... Estimate complete time.
-	<br><br>
-	<a name="#no_ui"/>
-	<strong>/no_ui</strong> ... Don't show confirm dialogs. for background task. if /no_ui is used, /no_confirm_del /no_confirm_stop /force_close is setted automatically. If FastCopy run in session 0(kicked by task scheduler), /no_ui is setted automatically. But even if /no_ui is setted, standby/hibernate/shutdown count-down dialog will not prevent.
-	<br><br>
-	<strong>/no_confirm_del</strong> ... Don't confirm before deleting.
-	<br><br>
-	<strong>/no_confirm_stop</strong> ... Don't Show error dialog, Even if critical errors occurred.
-	<br><br>
-	<strong>/no_exec</strong> ... Don't start to execute.
-	<br><br>
-	<strong>/error_stop</strong> ... Show error dialog (and operation is interrupted), if an error occurred. (to disable, /error_stop=FALSE)
-	<br><br>
-	<strong>/bufsize=N(MB)</strong> ... Specify the size(MB) of the main buffer for Read/Write operation.
-	<br><br>
-	<strong>/log</strong> ... Write the operation/errors information to the logfile(FastCopy.log). (to disable, /log=FALSE)
-	<br><br>
-	<strong>/logfile=filename</strong> ... Specify the filename of logfile.
-	<br><br>
-	<strong>/filelog</strong> ... Write to the filelog(detail of copy/delete files). It is stored TIMESTAMP.log in FastCopy/Log directory. If using verify mode, write digest data(default:md5) as additional data. (To specify filelogname, /filelog=filename)
-	<br><br>
-	<strong>/utf8</strong> ... Write to the logfile using UTF-8 encoding (supports Unicode).
-	<br><br>
-	<strong>/skip_empty_dir</strong> ... Skip to create empty directories when /include or /exclude option is used. (to disable, /log=FALSE)
-	<br><br>
-	<strong>/job=job_name</strong> ... Specify the job that is already registered.
-	<br><br>
-	<strong>/force_start</strong> ... Start at once without waiting for the finish of other FastCopy executing.
-	<br><br>
-	<strong>/disk_mode=(auto|same|diff)</strong> ... Specify <a href="#disk_mode">Auto/Same/Diff HDD mode</a>. (default: Auto)
-	<br><br>
-	<strong>/speed=(full|autoslow|9-1(90%-10%)|suspend) </strong> ... Specify speed control level.
-	<br><br>
-	<strong>/srcfile="files.txt"</strong> ... Specify source files by textfile. User is able to describe 1 filename per line. (<strong>Attention:</strong> If a lot of files are specified, it will take many times to display/refresh Source combobox.)
-	<br><br>
-	<strong>/srcfile_w="files.txt"</strong> ... same as "/srcfile=", except describing by UNICODE.
-	<br><br>
-	<strong>/include="..."</strong> ... Specify include filter. (<a href="#filter">details</a>)
-	<br><br>
-	<strong>/exclude="..."</strong> ... Specify exclude filter. (<a href="#filter">details</a>)
-	<br><br>
-	<strong>/from_date="..."</strong> ... Specify oldest timestamp filter. (<a href="#filter">details</a>)
-	<br><br>
-	<strong>/to_date="..."</strong> ... Specify newest timestamp filter. (<a href="#filter">details</a>)
-	<br><br>
-	<strong>/min_size="..."</strong> ... Specify minimum size filter. (<a href="#filter">details</a>)
-	<br><br>
-	<strong>/max_size="..."</strong> ... Specify maximum size filter. (<a href="#filter">details</a>)
-	<br><br>
-	<strong>/wipe_del</strong> ... Rename filename and wipe(overwrite Random data) before deleting.
-	<br><br>
-	<strong>/acl</strong> ... Copy ACL (only NTFS) (to disable, /acl=FALSE)
-	<br><br>
-	<strong>/stream</strong> ... Copy Alternate Stream (only NTFS) (to disable, /stream=FALSE)
-	<br><br>
-	<strong>/reparse</strong> ... Copy junction/mountpoint/symlink itself(to disable, /reparse=FALSE) (<a href="#reparse">details</a>)
-	<br><br>
-	<strong>/verify</strong> ... Verify written files data by MD5(or SHA-1) (to disable, /verify=FALSE) (<a href="#verify">details</a>)
-	<br><br>
-	<a name="linkdest"/>
-	<strong>/linkdest</strong> ... Reproduce hardlink as much as possible. (<a href="#hardlink">details</a>)
-	<br><br>
-	<a name="recreate"/>
-	<strong>/recreate</strong> ... Change updating behavior "overwrite the target" to "delete and recreate the target". (If /linkdest option is enabled, this option is enabled by default.) If you want always to enable, write [main] recreate=1 in FastCopy2.ini.
-	<br><br>
-	<strong>/postproc=action_name</strong> ... Specify post-process action name (to disable, /postproc=FALSE)
-	<br><br>
+	</td></tr>
+	<!--
+	/cmd_opt=date_size/newer/noexist/always (cmd=diff/sync/move only)
+	-->
+	<tr><td nowrap><strong>/auto_close</strong></td><td>Close automatically after execution is finished with no errors.</td></tr>
+	<tr><td nowrap><strong>/force_close</strong></td><td>Close automatically and forcedly after execution is finished.</td></tr>
+	<tr><td nowrap><strong>/open_window</strong></td><td>Don't stored in the task tray.</td></tr>
+	<tr><td nowrap><strong>/estimate</strong></td><td>Estimate complete time.(to disable, /estimate=FALSE)</td></tr>
+	<tr><td nowrap><strong>/balloon(=FALSE)</strong></td><td>Show balloon notification at finish. (to disable, /balloon=FALSE)</td></tr>
+	<tr><td nowrap><strong>/no_ui</strong></td><td><a name="#no_ui"/>Don't show confirm dialogs. for background task. if /no_ui is used, /no_confirm_del /no_confirm_stop /force_close is setted automatically. If FastCopy run in session 0(kicked by task scheduler), /no_ui is setted automatically. But even if /no_ui is setted, standby/hibernate/shutdown count-down dialog will not prevent.</td></tr>
+	<tr><td nowrap><strong>/no_confirm_del</strong></td><td>Don't confirm before deleting.</td></tr>
+	<tr><td nowrap><strong>/no_confirm_stop</strong></td><td>Don't Show error dialog, Even if critical errors occurred.</td></tr>
+	<tr><td nowrap><strong>/no_exec</strong></td><td>Don't start to execute.</td></tr>
+	<tr><td nowrap><strong>/error_stop</strong></td><td>Show error dialog (and operation is interrupted), if an error occurred. (to disable, /error_stop=FALSE)</td></tr>
+	<tr><td nowrap><strong>/bufsize=N(MB)</strong></td><td>Specify the size(MB) of the main buffer for Read/Write operation.</td></tr>
+	<tr><td nowrap><strong>/log</strong></td><td>Write the operation/errors information to the logfile(FastCopy.log). (to disable, /log=FALSE)</td></tr>
+	<tr><td nowrap><strong>/logfile=filename</strong></td><td>Specify the filename of logfile.</td></tr>
+	<tr><td nowrap><strong>/filelog</strong></td><td>Write to the filelog(detail of copy/delete files). It is stored TIMESTAMP.log in FastCopy/Log directory. If using verify mode, write digest data(default:md5) as additional data. (To specify filelogname, /filelog=filename)</td></tr>
+	<tr><td nowrap><strong>/utf8</strong></td><td>Write to the logfile using UTF-8 encoding (supports Unicode).</td></tr>
+	<tr><td nowrap><strong>/skip_empty_dir</strong></td><td>Skip to create empty directories when /include or /exclude option is used. (to disable, /skip_empty_dir=FALSE)</td></tr>
+	<tr><td nowrap><strong>/job=job_name</strong></td><td>Specify the job that is already registered.</td></tr>
+	<tr><td nowrap><strong>/force_start(=N)</strong></td><td>Start at once without waiting for the finish of other FastCopy executing. (/force_start=2-N ... specify number of max parallel process)</td></tr>
+	<tr><td nowrap><strong>/disk_mode=(auto|same|diff)</strong></td><td>Specify <a href="#disk_mode">Auto/Same/Diff HDD mode</a>. (default: Auto)</td></tr>
+	<tr><td nowrap><strong>/speed=(full|autoslow|<br>&nbsp;9-1(90%-10%)|suspend)</strong></td><td>Specify speed control level.</td></tr>
+	<tr><td nowrap><strong>/srcfile="files.txt"</strong></td><td>Specify source files by textfile. User is able to describe 1 filename per line. (<strong>Attention:</strong> If a lot of files are specified, it will take many times to display/refresh Source combobox.)</td></tr>
+	<tr><td nowrap><strong>/srcfile_w="files.txt"</strong></td><td>same as "/srcfile=", except describing by UNICODE.</td></tr>
+	<tr><td nowrap><strong>/include="..."</strong></td><td>Specify include filter. (<a href="#filter">details</a>)</td></tr>
+	<tr><td nowrap><strong>/exclude="..."</strong></td><td>Specify exclude filter. (<a href="#filter">details</a>)</td></tr>
+	<tr><td nowrap><strong>/from_date</strong></td><td>Specify oldest timestamp filter. (<a href="#filter">details</a>)</td></tr>
+	<tr><td nowrap><strong>/to_date</strong></td><td>Specify newest timestamp filter. (<a href="#filter">details</a>)</td></tr>
+	<tr><td nowrap><strong>/min_size="..."</strong></td><td>Specify minimum size filter. (<a href="#filter">details</a>)</td></tr>
+	<tr><td nowrap><strong>/max_size="..."</strong></td><td>Specify maximum size filter. (<a href="#filter">details</a>)</td></tr>
+	<tr><td nowrap><strong>/wipe_del</strong></td><td>Rename filename and wipe(overwrite Random data) before deleting.</td></tr>
+	<tr><td nowrap><strong>/acl</strong></td><td>Copy ACL/EA (only NTFS)(to disable, /acl=FALSE)</td></tr>
+	<tr><td nowrap><strong>/stream</strong></td><td>Copy Alternate Stream (only NTFS) (to disable, /stream=FALSE)</td></tr>
+	<tr><td nowrap><strong>/reparse</strong></td><td>Copy junction/mountpoint/symlink itself(to disable, /reparse=FALSE) (<a href="#reparse">details</a>)</td></tr>
+	<tr><td nowrap><strong>/verify</strong></td><td>Verify written files data by <a href="">MD5(/SHA-1/SHA-256/xxHash)</a> (to disable, /verify=FALSE) (<a href="#verify">details</a>)</td></tr>
+	<tr><td nowrap><strong>/linkdest</strong></td><td><a name="linkdest"/>Reproduce hardlink as much as possible. (<a href="#hardlink">details</a>)</td></tr>
+	<tr><td nowrap><strong>/recreate</strong></td><td><a name="recreate"/>Change updating behavior "overwrite the target" to "delete and recreate the target". (If /linkdest option is enabled, this option is enabled by default.) If you want always to enable, write [main] recreate=1 in FastCopy2.ini.</td></tr>
+	<tr><td nowrap><strong>/postproc=action_name</strong></td><td>Specify post-process action name (to disable, /postproc=FALSE)</td></tr>
+	</table>
+
 	Ex) Copy C:\Test Folder to D:\Backup Folder by "diff(Size/Date)" mode is...<br>
 	&nbsp; FastCopy.exe /cmd=diff "C:\Test Folder" /to="D:\Backup Folder\"<br>
 </div>
@@ -816,6 +804,64 @@ demerit points are same as read, but sometimes many head seeks occur in writing 
 <table class="help_table" border="4">
 <tr><th>Version</th><th>Detail</th></tr>
 
+<tr><td>v3.30</td><td>
+Add xxHash option for verify.<br>
+Add file creation mode (experimental).<br>
+Fix a Start-path filter problem that only deepest filter was used in multiple depth Start-path filters.<br>
+Fix same/diff network drive detection.<br>
+Misc refine.
+
+</td></tr>
+<tr><td>v3.27</td><td>
+Add recording detail logs when initlizing error occurs in No UI mode. (scheduler or etc).<br>
+Misc refine.
+</td></tr>
+<tr><td>v3.26</td><td>
+Show FastCopy icon in shell extension.<br>
+Fix job order in job manager.<br>
+Improve copy speed with ACL/Stream option.<br>
+Add Windows Server 2016 in Supported environments.<br>
+Improve installer.
+</td></tr>
+<tr><td>v3.25</td><td>
+Support hash mode(MD5/SHA-1/SHA-256) for verifying in settings dialog.<br>
+(32bit version only)Fix to stop copying verifying.
+</td></tr>
+<tr><td>v3.24</td><td>
+Fix an exception at terminating in rare environment.
+</td></tr>
+<tr><td>v3.23</td><td>
+Expand limitaion of I/O buffer settings as 4095MB (x64).<br>
+Misc refine.
+</td></tr>
+<tr><td>v3.22</td><td>
+Improve performance for 512e HDD.<br>
+Fix not to ignore minus-relative-date(-1D or etc) in extend filter.<br>
+Fix not to save "Min Sector size is regareded as 4096" settings.
+</td></tr>
+<tr><td>v3.21</td><td>
+Fix not to recognize cmd=(sync|move) option.
+</td></tr>
+<tr><td>v3.20</td><td>
+Support UserMode(not Admin) Shell Extension.<br>
+Add "Prevent auto-sleep during copying" option.<br>
+Improve speed for listing directory entries. (using FIND_FIRST_EX_LARGE_FETCH for high-latency environment or huge number of directory entries)<br>
+Add "Min Sector size is regareded as 4096" settings. (for using a Junction and that points big sector HDD in DestDir drive)<br>
+Disable estimate if NoUI mode is enabled. (to prevent this behavior, /estimate=TRUE)<br>
+Add SHA-256 hash mode for verify. (fastcopy2.ini [main] hash_mode=2)<br>
+Add /balloon option. (to prevent, /balloon=FALSE)<br>
+Expand /force_start option. (/force_start=2-N ... specify number of max parallel process)<br>
+Expand /from_date(to_date) option for hours/minutes/seconds. (/from_date="YYYYMMDD[hhmmss]" or "YYYY/MM/DD [hh:mm:ss]")
+</td></tr>
+
+<tr><td>v3.13-v3.14</td><td>
+Fix an exception at starting in few environment.
+</td></tr>
+<tr><td>v3.12</td><td>
+Show progress in taskbar during normal(not iconic) window with estimate mode.<br>
+Fix "UTF-8 logging" option (always enabled)<br>
+Add Official support forum link
+</td></tr>
 <tr><td>v3.11</td><td>
 Support balloon notification at the finish.<br>
 Add the shortcut button of "Windows Task Scheduler" in Job Settings.<br>

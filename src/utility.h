@@ -1,9 +1,9 @@
 ﻿/* static char *utility_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		utility.h	Ver3.05"; */
+	"@(#)Copyright (C) 2004-2017 H.Shirouzu		utility.h	Ver3.30"; */
 /* ========================================================================
 	Project  Name			: Utility
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-09-23(Wed)
+	Update					: 2017-03-06(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -63,7 +63,7 @@ public:
 	BOOL	ReplacePath(int idx, WCHAR *new_path);
 
 	u_int	MakeHashId(const void *data, int len=-1) {
-		return MakeHash(data, (len >= 0 ? len : (int)wcslen((WCHAR *)data)) * (int)sizeof(WCHAR));
+		return MakeHash(data, (len >= 0 ? len : wcslen((WCHAR *)data)) * sizeof(WCHAR));
 	}
 	u_int	MakeHashId(const PathObj *obj) { return MakeHash(obj->path, obj->len * sizeof(WCHAR));}
 };
@@ -191,6 +191,25 @@ ssize_t comma_int64(WCHAR *s, int64);
 ssize_t comma_double(WCHAR *s, double, int precision);
 ssize_t comma_int64(char *s, int64);
 ssize_t comma_double(char *s, double, int precision);
+
+//#define TRACE_DBG
+#ifdef TRACE_DBG
+void trclog_init();
+void trclog(const WCHAR *func, int lines);
+WCHAR *trclog_get(DWORD idx);
+struct Trl {
+	const WCHAR *func;
+	Trl(const WCHAR *_func, int line) {
+		func = _func;
+		trclog(func, line);
+	}
+	~Trl() {
+		trclog(func, 0);
+	}
+};
+#else
+#define Trl(...)
+#endif
 
 #endif
 

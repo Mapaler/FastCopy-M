@@ -1,5 +1,5 @@
 ﻿static char *tdlg_id = 
-	"@(#)Copyright (C) 1996-2015 H.Shirouzu		tdlg.cpp	Ver0.99";
+	"@(#)Copyright (C) 1996-2016 H.Shirouzu		tdlg.cpp	Ver0.99";
 /* ========================================================================
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Dialog Class
@@ -21,7 +21,9 @@ TDlg::TDlg(UINT _resId, TWin *_parent) : TWin(_parent)
 
 TDlg::~TDlg()
 {
-	if (hWnd) EndDialog(IDCANCEL);
+	if (hWnd) {
+		EndDialog(IDCANCEL);
+	}
 	delete [] dlgItems;
 }
 
@@ -29,7 +31,7 @@ BOOL TDlg::Create(HINSTANCE hInstance)
 {
 	TApp::GetApp()->AddWin(this);
 
-	hWnd = ::CreateDialogW(hInstance ? hInstance : TApp::GetInstance(), (WCHAR *)(DWORD_PTR)resId,
+	hWnd = ::CreateDialogW(hInstance ? hInstance : TApp::hInst(), (WCHAR *)(DWORD_PTR)resId,
 				parent ? parent->hWnd : NULL, (DLGPROC)TApp::WinProc);
 
 	if (hWnd)
@@ -44,7 +46,7 @@ int TDlg::Exec(void)
 	modalFlg = TRUE;
 	if (parent) parent->modalCount++;
 
-	int result = (int)::DialogBoxW(TApp::GetInstance(), (WCHAR *)(DWORD_PTR)resId,
+	int result = (int)::DialogBoxW(TApp::hInst(), (WCHAR *)(DWORD_PTR)resId,
 							parent ? parent->hWnd : NULL, (DLGPROC)TApp::WinProc);
 
 	if (parent) parent->modalCount--;
@@ -64,7 +66,7 @@ LRESULT TDlg::WinProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	switch (uMsg)
 	{
 	case WM_INITDIALOG:
-		if (rect.left != CW_USEDEFAULT && !(::GetWindowLong(hWnd, GWL_STYLE) & WS_CHILD)) {
+		if (rect.left != CW_USEDEFAULT && !(GetWindowLong(GWL_STYLE) & WS_CHILD)) {
 			MoveWindow(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,FALSE);
 		}
 		if (rect.left == CW_USEDEFAULT) {
@@ -93,7 +95,9 @@ LRESULT TDlg::WinProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		return	0;
 
 	case WM_NCDESTROY:
-		if (!::IsIconic(hWnd)) GetWindowRect(&rect);
+		if (!::IsIconic(hWnd)) {
+			GetWindowRect(&rect);
+		}
 		EvNcDestroy();
 		TApp::GetApp()->DelWin(this);
 		hWnd = 0;
@@ -108,6 +112,10 @@ LRESULT TDlg::WinProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		EvEndSession((BOOL)wParam, (BOOL)lParam);
 		return	0;
 
+	case WM_POWERBROADCAST:
+		EvPowerBroadcast(wParam, lParam);
+		return	0;
+
 	case WM_QUERYOPEN:
 		result = EvQueryOpen();
 		SetWindowLong(DWL_MSGRESULT, result);
@@ -119,6 +127,11 @@ LRESULT TDlg::WinProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	case WM_NCPAINT:
 		EvNcPaint((HRGN)wParam);
+		return	0;
+
+	case WM_PRINT:
+	case WM_PRINTCLIENT:
+		EventPrint(uMsg, (HDC)wParam, (DWORD)lParam);
 		return	0;
 
 	case WM_SIZE:
@@ -202,6 +215,11 @@ LRESULT TDlg::WinProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		SetWindowLong(DWL_MSGRESULT, 0);
 		return	0;
 
+	case WM_MOUSEWHEEL:
+		EvMouseWheel(GET_KEYSTATE_WPARAM(wParam), GET_WHEEL_DELTA_WPARAM(wParam),
+			GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+		return	0;
+
 	case WM_LBUTTONUP:
 	case WM_RBUTTONUP:
 	case WM_NCLBUTTONUP:
@@ -271,16 +289,19 @@ LRESULT TDlg::WinProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		return	result;
 	}
 
-	return	FALSE;
+	return	0;
 }
 
 BOOL TDlg::PreProcMsg(MSG *msg)
 {
-	if (hAccel && ::TranslateAccelerator(hWnd, hAccel, msg))
+	if (TranslateAccelerator(msg)) {
 		return	TRUE;
+	}
 
-	if (!modalFlg)
-		return	::IsDialogMessage(hWnd, msg);
+	if (!modalFlg) {
+		return	isUnicode ? ::IsDialogMessageW(hWnd, msg) :
+							::IsDialogMessageA(hWnd, msg);
+	}
 
 	return	FALSE;
 }
@@ -315,12 +336,17 @@ BOOL TDlg::EvCreate(LPARAM lParam)
 
 void TDlg::EndDialog(int result)
 {
-	if (::IsWindow(hWnd))
-	{
-		if (modalFlg)
+	if (hTipWnd) {
+		CloseTipWnd();
+	}
+
+	if (hWnd) {
+		if (modalFlg) {
 			::EndDialog(hWnd, result);
-		else
+		}
+		else {
 			::DestroyWindow(hWnd);
+		}
 	}
 }
 
@@ -360,6 +386,10 @@ int TDlg::SetDlgItem(UINT ctl_id, DWORD flags)
 
 BOOL TDlg::FitDlgItems()
 {
+	if (::IsIconic(hWnd)) {
+		return	FALSE;
+	}
+
 	GetWindowRect(&rect);
 	int	xdiff = (rect.right - rect.left) - (orgRect.right - orgRect.left);
 	int ydiff = (rect.bottom - rect.top) - (orgRect.bottom - orgRect.top);

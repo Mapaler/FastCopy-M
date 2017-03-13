@@ -1,9 +1,9 @@
 ﻿/* static char *miscdlg_id = 
-	"@(#)Copyright (C) 2005-2015 H.Shirouzu		miscdlg.h	Ver3.00"; */
+	"@(#)Copyright (C) 2005-2016 H.Shirouzu		miscdlg.h	Ver3.20"; */
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2005-01-23(Sun)
-	Update					: 2015-08-12(Wed)
+	Update					: 2016-09-28(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */

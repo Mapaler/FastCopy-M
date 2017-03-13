@@ -1,5 +1,5 @@
 ﻿======================================================================
-                   FastCopy  ver3.11                   2015/12/06
+                   FastCopy  ver3.30                   2017/03/06
                                                  SHIROUZU Hiroaki
 ======================================================================
 
@@ -15,8 +15,8 @@
 
 License:
 	-------------------------------------------------------------------------
-	 FastCopy ver3.0
-	 Copyright(C) 2004-2015 SHIROUZU Hiroaki All rights reserved.
+	 FastCopy ver3.x
+	 Copyright(C) 2004-2017 SHIROUZU Hiroaki All rights reserved.
 
 	 This program is free software. You can redistribute it and/or modify
 	 it under the GNU General Public License version 3.
@@ -26,6 +26,9 @@ License:
 
 	 more details: license-gpl3.txt
 	-------------------------------------------------------------------------
+
+	xxHash library Copyright (C) 2012-2014 Mr.Yann Collet, All rights reserved.
+	  more details: external/xxhash/LICENSE
 
 Usage：
 	Please see fastcopy.chm

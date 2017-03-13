@@ -1,5 +1,5 @@
 ﻿static char *tini_id = 
-	"@(#)Copyright (C) 1996-2015 H.Shirouzu		tini.cpp	Ver0.99";
+	"@(#)Copyright (C) 1996-2016 H.Shirouzu		tini.cpp	Ver0.99";
 /* ========================================================================
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Registry Class
@@ -127,7 +127,7 @@ void TInifile::UnLock()
 
 void TInifile::UnInit()
 {
-	for (TIniSection *sec; (sec = TopObj()); ) {
+	while (auto sec = TopObj()) {
 		DelObj(sec);
 		delete sec;
 	}
@@ -192,7 +192,7 @@ void TInifile::InitCore(WCHAR *_ini_file)
 	UnLock();
 }
 
-char *NextBuf(VBuf *vbuf, ssize_t len, ssize_t require_min, ssize_t chunk_size)
+char *NextBuf(VBuf *vbuf, size_t len, size_t require_min, size_t chunk_size)
 {
 	vbuf->AddUsedSize(len);
 	if (vbuf->RemainSize() < require_min) {
@@ -216,8 +216,8 @@ BOOL TInifile::WriteIni()
 		VBuf	vbuf(MIN_INI_ALLOC, MAX_INI_ALLOC);
 		char	*p = (char *)vbuf.Buf();
 
-		for (TIniSection *sec = TopObj(); sec && p; sec = NextObj(sec)) {
-			TIniKey *key = sec->TopObj();
+		for (auto sec = TopObj(); sec && p; sec = NextObj(sec)) {
+			auto key = sec->TopObj();
 			int		len = 0;
 			if (key) {
 				if (sec->Name()) {
@@ -267,7 +267,7 @@ TIniSection *TInifile::SearchSection(const char *section)
 {
 	if (!section || !*section) return rootSec;
 
-	for (TIniSection *sec = rootSec; sec; sec = NextObj(sec)) {
+	for (auto sec = rootSec; sec; sec = NextObj(sec)) {
 		if (sec->Name() && strcmpi(sec->Name(), section) == 0) return sec;
 	}
 	return	NULL;
@@ -299,9 +299,11 @@ BOOL TInifile::DelSection(const char *section)
 
 	if (!sec) return FALSE;
 
+	if (sec == curSec) {
+		curSec = NULL;
+	}
 	DelObj(sec);
 	delete sec;
-	if (sec == curSec) curSec = NULL;
 	return	TRUE;
 }
 

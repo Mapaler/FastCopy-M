@@ -1,9 +1,9 @@
 ﻿static char *mainwinlog_id = 
-	"@(#)Copyright (C) 2015 H.Shirouzu		mainwinlog.cpp	ver3.03";
+	"@(#)Copyright (C) 2015-2017 H.Shirouzu		mainwinlog.cpp	ver3.27";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2015-05-28(Thu)
-	Update					: 2015-08-30(Sun)
+	Update					: 2017-01-23(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -26,7 +26,7 @@ BOOL TMainDlg::StartFileLog()
 	if (fileLogMode == NO_FILELOG || (!isListLog && IsListing())) return FALSE;
 
 	if (fileLogMode == AUTO_FILELOG || wcschr(fileLogPath, '\\') == 0) {
-		MakePathW(logDir, cfg.userDir, GetLoadStrW(IDS_FILELOG_SUBDIR));
+		MakePathW(logDir, cfg.userDir, LoadStrW(IDS_FILELOG_SUBDIR));
 		if (::GetFileAttributesW(logDir) == 0xffffffff)
 			::CreateDirectoryW(logDir, NULL);
 
@@ -39,7 +39,7 @@ BOOL TMainDlg::StartFileLog()
 	if (fileLogMode == AUTO_FILELOG || *fileLogPath == 0) {
 		SYSTEMTIME	st = startTm;
 		for (int i=0; i < 100; i++) {
-			swprintf(wbuf, GetLoadStrW(IDS_FILELOGNAME),
+			swprintf(wbuf, LoadStrW(IDS_FILELOGNAME),
 				st.wYear, st.wMonth, st.wDay, st.wHour,
 				st.wMinute, st.wSecond, i);
 			MakePathW(fileLogPath, logDir, wbuf);
@@ -95,6 +95,9 @@ void TMainDlg::SetFileLogInfo()
 
 //	::UnlockFile(hFile, low, high, size, 0);
 	ti.listBuf->SetUsedSize(0);
+	if (WCHAR *p = (WCHAR *)ti.listBuf->Buf()) {
+		*p = 0;
+	}
 }
 
 
@@ -103,20 +106,24 @@ void TMainDlg::SetFileLogInfo()
 =========================================================================*/
 BOOL TMainDlg::EnableErrLogFile(BOOL on)
 {
+	BOOL	ret = TRUE;
+
 	if (on && hErrLog == INVALID_HANDLE_VALUE) {
-		hErrLogMutex = ::CreateMutex(NULL, FALSE, FASTCOPYLOG_MUTEX);
 		::WaitForSingleObject(hErrLogMutex, INFINITE);
 		hErrLog = ::CreateFileW(errLogPath, GENERIC_WRITE, FILE_SHARE_READ|FILE_SHARE_WRITE, 0,
 					OPEN_ALWAYS, 0, 0);
+		if (hErrLog == INVALID_HANDLE_VALUE) {
+			::ReleaseMutex(hErrLogMutex);
+			ret = FALSE;
+		}
 	}
 	else if (!on && hErrLog != INVALID_HANDLE_VALUE) {
 		::CloseHandle(hErrLog);
 		hErrLog = INVALID_HANDLE_VALUE;
-
-		::CloseHandle(hErrLogMutex);
-		hErrLogMutex = NULL;
+		::ReleaseMutex(hErrLogMutex);
 	}
-	return	TRUE;
+
+	return	ret;
 }
 
 BOOL TMainDlg::WriteErrLogCore()
@@ -144,10 +151,17 @@ void TMainDlg::WriteErrLogAtStart()
 	WriteLogHeader(hErrLog);
 
 	if (!errBufOffset) {
-		DWORD	len;
-		char	*msg = "Initialize Error (Can't alloc memory or create/access DestDir)\r\n";
+		if (!ti.errBuf) {
+			ti.errBuf = fastCopy.GetErrBuf();
+			errBufOffset = (int)ti.errBuf->UsedSize();
+		}
+		if (errBufOffset) {
+			WriteErrLogCore();
+		}
 
-		::WriteFile(hErrLog, msg, (DWORD)strlen(msg), &len, 0);
+		char  *msg = "Initialize Error\r\n\r\n";
+		DWORD len = (DWORD)strlen(msg);
+		::WriteFile(hErrLog, msg, len, &len, 0);
 	}
 
 	EnableErrLogFile(FALSE);

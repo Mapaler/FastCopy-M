@@ -116,7 +116,7 @@
 			<param name="Local" value="fastcopy.htm#contact">
 			</OBJECT>
 		<LI> <OBJECT type="text/sitemap">
-			<param name="Name" value="‚»‚Ì‘¼">
+			<param name="Name" value="‚»‚Ì‘¼iÝ’è•Û‘¶æ“™j">
 			<param name="Local" value="fastcopy.htm#misc">
 			</OBJECT>
 		<LI> <OBJECT type="text/sitemap">
@@ -229,7 +229,7 @@
 			<param name="Local" value="fastcopy_eng.htm#contact">
 			</OBJECT>
 		<LI> <OBJECT type="text/sitemap">
-			<param name="Name" value="Misc">
+			<param name="Name" value="Misc (setting file, etc)">
 			<param name="Local" value="fastcopy_eng.htm#misc">
 			</OBJECT>
 		<LI> <OBJECT type="text/sitemap">
@@ -239,16 +239,6 @@
 		<LI> <OBJECT type="text/sitemap">
 			<param name="Name" value="History">
 			<param name="Local" value="fastcopy_eng.htm#history">
-			</OBJECT>
-	</UL>
-	<LI> <OBJECT type="text/sitemap">
-		<param name="Name" value="License">
-		<param name="WindowName" value="Main">
-		</OBJECT>
-	<UL>
-		<LI> <OBJECT type="text/sitemap">
-			<param name="Name" value="license">
-			<param name="Local" value="license-gpl3.txt">
 			</OBJECT>
 	</UL>
 </UL>

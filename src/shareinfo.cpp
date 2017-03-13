@@ -1,9 +1,9 @@
 ﻿static char *shareinfo_id = 
-	"@(#)Copyright (C) 2015 H.Shirouzu		shareinfo.cpp	Ver3.00";
+	"@(#)Copyright (C) 2015-2016 H.Shirouzu		shareinfo.cpp	Ver3.20";
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2015-07-10(Fri)
-	Update					: 2015-07-12(Sun)
+	Update					: 2016-09-28(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -105,7 +105,7 @@ bool ShareInfo::ReleaseExclusive()
 	return	ret;
 }
 
-bool ShareInfo::TakeExclusive(uint64 use_drives, int max_running, bool is_force,
+bool ShareInfo::TakeExclusive(uint64 use_drives, int max_running, int force_mode,
 	ShareInfo::CheckInfo *_ci)
 {
 	if (!head || IsTaken()) return false;
@@ -134,8 +134,14 @@ bool ShareInfo::TakeExclusive(uint64 use_drives, int max_running, bool is_force,
 
 	data.last		= cur;
 	data.mutexCount	= selfCount;
-	data.mode = selfMode = (is_force || (ci.all_running < max_running && ci.tgt_running == 0 &&
-		(ci.wait_top_idx == -1 || ci.self_idx < ci.wait_top_idx))) ? TAKE : WAIT;
+
+	// force_mode == 0: 使用driveを占有＆max_run以下＆他に待ちが居ないなら TAKE
+	// force_mode == 1: 常に TAKE
+	// force_mode == 2: max_running以下の場合、常にTAKE
+	data.mode = selfMode = (force_mode == 1 || (ci.all_running < max_running &&
+		(force_mode == 2 || (ci.tgt_running == 0 &&
+			(ci.wait_top_idx == -1 || ci.self_idx < ci.wait_top_idx)))))
+		 ? TAKE : WAIT;
 	data.useDrives = use_drives;
 	ret = IsTaken();
 
@@ -146,7 +152,9 @@ END:
 
 int ShareInfo::RegisterNetDrive(uint64 hash_val)
 {
-	if (!head || !Lock()) return false;
+	if (!head || !Lock()) {
+		return false;
+	}
 
 	int		targ_idx = -1;
 	DWORD	cur = ::GetTickCount();

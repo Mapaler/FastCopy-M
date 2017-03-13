@@ -1,9 +1,9 @@
 ﻿static char *utility_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		utility.cpp	ver3.05";
+	"@(#)Copyright (C) 2004-2016 H.Shirouzu		utility.cpp	ver3.30";
 /* ========================================================================
 	Project  Name			: general routine
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-09-23(Wed)
+	Update					: 2017-03-06(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -313,9 +313,12 @@ BOOL DriveMng::RegisterDriveID(int idx, void *data, int len)
 	DriveID &drv_id = drvID[idx];
 
 	 // already registered
-	if (drv_id.len == len && drv_id.data && memcmp(drv_id.data, data, len) == 0) return TRUE;
-
-	if (drv_id.data) delete [] drv_id.data;
+	if (drv_id.len == len && drv_id.data && memcmp(drv_id.data, data, len) == 0) {
+		return TRUE;
+	}
+	if (drv_id.data) {
+		delete [] drv_id.data;
+	}
 	drv_id.data = new BYTE [len];
 	memcpy(drv_id.data, data, drv_id.len = len);
 	drv_id.sameDrives = 1LL << idx;
@@ -365,7 +368,9 @@ void DriveMng::ModifyNetRoot(WCHAR *root)
 {
 	if (netDrvMode == NET_UNC_SVRONLY) {	// サーバ名だけを切り出し
 		WCHAR *p = wcschr(root+2, '\\');
-		if (p) *p = 0;
+		if (p) {
+			*p = 0;
+		}
 	} else if (netDrvMode == NET_UNC_COMMON) {	//
 		wcscpy(root, L"#COMMON#");
 	}
@@ -374,7 +379,9 @@ void DriveMng::ModifyNetRoot(WCHAR *root)
 
 int DriveMng::SetDriveID(const WCHAR *_root)
 {
-	if (!_root || !_root[0]) return -1;
+	if (!_root || !_root[0]) {
+		return -1;
+	}
 
 	WCHAR	root[MAX_PATH];
 	int		idx = -1;
@@ -382,20 +389,27 @@ int DriveMng::SetDriveID(const WCHAR *_root)
 
 	if (root[1] == ':') {
 		idx = DrvLetterToIndex(root[0]);
-		if (idx < 0 || idx >= MAX_LOCAL_DRIVES) return -1;
+		if (idx < 0 || idx >= MAX_LOCAL_DRIVES) {
+			return -1;
+		}
 	} else {
 		// ネットワークドライブの場合、\\server\volume\ もしくは \\server\ （設定に依存）
 		// を大文字にした文字列のハッシュ値を識別値(drvId[].data)とする
 		ModifyNetRoot(root);
-		uint64	hash_id = MakeHash64(root, (int)wcslen(root));
-		if ((idx = shareInfo->RegisterNetDrive(hash_id)) < 0) return -1;
-		if (drvID[idx].len) return idx; // already registerd
-
+		uint64	hash_id = MakeHash64(root, wcslen(root) * sizeof(WCHAR));
+		if ((idx = shareInfo->RegisterNetDrive(hash_id)) < 0) {
+			return -1;
+		}
+		if (drvID[idx].len) {
+			return idx; // already registerd
+		}
 		RegisterDriveID(idx, &hash_id, sizeof(hash_id));
 		return	idx;
 	}
 
-	if (drvID[idx].len) return idx; // already registerd
+	if (drvID[idx].len) {
+		return idx; // already registerd
+	}
 
 	if (::GetDriveTypeW(root) == DRIVE_REMOTE) {
 		BYTE				buf[2048];
@@ -409,11 +423,13 @@ int DriveMng::SetDriveID(const WCHAR *_root)
 		wcscpy(root, pni->lpUniversalName);
 		::CharUpperW(root);
 		ModifyNetRoot(root);
-		uint64	hash_id = MakeHash64(root, (int)wcslen(root));
+		uint64	hash_id = MakeHash64(root, wcslen(root) * sizeof(WCHAR));
 		RegisterDriveID(idx, &hash_id, sizeof(hash_id));
 
 		int	net_idx = shareInfo->RegisterNetDrive(hash_id);
-		if (net_idx >= 0) RegisterDriveID(net_idx, &hash_id, sizeof(hash_id));
+		if (net_idx >= 0) {
+			RegisterDriveID(net_idx, &hash_id, sizeof(hash_id));
+		}
 		return	idx;
 	}
 
@@ -483,8 +499,12 @@ BOOL DriveMng::IsSameDrive(const WCHAR *_root1, const WCHAR *_root2)
 	int	idx1 = SetDriveID(root1);
 	int	idx2 = SetDriveID(root2);
 
-	if (idx1 == idx2) return TRUE;
-	if (idx1 < 0 || idx2 < 0) return FALSE;
+	if (idx1 == idx2) {
+		return TRUE;
+	}
+	if (idx1 < 0 || idx2 < 0) {
+		return FALSE;
+	}
 
 	return	drvID[idx1].len == drvID[idx2].len
 		&&	memcmp(drvID[idx1].data, drvID[idx2].data, drvID[idx1].len) == 0;
@@ -507,8 +527,9 @@ BOOL GetRootDirW(const WCHAR *path, WCHAR *root_dir)
 		int		backslash_cnt = 0, offset;
 
 		for (offset=0; (ch = path[offset]) != 0 && backslash_cnt < 4; offset++) {
-			if (ch == '\\')
+			if (ch == '\\') {
 				backslash_cnt++;
+			}
 		}
 		memcpy(root_dir, path, offset * sizeof(WCHAR));
 		if (backslash_cnt < 4)					// 4つの \ がない場合は、末尾に \ を付与
@@ -536,8 +557,9 @@ BOOL NetPlaceConvertW(WCHAR *src, WCHAR *dst)
 	BOOL	ret = FALSE;
 	DWORD	attr, attr_mask = FILE_ATTRIBUTE_DIRECTORY|FILE_ATTRIBUTE_READONLY;
 
-	if ((attr = ::GetFileAttributesW(src)) == 0xffffffff || (attr & attr_mask) != attr_mask)
+	if ((attr = ::GetFileAttributesW(src)) == 0xffffffff || (attr & attr_mask) != attr_mask) {
 		return	FALSE;	// ディレクトリかつronly でないものは関係ない
+	}
 
 	if (SUCCEEDED(CoCreateInstance(CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER,
 				  IID_IShellLinkW, (void **)&shellLink))) {
@@ -566,9 +588,9 @@ DWORD ReadReparsePoint(HANDLE hFile, void *buf, DWORD size)
 
 BOOL WriteReparsePoint(HANDLE hFile, void *buf, DWORD size)
 {
-	if (!::DeviceIoControl(hFile, FSCTL_SET_REPARSE_POINT, buf, size, 0, 0, &size, 0))
+	if (!::DeviceIoControl(hFile, FSCTL_SET_REPARSE_POINT, buf, size, 0, 0, &size, 0)) {
 		return	0;
-
+	}
 	return	TRUE;
 }
 
@@ -600,7 +622,9 @@ static BOOL GetSelfSid(SID *sid, DWORD *sid_size)
 	DWORD	user_size = wsizeof(user);
 	DWORD	domain_size = wsizeof(domain);
 
-	if (!::GetUserNameW(user, &user_size)) return FALSE;
+	if (!::GetUserNameW(user, &user_size)) {
+		return FALSE;
+	}
 
 	SID_NAME_USE snu = SidTypeUser;
 	return	::LookupAccountNameW(sys, user, sid, sid_size, domain, &domain_size, &snu);
@@ -612,7 +636,9 @@ static ACL *MyselfAcl()
 	SID		*sid = (SID *)sid_buf;
 	DWORD	size = sizeof(sid_buf);
 
-	if (!GetSelfSid(sid, &size)) return NULL;
+	if (!GetSelfSid(sid, &size)) {
+		return NULL;
+	}
 
 	DWORD	acl_size = 512; // 手抜き
 	ACL		*acl = (ACL *)malloc(acl_size);
@@ -634,7 +660,9 @@ BOOL ResetAcl(const WCHAR *path, BOOL myself_acl)
 		static ACL	*local_acl = MyselfAcl();
 		if (local_acl) acl = local_acl;
 	}
-	if (!acl) return FALSE;
+	if (!acl) {
+		return FALSE;
+	}
 
 	return	::SetNamedSecurityInfoW((WCHAR *)path, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION |
 		UNPROTECTED_DACL_SECURITY_INFORMATION, 0, 0, acl, 0) == ERROR_SUCCESS;
@@ -642,51 +670,81 @@ BOOL ResetAcl(const WCHAR *path, BOOL myself_acl)
 
 BOOL ForceRemoveDirectoryW(const WCHAR *path, DWORD flags)
 {
-	if (::RemoveDirectoryW(path)) return TRUE;
-	if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) return FALSE;
+	if (::RemoveDirectoryW(path)) {
+		return TRUE;
+	}
+	if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) {
+		return FALSE;
+	}
 
 	if (flags & FMF_ACL) {
 		flags &= ~FMF_ACL;
 		ResetAcl(path);
-		if (::RemoveDirectoryW(path)) return TRUE;
-		if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) return FALSE;
+		if (::RemoveDirectoryW(path)) {
+			return TRUE;
+		}
+		if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) {
+			return FALSE;
+		}
 	}
 	if (flags & FMF_MYACL) {
 		flags &= ~FMF_MYACL;
 		ResetAcl(path, TRUE);
-		if (::RemoveDirectoryW(path)) return TRUE;
-		if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) return FALSE;
+		if (::RemoveDirectoryW(path)) {
+			return TRUE;
+		}
+		if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) {
+			return FALSE;
+		}
 	}
 	if (flags & FMF_ATTR) {
 		flags &= ~FMF_ATTR;
 		::SetFileAttributesW(path, FILE_ATTRIBUTE_DIRECTORY);
-		if (::RemoveDirectoryW(path)) return TRUE;
-		if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) return FALSE;
+		if (::RemoveDirectoryW(path)) {
+			return TRUE;
+		}
+		if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) {
+			return FALSE;
+		}
 	}
 	return	FALSE;
 }
 
 BOOL ForceDeleteFileW(const WCHAR *path, DWORD flags)
 {
-	if (::DeleteFileW(path)) return TRUE;
-	if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) return FALSE;
+	if (::DeleteFileW(path)) {
+		return TRUE;
+	}
+	if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) {
+		return FALSE;
+	}
 
 	if (flags & FMF_ACL) {
 		flags &= ~FMF_ACL;
 		ResetAcl(path);
-		if (::DeleteFileW(path)) return TRUE;
-		if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) return FALSE;
+		if (::DeleteFileW(path)) {
+			return TRUE;
+		}
+		if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) {
+			return FALSE;
+		}
 	}
 	if (flags & FMF_MYACL) {
 		flags &= ~FMF_MYACL;
 		ResetAcl(path, TRUE);
-		if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) return FALSE;
+		if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) {
+			return FALSE;
+		}
 	}
 	if (flags & FMF_ATTR) {
 		flags &= ~FMF_ATTR;
 		::SetFileAttributesW(path, FILE_ATTRIBUTE_NORMAL);
-		if (::DeleteFileW(path)) return TRUE;
-		if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) return FALSE;
+		if (::DeleteFileW(path)) {
+			return TRUE;
+		}
+		if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) {
+			return FALSE;
+		}
 	}
 	return	FALSE;
 }
@@ -695,29 +753,45 @@ HANDLE ForceCreateFileW(const WCHAR *path, DWORD mode, DWORD share, SECURITY_ATT
 	DWORD cr_mode, DWORD cr_flg, HANDLE hTempl, DWORD flags)
 {
 	HANDLE	fh = ::CreateFileW(path, mode, share, sa, cr_mode, cr_flg, hTempl);
-	if (fh != INVALID_HANDLE_VALUE) return fh;
-	if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) return INVALID_HANDLE_VALUE;
+	if (fh != INVALID_HANDLE_VALUE) {
+		return fh;
+	}
+	if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) {
+		return INVALID_HANDLE_VALUE;
+	}
 
 	if (flags & FMF_ACL) {
 		flags &= ~FMF_ACL;
 		ResetAcl(path);
 		fh = ::CreateFileW(path, mode, share, sa, cr_mode, cr_flg, hTempl);
-		if (fh != INVALID_HANDLE_VALUE) return fh;
-		if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) return INVALID_HANDLE_VALUE;
+		if (fh != INVALID_HANDLE_VALUE) {
+			return fh;
+		}
+		if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) {
+			return INVALID_HANDLE_VALUE;
+		}
 	}
 	if (flags & FMF_MYACL) {
 		flags &= ~FMF_MYACL;
 		ResetAcl(path, TRUE);
 		fh = ::CreateFileW(path, mode, share, sa, cr_mode, cr_flg, hTempl);
-		if (fh != INVALID_HANDLE_VALUE) return fh;
-		if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) return INVALID_HANDLE_VALUE;
+		if (fh != INVALID_HANDLE_VALUE) {
+			return fh;
+		}
+		if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) {
+			return INVALID_HANDLE_VALUE;
+		}
 	}
 	if (flags & FMF_ATTR) {
 		flags &= ~FMF_ATTR;
 		::SetFileAttributesW(path, FILE_ATTRIBUTE_NORMAL); // DIRの場合も ronlyは消える
 		fh = ::CreateFileW(path, mode, share, sa, cr_mode, cr_flg, hTempl);
-		if (fh != INVALID_HANDLE_VALUE) return fh;
-		if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) return INVALID_HANDLE_VALUE;
+		if (fh != INVALID_HANDLE_VALUE) {
+			return fh;
+		}
+		if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) {
+			return INVALID_HANDLE_VALUE;
+		}
 	}
 	return	fh;
 }
@@ -784,14 +858,14 @@ DataList::Head *DataList::Alloc(void *data, ssize_t data_size, ssize_t need_size
 				if (need_grow > 0) {
 					if (!buf.Grow(ALIGN_SIZE(need_grow, PAGE_SIZE))) {
 						//MessageBox(0, "can't alloc mem", "", MB_OK);
-						goto END;
+						return	NULL;
 					}
 				}
 			}
 			else {
 				if ((BYTE *)end < buf.Buf() + alloc_size) {	// for debug
 					//MessageBox(0, "buf is too small", "", MB_OK);
-					goto END;
+					return	NULL;
 				}
 				cur = (Head *)buf.Buf();
 			}
@@ -799,10 +873,16 @@ DataList::Head *DataList::Alloc(void *data, ssize_t data_size, ssize_t need_size
 		else {
 			if ((BYTE *)end < (BYTE *)top + top->alloc_size + alloc_size) {	// for debug
 				//MessageBox(0, "buf is too small2", "", MB_OK);
-				goto END;
+				return	NULL;
 			}
 			cur = (Head *)((BYTE *)top + top->alloc_size);
 		}
+		//Head *buf_end = (Head *)(buf.Buf() + buf.Size());
+		//if (buf_end < cur || buf_end < top || cur < (Head *)buf.Buf()) {
+		//	MessageBox(0, "illigal datalist", "", MB_OK);
+		//	goto END;
+		//}
+
 		top->next = cur;
 		cur->prev = top;
 		cur->next = NULL;
@@ -815,7 +895,6 @@ DataList::Head *DataList::Alloc(void *data, ssize_t data_size, ssize_t need_size
 	}
 	num++;
 
-END:
 	return	cur;
 }
 
@@ -830,8 +909,18 @@ DataList::Head *DataList::Get()
 	}
 	else {
 		top = cur->prev;
+
+		//if (top && top < (Head *)buf.Buf()) {
+		//	MessageBox(0, "illigal datalist", "", MB_OK);
+		//	goto END;
+		//}
 	}
 	end = cur->next;
+
+	//if (end && end < (Head *)buf.Buf()) {
+	//	MessageBox(0, "illigal datalist", "", MB_OK);
+	//	goto END;
+	//}
 
 	num--;
 
@@ -866,7 +955,11 @@ ssize_t DataList::RemainSize()
 		ret = buf.MaxSize();
 	}
 
-	if (ret > 0) ret -= sizeof(Head);
+	ret -= sizeof(Head);
+
+	if (ret < 0) {
+		ret = 0;
+	}
 
 	return	ret;
 }
@@ -959,3 +1052,60 @@ void DBGWriteW(WCHAR *fmt,...)
 	::WriteFile(hDbgFile, buf, len * 2, &len, 0);
 }
 #endif
+
+
+#ifdef TRACE_DBG
+#define MAX_LOG 8192
+static WCHAR logbuf[MAX_LOG][256];
+static DWORD logbuf_idx;
+static DWORD logbuf_nest;
+
+static BOOL trclog_firstinit(CRITICAL_SECTION *cs)
+{
+	InitializeCriticalSection(cs);
+	logbuf_nest = ::TlsAlloc();
+	return TRUE;
+}
+
+void trclog_init()
+{
+	memset(logbuf, 0, sizeof(logbuf));
+	logbuf_idx = 0;
+	logbuf_nest = 0;
+}
+
+void trclog(const WCHAR *func, int lines)
+{
+	static CRITICAL_SECTION	cs;
+	static BOOL		firstInit = trclog_firstinit(&cs);
+
+	::EnterCriticalSection(&cs);
+
+	DWORD nest = (DWORD)(DWORD_PTR)::TlsGetValue(logbuf_nest);
+
+	if (lines == 0 && nest > 0) {
+		nest--;
+	}
+
+	WCHAR *targ = logbuf[logbuf_idx++ % MAX_LOG];
+	_snwprintf(targ, MAX_LOG, L"%05x:%.*s %s%s:%d", GetCurrentThreadId(), min(nest, 30),
+		L"                              ", lines ? L"" : L"-- end of ", func, lines);
+
+	if (lines) {
+		nest++;
+	}
+	::TlsSetValue(logbuf_nest, (LPVOID)(DWORD_PTR)nest);
+
+	::LeaveCriticalSection(&cs);
+}
+
+WCHAR *trclog_get(DWORD idx)
+{
+	if (idx >= MAX_LOG) {
+		return	NULL;
+	}
+	return	logbuf[(logbuf_idx + idx) % MAX_LOG];
+}
+
+#endif
+

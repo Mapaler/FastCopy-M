@@ -1,9 +1,9 @@
 ﻿/* static char *mainwin_id = 
-	"@(#)Copyright (C) 2004-2015 H.Shirouzu		mainwin.h	Ver3.10"; */
+	"@(#)Copyright (C) 2004-2017 H.Shirouzu		mainwin.h	Ver3.30"; */
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2015-11-29(Sun)
+	Update					: 2017-03-06(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -51,7 +51,11 @@
 #define MINI_BUF 128
 
 #define SHELLEXT_MIN_ALLOC		(16 * 1024)
-#define SHELLEXT_MAX_ALLOC		(4 * 1024 * 1024)
+#ifdef _WIN64
+#define SHELLEXT_MAX_ALLOC		(1024 * 1024 * 1024)
+#else
+#define SHELLEXT_MAX_ALLOC		(64 * 1024 * 1024)
+#endif
 
 struct CopyInfo {
 	UINT				resId;
@@ -77,6 +81,7 @@ protected:
 	enum { RUNAS_IMMEDIATE=1, RUNAS_SHELLEXT=2, RUNAS_AUTOCLOSE=4 };
 	enum { READ_LVIDX, WRITE_LVIDX, VERIFY_LVIDX, SKIP_LVIDX, DEL_LVIDX, OVWR_LVIDX };
 	enum FileLogMode { NO_FILELOG, AUTO_FILELOG, FIX_FILELOG };
+	enum DebugMainFlags { GSHACK_SKIP=1 };
 
 	FastCopy		fastCopy;
 	FastCopy::Info	info;
@@ -96,11 +101,12 @@ protected:
 	AutoCloseLevel autoCloseLevel;
 	BOOL		isTaskTray;
 	BOOL		speedLevel;
+	int			finishNotify;
 
 	BOOL		noConfirmDel;
 	BOOL		noConfirmStop;
 	UINT		diskMode;
-	BOOL		isShellExt;
+	enum		{ SHELL_NONE, SHELL_ADMIN, SHELL_USER } shellMode;
 	BOOL		isInstaller;
 	BOOL		isNetPlaceSrc;
 	int			skipEmptyDir;
@@ -115,6 +121,7 @@ protected:
 	BOOL		isReparse;
 	BOOL		isLinkDest;
 	int			maxLinkHash;
+	int			maxTempRunNum;	// 0以外は /force_start=N での一時制限
 	BOOL		isReCreate;
 	BOOL		isExtendFilter;
 	BOOL		resultStatus;
@@ -134,6 +141,7 @@ protected:
 	DWORD RunasShareSize() {
 		return offsetof(TMainDlg, isRunAsStart) - offsetof(TMainDlg, autoCloseLevel);
 	}
+	int			MaxRunNum() { return maxTempRunNum ? maxTempRunNum : cfg.maxRunNum; }
 
 	// Register to dlgItems in SetSize()
 	enum {	srcbutton_item=0, dstbutton_item, srccombo_item, dstcombo_item,
@@ -142,8 +150,8 @@ protected:
 			owdel_item, acl_item, stream_item, speed_item, speedstatic_item, samedrv_item,
 			incstatic_item, filterhelp_item, excstatic_item, inccombo_item, exccombo_item,
 			filter_item,
-//			fromdate_static, todate_static, minsize_static, maxsize_static,
-//			fromdate_combo, todate_combo, minsize_combo, maxsize_combo,
+			fdatestatic_item, todatestatic_item, minsizestatic_item, maxsizestatic_item,
+			fdatecombo_item,  todatecombo_item,  minsizecombo_item,  maxsizecombo_item,
 			path_item, errstatic_item, errstatus_item, erredit_item, max_dlgitem };
 
 	int			listBufOffset;
@@ -180,13 +188,13 @@ protected:
 
 	TAboutDlg		aboutDlg;
 	TSetupDlg		setupDlg;
-	TShellExtDlg	shellExtDlg;
 	TJobDlg			jobDlg;
 	TFinActDlg		finActDlg;
 	TEditSub		pathEdit;
 	TEditSub		errEdit;
 	HFONT			statusFont;
 	LOGFONTW		statusLogFont;
+	ITaskbarList3	*taskbarList;
 
 protected:
 	BOOL	SetCopyModeList(void);
@@ -200,7 +208,7 @@ protected:
 	BOOL	EndCopy(void);
 	BOOL	ExecFinalAction(BOOL is_sound_wait);
 	BOOL	CancelCopy(void);
-	void	SetItemEnable(BOOL is_delete);
+	void	SetItemEnable(FastCopy::Mode mode);
 	FastCopy::Mode	GetCopyMode(void);
 	void	SetExtendFilter();
 	void	ReflectFilterCheck(BOOL is_invert=FALSE);

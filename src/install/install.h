@@ -1,9 +1,9 @@
-﻿/* @(#)Copyright (C) 2005-2015 H.Shirouzu		install.h	Ver3.00 */
+﻿/* @(#)Copyright (C) 2005-2016 H.Shirouzu		install.h	Ver3.20 */
 /* ========================================================================
 	Project  Name			: Installer for IPMSG32
 	Module Name				: Main Header
 	Create					: 2005-02-02(Wed)
-	Update					: 2015-06-22(Mon)
+	Update					: 2016-09-28(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -115,6 +115,7 @@ public:
 #define README_TXT			"readme.txt"
 #define README_ENG_TXT		"readme_eng.txt"
 #define GPL_TXT				"license-gpl3.txt"
+#define XXHASH_TXT			"xxhash-LICENSE.txt"
 #define HELP_CHM			"FastCopy.chm"
 #define SHELLEXT1_DLL		"FastCopy_shext.dll"
 #define SHELLEXT2_DLL		"FastCopy_shext2.dll"
@@ -146,11 +147,12 @@ public:
 #define INSTALL_STR			"Install"
 #define UNINSTALL_STR		"UnInstall"
 
+#define HKCUSW_STR			"\\HKEY_CURRENT_USER\\Software"
+#define HSTOOLS_STR			"HSTools"
+
 // function prototype
 void BrowseDirDlg(TWin *parentWin, UINT editCtl, char *title);
 int CALLBACK BrowseDirDlg_Proc(HWND hWnd, UINT uMsg, LPARAM lParam, LPARAM data);
-int MakePath(char *dest, const char *dir, const char *file);
-UINT GetDriveTypeEx(const char *file);
 
 // inline function
 inline BOOL IsUncFile(const char *path) { return strnicmp(path, UNC_PREFIX, 2) == 0; }

@@ -1,9 +1,9 @@
 ﻿/* static char *shelldef_id = 
-	"@(#)Copyright (C) 2005-2015 H.Shirouzu		shelldef.h	Ver3.00"; */
+	"@(#)Copyright (C) 2005-2016 H.Shirouzu		shelldef.h	Ver3.20"; */
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2008-06-05(Thu)
-	Update					: 2015-06-22(Mon)
+	Update					: 2016-09-28(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -12,6 +12,7 @@
 #define SHELLDEF_H
 
 #define FASTCOPY		"FastCopy"
+#define FASTCOPYUSER	"FastCopyUser"
 #define FASTCOPY_EXE	"FastCopy.exe"
 #define SHELLEXT_OPT	"/fc_shell_ext1"
 
@@ -30,6 +31,8 @@
 #define SHEXT_NOCONFIRMDEL	0x00040000
 #define SHEXT_TASKTRAY		0x00080000
 #define SHEXT_AUTOCLOSE		0x00100000
+#define SHEXT_MENUICON		0x01000000
+#define SHEXT_ISADMIN		0x40000000	// shex -> fastcopy に伝搬させる
 #define SHEXT_MENUFLG_EX	0x80000000
 #define SHEXT_MENU_DEFAULT	0xfff00fff
 #define SHEXT_MENU_NEWDEF	0xfff00fcc

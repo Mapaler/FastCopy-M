@@ -1,9 +1,9 @@
 ﻿static char *mainwinopt_id = 
-	"@(#)Copyright (C) 2015 H.Shirouzu			mainwinopt.cpp	ver3.03";
+	"@(#)Copyright (C) 2015-2017 H.Shirouzu			mainwinopt.cpp	ver3.30";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2015-05-27(Wed)
-	Update					: 2015-08-30(Sun)
+	Update					: 2017-03-06(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -21,18 +21,35 @@ int GetArgOpt(WCHAR *arg, int default_value);
 BOOL MakeFileToPathArray(WCHAR *path_file, PathArray *path, BOOL is_ucs2);
 
 struct CopyInfo COPYINFO_LIST [] = {
-	{ IDS_ALLSKIP,		0, CMD_NOEXISTONLY_STR,	FastCopy::DIFFCP_MODE,	FastCopy::BY_NAME    },
-	{ IDS_ATTRCMP,		0, CMD_DIFF_STR,		FastCopy::DIFFCP_MODE,	FastCopy::BY_ATTR    },
-	{ IDS_UPDATECOPY,	0, CMD_UPDATE_STR,		FastCopy::DIFFCP_MODE,	FastCopy::BY_LASTEST },
-	{ IDS_FORCECOPY,	0, CMD_FORCECOPY_STR,	FastCopy::DIFFCP_MODE,	FastCopy::BY_ALWAYS  },
-	{ IDS_SYNCCOPY,		0, CMD_SYNC_STR,		FastCopy::SYNCCP_MODE,	FastCopy::BY_ATTR    },
+	{ IDS_COPY_NAME,	0, CMD_COPY_NAME_STR,	FastCopy::DIFFCP_MODE,	FastCopy::BY_NAME    },
+	{ IDS_COPY_ATTR,	0, CMD_COPY_ATTR_STR,	FastCopy::DIFFCP_MODE,	FastCopy::BY_ATTR    },
+	{ IDS_COPY_LASTEST,	0, CMD_COPY_LASTEST_STR,FastCopy::DIFFCP_MODE,	FastCopy::BY_LASTEST },
+	{ IDS_COPY_FORCE,	0, CMD_COPY_FORCE_STR,	FastCopy::DIFFCP_MODE,	FastCopy::BY_ALWAYS  },
+
+//	{ IDS_SYNC_NAME,	0, CMD_SYNC_NAME_STR,	FastCopy::SYNCCP_MODE,	FastCopy::BY_NAME    },
+
+//	{ IDS_SYNC_ATTR,	0, CMD_SYNC_ATTR_STR,	FastCopy::SYNCCP_MODE,	FastCopy::BY_ATTR    },
+	{ IDS_SYNC_ATTR,	0, CMD_SYNC_STR,		FastCopy::SYNCCP_MODE,	FastCopy::BY_ATTR    },
+
+//	{ IDS_SYNC_LASTEST,	0, CMD_SYNC_LASTEST_STR,FastCopy::SYNCCP_MODE,	FastCopy::BY_LASTEST },
+//	{ IDS_SYNC_FORCE,	0, CMD_SYNC_FORCE_STR,	FastCopy::SYNCCP_MODE,	FastCopy::BY_ALWAYS  },
+
+//	{ IDS_MOVE_NAME,	0, CMD_MOVE_NAME_STR,	FastCopy::MOVE_MODE,	FastCopy::BY_NAME    },
+
+//	{ IDS_MOVE_ATTR,	0, CMD_MOVE_ATTR_STR,	FastCopy::MOVE_MODE,	FastCopy::BY_ATTR    },
+	{ IDS_MOVE_ATTR,	0, CMD_MOVE_STR,		FastCopy::MOVE_MODE,	FastCopy::BY_ATTR    },
+
+//	{ IDS_MOVE_LASTEST,	0, CMD_MOVE_LASTEST_STR,FastCopy::MOVE_MODE,	FastCopy::BY_LASTEST },
+
+//	{ IDS_MOVE_FORCE,	0, CMD_MOVE_FORCE_STR,	FastCopy::MOVE_MODE,	FastCopy::BY_ALWAYS  },
+	{ IDS_MOVE_FORCE,	0, CMD_MOVE_STR,		FastCopy::MOVE_MODE,	FastCopy::BY_ALWAYS  },
+
 //	{ IDS_MUTUAL,		0, CMD_MUTUAL_STR,		FastCopy::MUTUAL_MODE,	FastCopy::BY_LASTEST },
-	{ IDS_MOVEATTR,		0, CMD_MOVE_STR,		FastCopy::MOVE_MODE,	FastCopy::BY_ATTR    },
-	{ IDS_MOVEFORCE,	0, CMD_MOVE_STR,		FastCopy::MOVE_MODE,	FastCopy::BY_ALWAYS  },
+
 	{ IDS_DELETE,		0, CMD_DELETE_STR,		FastCopy::DELETE_MODE,	FastCopy::BY_ALWAYS  },
-#ifdef _DEBUG
-	{ IDS_TESTWRITE,	0, CMD_TESTWRITE_STR,	FastCopy::TESTWRITE_MODE,FastCopy::BY_ALWAYS  },
-#endif
+
+	{ IDS_TEST,			0, CMD_TEST_STR,		FastCopy::TEST_MODE,	FastCopy::BY_ALWAYS  },
+
 	{ 0,				0, 0,					(FastCopy::Mode)0,	  (FastCopy::OverWrite)0 }
 };
 
@@ -42,7 +59,7 @@ BOOL TMainDlg::SetCopyModeList(void)
 
 	if (copyInfo == NULL) {		// 初回コピーモードリスト作成
 		for (int i=0; COPYINFO_LIST[i].resId; i++) {
-			COPYINFO_LIST[i].list_str = GetLoadStr(COPYINFO_LIST[i].resId);
+			COPYINFO_LIST[i].list_str = LoadStr(COPYINFO_LIST[i].resId);
 		}
 		copyInfo = new CopyInfo[sizeof(COPYINFO_LIST) / sizeof(CopyInfo)];
 	}
@@ -53,8 +70,11 @@ BOOL TMainDlg::SetCopyModeList(void)
 
 	CopyInfo *ci = copyInfo;
 	for (int i=0; COPYINFO_LIST[i].resId; i++) {
-		if (cfg.enableMoveAttr && COPYINFO_LIST[i].resId == IDS_MOVEFORCE
-		|| !cfg.enableMoveAttr && COPYINFO_LIST[i].resId == IDS_MOVEATTR) {
+		if (cfg.enableMoveAttr && COPYINFO_LIST[i].resId == IDS_MOVE_FORCE
+		|| !cfg.enableMoveAttr && COPYINFO_LIST[i].resId == IDS_MOVE_ATTR) {
+			continue;
+		}
+		if (!cfg.testMode && COPYINFO_LIST[i].mode == FastCopy::TEST_MODE) {
 			continue;
 		}
 		*ci = COPYINFO_LIST[i];
@@ -76,7 +96,7 @@ BOOL TMainDlg::CommandLineExecW(int argc, WCHAR **argv)
 	BOOL	is_openwin			= FALSE;
 	BOOL	is_noexec			= FALSE;
 	BOOL	is_delete			= FALSE;
-	BOOL	is_estimate			= cfg.estimateMode;
+	int		estimate_flg		= -1;
 	DWORD	runas_flg			= 0;
 	int		filter_mode			= 0;
 	enum	{ NORMAL_FILTER=0x01, EXTEND_FILTER=0x02 };
@@ -107,7 +127,7 @@ BOOL TMainDlg::CommandLineExecW(int argc, WCHAR **argv)
 		}
 		else if (wcsicmpEx(*argv, JOB_STR, &len) == 0) {
 			if ((job_idx = cfg.SearchJobW(*argv + len)) == -1) {
-				MessageBoxW(FmtW(L"%s: %s", GetLoadStrW(IDS_JOBNOTFOUND), *argv + len),
+				MessageBoxW(FmtW(L"%s: %s", LoadStrW(IDS_JOBNOTFOUND), *argv + len),
 							L"Illegal Command");
 				return	FALSE;
 			}
@@ -144,6 +164,10 @@ BOOL TMainDlg::CommandLineExecW(int argc, WCHAR **argv)
 		}
 		else if (wcsicmpEx(*argv, FORCESTART_STR, &len) == 0) {
 			forceStart = GetArgOpt(*argv + len, TRUE);
+			if (forceStart >= 2) {
+				maxTempRunNum = forceStart;
+				forceStart = 2;
+			}
 		}
 		else if (wcsicmpEx(*argv, SKIPEMPTYDIR_STR, &len) == 0) {
 			skipEmptyDir = GetArgOpt(*argv + len, TRUE);
@@ -152,7 +176,7 @@ BOOL TMainDlg::CommandLineExecW(int argc, WCHAR **argv)
 			CheckDlgButton(IGNORE_CHECK, GetArgOpt(*argv + len, TRUE) ? FALSE : TRUE);
 		}
 		else if (wcsicmpEx(*argv, ESTIMATE_STR, &len) == 0) {
-			is_estimate = GetArgOpt(*argv + len, TRUE);
+			estimate_flg = GetArgOpt(*argv + len, TRUE);
 		}
 		else if (wcsicmpEx(*argv, VERIFY_STR, &len) == 0) {
 			CheckDlgButton(VERIFY_CHECK, GetArgOpt(*argv + len, TRUE) ? TRUE : FALSE);
@@ -221,6 +245,13 @@ BOOL TMainDlg::CommandLineExecW(int argc, WCHAR **argv)
 		else if (wcsicmpEx(*argv, NOEXEC_STR, &len) == 0) {
 			is_noexec = GetArgOpt(*argv + len, TRUE);
 		}
+		else if (wcsicmpEx(*argv, BALLOON_STR, &len) == 0) {
+			if (GetArgOpt(*argv + len, TRUE)) {
+				finishNotify |= 1;
+			} else {
+				finishNotify &= ~1;
+			}
+		}
 		else if (wcsicmpEx(*argv, DISKMODE_STR, &len) == 0) {
 			if (wcsicmp(*argv + len, DISKMODE_SAME_STR) == 0)
 				diskMode = 1;
@@ -281,33 +312,41 @@ BOOL TMainDlg::CommandLineExecW(int argc, WCHAR **argv)
 			}
 		}
 		else if (wcsicmpEx(*argv, FCSHEXT1_STR, &len) == 0) {
+			Cfg::ShExtCfg	*shCfg = &cfg.shAdmin;
+			shellMode = SHELL_ADMIN;
+
 			if ((*argv)[len] == '=') {
 				DWORD	flags = wcstoul(*argv + len + 1, 0, 16);
-				if (flags & SHEXT_ISSTOREOPT) {
-					shextNoConfirm    = cfg.shextNoConfirm    = (flags & SHEXT_NOCONFIRM) != 0;
-					shextNoConfirmDel = cfg.shextNoConfirmDel = (flags & SHEXT_NOCONFIRMDEL) != 0;
-					shextTaskTray     = cfg.shextTaskTray     = (flags & SHEXT_TASKTRAY) != 0;
-					shextAutoClose    = cfg.shextAutoClose    = (flags & SHEXT_AUTOCLOSE) != 0;
-				}
+//				if (flags & SHEXT_ISSTOREOPT) {
+					if ((flags & SHEXT_ISADMIN) == 0) {
+						shellMode = SHELL_USER;
+						shCfg = &cfg.shUser;
+					}
+					shCfg->noConfirm    = (flags & SHEXT_NOCONFIRM)    != 0;
+					shCfg->noConfirmDel = (flags & SHEXT_NOCONFIRMDEL) != 0;
+					shCfg->taskTray     = (flags & SHEXT_TASKTRAY)     != 0;
+					shCfg->autoClose    = (flags & SHEXT_AUTOCLOSE)    != 0;
+//				}
 			}
 
-			isShellExt = TRUE;
-			is_openwin = !shextTaskTray;
-			autoCloseLevel = shextAutoClose ? NOERR_CLOSE : NO_CLOSE;
+			is_openwin = !shCfg->taskTray;
+			autoCloseLevel = shCfg->autoClose ? NOERR_CLOSE : NO_CLOSE;
 			HANDLE	hStdInput = ::GetStdHandle(STD_INPUT_HANDLE);
 			DWORD	read_size;
-			BOOL	convertErr = FALSE;
 
 			shellExtBuf.AllocBuf(SHELLEXT_MIN_ALLOC, SHELLEXT_MAX_ALLOC);
 			while (::ReadFile(hStdInput, shellExtBuf.UsedEnd(),
 					(DWORD)shellExtBuf.RemainSize(), &read_size, 0) && read_size > 0) {
-				if (shellExtBuf.AddUsedSize(read_size) == shellExtBuf.Size())
+				if (shellExtBuf.AddUsedSize(read_size) == shellExtBuf.Size()) {
 					shellExtBuf.Grow(SHELLEXT_MIN_ALLOC);
+				}
+			}
+			if (shellExtBuf.UsedSize() == shellExtBuf.MaxSize()) {
+				MessageBoxW(L"Too long arguments");
+				return	FALSE;
 			}
 			shellExtBuf.UsedEnd()[0] = 0;
 
-			if (convertErr)
-				return	FALSE;
 			if ((argv = CommandLineToArgvExW(shellExtBuf.WBuf(), &argc)) == NULL)
 				break;
 			continue;	// 再 parse
@@ -338,7 +377,7 @@ BOOL TMainDlg::CommandLineExecW(int argc, WCHAR **argv)
 
 		while (*argv && (*argv)[0] != '/') {
 			WCHAR	*path = *argv;
-			if (isShellExt && !is_delete) {
+			if (shellMode != SHELL_NONE && !is_delete) {
 				if (NetPlaceConvertW(path, wBuf)) {
 					path = wBuf;
 					isNetPlaceSrc = TRUE;
@@ -356,7 +395,7 @@ BOOL TMainDlg::CommandLineExecW(int argc, WCHAR **argv)
 
 		if (argc == 1 && wcsicmpEx(*argv, TO_STR, &len) == 0) {
 			dst_path = *argv + len;
-			if (isShellExt && NetPlaceConvertW(dst_path, wBuf))
+			if (shellMode != SHELL_NONE && NetPlaceConvertW(dst_path, wBuf))
 				dst_path = wBuf;
 			SetDlgItemTextW(DST_COMBO, dst_path);
 		}
@@ -371,19 +410,24 @@ BOOL TMainDlg::CommandLineExecW(int argc, WCHAR **argv)
 		if (::GetWindowTextLengthW(GetDlgItem(SRC_COMBO)) == 0
 		|| (!is_delete && ::GetWindowTextLengthW(GetDlgItem(DST_COMBO)) == 0)) {
 			is_noexec = TRUE;
-			if (isShellExt)			// コピー先の無い shell起動時は、autoclose を無視する
+			if (shellMode != SHELL_NONE)	// コピー先の無い shell起動時は、autoclose を無視する
 				autoCloseLevel = NO_CLOSE;
 		}
 
-		if (filter_mode) ReflectFilterCheck(!IsDlgButtonChecked(FILTER_CHECK));
+		if (filter_mode) {
+			ReflectFilterCheck(!IsDlgButtonChecked(FILTER_CHECK));
+		}
 
-		SetItemEnable(is_delete);
+		SetItemEnable(GetCopyMode());
 		if (diskMode)
 			UpdateMenu();
 
-		if (!is_delete && (is_estimate ||
-				!isShellExt && !is_noexec && cfg.estimateMode != is_estimate))
-			CheckDlgButton(ESTIMATE_CHECK, is_estimate);
+		if (estimate_flg == -1) {
+			estimate_flg = isNoUI ? 0 : cfg.estimateMode;
+		}
+		if (cfg.estimateMode != estimate_flg) {
+			CheckDlgButton(ESTIMATE_CHECK, estimate_flg);
+		}
 	}
 
 	if (is_openwin || is_noexec || isRunAsStart) {

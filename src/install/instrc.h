@@ -10,8 +10,9 @@
 #define IDS_NOTCREATEDIR                6
 #define IDS_NOTCREATEFILE               7
 #define IDS_START                       8
-#define IDS_DELAYSETUPCOMPLETE          9
-#define IDS_ADMINCHANGE                 10
+#define IDS_REPLACECOMPLETE             9
+#define IDS_DELAYSETUPCOMPLETE          10
+#define IDS_ADMINCHANGE                 11
 #define INSTALL_SHEET                   101
 #define SETUP_ICON                      104
 #define MKDIR_BUTTON                    110

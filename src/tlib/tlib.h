@@ -1,9 +1,9 @@
-﻿/* @(#)Copyright (C) 1996-2015 H.Shirouzu		tlib.h	Ver0.99 */
+﻿/* @(#)Copyright (C) 1996-2016 H.Shirouzu		tlib.h	Ver0.99 */
 /* ========================================================================
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Main Header
 	Create					: 1996-06-01(Sat)
-	Update					: 2015-11-01(Sun)
+	Update					: 2016-10-17(Mon)
 	Copyright				: H.Shirouzu
 	Reference				: 
 	======================================================================== */
@@ -15,6 +15,8 @@
 #define STRICT
 #endif
 
+#include "../tlib_env.h"
+
 // for debug allocator (like a efence)
 //#define REPLACE_DEBUG_ALLOCATOR
 #ifdef REPLACE_DEBUG_ALLOCATOR
@@ -25,9 +27,9 @@
 #define strdup  vstrdup
 #define wcsdup  vwcsdup
 extern "C" {
-void *valloc(ssize_t size);
-void *vcalloc(ssize_t num, ssize_t ele);
-void *vrealloc(void *d, ssize_t size);
+void *valloc(size_t size);
+void *vcalloc(size_t num, size_t ele);
+void *vrealloc(void *d, size_t size);
 void vfree(void *d);
 char *vstrdup(const char *s);
 //unsigned short *vwcsdup(const unsigned short *s);
@@ -62,7 +64,12 @@ typedef unsigned _int64 uint64;
 
 #include "commctrl.h"
 #include <regstr.h>
+
+#pragma warning(push)
+#pragma warning(disable : 4091) // shlobj.h(1054): warning C4091: 'typedef ': ignored ...
 #include <shlobj.h>
+#pragma warning(pop)
+
 #include <tchar.h>
 #include "tmisc.h"
 #include "tapi32ex.h"
@@ -99,6 +106,10 @@ extern DWORD TWinVersion;	// define in tmisc.cpp
 
 #define IsLang(lang)	(PRIMARYLANGID(LANGIDFROMLCID(GetThreadLocale())) == lang)
 #define wsizeof(x)		(sizeof(x) / sizeof(WCHAR))
+
+#ifndef GCL_HICONSM
+#define GCL_HICONSM (-34)
+#endif
 
 #define BUTTON_CLASS		"BUTTON"
 #define COMBOBOX_CLASS		"COMBOBOX"
@@ -230,14 +241,43 @@ enum StrMode { BY_UTF8, BY_MBCS };
 /* for internal use end */
 
 struct TRect : public RECT {
-	TRect(long x=0, long y=0, long cx=0, long cy=0) { Init(x, y, cx, cy); }
-	TRect(const RECT &rc) { *this = rc; }
-	TRect(const POINT &tl, const POINT &br) { left=tl.x, top=tl.y, right=br.x, bottom=br.y; }
-	TRect(const POINTS &tl, const POINTS &br) { left=tl.x, top=tl.y, right=br.x, bottom=br.y; }
-	TRect(const POINT &tl, long cx, long cy) { left=tl.x, top=tl.y, right=left+cx, bottom=top+cy; }
-	TRect(const POINTS &tl, long cx, long cy) { left=tl.x, top=tl.y, right=left+cx, bottom=top+cy;}
+	TRect(long x=0, long y=0, long cx=0, long cy=0) {
+		Init(x, y, cx, cy);
+	}
+	TRect(const RECT &rc) {
+		*(RECT *)this = rc;
+	}
+	TRect(const POINT &tl, const POINT &br) {
+		left   = tl.x;
+		top    = tl.y;
+		right  = br.x;
+		bottom = br.y;
+	}
+	TRect(const POINTS &tl, const POINTS &br) {
+		left   = tl.x;
+		top    = tl.y;
+		right  = br.x;
+		bottom = br.y;
+	}
+	TRect(const POINT &tl, long cx, long cy) {
+		left   = tl.x;
+		top    = tl.y;
+		right  = left + cx;
+		bottom = top  + cy;
+	}
+	TRect(const POINTS &tl, long cx, long cy) {
+		left   = tl.x;
+		top    = tl.y;
+		right  = left + cx;
+		bottom = top  + cy;
+	}
 
-	void	Init(long x=0, long y=0, long cx=0, long cy=0) { left=x, top=y, right=x+cx, bottom=y+cy; }
+	void	Init(long x=0, long y=0, long cx=0, long cy=0) {
+		left   = x;
+		top    = y;
+		right  = x + cx;
+		bottom = y + cy;
+	}
 	long&	x() { return left; }
 	long&	y() { return top; }
 	long	cx() const { return right - left; }
@@ -246,20 +286,110 @@ struct TRect : public RECT {
 	void	set_y(long  y) { top = y; }
 	void	set_cx(long v) { right = left + v; }
 	void	set_cy(long v) { bottom = top + v; }
-	void	Regular() { if (left > right) { long t=left; left=right; right=t; }
-	                    if (top > bottom) { long t=top; top=bottom; bottom=t; } }
-	void	Inflate(long cx, long cy) { left-=cx; right+=cx; top-=cy; bottom+=cy; }
-	void	Size(long cx, long cy) { right = left + cx; bottom = top + cy; }
-	bool operator ==(const TRect &rc) {
-	 return (left == rc.left) && (top == rc.top) && (right == rc.right) && (bottom == rc.bottom);
+	void	Regular() {
+		if (left > right) {
+			long t = left;
+			left  = right;
+			right = t;
+		}
+		if (top > bottom) {
+			long t = top;
+			top    = bottom;
+			bottom = t;
+		}
 	}
-	bool operator !=(const TRect &rc) { return !(*this == rc); }
+	void	Inflate(long cx, long cy) {
+		left   -= cx;
+		right  += cx;
+		top    -= cy;
+		bottom += cy;
+	}
+	void	Size(long cx, long cy) {
+		right  = left + cx;
+		bottom = top  + cy;
+	}
+	void	Slide(long x, long y) {
+		left   += x;
+		right  += x;
+		top    += y;
+		bottom += y;
+	}
+	bool operator ==(const TRect &rc) {
+		return	(left  == rc.left)  && (top    == rc.top) &&
+				(right == rc.right) && (bottom == rc.bottom);
+	}
+	bool operator !=(const TRect &rc) {
+		return !(*this == rc);
+	}
 };
 
 struct TSize : public SIZE {
-	TSize(long _cx=0, long _cy=0) { cx=_cx; cy=_cy; }
+	TSize(long _cx=0, long _cy=0) {
+		cx = _cx;
+		cy = _cy;
+	}
 	TSize(const SIZE &sz) { *this = sz; }
-	void	Inflate(long x, long y) { cx += x; cy += y; }
+	void	Inflate(long x, long y) {
+		cx += x;
+		cy += y;
+	}
+	void Init() {
+		cx = cy = 0;
+	}
+};
+
+struct TPoint;
+
+struct TPoints : public POINTS {
+	TPoints(short _x=0, short _y=0) {
+		Init(_x, _y);
+	}
+	TPoints(const POINTS& pos) {
+		Init(pos.x, pos.y);
+	}
+	TPoints(const POINT& pt) {
+		Init((short)pt.x, (short)pt.y);
+	}
+	void Init(short _x=0, short _y=0) {
+		x = _x;
+		y = _y;
+	}
+	void Init(POINT pt) {
+		x = (short)pt.x;
+		y = (short)pt.y;
+	}
+	bool operator ==(const POINTS& pos) {
+		return	x == pos.x && y == pos.y;
+	}
+	bool operator !=(const POINTS& pos) {
+		return	!(*this == pos);
+	}
+};
+
+struct TPoint : public POINT {
+	TPoint(const POINT& pt) {
+		Init(pt.x, pt.y);
+	}
+	TPoint(const POINTS& pos) {
+		Init((short)pos.x, (short)pos.y);
+	}
+	TPoint(long _x=0, long _y=0) {
+		Init(_x, _y);
+	}
+	void Init(long _x=0, long _y=0) {
+		x = _x;
+		y = _y;
+	}
+	void Init(POINTS pts) {
+		x = pts.x;
+		y = pts.y;
+	}
+	bool operator ==(const TPoint& pt) {
+		return	x == pt.x && y == pt.y;
+	}
+	bool operator !=(const TPoint& pt) {
+		return	!(*this == pt);
+	}
 };
 
 class TWin : public THashObj {
@@ -277,6 +407,7 @@ public:
 	virtual	~TWin();
 
 	HWND			hWnd;
+	HWND			hTipWnd;
 	DWORD			modalCount;
 	DWORD			twinId;
 
@@ -300,6 +431,7 @@ public:
 	virtual BOOL	EvNcDestroy(void);
 	virtual BOOL	EvQueryEndSession(BOOL nSession, BOOL nLogOut);
 	virtual BOOL	EvEndSession(BOOL nSession, BOOL nLogOut);
+	virtual BOOL	EvPowerBroadcast(WPARAM pbtEvent, LPARAM pbtData);
 	virtual BOOL	EvQueryOpen(void);
 	virtual BOOL	EvPaint(void);
 	virtual BOOL	EvNcPaint(HRGN hRgn);
@@ -323,6 +455,7 @@ public:
 	virtual BOOL	EvChar(WCHAR code, LPARAM keyData);
 	virtual BOOL	EvWindowPosChanged(WINDOWPOS *pos);
 	virtual BOOL	EvWindowPosChanging(WINDOWPOS *pos);
+	virtual BOOL	EvMouseWheel(WORD fwKeys, short zDelta, short xPos, short yPos);
 
 	virtual BOOL	EventButton(UINT uMsg, int nHitTest, POINTS pos);
 	virtual BOOL	EventKey(UINT uMsg, int nVirtKey, LONG lKeyData);
@@ -332,6 +465,7 @@ public:
 	virtual BOOL	EventFocus(UINT uMsg, HWND focusWnd);
 	virtual BOOL	EventScrollWrapper(UINT uMsg, int nScrollCode, int nPos, HWND hScroll);
 	virtual BOOL	EventScroll(UINT uMsg, int nScrollCode, int nPos, HWND hScroll);
+	virtual BOOL	EventPrint(UINT uMsg, HDC hDc, DWORD opt);
 
 	virtual BOOL	EventApp(UINT uMsg, WPARAM wParam, LPARAM lParam);
 	virtual BOOL	EventUser(UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -377,11 +511,13 @@ public:
 	virtual int		GetWindowTextLengthW(void);
 	virtual int		GetWindowTextLengthU8(void);
 	virtual BOOL	InvalidateRect(const RECT *rc, BOOL fErase);
+	virtual HWND	SetFocus();
 
 	virtual LONG_PTR SetWindowLong(int index, LONG_PTR val);
-	virtual WORD	SetWindowWord(int index, WORD val);
 	virtual LONG_PTR GetWindowLong(int index);
-	virtual WORD	GetWindowWord(int index);
+	virtual UINT_PTR SetTimer(UINT_PTR idTimer, UINT uTimeout, TIMERPROC proc=NULL);
+	virtual BOOL	KillTimer(UINT_PTR idTimer);
+
 	virtual TWin	*GetParent(void) { return parent; };
 	virtual void	SetParent(TWin *_parent) { parent = _parent; };
 	virtual BOOL	MoveWindow(int x, int y, int cx, int cy, int bRepaint);
@@ -389,10 +525,18 @@ public:
 	virtual BOOL	Sleep(UINT mSec);
 	virtual BOOL	Idle(void);
 	virtual TWin	*Parent() { return parent; }
+	virtual BOOL	MoveCenter(BOOL use_cursor_screen=FALSE);
 
 	virtual	BOOL	PreProcMsg(MSG *msg);
 	virtual	LRESULT	WinProc(UINT uMsg, WPARAM wParam, LPARAM lParam);
 	virtual	LRESULT	DefWindowProc(UINT uMsg, WPARAM wParam, LPARAM lParam);
+	virtual BOOL	TranslateAccelerator(MSG *msg);
+
+	virtual void	SetAccel(HACCEL _hAccel) { hAccel = _hAccel; }
+
+	virtual BOOL	CreateTipWnd(const WCHAR *tip=NULL, int width=0, int tout=0);
+	virtual BOOL	SetTipTextW(const WCHAR *tip, int width=0, int tout=0);
+	virtual BOOL	CloseTipWnd();
 };
 
 class TDlg : public TWin {
@@ -423,6 +567,14 @@ public:
 	virtual LRESULT	WinProc(UINT uMsg, WPARAM wParam, LPARAM lParam);
 };
 
+class TCtl : public TWin {
+protected:
+public:
+	TCtl(TWin *_parent);
+
+	virtual	BOOL	PreProcMsg(MSG *msg);
+};
+
 class TSubClass : public TWin {
 protected:
 	WNDPROC		oldProc;
@@ -442,7 +594,6 @@ public:
 	TSubClassCtl(TWin *_parent);
 
 	virtual	BOOL	PreProcMsg(MSG *msg);
-	virtual LRESULT WinProc(UINT uMsg, WPARAM wParam, LPARAM lParam);
 };
 
 BOOL TRegisterClass(LPCSTR class_name, UINT style=CS_DBLCLKS, HICON hIcon=0, HCURSOR hCursor=0,
@@ -477,7 +628,7 @@ protected:
 	int			nCmdShow;
 	TWin		*mainWnd;
 	TWin		*preWnd;
-	HINSTANCE	hI;
+	HINSTANCE	hInstance;
 	DWORD		twinId;
 
 	virtual BOOL	InitApp(void);
@@ -493,20 +644,30 @@ public:
 	LPCWSTR	GetDefaultClassW() { return defaultClassW; }
 	void	AddWin(TWin *win) { preWnd = win; }
 	void	AddWinByWnd(TWin *win, HWND hWnd) {
-			win->hWnd = hWnd; hash->Register(win, hash->MakeHashId(hWnd));
+		win->hWnd = hWnd;
+		hash->Register(win, hash->MakeHashId(hWnd));
 	}
 	void	DelWin(TWin *win) { hash->UnRegister(win); }
-	TWin	*SearchWnd(HWND hWnd) { return (TWin *)hash->Search(&hWnd, hash->MakeHashId(hWnd)); }
+	TWin	*SearchWnd(HWND hWnd) {
+		return (TWin *)hash->Search(&hWnd, hash->MakeHashId(hWnd));
+	}
 
 	static TApp *GetApp() { return tapp; }
 	static void Idle(DWORD timeout=0);
-	static HINSTANCE GetInstance() { return tapp->hI; }
+	static HINSTANCE GetInstance() { return tapp->hInstance; }
+	static HINSTANCE hInst() { return tapp->hInstance; }
 	static LRESULT CALLBACK WinProc(HWND hW, UINT uMsg, WPARAM wParam, LPARAM lParam);
 	static DWORD  GenTWinID() { return tapp ? tapp->twinId++ : 0; }
 };
 
 struct TListObj {
-	TListObj	*prev, *next;
+	TListObj	*prev;
+	TListObj	*next;
+
+	TListObj() {
+		prev = NULL;
+		next = NULL;
+	}
 };
 
 template <class T>
@@ -517,16 +678,27 @@ protected:
 
 public:
 	TListEx() { Init(); }
-	void Init() { top.prev = top.next = &top; num = 0; }
+	void Init() {
+		top.prev = &top;
+		top.next = &top;
+		num = 0;
+	}
 	void AddObj(T *obj) { // add to last
-		obj->prev = (T *)top.prev; obj->next = (T *)&top;
-		top.prev->next = obj;      top.prev = obj;
+		obj->prev = (T *)top.prev;
+		obj->next = (T *)&top;
+		top.prev->next = obj;
+		top.prev = obj;
 		num++;
 	}
 	void DelObj(T *obj) {
-		if (obj->next) obj->next->prev = obj->prev;
-		if (obj->prev) obj->prev->next = obj->next;
-		obj->next = obj->prev = NULL;
+		if (obj->next) {
+			obj->next->prev = obj->prev;
+		}
+		if (obj->prev) {
+			obj->prev->next = obj->next;
+		}
+		obj->next = NULL;
+		obj->prev = NULL;
 		num--;
 	}
 	void PushObj(T *obj) { // add to top
@@ -542,10 +714,13 @@ public:
 	T *PrevObj(T *obj)  { return (T*)(obj->prev == &top ? NULL : obj->prev); } 
 
 	void MoveList(TListEx<T> *from_list) {
-		if (from_list->top.next == &from_list->top) return;	// from_list is empty
+		if (from_list->top.next == &from_list->top) {
+			return;	// from_list is empty
+		}
 		if (top.next == &top) {	// empty
 			top = from_list->top;
-			top.next->prev = top.prev->next = &top;
+			top.next->prev = &top;
+			top.prev->next = &top;
 		}
 		else {
 			top.prev->next = from_list->top.next;
@@ -556,8 +731,12 @@ public:
 		num += from_list->num;
 		from_list->Init();
 	}
-	int  Num() { return num; }
-	BOOL IsEmpty() { return top.next == &top; }
+	int  Num() {
+		return num;
+	}
+	BOOL IsEmpty() {
+		return top.next == &top;
+	}
 };
 
 #define FREE_LIST	0
@@ -570,22 +749,37 @@ class TRecycleListEx {
 	T *data;
 
 public:
-	TRecycleListEx(int init_cnt=0) { data = NULL; if (init_cnt) Init(init_cnt); }
-	virtual ~TRecycleListEx()      { delete [] data; }
+	TRecycleListEx(int init_cnt=0) {
+		data = NULL;
+		if (init_cnt) {
+			Init(init_cnt);
+		}
+	}
+	virtual ~TRecycleListEx() {
+		delete [] data;
+	}
 	BOOL Init(int init_cnt) {
 		UnInit();
 		data = new T[init_cnt];
-		for (int i=0; i < init_cnt; i++) list[FREE_LIST].AddObj(&data[i]);
+		for (int i=0; i < init_cnt; i++) {
+			list[FREE_LIST].AddObj(&data[i]);
+		}
 		return TRUE;
 	}
 	void UnInit() {
-		if (data) delete [] data;
+		if (data) {
+			delete [] data;
+		}
 		data = NULL;
-		for (int i=0; i < RLIST_MAX; i++) list[i].Init();
+		for (int i=0; i < RLIST_MAX; i++) {
+			list[i].Init();
+		}
 	}
 	T *GetObj(int list_type) {
 		T *d = list[list_type].TopObj();
-		if (d) list[list_type].DelObj(d);
+		if (d) {
+			list[list_type].DelObj(d);
+		}
 		return d;
 	}
 	void PutObj(int list_type, T *obj)  { list[list_type].AddObj(obj);         }
@@ -639,6 +833,12 @@ public:
 
 	BOOL	SetLong(LPCSTR key, long val);
 	BOOL	SetLongW(const WCHAR *key, long val);
+
+	BOOL	GetInt64(LPCSTR key, int64 *val);
+	BOOL	GetInt64W(const WCHAR *key, int64 *val);
+
+	BOOL	SetInt64(LPCSTR key, int64 val);
+	BOOL	SetInt64W(const WCHAR *key, int64 val);
 
 	BOOL	GetStr(LPCSTR key, LPSTR str, int size_byte);
 	BOOL	GetStrA(LPCSTR key, LPSTR str, int size_byte);
@@ -697,7 +897,7 @@ public:
 	TIniSection() { name = NULL; }
 	~TIniSection() {
 		free(name);
-		for (TIniKey *key; (key = TopObj()); ) {
+		while (auto key = TopObj()) {
 			DelObj(key);
 			delete key;
 		}
@@ -707,7 +907,7 @@ public:
 		if (_name) { free(name); name=strdup(_name); }
 	}
 	TIniKey *SearchKey(const char *key_name) {
-		for (TIniKey *key = TopObj(); key; key = NextObj(key)) {
+		for (auto key = TopObj(); key; key = NextObj(key)) {
 			if (key->Key() && strcmpi(key->Key(), key_name) == 0) return key;
 		}
 		return	NULL;
@@ -738,6 +938,23 @@ public:
 		return	TRUE;
 	}
 	const char *Name() { return name; }
+};
+
+class TDC {
+public:
+	HDC			hDc;
+	HGDIOBJ		hPenSv;
+	HGDIOBJ		hBmpSv;
+	HGDIOBJ		hBrushSv;
+	COLORREF	colSv;
+
+	TDC(HDC _hDc=NULL) {
+		hDc = _hDc;
+		hPenSv = NULL;
+		hBmpSv = NULL;
+		hBrushSv = NULL;
+		colSv = 0;
+	}
 };
 
 class TInifile: public TListEx<TIniSection> {
@@ -788,5 +1005,9 @@ public:
 
 
 #include "tapi32u8.h"
+
+#if _MSC_VER == 1900
+void TGsFailureHack();
+#endif
 
 #endif

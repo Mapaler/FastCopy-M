@@ -1,9 +1,9 @@
 ﻿static char *miscdlg_id = 
-	"@(#)Copyright (C) 2005-2015 H.Shirouzu		miscdlg.cpp	ver3.10";
+	"@(#)Copyright (C) 2005-2016 H.Shirouzu		miscdlg.cpp	ver3.20";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2005-01-23(Sun)
-	Update					: 2015-11-28(Sat)
+	Update					: 2016-09-28(Wed)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -58,7 +58,7 @@ BOOL TAboutDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hWndCtl)
 		return	TRUE;
 
 	case URL_BUTTON:
-		::ShellExecuteW(NULL, NULL, GetLoadStrW(IDS_FASTCOPYURL), NULL, NULL, SW_SHOW);
+		::ShellExecuteW(NULL, NULL, LoadStrW(IDS_FASTCOPYURL), NULL, NULL, SW_SHOW);
 		return	TRUE;
 	}
 	return	FALSE;
@@ -120,7 +120,7 @@ BOOL TExecConfirmDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hWndCtl)
 	switch (wID)
 	{
 	case HELP_CONFIRM_BUTTON:
-		ShowHelpW(0, cfg->execDir, GetLoadStrW(IDS_FASTCOPYHELP), L"#shellcancel");
+		ShowHelpW(0, cfg->execDir, LoadStrW(IDS_FASTCOPYHELP), L"#shellcancel");
 		return	TRUE;
 
 	case IDOK: case IDCANCEL: case RUNAS_BUTTON:
@@ -205,7 +205,7 @@ BOOL BrowseDirDlgW(TWin *parentWin, UINT editCtl, WCHAR *title, int flg)
 			break;
 
 		case FILESELECT:
-			buf[wcscpyz(buf, GetLoadStrW(IDS_ALLFILES_FILTER)) + 1] =  0;
+			buf[wcscpyz(buf, LoadStrW(IDS_ALLFILES_FILTER)) + 1] =  0;
 			fileDlg.Exec(editCtl, NULL, buf, fileBuf, fileBuf);
 			if (fileDlg.GetMode() == DIRSELECT)
 				mode = DIRSELECT;
@@ -303,15 +303,15 @@ BOOL TBrowseDirDlgW::AttachWnd(HWND _hWnd)
 	::ScreenToClient(hWnd, &pt);
 	int		cx = (pt.x - 30) / 2, cy = tmp_rect.bottom - tmp_rect.top;
 
-//	::CreateWindow(BUTTON_CLASS, GetLoadStr(IDS_MKDIR), WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,
+//	::CreateWindow(BUTTON_CLASS, LoadStr(IDS_MKDIR), WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,
 //		10, pt.y, cx, cy, hWnd, (HMENU)MKDIR_BUTTON, TApp::GetInstance(), NULL);
-//	::CreateWindow(BUTTON_CLASS, GetLoadStr(IDS_RMDIR), WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,
+//	::CreateWindow(BUTTON_CLASS, LoadStr(IDS_RMDIR), WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,
 //		18 + cx, pt.y, cx, cy, hWnd, (HMENU)RMDIR_BUTTON, TApp::GetInstance(), NULL);
 
 	if (flg & BRDIR_FILESELECT) {
 		GetClientRect(&rect);
 		int		file_cx = cx * 3 / 2;
-		::CreateWindow(BUTTON_CLASS, GetLoadStr(IDS_FILESELECT),
+		::CreateWindow(BUTTON_CLASS, LoadStr(IDS_FILESELECT),
 			WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON, rect.right - file_cx - 18, 10, file_cx, cy,
 			hWnd, (HMENU)FILESELECT_BUTTON, TApp::GetInstance(), NULL);
 	}
@@ -427,7 +427,7 @@ int TConfirmDlg::Exec(const WCHAR *_message, BOOL _allow_continue, TWin *_parent
 BOOL TConfirmDlg::EvCreate(LPARAM lParam)
 {
 	if (!allow_continue) {
-		SetWindowText(GetLoadStr(IDS_ERRSTOP));
+		SetWindowText(LoadStr(IDS_ERRSTOP));
 		::EnableWindow(GetDlgItem(IDOK), FALSE);
 		::EnableWindow(GetDlgItem(IDIGNORE), FALSE);
 		::SetFocus(GetDlgItem(IDCANCEL));
@@ -603,7 +603,7 @@ BOOL TOpenFileDlg::AttachWnd(HWND _hWnd)
 		MoveWindow(rect.left, rect.top, rect.right - rect.left, parent_cy, TRUE);
 	}
 
-	::CreateWindow(BUTTON_CLASS, GetLoadStr(IDS_DIRSELECT), WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,
+	::CreateWindow(BUTTON_CLASS, LoadStr(IDS_DIRSELECT), WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,
 		x, y, cx, cy, hWnd, (HMENU)DIRSELECT_BUTTON, TApp::GetInstance(), NULL);
 
 	HFONT	hDlgFont = (HFONT)SendDlgItemMessage(IDOK, WM_GETFONT, 0, 0L);
@@ -690,7 +690,7 @@ BOOL TJobDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hWndCtl)
 		return	TRUE;
 
 	case HELP_BUTTON:
-		ShowHelpW(NULL, cfg->execDir, GetLoadStrW(IDS_FASTCOPYHELP), L"#job");
+		ShowHelpW(NULL, cfg->execDir, LoadStrW(IDS_FASTCOPYHELP), L"#job");
 		return	TRUE;
 	}
 	return	FALSE;
@@ -764,9 +764,9 @@ BOOL TJobDlg::DelJob()
 
 	if (GetDlgItemTextW(TITLE_COMBO, buf, MAX_PATH) > 0) {
 		int idx = cfg->SearchJobW(buf);
-		swprintf(msg, GetLoadStrW(IDS_JOBNAME), buf);
+		swprintf(msg, LoadStrW(IDS_JOBNAME), buf);
 		if (idx >= 0
-				&& TMsgBox(this).ExecW(msg, GetLoadStrW(IDS_DELCONFIRM), MB_OKCANCEL) == IDOK) {
+				&& TMsgBox(this).ExecW(msg, LoadStrW(IDS_DELCONFIRM), MB_OKCANCEL) == IDOK) {
 			cfg->DelJobW(buf);
 			cfg->WriteIni();
 			SendDlgItemMessage(TITLE_COMBO, CB_DELETESTRING, idx, 0);
@@ -803,7 +803,7 @@ BOOL TFinActDlg::EvCreate(LPARAM lParam)
 
 	for (int i=0; i < 3; i++) {
 		SendDlgItemMessageW(FACMD_COMBO, CB_INSERTSTRING, i,
-			(LPARAM)GetLoadStrW(IDS_FACMD_ALWAYS + i));
+			(LPARAM)LoadStrW(IDS_FACMD_ALWAYS + i));
 	}
 
 	Reflect(max(mainParent->GetFinActIdx(), 0));
@@ -863,7 +863,7 @@ BOOL TFinActDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hWndCtl)
 		return	TRUE;
 
 	case HELP_BUTTON:
-		ShowHelpW(NULL, cfg->execDir, GetLoadStrW(IDS_FASTCOPYHELP), L"#finact");
+		ShowHelpW(NULL, cfg->execDir, LoadStrW(IDS_FASTCOPYHELP), L"#finact");
 		return	TRUE;
 	}
 	return	FALSE;
@@ -968,11 +968,11 @@ BOOL TFinActDlg::DelFinAct()
 
 	if (GetDlgItemTextW(TITLE_COMBO, buf, MAX_PATH) > 0) {
 		int idx = cfg->SearchFinActW(buf);
-		swprintf(msg, GetLoadStrW(IDS_FINACTNAME), buf);
+		swprintf(msg, LoadStrW(IDS_FINACTNAME), buf);
 		if (cfg->finActArray[idx]->flags & FinAct::BUILTIN) {
 			MessageBox("Can't delete buit-in Action", "Error");
 		}
-		else if (TMsgBox(this).ExecW(msg, GetLoadStrW(IDS_DELCONFIRM), MB_OKCANCEL) == IDOK) {
+		else if (TMsgBox(this).ExecW(msg, LoadStrW(IDS_DELCONFIRM), MB_OKCANCEL) == IDOK) {
 			cfg->DelFinActW(buf);
 			cfg->WriteIni();
 			SendDlgItemMessage(TITLE_COMBO, CB_DELETESTRING, idx, 0);
@@ -1090,9 +1090,9 @@ TFinDlg::~TFinDlg()
 UINT TFinDlg::Exec(int _sec, DWORD mainmsg_id)
 {
 	orgSec = sec = _sec;
-	main_msg = GetLoadStr(mainmsg_id);
-	proc_msg = GetLoadStr(IDS_WAITPROC_MSG);
-	time_fmt = GetLoadStr(IDS_WAITTIME_MSG);
+	main_msg = LoadStr(mainmsg_id);
+	proc_msg = LoadStr(IDS_WAITPROC_MSG);
+	time_fmt = LoadStr(IDS_WAITTIME_MSG);
 	return	TMsgBox::Exec("", "FastCopy", MB_OKCANCEL);
 }
 
@@ -1105,7 +1105,7 @@ BOOL TFinDlg::EvCreate(LPARAM lParam)
 	TMsgBox::EvCreate(lParam);
 	Update();
 	SetWindowPos(HWND_TOPMOST, 0, 0 ,0, 0, SWP_NOACTIVATE|SWP_NOMOVE|SWP_NOSIZE);
-	::SetTimer(hWnd, FASTCOPY_FIN_TIMER, 1000, NULL);
+	SetTimer(FASTCOPY_FIN_TIMER, 1000, NULL);
 	return	TRUE;
 }
 
@@ -1147,10 +1147,10 @@ int SetSpeedLevelLabel(TWin *win, int level)
 
 	char	buf[64];
 	sprintf(buf,
-			level == SPEED_FULL ?		GetLoadStr(IDS_FULLSPEED_DISP) :
-			level == SPEED_AUTO ?		GetLoadStr(IDS_AUTOSLOW_DISP) :
-			level == SPEED_SUSPEND ?	GetLoadStr(IDS_SUSPEND_DISP) :
-			 							GetLoadStr(IDS_RATE_DISP),
+			level == SPEED_FULL ?		LoadStr(IDS_FULLSPEED_DISP) :
+			level == SPEED_AUTO ?		LoadStr(IDS_AUTOSLOW_DISP) :
+			level == SPEED_SUSPEND ?	LoadStr(IDS_SUSPEND_DISP) :
+			 							LoadStr(IDS_RATE_DISP),
 			level * 10);
 	win->SetDlgItemText(SPEED_STATIC, buf);
 	return	level;
@@ -1348,20 +1348,20 @@ BOOL TEditSub::EvContextMenu(HWND childWnd, POINTS pos)
 	UINT	flg = 0;
 
 	flg = (is_readonly || !SendMessage(EM_CANUNDO, 0, 0)) ? MF_DISABLED|MF_GRAYED : 0;
-	::AppendMenu(hMenu, MF_STRING|flg, WM_UNDO, GetLoadStr(IDS_UNDO));
+	::AppendMenu(hMenu, MF_STRING|flg, WM_UNDO, LoadStr(IDS_UNDO));
 	::AppendMenu(hMenu, MF_SEPARATOR, 0, 0);
 
 	flg = is_readonly ? MF_DISABLED|MF_GRAYED : 0;
-	::AppendMenu(hMenu, MF_STRING|flg, WM_CUT, GetLoadStr(IDS_CUT));
-	::AppendMenu(hMenu, MF_STRING, WM_COPY, GetLoadStr(IDS_COPY));
+	::AppendMenu(hMenu, MF_STRING|flg, WM_CUT, LoadStr(IDS_CUT));
+	::AppendMenu(hMenu, MF_STRING, WM_COPY, LoadStr(IDS_COPY));
 
 	flg = (is_readonly || !SendMessage(EM_CANPASTE, 0, 0)) ? MF_DISABLED|MF_GRAYED : 0;
-	::AppendMenu(hMenu, MF_STRING|flg, WM_PASTE, GetLoadStr(IDS_PASTE));
+	::AppendMenu(hMenu, MF_STRING|flg, WM_PASTE, LoadStr(IDS_PASTE));
 
 	flg = is_readonly ? MF_DISABLED|MF_GRAYED : 0;
-	::AppendMenu(hMenu, MF_STRING|flg, WM_CLEAR, GetLoadStr(IDS_DELETE));
+	::AppendMenu(hMenu, MF_STRING|flg, WM_CLEAR, LoadStr(IDS_DELETE));
 	::AppendMenu(hMenu, MF_SEPARATOR, 0, 0);
-	::AppendMenu(hMenu, MF_STRING, EM_SETSEL, GetLoadStr(IDS_SELECTALL));
+	::AppendMenu(hMenu, MF_STRING, EM_SETSEL, LoadStr(IDS_SELECTALL));
 
 	::TrackPopupMenu(hMenu, TPM_RIGHTBUTTON, pos.x, pos.y, 0, hWnd, NULL);
 	::DestroyMenu(hMenu);
