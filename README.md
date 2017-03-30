@@ -135,9 +135,13 @@ http://mapaler.github.io/FastCopy-M/
 http://ipmsg.org/tools/fastcopy.html
  
 ##Official License | FastCopy官方许可
-FastCopy ver3.x Copyright(C) 2004-2017 by SHIROUZU Hiroaki
+> FastCopy ver3.x Copyright(C) 2004-2017 by SHIROUZU Hiroaki
+> 
+> This program is free software. You can redistribute it and/or modify it under the GNU General Public License version 3(GPLv3).<br />
+> [license-gpl3.txt](http://ipmsg.org/tools/license-gpl3.txt)
+> 
+> If you want to distribute your modified version, but you don't want to distribute the modified source code, or you want to request to develop bundle/special versoin, please contact me. (shirouzu@ipmsg.org)
 
-This program is free software. You can redistribute it and/or modify it under the GNU General Public License version 3(GPLv3).<br />
-[license-gpl3.txt](http://ipmsg.org/tools/license-gpl3.txt)
 
-If you want to distribute your modified version, but you don't want to distribute the modified source code, or you want to request to develop bundle/special versoin, please contact me. (shirouzu@ipmsg.org)
+> xxHash Library Copyright (c) 2012-2014, Yann Collet All rights reserved.<br>
+> [License details](https://ipmsg.org/tools/xxhash-LICENSE.txt).
