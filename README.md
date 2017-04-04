@@ -134,7 +134,7 @@ http://mapaler.github.io/FastCopy-M/
 
 http://ipmsg.org/tools/fastcopy.html
  
-##Official License | FastCopy官方许可
+## Official License | FastCopy官方许可
 > FastCopy ver3.x Copyright(C) 2004-2017 by SHIROUZU Hiroaki
 > 
 > This program is free software. You can redistribute it and/or modify it under the GNU General Public License version 3(GPLv3).<br />
