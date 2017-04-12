@@ -73,8 +73,8 @@ Support use http url to replace "chm" help files, change "IDS_FASTCOPYHELP" in r
 ![Shell Extension icon](http://ww3.sinaimg.cn/large/6c84b2d6gw1ewbd5egv8jj20rj0hpjxc.jpg)
 
 ### Build | 编译
-FastCopy-M采用[VS2015](https://www.visualstudio.com/zh-cn/downloads/download-visual-studio-vs.aspx)，暂不支持VS2017。<br />
-FastCopy-M used [VS2015](https://www.visualstudio.com/en-us/downloads/download-visual-studio-vs.aspx), not support VS2017 now.
+FastCopy-M采用[VS2015](https://www.visualstudio.com/zh-cn/downloads/download-visual-studio-vs.aspx)，暂不支持VS2017 v141编译工具。<br />
+FastCopy-M used [VS2015](https://www.visualstudio.com/en-us/downloads/download-visual-studio-vs.aspx), not support VS2017 v141 build tools now.
 
 ## Auto Change Icon | 自动更换图标 
 
