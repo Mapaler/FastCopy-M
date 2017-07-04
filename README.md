@@ -6,12 +6,12 @@ FastCopy-M
 现在拥有如下语言：<br />
 Now has the following language:
 
-| Language | Detail |
-| --- | --- |
-| Japanese | 日本語,Original |
-| English | Official translation by H.Shirouzu |
-| Chinese, simplified | 简体中文，从英文翻译而来 |
-| Chinese, traditional | 繁体中文，用MS Word從簡中轉換而來，稍加修訂 |
+| Language | LCID Dec | Detail |
+| --- | --- | --- |
+| Japanese | 1041 | 日本語,Original |
+| English | 1033 | Official translation by H.Shirouzu |
+| Chinese, simplified | 2052 | 简体中文，从英文翻译而来 |
+| Chinese, traditional | 1028 | 繁体中文，用MS Word從簡中轉換而來，稍加修訂 |
 
 ## Original FastCopy feature | 原版FastCopy特点
 
