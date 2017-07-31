@@ -1,7 +1,7 @@
 FastCopy-M
 ===========
 "FastCopy-M" 是免费开源软件 "FastCopy" 的一个二次开发分支。<br />
-"FastCopy-M" is a branch of open source soft "FastCopy", "M" is Multilanguage or Mapaler.
+"FastCopy-M" is a branch of open source soft "FastCopy", "M" means Multilanguage or Mapaler.
 
 现在拥有如下语言：<br />
 Now has the following language:
@@ -34,7 +34,7 @@ It automatically selects different methods according to whether Source and DestD
 | Reading and writing are processed respectively in parallel by separate threads. | Reading is processed until the big buffer fills. When the big buffer is filled, writing is started and processed in bulk. |
 	
 
-* 因为根本没有使用操作系统缓存来处理读/写，其他应用程序就不容易变得缓慢。<br />
+* 因为不使用操作系统缓存来处理读/写，所以其他应用程序就不容易变得缓慢。<br />
 Reading/Writing are processed with no OS cache, as such other applications do not become slow.
 
 * 它可以实现接近设备极限的读写性能。<br />
@@ -43,7 +43,7 @@ It can achieve Reading/Writing performance that is close to device limit.
 * 可以使用 包含/排除 筛选器 (UNIX通配符样式)。<br />
 Include/Exclude Filter (UNIX Wildcard style) can be specified. ver3.0 or later, Relative Path can be specified.
 
-* 仅使用Win32 API和C 运行时，没有使用MFC等框架，因此可以轻量、紧凑、轻快的运行。（注：XP下也不需要安装运行库）——所以也导致无法支持手机的MTP模式<br />
+* 仅使用Win32 API和C运行时，没有使用MFC等框架，因此可以轻量、紧凑、轻快的运行。（注：XP下也不需要安装运行库）——所以也导致无法支持手机的MTP模式<br />
 It runs fast and does not hog resources, because MFC is not used. (Designed using Win32 API and C Runtime only)
 
 * 你可以修改此款软件，所有源代码都以GPLv3许可开源。<br />
@@ -51,11 +51,12 @@ You can modify this software, because all source code has been opened to the pub
 
 ## FastCopy-M feature | FastCopy-M特点
 
-* 汉化并支持更加完整的多国语言显示，添加语言只需要修改资源文件即可。<br />
+* 汉化并支持更加完整的多国语言显示，添加语言只需要修改资源文件。<br />
+
 FastCopy Chinesization and modify to support other language more overall, add language only need add new resources
 
 * Vista以后支持新版文件/文件夹选择框（可多选）<br />
-After Vista support new Shell common file dialog (Easy-to-use, and can select folder multiple)<br />
+New file selecting dialog.(Vista+)<br />
 ![Folder select](http://ww3.sinaimg.cn/large/6c84b2d6gw1ewei65dy7bj20li0g8tdj.jpg)
 ![File select](http://ww3.sinaimg.cn/large/6c84b2d6gw1ewei561xzhj20kv0fu0wz.jpg)
 
@@ -78,12 +79,12 @@ FastCopy-M used [VS2015](https://www.visualstudio.com/en-us/downloads/download-v
 
 ## Auto Change Icon | 自动更换图标 
 
-* 解压“FastCopy-M Resources Rebuild & Replace Tools.zip”基本工具。<br />
-Unzip "FastCopy-M Resources Rebuild & Replace Tools.zip" basic tools.
+* 解压“FastCopy-M Resources Rebuild & Replace Tools.zip”工具。<br />
+Unzip "FastCopy-M Resources Rebuild & Replace Tools.zip".
 * 将“Auto Change Icon Tools.zip”解压到上述解压出来的文件夹中。<br />
 Unzip this "Auto Change Icon Tools.zip" to previous folder.
 * 在“My New Icon”文件夹内按照1、2、3……的顺序命名图标，最后一个图标是等待图标。<br />
-Put your customize icon animate group, and rename to "1.ico","2.ico","3.ico"... Attention: The final icon file as wait icon.<br />
+Put your customize icon animate group, and rename to "1.ico","2.ico","3.ico"... Attention: The last icon file as wait icon.<br />
 ![Rename Icon](http://ww2.sinaimg.cn/large/6c84b2d6jw1ewbqj5xriyj20oa0cugoj.jpg)
 * 然后将“FastCopy.exe”拖到“Change Icon.vbs”上即可。<br />
 Then drag original "FastCopy.exe" and put on "Change Icon.vbs" . <br />
@@ -105,7 +106,7 @@ Or more simple:
 * Unzip "FastCopy-M Resources Rebuild & Replace Tools.zip".
 * Use "Update resources source file.vbs" to update the newest source. Attention: Backup your edited file before use update.
 * Use "Visual Studio" for IDE (VS2010 or later),or any Notepad to to edit "fastcopy.rc" directly.
-* Visual Studio is Easy-to-use,ResEdit is not recommand (rc file saved by the soft , can't open in VS, and can't rebuild by my tools.Use it requir some processing), If you use Notepad edit manually. For example, open "fastcopy.rc" find and copy English part and past at the end.
+* ResEdit is not recommended (The rc file saved by the ResEdit can't open in VS, and can't rebuild by my tools.To use it requies some processing), If you use Notepad edit manually. For example, open "fastcopy.rc" find and copy English part and past at the end.
 ```C
 /////////////////////////////////////////////////////////////////////////////
 // English (United States) [or 英語 (米国)] resources [about line 2391]
@@ -118,10 +119,10 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 #endif    // English (United States) [or 英語 (米国)] resources [about line 3137]
 /////////////////////////////////////////////////////////////////////////////
 ```
-* Change "LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US" to your language and sub-language id. You can find them at "include\winnt.rh". No need to edit "defined(AFX_TARG_ENU)" (I don't know where can find it.)
+* Change "LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US" to your language and sub-language id. You can find them at "include\winnt.rh". You needn't edit "defined(AFX_TARG_ENU)" (I don't know where can find it.)
 * Edit this part to your language.
 * Drag original "FastCopy.exe" and put on "rebuild.bat".
-* Then will auto begin rebuild and replace resources.  And generate to "output\FastCopy.exe".
+* Then it will replace resources and rebuild the executable automatically.  And generate to "output\FastCopy.exe".
 * Change "lcid" value in "FastCopy2.ini" to other decimal LCID, you can test other language on your OS. [LCID list](https://msdn.microsoft.com/en-us/goglobal/bb964664.aspx) 
 If you want add your translate to FastCopy-M, please send your "fastcopy.rc" source to mapaler@163.com.
 
