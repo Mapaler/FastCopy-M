@@ -1,9 +1,9 @@
 ﻿/* static char *mainwin_id = 
-	"@(#)Copyright (C) 2004-2017 H.Shirouzu		mainwin.h	Ver3.27"; */
+	"@(#)Copyright (C) 2004-2017 H.Shirouzu		mainwin.h	Ver3.30"; */
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2017-01-23(Mon)
+	Update					: 2017-03-06(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-16

@@ -17,6 +17,7 @@ void SetVersionStr(BOOL is_admin=FALSE, BOOL is_noui=FALSE);
 const char *GetVersionStr();
 const char *GetVerAdminStr();
 const char *GetCopyrightStr(void);
+const char *GetLibCopyrightStr(void);
 const char *GetMenderStr(void);
 
 #endif
