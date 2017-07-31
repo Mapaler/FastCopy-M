@@ -1,10 +1,10 @@
 ﻿static char *tap32u8_id = 
-	"@(#)Copyright (C) 1996-2016 H.Shirouzu		tap32u8.cpp	Ver0.99";
+	"@(#)Copyright (C) 1996-2017 H.Shirouzu		tap32u8.cpp	Ver0.99";
 /* ========================================================================
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Application Frame Class
 	Create					: 1996-06-01(Sat)
-	Update					: 2015-06-22(Mon)
+	Update					: 2017-06-12(Mon)
 	Copyright				: H.Shirouzu
 	Reference				: 
 	======================================================================== */
@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
+#include <atomic>
 
 HWND CreateWindowU8(const char *class_name, const char *window_name, DWORD style,
 	int x, int y, int width, int height, HWND hParent, HMENU hMenu, HINSTANCE hInst, void *param)
@@ -360,11 +361,7 @@ LPSTR LoadStrU8(UINT resId, HINSTANCE hI)
 {
 	extern HINSTANCE defaultStrInstance;
 
-	static TResHash	*hash;
-
-	if (hash == NULL) {
-		hash = new TResHash(1000);
-	}
+	static TResHash	*hash = new TResHash(1000);
 
 	WCHAR		buf[1024];
 	TResHashObj	*obj;
@@ -529,9 +526,10 @@ WCHAR *U8toW(const char *src, int max_len) {
 
 WCHAR *U8toWs(const char *src, int max_len) {
 	static	WCHAR	*wbuf[MAX_STATIC_ARRAY];
-	static	u_long	idx;
+	static	std::atomic<DWORD>	idx;
 
 	WCHAR	*&cur_buf = wbuf[idx++ % MAX_STATIC_ARRAY];
+
 	if (cur_buf) {
 		delete [] cur_buf;
 	}
@@ -540,7 +538,7 @@ WCHAR *U8toWs(const char *src, int max_len) {
 
 WCHAR *WtoWs(const WCHAR *src, int max_len) {
 	static	WCHAR	*wbuf[MAX_STATIC_ARRAY];
-	static	u_long	idx;
+	static	std::atomic<DWORD>	idx;
 
 	WCHAR	*&cur_buf = wbuf[idx++ % MAX_STATIC_ARRAY];
 
@@ -570,9 +568,10 @@ char *WtoU8(const WCHAR *src, int max_len) {
 
 char *WtoU8s(const WCHAR *src, int max_len) {
 	static	char	*buf[MAX_STATIC_ARRAY];
-	static	u_long	idx;
+	static	std::atomic<DWORD>	idx;
 
 	char	*&cur_buf = buf[idx++ % MAX_STATIC_ARRAY];
+
 	if (cur_buf) {
 		delete [] cur_buf;
 	}
@@ -593,9 +592,10 @@ WCHAR *AtoW(const char *src, int max_len) {
 
 WCHAR *AtoWs(const char *src, int max_len) {
 	static	WCHAR	*wbuf[MAX_STATIC_ARRAY];
-	static	u_long	idx;
+	static	std::atomic<DWORD>	idx;
 
 	WCHAR	*&cur_buf = wbuf[idx++ % MAX_STATIC_ARRAY];
+
 	if (cur_buf) {
 		delete [] cur_buf;
 	}
@@ -615,9 +615,10 @@ char *WtoA(const WCHAR *src, int max_len) {
 
 char *WtoAs(const WCHAR *src, int max_len) {
 	static	char	*buf[MAX_STATIC_ARRAY];
-	static	u_long	idx;
+	static	std::atomic<DWORD>	idx;
 
 	char	*&cur_buf = buf[idx++ % MAX_STATIC_ARRAY];
+
 	if (cur_buf) {
 		delete [] cur_buf;
 	}
@@ -638,9 +639,10 @@ char *AtoU8(const char *src, int max_len) {
 
 char *AtoU8s(const char *src, int max_len) {
 	static	char	*buf[MAX_STATIC_ARRAY];
-	static	u_long	idx;
+	static	std::atomic<DWORD>	idx;
 
 	char	*&cur_buf = buf[idx++ % MAX_STATIC_ARRAY];
+
 	if (cur_buf) {
 		delete [] cur_buf;
 	}
@@ -662,9 +664,10 @@ char *U8toA(const char *src, int max_len) {
 
 char *U8toAs(const char *src, int max_len) {
 	static	char	*buf[MAX_STATIC_ARRAY];
-	static	u_long	idx;
+	static	std::atomic<DWORD>	idx;
 
 	char	*&cur_buf = buf[idx++ % MAX_STATIC_ARRAY];
+
 	if (cur_buf) {
 		delete [] cur_buf;
 	}
@@ -673,9 +676,10 @@ char *U8toAs(const char *src, int max_len) {
 }
 
 
-BOOL IsUTF8(const char *_s, BOOL *is_ascii, char **invalid_point)
+BOOL IsUTF8(const char *_s, BOOL *is_ascii, char **invalid_point, int max_len)
 {
 	const u_char	*s = (const u_char *)_s;
+	const u_char	*sv_s = s;
 	char 			*_invalid_point;
 	BOOL			tmp;
 
@@ -688,27 +692,28 @@ BOOL IsUTF8(const char *_s, BOOL *is_ascii, char **invalid_point)
 
 	*is_ascii = TRUE;
 
-	while (*s) {
+	while (*s && max_len-- > 0) {
 		if (*s >= 0x80) {
 			*is_ascii = FALSE;
 			*invalid_point = (char *)s;
 
 			if (*s <= 0xdf) {
-				if ((*++s & 0xc0) != 0x80) return FALSE;
+				if (--max_len <= 0 || (*++s & 0xc0) != 0x80) return FALSE;
 			}
 			else if (*s <= 0xef) {
-				if ((*++s & 0xc0) != 0x80) return FALSE;
-				if ((*++s & 0xc0) != 0x80) return FALSE;
+				if (--max_len <= 0 || (*++s & 0xc0) != 0x80) return FALSE;
+				if (--max_len <= 0 || (*++s & 0xc0) != 0x80) return FALSE;
 			}
 			else if (*s <= 0xf7) {
-				if ((*++s & 0xc0) != 0x80) return FALSE;
-				if ((*++s & 0xc0) != 0x80) return FALSE;
-				if ((*++s & 0xc0) != 0x80) return FALSE;
+				if (--max_len <= 0 || (*++s & 0xc0) != 0x80) return FALSE;
+				if (--max_len <= 0 || (*++s & 0xc0) != 0x80) return FALSE;
+				if (--max_len <= 0 || (*++s & 0xc0) != 0x80) return FALSE;
 			}
 			else return FALSE;
 		}
 		s++;
 	}
+	*invalid_point = NULL;
 	return	TRUE;
 }
 

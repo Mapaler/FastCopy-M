@@ -4,7 +4,7 @@
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Application Frame Class
 	Create					: 1996-06-01(Sat)
-	Update					: 2017-02-24(Fri)
+	Update					: 2017-06-12(Mon)
 	Copyright				: H.Shirouzu
 	Reference				: 
 	======================================================================== */
@@ -194,16 +194,16 @@ BOOL TGenRandomMT(void *buf, size_t size)
 {
 	std::mt19937_64	mt64((std::random_device())());
 
-	size_t	remain  = size % sizeof(u_int64);
+	size_t	remain  = size % sizeof(uint64);
 
 	if (remain) {
 		BYTE	*d = (BYTE *)buf + (size - remain);
-		u_int64	v = mt64();
+		uint64	v = mt64();
 		memcpy(d, &v, remain);
 	}
 
-	u_int64	*p   = (u_int64 *)buf;
-	u_int64	*end = p + (size / sizeof(u_int64));
+	uint64	*p   = (uint64 *)buf;
+	uint64	*end = p + (size / sizeof(uint64));
 
 	while (p < end) {
 		*p++ = mt64();
@@ -214,14 +214,14 @@ BOOL TGenRandomMT(void *buf, size_t size)
 
 BOOL TGenRandom(void *buf, size_t len)
 {
-	static HCRYPTPROV hProv = ([]() {
+	static HCRYPTPROV hProv = []() {
 		HCRYPTPROV	hProvTmp = NULL;
 		DWORD	flags = CRYPT_VERIFYCONTEXT|CRYPT_MACHINE_KEYSET;
 		if (!::CryptAcquireContext(&hProvTmp, NULL, 0, PROV_RSA_AES, flags)) {
 			::CryptAcquireContext(&hProvTmp, NULL, 0, PROV_DSS, flags);
 		}
 		return	hProvTmp;
-	})();
+	}();
 
 	if (hProv && ::CryptGenRandom(hProv, (DWORD)len, (BYTE *)buf)) {
 		return	TRUE;
@@ -554,7 +554,7 @@ void CheckHashQuality()
 	memset(buf, 0, sizeof(buf));
 	int		len = 500;
 	DWORD	&val = *(DWORD *)buf;
-	DWORD	t = GetTickCount();
+	DWORD	t = GetTick();
 
 	for (int i=0; i < MAX_HASH; i++) {
 #if 0
@@ -582,23 +582,10 @@ void CheckHashQuality()
 			ht.Register(obj + i, hash_id);
 		}
 	}
-	Debug("hash col=%d of %d (%.2f sec)\n", col, MAX_HASH, (GetTickCount() - t) / (float)1000);
+	Debug("hash col=%d of %d (%.2f sec)\n", col, MAX_HASH, (GetTick() - t) / (float)1000);
 	delete [] obj;
 }
 
-
-void swap_s(char *s, int len)
-{
-	int		mid = len / 2;
-
-	for (int i=0; i < mid; i++) {
-		char	&c1 = s[i];
-		char	&c2 = s[len-i-1];
-		char	tmp = c1;
-		c1 = c2;
-		c2 = tmp;
-	}
-}
 
 void CheckHashQuality64()
 {
@@ -615,7 +602,7 @@ void CheckHashQuality64()
 	int		len = 500;
 	uint64	&val = *(uint64 *)buf;
 	uint64	hash_sum = 0;
-	DWORD	t = GetTickCount();
+	DWORD	t = GetTick();
 #ifndef HASH_MD5_64
 	const char *hash_name = "hash64";
 #else
@@ -666,7 +653,7 @@ void CheckHashQuality64()
 			MakeHash64(buf, len)|MakeHash64(buf, len)|MakeHash64(buf, len)|MakeHash64(buf, len);
 #else
 		union {
-			u_int64	hash_id;
+			uint64	hash_id;
 			char	data[16];
 		};
 		md5.Reset(); md5.Update(buf, len); md5.GetVal(data); hash_sum |= hash_id;
@@ -676,7 +663,7 @@ void CheckHashQuality64()
 #endif
 #endif
 	}
-	Debug("%s mode=%s col=%d of %d (%.2f sec) %llx\n", hash_name, mode, col, MAX_HASH64, (GetTickCount() - t) / (float)1000, hash_sum);
+	Debug("%s mode=%s col=%d of %d (%.2f sec) %llx\n", hash_name, mode, col, MAX_HASH64, (GetTick() - t) / (float)1000, hash_sum);
 	delete [] obj;
 }
 #endif

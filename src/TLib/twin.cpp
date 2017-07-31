@@ -1,10 +1,10 @@
 ﻿static char *twin_id = 
-	"@(#)Copyright (C) 1996-2016 H.Shirouzu		twin.cpp	Ver0.99";
+	"@(#)Copyright (C) 1996-2017 H.Shirouzu		twin.cpp	Ver0.99";
 /* ========================================================================
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Window Class
 	Create					: 1996-06-01(Sat)
-	Update					: 2015-06-22(Mon)
+	Update					: 2017-06-12(Mon)
 	Copyright				: H.Shirouzu
 	Reference				: 
 	======================================================================== */
@@ -45,7 +45,7 @@ BOOL TWin::Create(LPCSTR className, LPCSTR title, DWORD style, DWORD exStyle, HM
 BOOL TWin::CreateW(const WCHAR *className, const WCHAR *title, DWORD style, DWORD exStyle,
 	HMENU hMenu)
 {
-	if (className == NULL) {
+	if (className == NULL || !*className) {
 		className = TApp::GetApp()->GetDefaultClassW();
 	}
 
@@ -313,10 +313,15 @@ LRESULT TWin::DefWindowProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 BOOL TWin::PreProcMsg(MSG *msg)
 {
-	if (hWnd && hAccel) {
-		return	::TranslateAccelerator(hWnd, hAccel, msg);
-	}
+	return	TranslateAccelerator(msg);
+}
 
+BOOL TWin::TranslateAccelerator(MSG *msg)
+{
+	if (hWnd && hAccel) {
+		return	isUnicode ? ::TranslateAcceleratorW(hWnd, hAccel, msg) :
+							::TranslateAcceleratorA(hWnd, hAccel, msg);
+	}
 	return	FALSE;
 }
 
@@ -376,7 +381,8 @@ BOOL TWin::Sleep(UINT mSec)
 	sleepBusy = TRUE;
 
 	MSG		msg;
-	while (::GetMessage(&msg, 0, 0, 0))
+	while (isUnicode ?  ::GetMessageW(&msg, 0, 0, 0) :
+						::GetMessageA(&msg, 0, 0, 0))
 	{
 		if (msg.hwnd == hWnd && msg.wParam == TLIB_SLEEPTIMER)
 		{
@@ -387,7 +393,8 @@ BOOL TWin::Sleep(UINT mSec)
 			continue;
 
 		::TranslateMessage(&msg);
-		::DispatchMessage(&msg);
+		isUnicode ? ::DispatchMessageW(&msg) :
+					::DispatchMessageA(&msg);
 	}
 	sleepBusy = FALSE;
 
@@ -804,15 +811,8 @@ LONG_PTR TWin::SetWindowLong(int index, LONG_PTR val)
 	if (!hWnd) {
 		return	0;
 	}
-	return	::SetWindowLong(hWnd, index, val);
-}
-
-WORD TWin::SetWindowWord(int index, WORD val)
-{
-	if (!hWnd) {
-		return	0;
-	}
-	return	::SetWindowWord(hWnd, index, val);
+	return	isUnicode ? ::SetWindowLongW(hWnd, index, val) :
+						::SetWindowLongA(hWnd, index, val);
 }
 
 LONG_PTR TWin::GetWindowLong(int index)
@@ -820,12 +820,8 @@ LONG_PTR TWin::GetWindowLong(int index)
 	if (!hWnd) {
 		return	0;
 	}
-	return	::GetWindowLong(hWnd, index);
-}
-
-WORD TWin::GetWindowWord(int index)
-{
-	return	::GetWindowWord(hWnd, index);
+	return	isUnicode ? ::GetWindowLongW(hWnd, index) :
+						::GetWindowLongA(hWnd, index);
 }
 
 UINT_PTR TWin::SetTimer(UINT_PTR idTimer, UINT uTimeout, TIMERPROC proc)
@@ -910,13 +906,15 @@ BOOL TWin::Idle(void)
 {
 	MSG		msg;
 
-	if (::PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+	if (isUnicode ? ::PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE) :
+					::PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE))
 	{
 		if (TApp::GetApp()->PreProcMsg(&msg))
 			return	TRUE;
 
 		::TranslateMessage(&msg);
-		::DispatchMessage(&msg);
+		isUnicode ? ::DispatchMessageW(&msg) :
+					::DispatchMessageA(&msg);
 		return	TRUE;
 	}
 
@@ -1066,7 +1064,7 @@ TSubClass::~TSubClass()
 BOOL TSubClass::AttachWnd(HWND _hWnd)
 {
 	TApp::GetApp()->AddWinByWnd(this, _hWnd);
-	oldProc = (WNDPROC)::SetWindowLongW(_hWnd, GWL_WNDPROC, (LONG_PTR)TApp::WinProc);
+	oldProc = (WNDPROC)SetWindowLong(GWL_WNDPROC, (LONG_PTR)TApp::WinProc);
 	return	oldProc ? TRUE : FALSE;
 }
 
@@ -1074,14 +1072,15 @@ BOOL TSubClass::DetachWnd()
 {
 	if (!oldProc || !hWnd) return FALSE;
 
-	::SetWindowLongW(hWnd, GWL_WNDPROC, (LONG_PTR)oldProc);
+	SetWindowLong(GWL_WNDPROC, (LONG_PTR)oldProc);
 	oldProc = NULL;
 	return	TRUE;
 }
 
 LRESULT TSubClass::DefWindowProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	return	::CallWindowProcW((WNDPROC)oldProc, hWnd, uMsg, wParam, lParam);
+	return	isUnicode ? ::CallWindowProcW((WNDPROC)oldProc, hWnd, uMsg, wParam, lParam) :
+						::CallWindowProcA((WNDPROC)oldProc, hWnd, uMsg, wParam, lParam);
 }
 
 TSubClassCtl::TSubClassCtl(TWin *_parent) : TSubClass(_parent)
