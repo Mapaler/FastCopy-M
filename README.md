@@ -69,10 +69,6 @@ The main window icon displayed animation when runing copy process. And allows to
 Support use http url to replace "chm" help files, change "IDS_FASTCOPYHELP" in resource to your URL.<br />
 ![URL help](http://ww4.sinaimg.cn/large/6c84b2d6gw1ewbd1y0bygj20rw0le4bq.jpg)
 
-* ~~外壳扩展加入图标。~~ 3.2.6开始使用官方原生图标支持（其实是我不会改啦）<br />
-~~Shell Extension add icon.~~ Official support after 3.2.6<br />
-![Shell Extension icon](http://ww3.sinaimg.cn/large/6c84b2d6gw1ewbd5egv8jj20rj0hpjxc.jpg)
-
 ### Build | 编译
 FastCopy-M采用[VS2015](https://www.visualstudio.com/zh-cn/downloads/download-visual-studio-vs.aspx)，暂不支持VS2017 v141编译工具。<br />
 FastCopy-M used [VS2015](https://www.visualstudio.com/en-us/downloads/download-visual-studio-vs.aspx), not support VS2017 v141 build tools now.
