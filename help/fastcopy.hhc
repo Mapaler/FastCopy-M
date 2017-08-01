@@ -112,7 +112,7 @@
 			<param name="Local" value="fastcopy.htm#warning">
 			</OBJECT>
 		<LI> <OBJECT type="text/sitemap">
-			<param name="Name" value="最新版">
+			<param name="Name" value="サポート掲示板＆最新版">
 			<param name="Local" value="fastcopy.htm#contact">
 			</OBJECT>
 		<LI> <OBJECT type="text/sitemap">
@@ -225,7 +225,7 @@
 			<param name="Local" value="fastcopy_eng.htm#warning">
 			</OBJECT>
 		<LI> <OBJECT type="text/sitemap">
-			<param name="Name" value="Contact">
+			<param name="Name" value="Support Forum/Latest Version">
 			<param name="Local" value="fastcopy_eng.htm#contact">
 			</OBJECT>
 		<LI> <OBJECT type="text/sitemap">

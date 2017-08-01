@@ -79,24 +79,24 @@
     <_ProjectFileVersion>12.0.21005.1</_ProjectFileVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>..\..\Output\$(Configuration)\$(PlatformShortName)</OutDir>
-    <IntDir>..\..\Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj</IntDir>
+    <OutDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\</OutDir>
+    <IntDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj\</IntDir>
     <TargetName>FastExt1</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>..\..\Output\$(Configuration)\$(PlatformShortName)</OutDir>
-    <IntDir>..\..\Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj</IntDir>
+    <OutDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\</OutDir>
+    <IntDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj\</IntDir>
     <TargetName>FastEx64</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>..\..\Output\$(Configuration)\$(PlatformShortName)</OutDir>
-    <IntDir>..\..\Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj</IntDir>
+    <OutDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\</OutDir>
+    <IntDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj\</IntDir>
     <LinkIncremental>false</LinkIncremental>
     <TargetName>FastExt1</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>..\..\Output\$(Configuration)\$(PlatformShortName)</OutDir>
-    <IntDir>..\..\Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj</IntDir>
+    <OutDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\</OutDir>
+    <IntDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj\</IntDir>
     <LinkIncremental>false</LinkIncremental>
     <TargetName>FastEx64</TargetName>
   </PropertyGroup>
@@ -112,7 +112,7 @@
       </Optimization>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>crypt32.lib;winmm.lib;Shlwapi.lib;..\..\Output\$(Configuration)\$(PlatformShortName)\lib\tlib_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>crypt32.lib;winmm.lib;Shlwapi.lib;$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\lib\tlib_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <ModuleDefinitionFile>shellext.def</ModuleDefinitionFile>
     </Link>
@@ -130,7 +130,7 @@
       <Optimization />
     </ClCompile>
     <Link>
-      <AdditionalDependencies>crypt32.lib;winmm.lib;Shlwapi.lib;..\..\Output\$(Configuration)\$(PlatformShortName)\lib\tlib_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>crypt32.lib;winmm.lib;Shlwapi.lib;$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\lib\tlib_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <TargetMachine>MachineX64</TargetMachine>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <ModuleDefinitionFile>shell64.def</ModuleDefinitionFile>
@@ -166,7 +166,7 @@
       <Culture>0x0411</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>crypt32.lib;winmm.lib;Shlwapi.lib;..\..\Output\$(Configuration)\$(PlatformShortName)\lib\tlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>crypt32.lib;winmm.lib;Shlwapi.lib;$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\lib\tlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>false</SuppressStartupBanner>
       <ModuleDefinitionFile>shellext.def</ModuleDefinitionFile>
       <ProgramDatabaseFile>$(IntDir)\$(TargetName).pdb</ProgramDatabaseFile>
@@ -215,7 +215,7 @@
       <Culture>0x0411</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>crypt32.lib;winmm.lib;Shlwapi.lib;..\..\Output\$(Configuration)\$(PlatformShortName)\lib\tlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>crypt32.lib;winmm.lib;Shlwapi.lib;$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\lib\tlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>false</SuppressStartupBanner>
       <ModuleDefinitionFile>shell64.def</ModuleDefinitionFile>
       <ProgramDatabaseFile>$(IntDir)FastEx64.pdb</ProgramDatabaseFile>

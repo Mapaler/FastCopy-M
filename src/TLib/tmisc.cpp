@@ -1,10 +1,10 @@
 ﻿static char *tmisc_id = 
-	"@(#)Copyright (C) 1996-2016 H.Shirouzu		tmisc.cpp	Ver0.99";
+	"@(#)Copyright (C) 1996-2017 H.Shirouzu		tmisc.cpp	Ver0.99";
 /* ========================================================================
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Application Frame Class
 	Create					: 1996-06-01(Sat)
-	Update					: 2015-11-01(Sun)
+	Update					: 2017-06-12(Mon)
 	Copyright				: H.Shirouzu
 	Reference				: 
 	Modify					: Mapaler 2015-09-09
@@ -17,10 +17,21 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <intrin.h>
+#include <atomic>
+#include <list>
+#include <map>
+
+using namespace std;
 
 DWORD TWinVersion = ::GetVersion();
 
 HINSTANCE defaultStrInstance;
+
+static CRITICAL_SECTION	gCs;
+static BOOL gCsInit = []() {
+	::InitializeCriticalSection(&gCs);
+	return	TRUE;
+}();
 
 Condition::Event	*Condition::gEvents  = NULL;
 volatile LONG		Condition::gEventMap = 0;
@@ -48,7 +59,9 @@ BOOL Condition::InitGlobalEvents()
 	gEventMap = 0xffffffff;
 
 	// 事前に多少作っておく（おそらく十分すぎる）
-	for (int i=0; i < 10; i++) gEvents[i].hEvent = ::CreateEvent(0, FALSE, FALSE, NULL);
+	for (int i=0; i < 10; i++) {
+		gEvents[i].hEvent = ::CreateEvent(0, FALSE, FALSE, NULL);
+	}
 
 	return	TRUE;
 }
@@ -287,11 +300,7 @@ void InitInstanceForLoadStr(HINSTANCE hI)
 
 LPSTR LoadStrA(UINT resId, HINSTANCE hI)
 {
-	static TResHash	*hash;
-
-	if (hash == NULL) {
-		hash = new TResHash(1000);
-	}
+	static TResHash	*hash = new TResHash(1000);
 
 	char		buf[1024];
 	TResHashObj	*obj;
@@ -307,11 +316,7 @@ LPSTR LoadStrA(UINT resId, HINSTANCE hI)
 
 LPWSTR LoadStrW(UINT resId, HINSTANCE hI)
 {
-	static TResHash	*hash;
-
-	if (hash == NULL) {
-		hash = new TResHash(1000);
-	}
+	static TResHash	*hash = new TResHash(1000);
 
 	WCHAR		buf[1024];
 	TResHashObj	*obj;
@@ -645,6 +650,22 @@ int bin2urlstr(const BYTE *bindata, size_t size, char *str)
 	return	ret;
 }
 
+void swap_s(BYTE *s, size_t len)
+{
+	if (len == 0) return;
+
+	size_t	mid = len / 2;
+
+	for (size_t i=0, e=len-1; i < mid; i++, e--) {
+		BYTE	&c1 = s[i];
+		BYTE	&c2 = s[e];
+		BYTE	tmp = c1;
+		c1 = c2;
+		c2 = tmp;
+	}
+}
+
+
 /*
 0: 0
 1: 2+2
@@ -717,63 +738,166 @@ void rev_order(const BYTE *src, BYTE *dst, size_t size)
 /*=========================================================================
 	Debug
 =========================================================================*/
+static HANDLE hStdOut = NULL;
+static HANDLE hLogFile = NULL;
+
+void OpenDebugConsole(BOOL is_parent)
+{
+	if (!hStdOut) {
+		if (is_parent) {
+			::AttachConsole(ATTACH_PARENT_PROCESS);
+		}
+		else {
+			::AllocConsole();
+		}
+		hStdOut = ::GetStdHandle(STD_OUTPUT_HANDLE);
+		if (hStdOut == INVALID_HANDLE_VALUE) {
+			hStdOut = NULL;
+		}
+	}
+}
+
+void CloseDebugConsole()
+{
+	if (hStdOut) {
+		::FreeConsole();
+		hStdOut = NULL;
+	}
+}
+
+void OpenDebugFile(const char *logfile)
+{
+	CloseDebugFile();
+	hLogFile = CreateFileU8(logfile, GENERIC_WRITE, FILE_SHARE_READ, 0, CREATE_ALWAYS,
+				FILE_ATTRIBUTE_NORMAL, 0);
+	if (hLogFile == INVALID_HANDLE_VALUE) {
+		hLogFile = NULL;
+	}
+}
+
+void CloseDebugFile()
+{
+	if (hLogFile) {
+		::CloseHandle(hLogFile);
+		hLogFile = NULL;
+	}
+}
+
+BOOL DebugConsoleEnabled()
+{
+	return	hStdOut ? TRUE : FALSE;
+}
+
+static DWORD dbg_last = ::GetTick();
+
 void Debug(const char *fmt,...)
 {
 	char buf[8192];
 
+	DWORD	cur = ::GetTick();
+	DWORD	diff = cur - dbg_last;
+	DWORD	len = (DWORD)sprintf(buf, "%04d.%02d: ", (diff / 1000), (diff % 1000) / 10);
+
 	va_list	ap;
 	va_start(ap, fmt);
-	_vsnprintf(buf, sizeof(buf), fmt, ap);
+	len += (DWORD)vsnprintfz(buf + len, sizeof(buf) - len -1, fmt, ap);
 	va_end(ap);
 	::OutputDebugString(buf);
+
+	if (hStdOut) {
+		DWORD	wlen = len;
+		::WriteConsole(hStdOut, buf, wlen, &wlen, 0);
+	}
+	if (hLogFile) {
+		DWORD	wlen = len;
+		::WriteFile(hLogFile, buf, wlen, &wlen, 0);
+	}
 }
 
 void DebugW(const WCHAR *fmt,...)
 {
-	WCHAR buf[8192];
+	WCHAR buf[4096];
+
+	DWORD	cur = ::GetTick();
+	DWORD	diff = cur - dbg_last;
+	DWORD	len = (DWORD)swprintf(buf, L"%04d.%02d: ", (diff / 1000), (diff % 1000) / 10);
 
 	va_list	ap;
 	va_start(ap, fmt);
-	_vsnwprintf(buf, sizeof(buf), fmt, ap);
+	len += (DWORD)_vsnwprintf(buf + len, sizeof(buf) - len, fmt, ap);
 	va_end(ap);
 	::OutputDebugStringW(buf);
+
+	if (hStdOut) {
+		DWORD	wlen = len;
+		::WriteConsoleW(hStdOut, buf, wlen, &wlen, 0);
+	}
+	if (hLogFile) {
+		U8str	u(buf);
+		DWORD	wlen = u.Len();
+		::WriteFile(hLogFile, u.Buf(), wlen, &wlen, 0);
+	}
 }
+
 
 void DebugU8(const char *fmt,...)
 {
 	char buf[8192];
 
+	DWORD	cur = ::GetTick();
+	DWORD	diff = cur - dbg_last;
+	size_t	len = sprintf(buf, "%04d.%02d: ", (diff / 1000), (diff % 1000) / 10);
+
 	va_list	ap;
 	va_start(ap, fmt);
-	_vsnprintf(buf, sizeof(buf), fmt, ap);
+	len += vsnprintfz(buf + len, int(sizeof(buf) - len), fmt, ap);
 	va_end(ap);
 
 	Wstr	w(buf);
 	::OutputDebugStringW(w.s());
+
+	if (hStdOut) {
+		DWORD wlen = (DWORD)w.Len();
+		::WriteConsoleW(hStdOut, w.s(), wlen, &wlen, 0);
+	}
+	if (hLogFile) {
+		DWORD	wlen = (DWORD)len;
+		::WriteFile(hLogFile, buf, wlen, &wlen, 0);
+	}
 }
+
+#define FMT_BUF_NUM		8		// 2^n
+#define FMT_BUF_SIZE	8192
 
 const char *Fmt(const char *fmt,...)
 {
-	static char buf[8192];
+	static std::atomic<DWORD>	idx;
+	static char		buf[FMT_BUF_NUM][FMT_BUF_SIZE];	// TLS使うべき…
+
+	char	*p = buf[idx++ % FMT_BUF_NUM];
 
 	va_list	ap;
 	va_start(ap, fmt);
-	_vsnprintf(buf, sizeof(buf), fmt, ap);
+	vsnprintfz(p, FMT_BUF_SIZE, fmt, ap);
 	va_end(ap);
 
-	return	buf;
+	return	p;
 }
 
 const WCHAR *FmtW(const WCHAR *fmt,...)
 {
-	static WCHAR buf[8192];
+	static std::atomic<DWORD>	idx;
+	static WCHAR buf[FMT_BUF_NUM][FMT_BUF_SIZE];
+
+	WCHAR	*p = buf[idx++ % FMT_BUF_NUM];
 
 	va_list	ap;
 	va_start(ap, fmt);
-	_vsnwprintf(buf, sizeof(buf), fmt, ap);
+	p[FMT_BUF_SIZE - 1] = 0;
+	_vsnwprintf(p, FMT_BUF_SIZE-1, fmt, ap);
 	va_end(ap);
 
-	return	buf;
+	return	p;
 }
 
 
@@ -853,7 +977,7 @@ BOOL ExTrace(const char *fmt,...)
 
 	va_list	ap;
 	va_start(ap, fmt);
-	int len = (int)_vsnprintf(buf, sizeof(buf) - 3, fmt, ap);
+	int len = vsnprintfz(buf, sizeof(buf) - 3, fmt, ap);
 	va_end(ap);
 
 	if (len <= 0) {
@@ -1024,7 +1148,7 @@ LONG WINAPI Local_UnhandledExceptionFilter(struct _EXCEPTION_POINTERS *info)
 	}
 	once = TRUE;
 
-	snprintf(buf, sizeof(buf), ExceptionLogInfo, ExceptionLogFile);
+	snprintfz(buf, sizeof(buf), ExceptionLogInfo, ExceptionLogFile);
 	if (::MessageBox(0, buf, ExceptionTitle, MB_OKCANCEL) == IDOK) {
 		::ShellExecute(0, 0, "explorer", ExceptionShellArg, 0, SW_SHOW);
 	}
@@ -1046,7 +1170,7 @@ BOOL InstallExceptionFilter(const char *title, const char *info, const char *fna
 	}
 	ExceptionLogFile = strdup(buf);
 
-	snprintf(buf, sizeof(buf), "/select,%s", ExceptionLogFile);
+	snprintfz(buf, sizeof(buf), "/select,%s", ExceptionLogFile);
 	ExceptionShellArg = strdup(buf);
 
 	ExceptionTitle = strdup(title);
@@ -1054,7 +1178,7 @@ BOOL InstallExceptionFilter(const char *title, const char *info, const char *fna
 
 	OSVERSIONINFOEX	ovi = { sizeof(OSVERSIONINFOEX) };
 	::GetVersionEx((OSVERSIONINFO *)&ovi);
-	snprintf(buf, sizeof(buf), "%02x/%02x/%02x/%02x/%02x/%02x",
+	snprintfz(buf, sizeof(buf), "%02x/%02x/%02x/%02x/%02x/%02x",
 		ovi.dwMajorVersion, ovi.dwMinorVersion, ovi.dwBuildNumber,
 		ovi.wServicePackMajor, ovi.wServicePackMinor, ovi.wSuiteMask);
 	ExceptionVerInfo = strdup(buf);
@@ -1068,6 +1192,65 @@ BOOL InstallExceptionFilter(const char *title, const char *info, const char *fna
 void ForceFlushExceptionLog()
 {
 	Local_UnhandledExceptionFilter(NULL);
+}
+
+
+int snprintfz(char *buf, int size, const char *fmt,...)
+{
+	va_list	ap;
+	va_start(ap, fmt);
+	int len = vsnprintfz(buf, size, fmt, ap);
+	va_end(ap);
+
+	return	len;
+}
+
+int vsnprintfz(char *buf, int size, const char *fmt, va_list ap)
+{
+	if (size <= 0) return 0;
+
+	int len = (int)vsnprintf(buf, size -1, fmt, ap);
+
+	if (len <= 0) {
+		buf[size -1] = 0;
+		len = (int)strlen(buf);
+	}
+	else if (len == (size -1)) {
+		buf[size -1] = 0;
+	}
+
+	va_end(ap);
+
+	return	len;
+}
+
+int snwprintfz(WCHAR *buf, int wsize, const WCHAR *fmt,...)
+{
+	va_list	ap;
+	va_start(ap, fmt);
+	int len = vsnwprintfz(buf, wsize, fmt, ap);
+	va_end(ap);
+
+	return	len;
+}
+
+int vsnwprintfz(WCHAR *buf, int wsize, const WCHAR *fmt, va_list ap)
+{
+	if (wsize <= 0) return 0;
+
+	int len = (int)_vsnwprintf(buf, wsize -1, fmt, ap);
+
+	if (len <= 0) {
+		buf[wsize -1] = 0;
+		len = (int)wcslen(buf);
+	}
+	else if (len == (wsize -1)) {
+		buf[wsize -1] = 0;
+	}
+
+	va_end(ap);
+
+	return	len;
 }
 
 /*
@@ -1137,7 +1320,12 @@ int wcsncpyz(WCHAR *dest, const WCHAR *src, int num)
 	while (--num > 0 && *src) {
 		*dest++ = *src++;
 	}
+
+	if (IsSurrogateL(dest[-1])) { // surrogate includes IVS
+		dest--;
+	}
 	*dest = 0;
+
 	return	(int)(dest - sv_dest);
 }
 
@@ -1173,101 +1361,102 @@ WCHAR *wcsdupNew(const WCHAR *_s, int max_len)
 	WCHAR	*s = new WCHAR [len + 1];
 	memcpy(s, _s, len * sizeof(WCHAR));
 	s[len] = 0;
+
+	if (len > 0) {
+		if (IsSurrogateL(s[len-1])) { // surrogate includes IVS
+			s[len-1] = 0;
+		}
+	}
+
 	return	s;
+}
+
+int ReplaceCharW(WCHAR *s, WCHAR rep_in, WCHAR rep_out, int max_len)
+{
+	WCHAR	*p = s;
+	WCHAR	*end = s + max_len;
+
+	for ( ; p < end && *p; p++) {
+		if (*p == rep_in) {
+			*p = rep_out;
+		}
+	}
+	return	int(p - s);
 }
 
 
 /* Win64検出 */
 BOOL TIsWow64()
 {
-	static BOOL	once = FALSE;
-	static BOOL	ret = FALSE;
-
-	if (!once) {
+	static BOOL	ret = []() {
+		BOOL r = FALSE;
 		BOOL (WINAPI *pIsWow64Process)(HANDLE, BOOL *) = (BOOL (WINAPI *)(HANDLE, BOOL *))
 				GetProcAddress(::GetModuleHandle("kernel32"), "IsWow64Process");
 		if (pIsWow64Process) {
-			pIsWow64Process(::GetCurrentProcess(), &ret);
+			pIsWow64Process(::GetCurrentProcess(), &r);
 		}
-		once = TRUE;
-	}
+		return	r;
+	}();
+
     return ret;
 }
 
 BOOL TRegDisableReflectionKey(HKEY hBase)
 {
-	static BOOL	once = FALSE;
-	static LONG (WINAPI *pRegDisableReflectionKey)(HKEY);
-
-	if (!once) {
-		pRegDisableReflectionKey = (LONG (WINAPI *)(HKEY))
+	static LONG (WINAPI *pRegDisableReflectionKey)(HKEY) = []() {
+		return	(LONG (WINAPI *)(HKEY))
 			GetProcAddress(::GetModuleHandle("advapi32"), "RegDisableReflectionKey");
-		once = TRUE;
-	}
-	if (pRegDisableReflectionKey && pRegDisableReflectionKey(hBase) == ERROR_SUCCESS)
-		return	TRUE;
-	return	FALSE;
+	}();
+
+	return	pRegDisableReflectionKey ? pRegDisableReflectionKey(hBase) == ERROR_SUCCESS : FALSE;
 }
 
 BOOL TRegEnableReflectionKey(HKEY hBase)
 {
-	static BOOL	once = FALSE;
-	static LONG (WINAPI *pRegEnableReflectionKey)(HKEY);
-
-	if (!once) {
-		pRegEnableReflectionKey = (LONG (WINAPI *)(HKEY))
+	static LONG (WINAPI *pRegEnableReflectionKey)(HKEY) = []() {
+		return	(LONG (WINAPI *)(HKEY))
 			GetProcAddress(::GetModuleHandle("advapi32"), "RegEnableReflectionKey");
-		once = TRUE;
-	}
-	if (pRegEnableReflectionKey && pRegEnableReflectionKey(hBase) == ERROR_SUCCESS)
-		return	TRUE;
-	return	FALSE;
+	}();
+
+	return	pRegEnableReflectionKey ? pRegEnableReflectionKey(hBase) == ERROR_SUCCESS : FALSE;
 }
 
 BOOL TWow64DisableWow64FsRedirection(void *oldval)
 {
-	static BOOL	once = FALSE;
-	static BOOL (WINAPI *pWow64DisableWow64FsRedirection)(void *);
-
-	if (!once) {
-		pWow64DisableWow64FsRedirection = (BOOL (WINAPI *)(void *))
+	static BOOL (WINAPI *pWow64DisableWow64FsRedirection)(void *) = []() {
+		return	(BOOL (WINAPI *)(void *))
 			GetProcAddress(::GetModuleHandle("kernel32"), "Wow64DisableWow64FsRedirection");
-		once = TRUE;
-	}
+	}();
+
 	return	pWow64DisableWow64FsRedirection ? pWow64DisableWow64FsRedirection(oldval) : FALSE;
 }
 
 BOOL TWow64RevertWow64FsRedirection(void *oldval)
 {
-	static BOOL	once = FALSE;
-	static BOOL (WINAPI *pWow64RevertWow64FsRedirection)(void *);
-
-	if (!once) {
-		pWow64RevertWow64FsRedirection = (BOOL (WINAPI *)(void *))
+	static BOOL (WINAPI *pWow64RevertWow64FsRedirection)(void *) = []() {
+		return	(BOOL (WINAPI *)(void *))
 			GetProcAddress(::GetModuleHandle("kernel32"), "Wow64RevertWow64FsRedirection");
-		once = TRUE;
-	}
+	}();
+
 	return	pWow64RevertWow64FsRedirection ? pWow64RevertWow64FsRedirection(oldval) : FALSE;
 }
 
 BOOL TIsEnableUAC()
 {
-	static BOOL once = FALSE;
-	static BOOL ret = FALSE;
-
-	if (!once) {
-		if (IsWinVista()) {
-			TRegistry reg(HKEY_LOCAL_MACHINE);
-			ret = TRUE;
-			if (reg.OpenKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System")) {
-				int	val = 1;
-				if (reg.GetInt("EnableLUA", &val) && val == 0) {
-					ret = FALSE;
-				}
+	static BOOL ret = []() {
+		if (!IsWinVista()) {
+			return FALSE;
+		}
+		TRegistry reg(HKEY_LOCAL_MACHINE);
+		if (reg.OpenKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System")) {
+			int	val = 1;
+			if (reg.GetInt("EnableLUA", &val) && val == 0) {
+				return FALSE;
 			}
 		}
-		once = TRUE;
-	}
+		return	TRUE;
+	}();
+
 	return	ret;
 }
 
@@ -1332,16 +1521,10 @@ BOOL TSetPrivilege(LPSTR privName, BOOL bEnable)
 
 BOOL TSetThreadLocale(int lcid)
 {
-	static BOOL	once = FALSE;
-	static LANGID (WINAPI *pSetThreadUILanguage)(LANGID LangId);
-
-	if (!once) {
-//		if (IsWinVista()) {	// ignore if XP
-			pSetThreadUILanguage = (LANGID (WINAPI *)(LANGID LangId))
-				GetProcAddress(::GetModuleHandle("kernel32"), "SetThreadUILanguage");
-//		}
-		once = TRUE;
-	}
+	static LANGID (WINAPI *pSetThreadUILanguage)(LANGID LangId) = []() {
+		return	(LANGID (WINAPI *)(LANGID LangId))
+			GetProcAddress(::GetModuleHandle("kernel32"), "SetThreadUILanguage");
+	}();
 
 	if (pSetThreadUILanguage) {
 		pSetThreadUILanguage(LANGIDFROMLCID(lcid));
@@ -1351,21 +1534,12 @@ BOOL TSetThreadLocale(int lcid)
 
 BOOL TChangeWindowMessageFilter(UINT msg, DWORD flg)
 {
-	static BOOL	once = FALSE;
-	static BOOL	(WINAPI *pChangeWindowMessageFilter)(UINT, DWORD);
-	static BOOL	ret = FALSE;
-
-	if (!once) {
-		pChangeWindowMessageFilter = (BOOL (WINAPI *)(UINT, DWORD))
+	static BOOL	(WINAPI *pChangeWindowMessageFilter)(UINT, DWORD) = []() {
+		return	(BOOL (WINAPI *)(UINT, DWORD))
 			GetProcAddress(::GetModuleHandle("user32"), "ChangeWindowMessageFilter");
-		once = TRUE;
-	}
+	}();
 
-	if (pChangeWindowMessageFilter) {
-		ret = pChangeWindowMessageFilter(msg, flg);
-	}
-
-	return	ret;
+	return	pChangeWindowMessageFilter ? pChangeWindowMessageFilter(msg, flg) : FALSE;
 }
 
 /*
@@ -1397,12 +1571,19 @@ BOOL OpenFileDlg::Exec(char *target, int targ_size, char *title, char *filter, c
 	U8str			dirName(targ_size);
 	char			*fname = NULL;
 
-	if (*target && GetFullPathNameU8(target, targ_size, dirName.Buf(), &fname) != 0 && fname) {
-		*(fname -1) = 0;
-		strncpyz(fileName.Buf(), fname, targ_size);
+	// target が fullpath の場合は default dir は使わない
+	if (*target && (*target == '\\' || *(target + 1) == ':')) {
+	 	GetFullPathNameU8(target, targ_size, dirName.Buf(), &fname);
+		if (fname) {
+			*(fname -1) = 0;
+			strncpyz(fileName.Buf(), fname, targ_size);
+		}
 	}
 	else if (defaultDir) {
 		strncpyz(dirName.Buf(), defaultDir, targ_size);
+		if (target) {
+			strncpyz(fileName.Buf(), target, targ_size);
+		}
 	}
 
 	memset(&ofn, 0, sizeof(ofn));
@@ -1445,14 +1626,10 @@ BOOL OpenFileDlg::Exec(char *target, int targ_size, char *title, char *filter, c
 
 void TSwitchToThisWindow(HWND hWnd, BOOL flg)
 {
-	static BOOL	once = FALSE;
-	static void	(WINAPI *pSwitchToThisWindow)(HWND, BOOL);
-
-	if (!once) {
-		pSwitchToThisWindow = (void (WINAPI *)(HWND, BOOL))
+	static void	(WINAPI *pSwitchToThisWindow)(HWND, BOOL) = []() {
+		return	(void (WINAPI *)(HWND, BOOL))
 			GetProcAddress(::GetModuleHandle("user32"), "SwitchToThisWindow");
-		once = TRUE;
-	}
+	}();
 
 	if (pSwitchToThisWindow) {
 		pSwitchToThisWindow(hWnd, flg);
@@ -1685,7 +1862,7 @@ static HMODULE	hHtmlHelp;
 BOOL InitHtmlHelp()
 {
 	if (!hHtmlHelp) {
-		hHtmlHelp = TLoadLibrary("hhctrl.ocx");
+		hHtmlHelp = TLoadLibraryExW(L"hhctrl.ocx", TLT_SYSDIR);
 	}
 	if (hHtmlHelp && !pHtmlHelpW) {
 		pHtmlHelpW = (HWND (WINAPI *)(HWND, WCHAR *, UINT, DWORD_PTR))
@@ -2038,12 +2215,11 @@ BOOL ForceSetTrayIcon(HWND hWnd, UINT id, DWORD pref)
 
 BOOL SetWinAppId(HWND hWnd, const WCHAR *app_id)
 {
-	static HRESULT (WINAPI *pSHGetPropertyStoreForWindow)(HWND, REFIID, void**);
-
-	if (!pSHGetPropertyStoreForWindow) {
-		pSHGetPropertyStoreForWindow = (HRESULT (WINAPI *)(HWND, REFIID, void**))
+	static HRESULT (WINAPI *pSHGetPropertyStoreForWindow)(HWND, REFIID, void**) = []() {
+		return	(HRESULT (WINAPI *)(HWND, REFIID, void**))
 			::GetProcAddress(::GetModuleHandle("shell32"), "SHGetPropertyStoreForWindow");
-	}
+	}();
+
 	if (!pSHGetPropertyStoreForWindow) {
 		return	FALSE;
 	}
@@ -2091,7 +2267,13 @@ BOOL IsInstalledFont(HDC hDc, const WCHAR *face_name, BYTE charset)
 #include <netfw.h>
 #include <OleAuto.h>
 
-BOOL Is3rdPartyFwEnabled()
+// Windows Firewall 除外設定を参照する 3rd Party Firewallリスト
+static const WCHAR *Fw3rdPartyExceptKeywords[] = {
+	L"ESET ",
+	NULL,
+};
+
+BOOL Is3rdPartyFwEnabled(BOOL use_except_list)
 {
 	INetFwProducts	*fwProd = NULL;
 
@@ -2105,7 +2287,64 @@ BOOL Is3rdPartyFwEnabled()
 	fwProd->get_Count(&cnt);
 	fwProd->Release();
 
-	return	cnt > 0 ? TRUE : FALSE;
+	if (cnt == 0 || !use_except_list) {
+		return FALSE;
+	}
+	for (int i=0; i < cnt; i++) {
+		WCHAR	name[MAX_PATH];
+		if (Get3rdPartyFwName(i, name, MAX_PATH)) {
+			for (int j=0; Fw3rdPartyExceptKeywords[j]; j++) {
+				if (wcsstr(name, Fw3rdPartyExceptKeywords[j])) {
+					return	FALSE;	// 1件でもマッチすれば WinFW有効と判断
+				}
+			}
+		}
+	}
+	return	TRUE;
+}
+
+int Get3rdPartyFwNum()
+{
+	INetFwProducts	*fwProd = NULL;
+
+	CoCreateInstance(__uuidof(NetFwProducts), 0, CLSCTX_INPROC_SERVER,
+		__uuidof(INetFwProducts), (void **)&fwProd);
+
+	if (!fwProd) {
+		return 0;
+	}
+	long	cnt = 0;
+	fwProd->get_Count(&cnt);
+
+	fwProd->Release();
+
+	return	(int)cnt;
+}
+
+BOOL Get3rdPartyFwName(int idx, WCHAR *name, int max_len)
+{
+	BOOL			ret = FALSE;
+	INetFwProducts	*fwProd = NULL;
+
+	CoCreateInstance(__uuidof(NetFwProducts), 0, CLSCTX_INPROC_SERVER,
+		__uuidof(INetFwProducts), (void **)&fwProd);
+
+	if (fwProd) {
+		INetFwProduct	*product = NULL;
+		fwProd->Item(idx, &product);
+		if (product) {
+			BSTR	bName = NULL;
+			if (product->get_DisplayName(&bName) == S_OK) {
+				wcsncpyz(name, bName, max_len);
+				ret = TRUE;
+				::SysFreeString(bName);
+				//DebugW(L"dispname=<%s>\n", name);
+			}
+		}
+		fwProd->Release();
+	}
+
+	return	ret;
 }
 
 static INetFwProfile* GetFwProfile()
@@ -2481,6 +2720,13 @@ HBITMAP TDIBtoDDB(HBITMAP hDibBmp) // 8bit には非対応
 	return	hDdbBmp;
 }
 
+BOOL TOpenExplorerSelOneW(const WCHAR *path)
+{
+	WCHAR	buf[MAX_PATH + 20];
+	snwprintfz(buf, wsizeof(buf), L"/select,%s", path);
+	return	INT_RDC(::ShellExecuteW(0, 0, L"explorer", buf, 0, SW_SHOW)) > 32;
+}
+
 // CoInitialize系必須
 BOOL TOpenExplorerSelW(const WCHAR *dir, WCHAR **path, int num)
 {
@@ -2654,6 +2900,179 @@ BOOL IsWineEnvironment()
 	HMODULE	ntdll = ::GetModuleHandle("ntdll.dll");
 
 	return	(ntdll && ::GetProcAddress(ntdll, "wine_get_version")) ? TRUE : FALSE;
+}
+
+CRITICAL_SECTION *TLibCs()
+{
+	return	&gCs;
+}
+
+DWORD64 GetTick64()
+{
+	static DWORD64 (WINAPI *pGetTickCount64)(void) = []() {
+		return	(DWORD64 (WINAPI *)(void))
+			::GetProcAddress(::GetModuleHandle("kernel32"), "GetTickCount64");
+	}();
+
+	if (pGetTickCount64) {
+		return	pGetTickCount64();
+	}
+
+	::EnterCriticalSection(&gCs);
+
+	static DWORD64	lastUpper;
+	static DWORD	lastLower;
+
+	DWORD	cur = ::GetTickCount();
+	if (cur < lastLower) {
+		lastUpper += (DWORD64)1 << 32;
+	}
+	DWORD64	ret = lastUpper | lastLower;
+
+	lastLower = cur;
+
+	::LeaveCriticalSection(&gCs);
+
+	return	ret;
+}
+
+DWORD GetTick() {
+	return	::GetTickCount();
+}
+
+
+#include <psapi.h>
+#pragma comment (lib, "psapi.lib")
+
+BOOL IsLockedScreen()
+{
+	static list<HWND>	hlist;
+	static map<HWND, pair<BOOL, decltype(hlist.begin())>>	hmap;
+
+	HWND	hWnd = ::GetForegroundWindow();
+
+	if (!hWnd) {
+		//Debug("NULL\n");
+		return	TRUE;
+	}
+
+	auto	itr = hmap.find(hWnd);
+	if (itr != hmap.end()) {
+		hlist.erase(itr->second.second);
+		itr->second.second = hlist.insert(hlist.end(), hWnd);
+		//Debug("cached %p %d\n", hWnd, itr->second.first);
+		return	itr->second.first;
+	}
+
+	while (hlist.size() > 10) {
+		auto	itr = hlist.begin();
+		//Debug("erase cache %p %d\n", *itr, hmap[*itr].first);
+		hmap.erase(*itr);
+		hlist.erase(itr);
+	}
+
+	BOOL	ret = FALSE;
+	DWORD	pid = 0;
+
+	::GetWindowThreadProcessId(hWnd, &pid);
+	if (pid) {
+		HANDLE	hProc = NULL;
+		if (!(hProc = ::OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pid))) {
+			hProc = ::OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+		}
+		if (hProc) {
+			WCHAR	wbuf[MAX_PATH];
+			if (::GetProcessImageFileNameW(hProc, wbuf, wsizeof(wbuf))) {
+				size_t	len = wcslen(wbuf);
+
+#define LOCKAPP_NAME	L"\\LockApp.exe"
+#define LOCKAPP_LEN		12
+				if (len > LOCKAPP_LEN && wcsicmp(wbuf+len-LOCKAPP_LEN, LOCKAPP_NAME) == 0) {
+					ret = TRUE;
+					//Debug("Lock Detect %p\n", hWnd);
+				}
+				//else DebugW(L"Non Lock Detect(%s) %p\n", wbuf, hWnd);
+				::CloseHandle(hProc);
+			}
+		}
+	}
+	hmap[hWnd] = pair<BOOL, decltype(hlist.begin())>(ret, hlist.insert(hlist.end(), hWnd));
+
+	return	ret;
+}
+
+BOOL TSetDefaultDllDirectories(DWORD flags)
+{
+	static BOOL (WINAPI *pSetDefaultDllDirectories)(DWORD) = []() {
+		return	(BOOL (WINAPI *)(DWORD))
+			::GetProcAddress(::GetModuleHandle("kernel32"), "SetDefaultDllDirectories");
+	}();
+
+	if (pSetDefaultDllDirectories) {
+		return	pSetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_SYSTEM32);
+	}
+	return	FALSE;
+}
+
+const WCHAR *TGetSysDirW(WCHAR *buf)
+{
+	static WCHAR	*sysDir = []() {
+		static WCHAR	dir[MAX_PATH];
+		::GetSystemDirectoryW(dir, wsizeof(dir));
+		return	dir;
+	}();
+
+	if (buf) {
+		wcscpyz(buf, sysDir);
+	}
+
+	return	sysDir;
+}
+
+const WCHAR *TGetExeDirW(WCHAR *buf)
+{
+	static WCHAR	*exeDir = []() {
+		static WCHAR	dir[MAX_PATH];
+		WCHAR	tmp[MAX_PATH];
+
+		::GetModuleFileNameW(NULL, tmp, wsizeof(tmp));
+		GetParentDirW(tmp, dir);
+		return	dir;
+	}();
+
+	if (buf) {
+		wcscpyz(buf, exeDir);
+	}
+
+	return	exeDir;
+}
+
+HMODULE TLoadLibraryExW(const WCHAR *dll, TLoadType t)
+{
+	const WCHAR	*targDir = NULL;
+
+	switch (t) {
+	case TLT_SYSDIR:
+		targDir = TGetSysDirW();
+		break;
+
+	case TLT_EXEDIR:
+		targDir = TGetExeDirW();
+		break;
+
+	default:
+		targDir = NULL;
+		break;
+	}
+
+	if (!targDir || !*targDir) {
+		return	NULL;
+	}
+
+	WCHAR	path[MAX_PATH];
+	MakePathW(path, targDir, dll);
+
+	return	TLoadLibraryW(path);
 }
 
 

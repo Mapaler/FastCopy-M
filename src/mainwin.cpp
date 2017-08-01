@@ -1,9 +1,9 @@
 ﻿static char *mainwin_id = 
-	"@(#)Copyright (C) 2004-2017 H.Shirouzu		mainwin.cpp	ver3.30";
+	"@(#)Copyright (C) 2004-2017 H.Shirouzu		mainwin.cpp	ver3.31";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2017-03-06(Mon)
+	Update					: 2017-07-30(Sun)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-29
@@ -17,7 +17,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 
-#define FASTCOPY_TIMER_TICK 250 //基本信息更新时间，看看怎么调节
+#define FASTCOPY_TIMER_TICK 250 //基本信息更新时间，帧速
 
 /*=========================================================================
   クラス ： TFastCopyApp
@@ -28,8 +28,19 @@
 TFastCopyApp::TFastCopyApp(HINSTANCE _hI, LPSTR _cmdLine, int _nCmdShow)
 	: TApp(_hI, _cmdLine, _nCmdShow)
 {
-	LoadLibrary("RICHED20.DLL");
-	LoadLibrary("msftedit.DLL");
+	::SetDllDirectory("");
+
+	if (!TSetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_SYSTEM32)) {
+		TLoadLibraryExW(L"iertutil.dll", TLT_SYSDIR);
+		TLoadLibraryExW(L"cryptbase.dll", TLT_SYSDIR);
+		TLoadLibraryExW(L"urlmon.dll", TLT_SYSDIR);
+		TLoadLibraryExW(L"cscapi.dll", TLT_SYSDIR);
+	}
+
+	TLoadLibraryExW(L"riched20.dll", TLT_SYSDIR);
+	TLoadLibraryExW(L"msftedit.dll", TLT_SYSDIR);
+
+	Debug("FileStat=%zd\n", offsetof(FileStat, cFileName));
 
 //	LoadLibrary("SHELL32.DLL");
 //	LoadLibrary("COMCTL32.DLL");
@@ -641,7 +652,7 @@ BOOL TMainDlg::CancelCopy()
 	int	ret = TRUE;
 
 	if (isNoUI) {
-		WriteErrLogNoUI("CanceCopy (aborted by system or etc)");
+		WriteErrLogNoUI("CancelCopy (aborted by system or etc)");
 	}
 	else if (!isDelay) {
 		ret = (TMsgBox(this).Exec(LoadStr(IsListing() ? IDS_LISTCONFIRM :
@@ -786,7 +797,7 @@ BOOL TMainDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl)
 	switch (wID) {
 	case IDOK: case LIST_BUTTON:
 		if (!fastCopy.IsStarting() && !isDelay) {
-			if ((::GetTickCount() - endTick) > 1000)
+			if ((::GetTick() - endTick) > 1000)
 				ExecCopy(wID == LIST_BUTTON ? LISTING_EXEC : NORMAL_EXEC);
 		}
 		else if (CancelCopy()) {
@@ -1631,16 +1642,18 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 	}
 	info.debugFlags		= cfg.debugFlags;
 
-	info.bufSize		= (int64)GetDlgItemInt(BUFSIZE_EDIT) * 1024 * 1024;
+	info.bufSize		= (size_t)GetDlgItemInt(BUFSIZE_EDIT) * 1024 * 1024;
 	info.maxRunNum		= MaxRunNum();
-	info.maxTransSize	= (int64)cfg.maxTransSize * 1024 * 1024;
+	info.maxTransSize	= (size_t)cfg.maxTransSize * 1024 * 1024;
 	info.netDrvMode		= cfg.netDrvMode;
 	info.aclReset		= cfg.aclReset;
-	info.maxOvlSize		= cfg.maxOvlSize > 0 ? (cfg.maxOvlSize * 1024 * 1024) : -1;
+	info.maxOvlSize		= cfg.maxOvlSize > 0 ? (cfg.maxOvlSize * 1024 * 1024) : 0;
 	info.maxOvlNum		= cfg.maxOvlNum;
 	info.maxOpenFiles	= cfg.maxOpenFiles;
-	info.maxAttrSize	= cfg.maxAttrSize;
-	info.maxDirSize		= cfg.maxDirSize;
+	info.maxAttrSize	= (size_t)cfg.maxAttrSize * 1024 * 1024;
+	info.maxDirSize		= (size_t)cfg.maxDirSize * 1024 * 1024;
+	info.maxMoveSize	= (size_t)cfg.maxMoveSize * 1024 * 1024;
+	info.maxDigestSize	= (size_t)cfg.maxDigestSize * 1024 * 1024;
 	info.minSectorSize	= cfg.minSectorSize;
 	info.maxLinkHash	= maxLinkHash;
 	info.maxRunNum		= MaxRunNum();
@@ -2107,7 +2120,12 @@ BOOL TMainDlg::ExecFinalAction(BOOL is_sound_wait)
 				::SetSystemPowerState(FALSE, is_force);
 			}
 			else if (act->flags & FinAct::SHUTDOWN) {
-				::ExitWindowsEx(EWX_POWEROFF|(is_force ? EWX_FORCE : 0), 0);
+				// ::ExitWindowsEx(EWX_POWEROFF|(is_force ? EWX_FORCE : 0), 0);
+				::InitiateSystemShutdownEx(NULL, NULL, 0, is_force, FALSE,
+					SHTDN_REASON_MAJOR_APPLICATION |
+					SHTDN_REASON_MINOR_OTHER       |
+					SHTDN_REASON_FLAG_PLANNED
+				);
 			}
 		}
 	}
@@ -2761,7 +2779,8 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 	char	buf[1024], s1[64], s2[64], s3[64], s4[64], s5[64], s6[64];
 	int		len = 0;
 	double	doneRate = 0.0;
-	int		remain_sec, total_sec;
+	int		remain_sec = 0;
+	int		total_sec = 0;
 
 	doneRatePercent = -1;
 

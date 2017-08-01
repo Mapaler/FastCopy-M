@@ -73,21 +73,21 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>..\..\Output\$(Configuration)\$(PlatformShortName)\lib</OutDir>
-    <IntDir>..\..\Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj</IntDir>
+    <OutDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\lib\</OutDir>
+    <IntDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>..\..\Output\$(Configuration)\$(PlatformShortName)\lib</OutDir>
-    <IntDir>..\..\Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj</IntDir>
+    <OutDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\lib\</OutDir>
+    <IntDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>..\..\Output\$(Configuration)\$(PlatformShortName)\lib</OutDir>
-    <IntDir>..\..\Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj</IntDir>
+    <OutDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\lib\</OutDir>
+    <IntDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj\</IntDir>
     <TargetName>$(ProjectName)_d</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>..\..\Output\$(Configuration)\$(PlatformShortName)\lib</OutDir>
-    <IntDir>..\..\Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj</IntDir>
+    <OutDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\lib\</OutDir>
+    <IntDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj\</IntDir>
     <TargetName>$(ProjectName)_d</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -116,6 +116,7 @@
       <PreprocessorDefinitions>_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <PrecompiledHeaderOutputFile>$(IntDir)xxhash.pch</PrecompiledHeaderOutputFile>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

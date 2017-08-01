@@ -79,7 +79,7 @@ class ShellExt {
 public:
 	ShellExt(BOOL _isAdmin) { hShDll = NULL; isAdmin = _isAdmin; }
 	~ShellExt() { if (hShDll) UnLoad(); }
-	BOOL	Load(WCHAR *parent_dir, WCHAR *dll_name);
+	BOOL	Load(const WCHAR *dll_name);
 	BOOL	UnLoad(void);
 	BOOL	Status(void) { return	hShDll ? TRUE : FALSE; }
 	HRESULT	(WINAPI *RegisterDllProc)(void);

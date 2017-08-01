@@ -70,24 +70,24 @@
     <_ProjectFileVersion>12.0.21005.1</_ProjectFileVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>Output\$(Configuration)\$(PlatformShortName)</OutDir>
-    <IntDir>Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj</IntDir>
+    <OutDir>$(ProjectDir)Output\$(Configuration)\$(PlatformShortName)\</OutDir>
+    <IntDir>$(ProjectDir)Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj\</IntDir>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>Output\$(Configuration)\$(PlatformShortName)</OutDir>
-    <IntDir>Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj</IntDir>
+    <OutDir>$(ProjectDir)Output\$(Configuration)\$(PlatformShortName)\</OutDir>
+    <IntDir>$(ProjectDir)Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj\</IntDir>
     <LinkIncremental>false</LinkIncremental>
     <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>Output\$(Configuration)\$(PlatformShortName)</OutDir>
-    <IntDir>Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj</IntDir>
+    <OutDir>$(ProjectDir)Output\$(Configuration)\$(PlatformShortName)\</OutDir>
+    <IntDir>$(ProjectDir)Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj\</IntDir>
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>Output\$(Configuration)\$(PlatformShortName)</OutDir>
-    <IntDir>Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj</IntDir>
+    <OutDir>$(ProjectDir)Output\$(Configuration)\$(PlatformShortName)\</OutDir>
+    <IntDir>$(ProjectDir)Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj\</IntDir>
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -123,7 +123,7 @@
       <Culture>0x0411</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>comctl32.lib;crypt32.lib;winmm.lib;mpr.lib;Shlwapi.lib;Output\$(Configuration)\$(PlatformShortName)\lib\tlib.lib;Output\$(Configuration)\$(PlatformShortName)\lib\xxhash.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>comctl32.lib;crypt32.lib;winmm.lib;mpr.lib;Shlwapi.lib;$(ProjectDir)Output\$(Configuration)\$(PlatformShortName)\lib\tlib.lib;$(ProjectDir)Output\$(Configuration)\$(PlatformShortName)\lib\xxhash.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(IntDir)\$(TargetName).pdb</ProgramDatabaseFile>
@@ -175,7 +175,7 @@
       <Culture>0x0411</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>comctl32.lib;crypt32.lib;winmm.lib;mpr.lib;Shlwapi.lib;Output\$(Configuration)\$(PlatformShortName)\lib\tlib.lib;Output\$(Configuration)\$(PlatformShortName)\lib\xxhash.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>comctl32.lib;crypt32.lib;winmm.lib;mpr.lib;Shlwapi.lib;$(ProjectDir)Output\$(Configuration)\$(PlatformShortName)\lib\tlib.lib;$(ProjectDir)Output\$(Configuration)\$(PlatformShortName)\lib\xxhash.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -226,7 +226,7 @@
       <Culture>0x0411</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>comctl32.lib;crypt32.lib;winmm.lib;mpr.lib;Shlwapi.lib;Output\$(Configuration)\$(PlatformShortName)\lib\tlib_d.lib;Output\$(Configuration)\$(PlatformShortName)\lib\xxhash_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>comctl32.lib;crypt32.lib;winmm.lib;mpr.lib;Shlwapi.lib;$(ProjectDir)Output\$(Configuration)\$(PlatformShortName)\lib\tlib_d.lib;$(ProjectDir)Output\$(Configuration)\$(PlatformShortName)\lib\xxhash_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(IntDir)\$(TargetName).pdb</ProgramDatabaseFile>
@@ -270,7 +270,7 @@
       <Culture>0x0411</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>comctl32.lib;crypt32.lib;winmm.lib;mpr.lib;Shlwapi.lib;Output\$(Configuration)\$(PlatformShortName)\lib\tlib_d.lib;Output\$(Configuration)\$(PlatformShortName)\lib\xxhash_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>comctl32.lib;crypt32.lib;winmm.lib;mpr.lib;Shlwapi.lib;$(ProjectDir)Output\$(Configuration)\$(PlatformShortName)\lib\tlib_d.lib;$(ProjectDir)Output\$(Configuration)\$(PlatformShortName)\lib\xxhash_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>

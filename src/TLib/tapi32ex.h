@@ -3,7 +3,7 @@
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Main Header
 	Create					: 2005-04-10(Sun)
-	Update					: 2017-02-24(Fri)
+	Update					: 2017-06-12(Mon)
 	Copyright				: H.Shirouzu
 	Reference				: 
 	======================================================================== */
@@ -24,8 +24,17 @@ DEFINE_GUID(IID_IShellLinkW, 0x000214F9, \
 #define REGSTR_MYDOCUMENT_W		L"Personal"
 #endif
 
+#define REGSTR_VAL_UNINSTALLER_PUBLISHER		"Publisher"
+#define REGSTR_VAL_UNINSTALLER_DISPLAYICON		"DisplayIcon"
+#define REGSTR_VAL_UNINSTALLER_DISPLAYVER		"DisplayVersion"
+#define REGSTR_VAL_UNINSTALLER_ESTIMATESIZE		"EstimatedSize"
+#define REGSTR_VAL_UNINSTALLER_HELPLINK			"HelpLink"
+#define REGSTR_VAL_UNINSTALLER_URLUPDATEINFO	"URLUpdateInfo"
+#define REGSTR_VAL_UNINSTALLER_URLINFOABOUT		"URLInfoAbout"
+#define REGSTR_VAL_UNINSTALLER_COMMENTS			"Comments"
+
 /* NTDLL */
-typedef LONG NTSTATUS, *PNTSTATUS;
+//typedef LONG NTSTATUS, *PNTSTATUS;
 
 typedef struct _IO_STATUS_BLOCK {
   union {

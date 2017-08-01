@@ -1,5 +1,5 @@
 ﻿======================================================================
-                   FastCopy  ver3.30                   2017/03/06
+                   FastCopy  ver3.31                   2017/07/30
                                                  SHIROUZU Hiroaki
                    FastCopy-M branch                   2017/03/06
                                                  Mapaler
