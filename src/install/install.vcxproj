@@ -84,8 +84,8 @@
     <_ProjectFileVersion>12.0.21005.1</_ProjectFileVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>..\..\Output\$(Configuration)\$(PlatformShortName)</OutDir>
-    <IntDir>..\..\Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj</IntDir>
+    <OutDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\</OutDir>
+    <IntDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj\</IntDir>
     <LinkIncremental>true</LinkIncremental>
     <TargetName>setup</TargetName>
   </PropertyGroup>
