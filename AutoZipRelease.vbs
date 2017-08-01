@@ -80,7 +80,7 @@ Loop
 curDir = osh.CurrentDirectory + "\"
 Dim platform,bit
 platform = Split("x86,x64", ",")
-bit = Split("win32,win64", ",")
+bit = Split("win-32bit,win-64bit", ",")
 For xi = 0 To 1
 	zipName = "FastCopy-M_" & verNum & "_" & bit(xi) & ".zip"
 	WScript.Echo "Add files to " & zipName & ""
