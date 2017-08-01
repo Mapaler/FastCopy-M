@@ -1,9 +1,9 @@
 ﻿/* static char *cfg_id = 
-	"@(#)Copyright (C) 2005-2017 H.Shirouzu		cfg.h	Ver3.30"; */
+	"@(#)Copyright (C) 2005-2017 H.Shirouzu		cfg.h	Ver3.31"; */
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2005-01-23(Sun)
-	Update					: 2017-03-06(Mon)
+	Update					: 2017-07-30(Sun)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -137,12 +137,14 @@ public:
 	int		maxOvlSize;		// MB
 	int		maxOvlNum;
 	int		maxOpenFiles;
-	int		maxAttrSize;
-	int		maxDirSize;
+	int		maxAttrSize;	// MB
+	int		maxDirSize;		// MB
+	int		maxMoveSize;	// MB
+	int		maxDigestSize;	// MB
 	int		minSectorSize;
 	int		nbMinSizeNtfs;
 	int		nbMinSizeFat;
-	int		timeDiffGrace;
+	int64	timeDiffGrace;
 	BOOL	isReadOsBuf;
 	BOOL	isWShareOpen;
 	int		maxHistory;

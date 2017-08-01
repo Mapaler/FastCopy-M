@@ -1,9 +1,9 @@
-﻿/* @(#)Copyright (C) 1996-2016 H.Shirouzu		tlib.h	Ver0.99 */
+﻿/* @(#)Copyright (C) 1996-2017 H.Shirouzu		tlib.h	Ver0.99 */
 /* ========================================================================
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Main Header
 	Create					: 1996-06-01(Sat)
-	Update					: 2015-11-01(Sun)
+	Update					: 2017-06-12(Mon)
 	Copyright				: H.Shirouzu
 	Reference				: 
 	======================================================================== */
@@ -241,14 +241,14 @@ public:
 template <class T>
 class VBVec : public VBuf {
 	size_t	growSize;
-	int		usedNum;
+	size_t	usedNum;
 
 public:
 	VBVec() {
 		growSize = 0;
 		usedNum = 0;
 	}
-	BOOL Init(int min_num, int max_num, int grow_num=0) {
+	BOOL Init(size_t min_num, size_t max_num, size_t grow_num=0) {
 		size_t min_size = ALIGN_SIZE(min_num * sizeof(T), PAGE_SIZE);
 		size_t max_size = ALIGN_SIZE(max_num * sizeof(T), PAGE_SIZE);
 		growSize = grow_num ? ALIGN_SIZE(grow_num * sizeof(T), PAGE_SIZE) : min_size;
@@ -258,6 +258,13 @@ public:
 		usedNum  = 0;
 		return AllocBuf(min_size, max_size);
 	}
+	T& operator [](size_t idx) {
+		Aquire(idx);
+		return	Get(idx);
+	}
+	const T& operator [](size_t idx) const {
+		return	Get(idx);
+	}
 	T& operator [](int idx) {
 		Aquire(idx);
 		return	Get(idx);
@@ -266,8 +273,8 @@ public:
 		return	Get(idx);
 	}
 	const VBVec<T>& operator =(const VBVec<T> &);	// default definition is none
-	bool Aquire(int idx) {
-		int		need_num = idx + 1;
+	bool Aquire(size_t idx) {
+		size_t	need_num = idx + 1;
 		if (need_num <= usedNum) {
 			return true;
 		}
@@ -285,23 +292,26 @@ public:
 		usedNum  = need_num;
 		return	true;
 	}
-	bool Set(int idx, const T& d) {
+	bool Set(size_t idx, const T& d) {
 		if (!Aquire(idx)) {
 			return false;
 		}
 		Get(idx) = d;
 		return	true;
 	}
-	T& Get(int idx) {
+	T& Get(size_t idx) {
 		return *(T *)(buf + (sizeof(T) * idx));
 	}
-	const T& Get(int idx) const {
+	const T& Get(size_t idx) const {
 		return *(T *)(buf + (sizeof(T) * idx));
 	}
-	int UsedNum() const {
+	size_t UsedNum() const {
 		return usedNum;
 	}
-	int SetUsedNum(int num) {
+	int	UsedNumInt() const {
+		return (int)usedNum;
+	}
+	size_t SetUsedNum(size_t num) {
 		usedNum  = num;
 		usedSize = num * sizeof(T);
 		return UsedNum();
@@ -450,6 +460,9 @@ public:
 	size_t Size()		{ return size; }
 	size_t UsedSize()	{ return usedSize; }
 	size_t SetUsedSize(size_t _usedSize) { return usedSize = _usedSize; }
+	size_t	RemainSize(void) { return size - usedSize; }
+	size_t	AddUsedSize(size_t _used_size) { return usedSize += _used_size; }
+
 	const DynBuf& operator =(const DynBuf &d) {
 		if (Alloc(d.size) && d.size > 0) {
 			memcpy(buf, d.buf, d.size);
@@ -508,6 +521,8 @@ size_t b64str2bin(const char *buf, BYTE *bindata, size_t maxlen);
 size_t b64str2bin_ex(const char *buf, int buf_len, BYTE *bindata, size_t maxlen);
 size_t b64str2bin_revendian(const char *buf, BYTE *bindata, size_t maxlen);
 
+void swap_s(BYTE *s, size_t len);
+
 int bin2urlstr(const BYTE *bindata, size_t len, char *str);
 size_t urlstr2bin(const char *str, BYTE *bindata, size_t maxlen);
 
@@ -516,6 +531,12 @@ void rev_order(const BYTE *src, BYTE *dst, size_t size);
 
 char *strdupNew(const char *_s, int max_len=-1);
 WCHAR *wcsdupNew(const WCHAR *_s, int max_len=-1);
+int ReplaceCharW(WCHAR *s, WCHAR rep_in, WCHAR rep_out, int max_len);
+
+int snprintfz(char *buf, int size, const char *fmt,...);
+int vsnprintfz(char *buf, int size, const char *fmt, va_list ap);
+int snwprintfz(WCHAR *buf, int wsize, const WCHAR *fmt,...);
+int vsnwprintfz(WCHAR *buf, int wsize, const WCHAR *fmt, va_list ap);
 
 int strcpyz(char *dest, const char *src);
 int wcscpyz(WCHAR *dest, const WCHAR *src);
@@ -536,34 +557,51 @@ inline int get_ntz64(uint64 val) {
 	if (_BitScanForward(&ret, (u_int)val)) {
 		return ret;
 	}
+	else {
+		ret = 0;
+	}
 
 	u_int sval = (u_int)(val >> 32);
-	_BitScanForward(&ret, sval);
-	ret += 32;
+	if (_BitScanForward(&ret, sval)) {
+		ret += 32;
+	}
+	else {
+		ret = 0;
+	}
 	return	ret;
 #endif
 }
 
 inline int get_ntz(u_int val) {
 	u_long	ret = 0;
-	_BitScanForward(&ret, val);
+	if (!_BitScanForward(&ret, val)) {
+		ret = 0;
+	}
 	return	ret;
 }
 
 inline int get_nlz64(uint64 val) {
 #ifdef _WIN64
 	u_long	ret = 0;
-	_BitScanReverse64(&ret, val);
+	if (!_BitScanReverse64(&ret, val)) {
+		ret = 0;
+	}
 	return	ret;
 #else
 	u_long	ret = 0;
 	u_int	sval = (u_int)(val >> 32);
 	if (_BitScanReverse(&ret, sval)) {
+		ret += 32;
 		return ret;
+	} else {
+		ret = 0;
 	}
 
-	_BitScanReverse(&ret, (u_int)val);
-	ret += 32;
+	u_long sv_ret = ret;
+	if (!_BitScanReverse(&ret, (u_int)val)) {
+		ret = sv_ret;
+	}
+
 	return	ret;
 #endif
 }
@@ -575,6 +613,8 @@ inline int get_nlz(u_int val) {
 }
 
 inline int len_to_hexlen(int64 len) {
+	if (len == 0) return 1;
+
 	int	bits = get_nlz64(len);
 	int	bytes = bits / 4 + 1;
 
@@ -589,14 +629,16 @@ inline size_t b64_to_len(size_t len) {
 	return (len / 4) * 3;
 }
 
+DWORD64 GetTick64();
+DWORD GetTick();
 
 class TTick {
 	DWORD	tick;
 public:
 	TTick() { start(); }
-	DWORD start() { return (tick = ::GetTickCount()); }
+	DWORD start() { return (tick = ::GetTick()); }
 	DWORD elaps(BOOL overwrite=TRUE) {
-		DWORD	cur = ::GetTickCount();
+		DWORD	cur = ::GetTick();
 		DWORD	diff = cur - tick;
 		if (overwrite) {
 			tick = cur;
@@ -660,11 +702,20 @@ BOOL TChangeWindowMessageFilter(UINT msg, DWORD flg);
 void TSwitchToThisWindow(HWND hWnd, BOOL flg);
 BOOL TGetTextWidth(HDC hDc, const WCHAR *s, int len, int width, int *rlen, int *rcx);
 HBITMAP TDIBtoDDB(HBITMAP hDibBmp); // 8bit には非対応
+BOOL TOpenExplorerSelOneW(const WCHAR *path);
 BOOL TOpenExplorerSelW(const WCHAR *dir, WCHAR **path, int num);
 
+BOOL TSetDefaultDllDirectories(DWORD flags);
+
+const WCHAR *TGetSysDirW(WCHAR *buf=NULL);
+const WCHAR *TGetExeDirW(WCHAR *buf=NULL);
+
+enum TLoadType { TLT_SYSDIR, TLT_EXEDIR };
+HMODULE TLoadLibraryExW(const WCHAR *dll, TLoadType t);
+
 #define EXTRACE2 ExTrace("[%s (%d) %7.2f] ", __FUNCTION__, __LINE__, \
-	((double)(GetTickCount() % 10000000))/1000), ExTrace
-#define EXTRACE ExTrace("[%7.2f] ", ((double)(GetTickCount() % 10000000))/1000), ExTrace
+	((double)(GetTick() % 10000000))/1000), ExTrace
+#define EXTRACE ExTrace("[%7.2f] ", ((double)(GetTick() % 10000000))/1000), ExTrace
 
 #if defined(_DEBUG)
 #ifndef EX_TRACE
@@ -686,6 +737,14 @@ BOOL ExTrace(const char *fmt,...);
 
 void ForceFlushExceptionLog();
 BOOL InstallExceptionFilter(const char *title, const char *info, const char *fname=NULL);
+
+void OpenDebugConsole(BOOL is_parent=FALSE);
+void CloseDebugConsole();
+BOOL DebugConsoleEnabled();
+
+void OpenDebugFile(const char *logfile);
+void CloseDebugFile();
+
 
 void Debug(const char *fmt,...);
 void DebugW(const WCHAR *fmt,...);
@@ -750,7 +809,12 @@ BOOL GetDomainGroup(const WCHAR *domain, const WCHAR *uid, WCHAR *group);
 BOOL IsInstalledFont(HDC hDc, const WCHAR *face_name, BYTE charset=DEFAULT_CHARSET);
 
 // Firewall
-BOOL Is3rdPartyFwEnabled();
+BOOL Is3rdPartyFwEnabled(BOOL use_except_list=TRUE);
+int Get3rdPartyFwNum();
+BOOL Get3rdPartyFwName(int idx, WCHAR *buf, int max_len);
+
+BOOL IsLockedScreen();
+
 struct FwStatus {
 	BOOL	fwEnable;
 	DWORD	entryCnt;
@@ -785,6 +849,7 @@ BOOL GetFwStatusEx(const WCHAR *path, FwStatus *fs);
 BOOL SetFwStatus(const WCHAR *path=NULL, const WCHAR *label=NULL, BOOL enable=TRUE);
 BOOL SetFwStatusEx(const WCHAR *path=NULL, const WCHAR *label=NULL, BOOL enable=TRUE);
 BOOL DelFwStatus(const WCHAR *path=NULL);
+CRITICAL_SECTION *TLibCs();
 
 #endif
 

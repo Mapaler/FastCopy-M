@@ -1,9 +1,9 @@
 ﻿/* static char *fastcopy_id = 
-	"@(#)Copyright (C) 2004-2017 H.Shirouzu		fastcopy.h	Ver3.30"; */
+	"@(#)Copyright (C) 2004-2017 H.Shirouzu		fastcopy.h	Ver3.31"; */
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2017-03-06(Mon)
+	Update					: 2017-07-30(Sun)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-09
@@ -24,7 +24,7 @@
 #define BIG_SECTOR_SIZE		(4096)
 #define MAX_BUF				(1024 * 1024 * 1024)
 #define MIN_BUF				(1024 * 1024)
-#define BIGTRANS_ALIGN		(32 * 1024)
+#define BIGTRANS_ALIGN		(1024 * 1024)
 #define APP_MEMSIZE			(6 * 1024 * 1024)
 #define PATH_LOCAL_PREFIX	L"\\\\?\\"
 #define PATH_UNC_PREFIX		L"\\\\?\\UNC"
@@ -74,9 +74,7 @@
 #define MAX_DEPTH_NUM		(16 * 1024)
 
 #define MIN_DIGEST_LIST		(1 * 1024 * 1024)
-#define MAX_DIGEST_LIST		(8 * 1024 * 1024)
 #define MIN_MOVEPATH_LIST	(1 * 1024 * 1024)
-#define MAX_MOVEPATH_LIST	(8 * 1024 * 1024)
 
 #define MAX_NTQUERY_BUF		(512 * 1024)
 
@@ -195,7 +193,7 @@ inline int64 FileSize(const BY_HANDLE_FILE_INFORMATION &bhi) {
 
 class StatHash {
 	FileStat	**hashTbl;
-	int			hashNum;
+	size_t		hashNum;
 
 public:
 	StatHash() {}
@@ -308,13 +306,15 @@ public:
 		int64	timeDiffGrace;	// (I )
 		int		fileLogFlags;	// (I/ )
 		int		debugFlags;		// (I/ )	// 1: timestamp debug
-		uint64	bufSize;		// (I/ )
+		size_t	bufSize;		// (I/ )
 		int		maxOpenFiles;	// (I/ )
-		int64	maxTransSize;	// (I/ )
-		int64	maxOvlSize;		// (I/ )
+		size_t	maxTransSize;	// (I/ )
+		size_t	maxOvlSize;		// (I/ )
 		DWORD	maxOvlNum;		// (I/ )
-		int		maxAttrSize;	// (I/ )
-		int		maxDirSize;		// (I/ )
+		size_t	maxAttrSize;	// (I/ )
+		size_t	maxDirSize;		// (I/ )
+		size_t	maxMoveSize;	// (I/ )
+		size_t	maxDigestSize;	// (I/ )
 		int		minSectorSize;	// (I/ ) 最小セクタサイズ
 		int		nbMinSizeNtfs;	// (I/ ) FILE_FLAG_NO_BUFFERING でオープンする最小サイズ
 		int		nbMinSizeFat;	// (I/ ) FILE_FLAG_NO_BUFFERING でオープンする最小サイズ (FAT用)

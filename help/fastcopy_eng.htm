@@ -72,11 +72,11 @@
 <body bgcolor="#eeffff">
 
 <div align="center">
-<h1 class="help_head1">FastCopy ver3.30</h1>
+<h1 class="help_head1">FastCopy ver3.31</h1>
 </div>
 <div class="help_all">
 
-<div align="right">2017/03/05 H.Shirouzu</div>
+<div align="right">2017/07/30 H.Shirouzu</div>
 
 <center>
 <strong>Warning :</strong> This document was made with the Japanese-English translation software. <br>
@@ -109,7 +109,7 @@ I want to correct this document. (If you made corrections, please send to <a hre
 		</div>
 	<a href="#cmdline">7. CommandLine</a><br>
 	<a href="#warning">8. Warning</a><br>
-	<a href="#contact">9. Latest Version/Contact</a><br>
+	<a href="#contact">9. Support Forum/Latest Version</a><br>
 	<a href="#misc">10. Misc (setting file, etc)</a><br>
 	<a href="#todo">11. ToDo</a><br>
 	<a href="#history">12. History</a><br>
@@ -764,14 +764,11 @@ demerit points are same as read, but sometimes many head seeks occur in writing 
 
 
 <a name="contact"/>
-<h2 class="help_head2">9. Latest Version/Contact</h2>
+<h2 class="help_head2">9. Support Forum/Latest Version</h2>
 <div class="help_section">
-	There is latest version & bulletin board in following URL. <br>
-	<a href="http://ipmsg.org/tools/fastcopy.html">
-	http://ipmsg.org/tools/fastcopy.html</a>
-	<br>
-	<a href="http://ipmsg.org/private/">http://ipmsg.org/private/</a>
-	<br>email: <img src="email2.png"/>
+	Support Forum: <a href="https://groups.google.com/forum/#!forum/fastcopy-bb-eng">https://groups.google.com/forum/#!forum/fastcopy-bb-eng</a><br>
+	Lastest Version: <a href="http://ipmsg.org/tools/fastcopy.html">http://ipmsg.org/tools/fastcopy.html</a><br>
+	Personal Page: <a href="http://ipmsg.org/private/">http://ipmsg.org/private/</a>
 </div>
 
 
@@ -803,6 +800,17 @@ demerit points are same as read, but sometimes many head seeks occur in writing 
 
 <table class="help_table" border="4">
 <tr><th>Version</th><th>Detail</th></tr>
+
+<tr><td>v3.31</td><td>
+Increase initial main buffer size(x64:128MB -&gt; 256MB, x86:64MB -&gt; 128MB).<br>
+Increase maximum attributes buffer size (x64:1GB -&gt; 8GB).<br>
+Increase path buffer size for verify/move (x64:8MB -&gt; 128MB) and it can be changed in fastcopy2.ini (max_movesize/max_digestsize).<br>
+Change Grace period of compare timestamp(ms) to 64bit (max 23days -&gt; unlimit)<br>
+Use NOBUFFERING flag evenif it is a network file when the file is big.<br>
+Allow BOM in the specified files by /srcfile= or /srcfile_w= options.<br>
+Improve buffer separation policy.<br>
+Take a measure for DLL preload attack.
+</td></tr>
 
 <tr><td>v3.30</td><td>
 Add xxHash option for verify.<br>
