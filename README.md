@@ -75,10 +75,10 @@ FastCopy-M used [VS2017](https://www.visualstudio.com/en-us/downloads/download-v
 
 ## Auto Change Icon | 自动更换图标 
 
-* 解压“FastCopy-M Resources Rebuild & Replace Tools.zip”工具。<br />
-Unzip "FastCopy-M Resources Rebuild & Replace Tools.zip".
-* 将“Auto Change Icon Tools.zip”解压到上述解压出来的文件夹中。<br />
-Unzip this "Auto Change Icon Tools.zip" to previous folder.
+* 下载工具并解压/Download Tools and unzip<br />
+[FastCopy-M Resources Rebuild & Replace Tools.zip](https://github.com/Mapaler/FastCopy-M-Resources-Rebuild-Replace-Tools/archive/master.zip)
+* 请先执行“Update resources source file.vbs”更新源代码。<br />
+Please run "Update resources source file.vbs" update source at first.
 * 在“My New Icon”文件夹内按照1、2、3……的顺序命名图标，最后一个图标是等待图标。<br />
 Put your customize icon animate group, and rename to "1.ico","2.ico","3.ico"... Attention: The last icon file as wait icon.<br />
 ![Rename Icon](http://ww2.sinaimg.cn/large/6c84b2d6jw1ewbqj5xriyj20oa0cugoj.jpg)
@@ -88,13 +88,6 @@ Then drag original "FastCopy.exe" and put on "Change Icon.vbs" . <br />
 * 会自动编译和替换资源，并保存到“output\FastCopy.exe”。<br />
 Then will auto begin rebuild and replace resources.  And generate to "output\FastCopy.exe".<br />
 ![New Icon](http://ww2.sinaimg.cn/large/6c84b2d6jw1ewbqkq4qh9j20f4089wfa.jpg)
-
-### Download Tools | 工具下载
-
-* [FastCopy-M Resources Rebuild & Replace Tools.zip](https://github.com/Mapaler/FastCopy-M/releases/download/v3.0.4.20/FastCopy-M.Resources.Rebuild.Replace.Tools.zip)<br />
-资源源代码已改变，请先执行“Update resources source file.vbs”更新源代码。<br />
-Resource source files has changed, please run "Update resources source file.vbs" update source at first.
-* [Auto Change Icon Tools.zip](https://github.com/Mapaler/FastCopy-M/releases/download/v3.0.4.20/Auto.Change.Icon.Tools.zip)
 
 ## How to translate
 You can edit the source and rebuild executable.<br />
