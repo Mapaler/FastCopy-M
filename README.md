@@ -70,15 +70,15 @@ Support use http url to replace "chm" help files, change "IDS_FASTCOPYHELP" in r
 ![URL help](http://ww4.sinaimg.cn/large/6c84b2d6gw1ewbd1y0bygj20rw0le4bq.jpg)
 
 ### Build | 编译
-FastCopy-M采用[VS2015](https://www.visualstudio.com/zh-cn/downloads/download-visual-studio-vs.aspx)，暂不支持VS2017 v141编译工具。<br />
-FastCopy-M used [VS2015](https://www.visualstudio.com/en-us/downloads/download-visual-studio-vs.aspx), not support VS2017 v141 build tools now.
+FastCopy-M采用[VS2017](https://www.visualstudio.com/zh-cn/downloads/download-visual-studio-vs.aspx) v141工具集。<br />
+FastCopy-M used [VS2017](https://www.visualstudio.com/en-us/downloads/download-visual-studio-vs.aspx) with v141 tools.
 
 ## Auto Change Icon | 自动更换图标 
 
-* 解压“FastCopy-M Resources Rebuild & Replace Tools.zip”工具。<br />
-Unzip "FastCopy-M Resources Rebuild & Replace Tools.zip".
-* 将“Auto Change Icon Tools.zip”解压到上述解压出来的文件夹中。<br />
-Unzip this "Auto Change Icon Tools.zip" to previous folder.
+* 下载工具并解压/Download Tools and unzip<br />
+[FastCopy-M Resources Rebuild & Replace Tools.zip](https://github.com/Mapaler/FastCopy-M-Resources-Rebuild-Replace-Tools/archive/master.zip)
+* 请先执行“Update resources source file.vbs”更新源代码。<br />
+Please run "Update resources source file.vbs" update source at first.
 * 在“My New Icon”文件夹内按照1、2、3……的顺序命名图标，最后一个图标是等待图标。<br />
 Put your customize icon animate group, and rename to "1.ico","2.ico","3.ico"... Attention: The last icon file as wait icon.<br />
 ![Rename Icon](http://ww2.sinaimg.cn/large/6c84b2d6jw1ewbqj5xriyj20oa0cugoj.jpg)
@@ -89,13 +89,6 @@ Then drag original "FastCopy.exe" and put on "Change Icon.vbs" . <br />
 Then will auto begin rebuild and replace resources.  And generate to "output\FastCopy.exe".<br />
 ![New Icon](http://ww2.sinaimg.cn/large/6c84b2d6jw1ewbqkq4qh9j20f4089wfa.jpg)
 
-### Download Tools | 工具下载
-
-* [FastCopy-M Resources Rebuild & Replace Tools.zip](https://github.com/Mapaler/FastCopy-M/releases/download/v3.0.4.20/FastCopy-M.Resources.Rebuild.Replace.Tools.zip)<br />
-资源源代码已改变，请先执行“Update resources source file.vbs”更新源代码。<br />
-Resource source files has changed, please run "Update resources source file.vbs" update source at first.
-* [Auto Change Icon Tools.zip](https://github.com/Mapaler/FastCopy-M/releases/download/v3.0.4.20/Auto.Change.Icon.Tools.zip)
-
 ## How to translate
 You can edit the source and rebuild executable.<br />
 Or more simple:
@@ -103,6 +96,7 @@ Or more simple:
 * Use "Update resources source file.vbs" to update the newest source. Attention: Backup your edited file before use update.
 * Use "Visual Studio" for IDE (VS2010 or later),or any Notepad to to edit "fastcopy.rc" directly.
 * ResEdit is not recommended (The rc file saved by the ResEdit can't open in VS, and can't rebuild by my tools.To use it requies some processing), If you use Notepad edit manually. For example, open "fastcopy.rc" find and copy English part and past at the end.
+
 ```C
 /////////////////////////////////////////////////////////////////////////////
 // English (United States) [or 英語 (米国)] resources [about line 2391]
@@ -115,6 +109,7 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 #endif    // English (United States) [or 英語 (米国)] resources [about line 3137]
 /////////////////////////////////////////////////////////////////////////////
 ```
+
 * Change "LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US" to your language and sub-language id. You can find them at "include\winnt.rh". You needn't edit "defined(AFX_TARG_ENU)" (I don't know where can find it.)
 * Edit this part to your language.
 * Drag original "FastCopy.exe" and put on "rebuild.bat".

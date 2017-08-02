@@ -78,31 +78,26 @@ Do While oExec.StdOut.AtEndOfStream <> True
 Loop
 
 curDir = osh.CurrentDirectory + "\"
+Dim platform,bit
+platform = Split("x86,x64", ",")
+bit = Split("win-32bit,win-64bit", ",")
 For xi = 0 To 1
-	Select Case xi
-		Case 0:
-			bit = "x86"
-		Case 1:
-			bit = "x64"
-	End Select
-	zipName = "FastCopy-M_" & verNum & "_" & bit & ".zip"
+	zipName = "FastCopy-M_" & verNum & "_" & bit(xi) & ".zip"
 	WScript.Echo "Add files to " & zipName & ""
 	'7-Zip解压文件的命令行
 	command = """" & p_7zip & """ a -tzip"
 	command = command & " """ & zipName & """ " '压缩包地址
 	command = command & " readme_chs.txt  readme_cht.txt readme_eng.txt readme_ja.txt license-gpl3.txt xxhash-LICENSE.txt "
 	command = command & " """ & curDir & "help\FastCopy.chm"" "
-	command = command & " """ & curDir & "Output\Release\x86\FastExt1.dll"" "
-	command = command & " """ & curDir & "Output\Release\x64\FastEx64.dll"" "
-	command = command & " """ & curDir & "Output\Release\" & bit & "\FastCopy.exe"" "
-	command = command & " """ & curDir & "Output\Release\" & bit & "\setup.exe"" "
+	command = command & " """ & curDir & "Output\Release\" & platform(0) & "\FastExt1.dll"" "
+	command = command & " """ & curDir & "Output\Release\" & platform(1) & "\FastEx64.dll"" "
+	command = command & " """ & curDir & "Output\Release\" & platform(xi) & "\FastCopy.exe"" "
+	command = command & " """ & curDir & "Output\Release\" & platform(xi) & "\setup.exe"" "
 	Set oExec = osh.Exec(command)
 	Do While oExec.StdOut.AtEndOfStream <> True
-		'可加入删除符，解压状态保留在同一行
 		ReadLine = oExec.StdOut.ReadLine
 		WScript.Echo ReadLine
 	Loop
-	
 Next
 
 'osh.CurrentDirectory = "Output\XP_Release"
