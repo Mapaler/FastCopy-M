@@ -404,6 +404,25 @@ BOOL RotateFile(char *path, int max_cnt, BOOL with_delete)
 	return	ret;
 }
 
+BOOL CleanupRotateFile(char *path, int max_cnt)
+{
+	BOOL	ret = TRUE;
+
+	for (int i=max_cnt; i > 0; i--) {
+		char	targ[MAX_PATH];
+
+		_snprintf(targ, sizeof(targ), "%s.%d", path, i);
+
+		if (::GetFileAttributes(targ) == 0xffffffff) {
+			continue;
+		}
+		if (!::DeleteFile(targ)) {
+			ret = FALSE;
+		}
+	}
+	return	ret;
+}
+
 BOOL MiniCopy(char *src, char *dst, BOOL *is_rotate=NULL)
 {
 	HANDLE		hSrc, hDst, hMap;
@@ -420,9 +439,11 @@ BOOL MiniCopy(char *src, char *dst, BOOL *is_rotate=NULL)
 	}
 	srcSize = ::GetFileSize(hSrc, 0);
 
+#define MAX_ROTATE	10
+	CleanupRotateFile(dst, MAX_ROTATE);
 	hDst = ::CreateFile(dst, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
 	if (hDst == INVALID_HANDLE_VALUE) {
-		RotateFile(dst, 10, TRUE);
+		RotateFile(dst, MAX_ROTATE, TRUE);
 		if (is_rotate) {
 			*is_rotate = TRUE;
 		}
@@ -462,19 +483,8 @@ BOOL DelayCopy(char *src, char *dst)
 	if (MiniCopy(src, tmp_file) == FALSE)
 		return	FALSE;
 
-	if (IsWinNT()) {
-		ret = ::MoveFileEx(tmp_file, dst, MOVEFILE_DELAY_UNTIL_REBOOT|MOVEFILE_REPLACE_EXISTING);
-	}
-	else {
-		char	win_ini[MAX_PATH], short_tmp[MAX_PATH], short_dst[MAX_PATH];
+	ret = ::MoveFileEx(tmp_file, dst, MOVEFILE_DELAY_UNTIL_REBOOT|MOVEFILE_REPLACE_EXISTING);
 
-		::GetShortPathName(tmp_file, short_tmp, sizeof(short_tmp));
-		::GetShortPathName(dst, short_dst, sizeof(short_dst));
-		::GetWindowsDirectory(win_ini, sizeof(win_ini));
-		strcat(win_ini, "\\WININIT.INI");
-		// WritePrivateProfileString("Rename", "NUL", short_dst, win_ini); 必要なさそ
-		ret = WritePrivateProfileString("Rename", short_dst, short_tmp, win_ini);
-	}
 	return	ret;
 }
 

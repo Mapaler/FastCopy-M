@@ -492,7 +492,7 @@ BOOL MakeFileToPathArray(WCHAR *path_file, PathArray *path, BOOL is_ucs2)
 		BYTE	*top = (BYTE *)buf;
 		*(WCHAR *)(top + size) = 0;
 		if (is_ucs2) {
-			if (size > 2 && top[0] == 0xfe && top[1] == 0xff) {
+			if (size > 2 && top[0] == 0xff && top[1] == 0xfe) {
 				top += 2;
 			}
 			if (path->RegisterMultiPath((WCHAR *)top, NEWLINE_STR) > 0) {

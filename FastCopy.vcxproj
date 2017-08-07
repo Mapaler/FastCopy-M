@@ -136,6 +136,7 @@
       <AdditionalLibraryDirectories>lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <DelayLoadDLLs>comctl32.dll;crypt32.dll;winmm.dll;mpr.dll;Shlwapi.dll;</DelayLoadDLLs>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -188,6 +189,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <DelayLoadDLLs>comctl32.dll;crypt32.dll;winmm.dll;mpr.dll;Shlwapi.dll;</DelayLoadDLLs>
     </Link>
     <Manifest>
       <AdditionalManifestFiles>src\$(TargetFileName).manifest;%(AdditionalManifestFiles)</AdditionalManifestFiles>

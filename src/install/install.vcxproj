@@ -243,6 +243,7 @@
       <AdditionalLibraryDirectories>
       </AdditionalLibraryDirectories>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <DelayLoadDLLs>comctl32.dll;crypt32.dll;winmm.dll;Shlwapi.dll;psapi.dll;</DelayLoadDLLs>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -290,6 +291,7 @@
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <OptimizeReferences>true</OptimizeReferences>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <DelayLoadDLLs>comctl32.dll;crypt32.dll;winmm.dll;Shlwapi.dll;psapi.dll;</DelayLoadDLLs>
     </Link>
     <Manifest>
       <AdditionalManifestFiles>src\install\setup.exe.manifest;%(AdditionalManifestFiles)</AdditionalManifestFiles>
