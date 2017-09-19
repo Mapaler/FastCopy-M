@@ -450,6 +450,9 @@ int DriveMng::SetDriveID(const WCHAR *_root)
 					//Debug("disk id = %d\n", vde.Extents[0].DiskNumber);
 				}
 			}
+			else {
+				Debug("IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS err=%x\n", GetLastError());
+			}
 			::CloseHandle(hFile);
 			if (val) {
 				RegisterDriveID(idx, &val, sizeof(val));

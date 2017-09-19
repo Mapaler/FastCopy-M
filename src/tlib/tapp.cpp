@@ -1,10 +1,10 @@
 ﻿static char *tapp_id = 
-	"@(#)Copyright (C) 1996-2016 H.Shirouzu		tapp.cpp	Ver0.99";
+	"@(#)Copyright (C) 1996-2017 H.Shirouzu		tapp.cpp	Ver0.99";
 /* ========================================================================
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Application Frame Class
 	Create					: 1996-06-01(Sat)
-	Update					: 2015-06-22(Mon)
+	Update					: 2017-06-12(Mon)
 	Copyright				: H.Shirouzu
 	Reference				: 
 	======================================================================== */
@@ -124,7 +124,7 @@ BOOL TApp::InitApp(void)	// reference kwc
 void TApp::Idle(DWORD timeout)
 {
 	TApp	*app = TApp::GetApp();
-	DWORD	start = GetTickCount();
+	DWORD	start = GetTick();
 	MSG		msg;
 
 	while (::PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE)) {
@@ -133,7 +133,7 @@ void TApp::Idle(DWORD timeout)
 
 		::TranslateMessage(&msg);
 		::DispatchMessageW(&msg);
-		if (GetTickCount() - start >= timeout) break;
+		if (GetTick() - start >= timeout) break;
 	}
 }
 

@@ -1,9 +1,9 @@
-﻿/* @(#)Copyright (C) 2005-2016 H.Shirouzu		install.h	Ver3.20 */
+﻿/* @(#)Copyright (C) 2005-2017 H.Shirouzu		install.h	Ver3.31 */
 /* ========================================================================
 	Project  Name			: Installer for IPMSG32
 	Module Name				: Main Header
 	Create					: 2005-02-02(Wed)
-	Update					: 2016-09-28(Wed)
+	Update					: 2017-07-30(Sun)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -51,14 +51,15 @@ public:
 
 	virtual BOOL	EvCreate(LPARAM lParam);
 	virtual BOOL	EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl);
-#if 0
 	virtual BOOL	EvNcDestroy(void);
+#if 0
 	virtual BOOL	EventApp(UINT uMsg, WPARAM wParam, LPARAM lParam);
 #endif
 	BOOL	Install(void);
 	BOOL	UnInstall(void);
 	BOOL	RunAsAdmin(BOOL is_imme);
 	void	ChangeMode(void);
+	void	PostQuit(DWORD exit_code);
 	BOOL	RemoveSameLink(const char *dir, char *remove_path=NULL);
 };
 

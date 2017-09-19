@@ -1,9 +1,9 @@
-﻿/* @(#)Copyright (C) 1996-2016 H.Shirouzu		tlib.h	Ver0.99 */
+﻿/* @(#)Copyright (C) 1996-2017 H.Shirouzu		tlib.h	Ver0.99 */
 /* ========================================================================
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Main Header
 	Create					: 1996-06-01(Sat)
-	Update					: 2016-10-17(Mon)
+	Update					: 2017-06-12(Mon)
 	Copyright				: H.Shirouzu
 	Reference				: 
 	======================================================================== */
@@ -188,6 +188,13 @@ extern DWORD TWinVersion;	// define in tmisc.cpp
 #ifndef SPI_GETMESSAGEDURATION
 #define SPI_GETMESSAGEDURATION	0x2016
 #define SPI_SETMESSAGEDURATION	0x2017
+#endif
+
+#ifndef LOAD_LIBRARY_SEARCH_APPLICATION_DIR
+#define LOAD_LIBRARY_SEARCH_APPLICATION_DIR	0x00000200
+#define LOAD_LIBRARY_SEARCH_USER_DIRS		0x00000400
+#define LOAD_LIBRARY_SEARCH_SYSTEM32		0x00000800
+#define LOAD_LIBRARY_SEARCH_DEFAULT_DIRS	0x00001000
 #endif
 
 #ifdef _WIN64
@@ -996,6 +1003,7 @@ public:
 	BOOL KeyToTop(const char *key);
 	int GetInt(const char *key, int default_val=-1);
 	int64 GetInt64(const char *key, int64 default_val=-1);
+	BOOL SetInt64(const char *key, int64 val);
 	void SetIniFileNameW(const WCHAR *ini) {
 		if (iniFile) free(iniFile);
 		iniFile = wcsdup(ini);

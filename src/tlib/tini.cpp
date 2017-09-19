@@ -1,10 +1,10 @@
 ﻿static char *tini_id = 
-	"@(#)Copyright (C) 1996-2016 H.Shirouzu		tini.cpp	Ver0.99";
+	"@(#)Copyright (C) 1996-2017 H.Shirouzu		tini.cpp	Ver0.99";
 /* ========================================================================
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Registry Class
 	Create					: 1996-06-01(Sat)
-	Update					: 2015-06-22(Mon)
+	Update					: 2017-06-12(Mon)
 	Copyright				: H.Shirouzu
 	Reference				: 
 	======================================================================== */
@@ -112,7 +112,8 @@ BOOL TInifile::Lock()
 
 		key = key ? key+1 : iniFile;
 
-		swprintf(buf, L"%s_%x", key, MakeHash(iniFile, int(wcslen(iniFile) * sizeof(WCHAR)), 0));
+		snwprintfz(buf, wsizeof(buf), L"%s_%x", key, MakeHash(iniFile,
+			int(wcslen(iniFile) * sizeof(WCHAR)), 0));
 
 		if (!(hMutex = ::CreateMutexW(NULL, FALSE, buf))) return FALSE;
 	}
@@ -350,10 +351,17 @@ int TInifile::GetInt(const char *key, int default_val)
 	return	atoi(buf);
 }
 
+BOOL TInifile::SetInt64(const char *key, int64 val)
+{
+	char	buf[100];
+	sprintf(buf, "%lld", val);
+	return	SetStr(key, buf);
+}
+
 int64 TInifile::GetInt64(const char *key, int64 default_val)
 {
 	char	buf[100];
 	if (GetStr(key, buf, sizeof(buf), "") <= 0) return default_val;
-	return	_atoi64(buf);
+	return	strtoll(buf, 0, 10);
 }
 

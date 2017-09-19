@@ -1,9 +1,9 @@
 ﻿static char *fastcopy_id = 
-	"@(#)Copyright (C) 2004-2017 H.Shirouzu		fastcopy.cpp	ver3.30";
+	"@(#)Copyright (C) 2004-2017 H.Shirouzu		fastcopy.cpp	ver3.31";
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2017-03-06(Mon)
+	Update					: 2017-07-30(Sun)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -631,7 +631,8 @@ BOOL FastCopy::AllocBuf(void)
 		errBuf.AllocBuf(MIN_ERR_BUF, MAX_ERR_BUF);
 	}
 
-	ssize_t	allocSize = ssize_t(isListingOnly ? MAX_LIST_BUF : info.bufSize + PAGE_SIZE * 4);
+	ssize_t	allocSize = ssize_t(isListingOnly ?
+		MAX_LIST_BUF : info.bufSize + (PAGE_SIZE * (4 + (info.bufSize / info.maxTransSize))));
 	BOOL	need_mainbuf = info.mode != DELETE_MODE ||
 					((info.flags & (OVERWRITE_DELETE|OVERWRITE_DELETE_NSA)) && !isListingOnly);
 
@@ -673,7 +674,7 @@ BOOL FastCopy::AllocBuf(void)
 	}
 
 	if (IsUsingDigestList()) {
-		digestList.Init(MIN_DIGEST_LIST, MAX_DIGEST_LIST, MIN_DIGEST_LIST);
+		digestList.Init(MIN_DIGEST_LIST, info.maxDigestSize, MIN_DIGEST_LIST);
 		ssize_t require_size = ((ssize_t)maxReadSize + BIGTRANS_ALIGN) * (info.maxOvlNum + 1);
 		require_size = ALIGN_SIZE(require_size, BIGTRANS_ALIGN);
 		if (!wDigestList.Init(MIN_BUF, require_size, PAGE_SIZE))
@@ -697,7 +698,7 @@ BOOL FastCopy::AllocBuf(void)
 	}
 
 	if (info.mode == MOVE_MODE) {
-		if (!moveList.Init(MIN_MOVEPATH_LIST, MAX_MOVEPATH_LIST, MIN_MOVEPATH_LIST))
+		if (!moveList.Init(MIN_MOVEPATH_LIST, info.maxMoveSize, MIN_MOVEPATH_LIST))
 			return	ConfirmErr(L"Can't alloc memory(moveList)", NULL, CEF_STOP), FALSE;
 	}
 
@@ -767,7 +768,7 @@ BOOL FastCopy::Start(TransInfo *ti)
 
 	if (AllocBuf() == FALSE) goto ERR;
 
-	startTick = ::GetTickCount();
+	startTick = ::GetTick();
 	if (ti) GetTransInfo(ti, FALSE);
 
 	if (info.mode == DELETE_MODE) {
@@ -902,7 +903,7 @@ BOOL FastCopy::PreSearch(void)
 			break;
 	}
 	total.isPreSearch = FALSE;
-	startTick = ::GetTickCount();
+	startTick = ::GetTick();
 
 	return	ret && !isAbort;
 }
@@ -1577,10 +1578,13 @@ BOOL FastCopy::ReadProcDirEntry(int dir_len, int dirst_start, BOOL confirm_dir, 
 			int len = wcscpy_with_aster(confirmDst + confirm_len, srcStat->cFileName) - 1;
 			PushDepth(confirmDst, confirm_len + len);
 		}
-		if (!isListingOnly && (enableAcl || is_reparse))  need_extra = true;
-
+		if (!isListingOnly && (enableAcl || is_reparse)) {
+			need_extra = true;
+		}
 		if (!PushMkdirQueue(srcStat, new_dir_len-1, (!confirm_dir || !srcStat->isExists),
-							need_extra, is_reparse)) return FALSE;	// VBuf error
+							need_extra, is_reparse)) {
+			return FALSE;	// VBuf error
+		}
 		if (srcStat->filterRes == FR_MATCH) {
 			if (is_reparse || ((info.flags & SKIP_EMPTYDIR) == 0)) {
 				ExecMkDirQueue();
@@ -3331,7 +3335,7 @@ BOOL FastCopy::FinishNotify(void)
 	}
 #endif
 
-	endTick = ::GetTickCount();
+	endTick = ::GetTick();
 	return	::PostMessage(info.hNotifyWnd, info.uNotifyMsg, END_NOTIFY, 0);
 }
 
@@ -4104,7 +4108,7 @@ BOOL FastCopy::WriteFileProc(int dst_len)
 	wi.is_stream = wi.cmd == WRITE_BACKUP_ALTSTREAM;
 	BOOL	use_wcache = (info.flags & USE_OSCACHE_WRITE) ? TRUE : FALSE;
 	wi.is_nonbuf = (wi.file_size >= nbMinSize && !use_wcache && !wi.is_reparse)
-		&& (dstFsType != FSTYPE_NETWORK || (wi.file_size % dstSectorSize) == 0) ? TRUE : FALSE;
+		&& (dstFsType != FSTYPE_NETWORK || (wi.file_size >= MIN_BUF)) ? TRUE : FALSE;
 
 	BOOL	is_require_del = (stat->isNeedDel || (info.flags & (DEL_BEFORE_CREATE|RESTORE_HARDLINK
 		|((info.flags & BY_ALWAYS) ? REPARSE_AS_NORMAL : 0)))) ? TRUE : FALSE;
@@ -4414,7 +4418,7 @@ FastCopy::ReqHead *FastCopy::AllocReqBuf(int req_size, int64 _data_size)
 		require_size = sector_data_size;
 
 	if (require_size > max_free) {
-		if (max_free < MIN_BUF) {
+		if (max_free < MIN_BUF + sectorSize) {
 			align_offset = 0;
 			if (isSameDrv) {
 				if (!ChangeToWriteModeCore()) return NULL; // Read -> Write 切り替え
@@ -4451,7 +4455,7 @@ FastCopy::ReqHead *FastCopy::AllocReqBuf(int req_size, int64 _data_size)
 		&& align_offset + require_size + BIGTRANS_ALIGN + MIN_BUF > mainBuf.Size();
 
 	usedOffset = req->buf + require_size;
-
+	//Debug("off=%.1f size=%.1f\n", (double)align_offset / 1024, (double)sector_data_size / 1024);
 	return	req;
 }
 
@@ -4758,7 +4762,7 @@ BOOL FastCopy::Suspend(void)
 		::SuspendThread(hWDigestThread);
 
 	isSuspend = TRUE;
-	suspendTick = ::GetTickCount();
+	suspendTick = ::GetTick();
 
 	return	TRUE;
 }
@@ -4769,7 +4773,7 @@ BOOL FastCopy::Resume(void)
 		return	FALSE;
 
 	isSuspend = FALSE;
-	startTick += (::GetTickCount() - suspendTick);
+	startTick += (::GetTick() - suspendTick);
 
 	if (hReadThread)
 		::ResumeThread(hReadThread);
@@ -4797,7 +4801,7 @@ BOOL FastCopy::GetTransInfo(TransInfo *ti, BOOL fullInfo)
 	ti->ignoreEvent = info.ignoreEvent;
 	ti->waitTick = waitTick;
 	ti->tickCount = (isSuspend ? suspendTick : endTick ? endTick :
-		startTick ? ::GetTickCount() : 0) - startTick;
+		startTick ? ::GetTick() : 0) - startTick;
 	if (fullInfo) {
 		ConvertExternalPath(dst + dstPrefixLen, ti->curPath, wsizeof(ti->curPath));
 	}
@@ -4912,12 +4916,12 @@ FastCopy::Confirm::Result FastCopy::ConfirmErr(const WCHAR *msg, const WCHAR *pa
 
 	if ((info.ignoreEvent & FASTCOPY_STOP_EVENT) == 0) {
 		isSuspend = TRUE;
-		suspendTick = ::GetTickCount();
+		suspendTick = ::GetTick();
 
 		::SendMessage(info.hNotifyWnd, info.uNotifyMsg, CONFIRM_NOTIFY, (LPARAM)&confirm);
 
 		isSuspend = FALSE;
-		startTick += (::GetTickCount() - suspendTick);
+		startTick += (::GetTick() - suspendTick);
 	}
 	else {
 		confirm.result = Confirm::CANCEL_RESULT;

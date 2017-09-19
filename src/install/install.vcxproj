@@ -29,6 +29,9 @@
       <SubType>Designer</SubType>
     </Manifest>
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="setup.ico" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{81F0F7E1-E0A4-4907-9BBD-B13B5B19474A}</ProjectGuid>
     <RootNamespace>install</RootNamespace>
@@ -231,7 +234,7 @@
       <Culture>0x0411</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>comctl32.lib;crypt32.lib;winmm.lib;Shlwapi.lib;..\..\lib\tlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>comctl32.lib;crypt32.lib;winmm.lib;Shlwapi.lib;..\..\lib\tlib.lib;..\..\lib\xxhash.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <ProgramDatabaseFile>Obj\ReleaseInst\setup.pdb</ProgramDatabaseFile>
       <GenerateMapFile>true</GenerateMapFile>
@@ -243,6 +246,7 @@
       <AdditionalLibraryDirectories>
       </AdditionalLibraryDirectories>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <DelayLoadDLLs>comctl32.dll;crypt32.dll;winmm.dll;Shlwapi.dll;psapi.dll;</DelayLoadDLLs>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -283,7 +287,7 @@
       <Culture>0x0411</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>comctl32.lib;crypt32.lib;winmm.lib;Shlwapi.lib;..\..\x64\lib\tlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>comctl32.lib;crypt32.lib;winmm.lib;Shlwapi.lib;..\..\x64\lib\tlib.lib;..\..\x64\lib\xxhash.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>$(IntDir)setup.pdb</ProgramDatabaseFile>
@@ -294,6 +298,7 @@
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <OptimizeReferences>true</OptimizeReferences>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <DelayLoadDLLs>comctl32.dll;crypt32.dll;winmm.dll;Shlwapi.dll;psapi.dll;</DelayLoadDLLs>
     </Link>
     <Manifest>
       <AdditionalManifestFiles>src\install\setup.exe.manifest;%(AdditionalManifestFiles)</AdditionalManifestFiles>

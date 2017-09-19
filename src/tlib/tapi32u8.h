@@ -1,9 +1,9 @@
-﻿/* @(#)Copyright (C) 1996-2016 H.Shirouzu		tapi32u8.h	Ver0.99 */
+﻿/* @(#)Copyright (C) 1996-2017 H.Shirouzu		tapi32u8.h	Ver0.99 */
 /* ========================================================================
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Main Header
 	Create					: 2005-04-10(Sun)
-	Update					: 2015-11-01(Sun)
+	Update					: 2017-06-12(Mon)
 	Copyright				: H.Shirouzu
 	Reference				: 
 	======================================================================== */
@@ -103,7 +103,7 @@ public:
 	void Init(int _len=0) {
 		UnInit();
 		if (_len) {
-			str = new WCHAR [_len];
+			str = new WCHAR [_len + 1];
 			*str=0;
 		} else {
 			str=NULL;
@@ -251,7 +251,7 @@ public:
 	void Init(int _len=0) {
 		UnInit();
 		if (_len) {
-			str = new char [_len];
+			str = new char [_len + 1];
 			*str=0;
 		} else {
 			str=NULL;
@@ -384,7 +384,7 @@ public:
 	void Init(int _len=0) {
 		UnInit();
 		if (_len) {
-			str = new char [_len];
+			str = new char [_len + 1];
 			*str=0;
 		} else {
 			str=NULL;
@@ -470,7 +470,7 @@ inline int AtoU8(const char *src, char *dst, int bufsize) {
 	return	(int)strlen(dst);
 }
 
-BOOL IsUTF8(const char *s, BOOL *is_ascii=NULL, char **invalid_point=NULL);
+BOOL IsUTF8(const char *s, BOOL *is_ascii=NULL, char **invalid_point=NULL, int max_len=INT_MAX);
 BOOL StrictUTF8(char *s);
 int u8cpyz(char *d, const char *s, int max_len);
 
@@ -491,6 +491,34 @@ inline BOOL IsSurrogateR(WCHAR ch) {
 
 inline BOOL IsSurrogatePair(const WCHAR *s) {
 	return IsSurrogateL(*s) && IsSurrogateR(*(s+1));
+}
+
+inline BOOL IsIVSL(const WCHAR ch) {
+	return ch == 0xdb40;
+}
+
+inline BOOL IsIVSR(const WCHAR ch) {
+	return (ch >= 0xdd00 && ch < 0xddff);
+}
+
+inline BOOL IsIVSOne(WCHAR ch) {
+	return	(ch >= 0x180b && ch < 0x180e || ch >= 0xfe00 && ch < 0xfe10);
+}
+
+inline BOOL IsIVSAny(WCHAR ch) {
+	return	IsIVSL(ch) || IsIVSR(ch) || IsIVSOne(ch);
+}
+
+inline BOOL IsIVS(const WCHAR *s, int *len=NULL) {
+	if (IsIVSOne(*s)) {
+		if (len) *len = 1;
+		return	TRUE;
+	}
+	else if (IsIVSL(*s) && IsIVSR(*(s+1))) {
+		if (len) *len = 2;
+		return	TRUE;
+	}
+	return	FALSE;
 }
 
 HWND CreateWindowU8(const char *class_name, const char *window_name, DWORD style,

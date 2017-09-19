@@ -112,7 +112,7 @@ bool ShareInfo::TakeExclusive(uint64 use_drives, int max_running, int force_mode
 	if (!Lock()) false;
 
 	bool		ret = false;
-	DWORD		cur = ::GetTickCount();
+	DWORD		cur = ::GetTick();
 	CheckInfo	ci_tmp;
 	CheckInfo	&ci = _ci ? *_ci : ci_tmp;
 
@@ -157,7 +157,7 @@ int ShareInfo::RegisterNetDrive(uint64 hash_val)
 	}
 
 	int		targ_idx = -1;
-	DWORD	cur = ::GetTickCount();
+	DWORD	cur = ::GetTick();
 
 	for (int i=0; i < head->netDrvMax; i++) {
 		if (head->netDrive[i].hash == 0) {
@@ -188,7 +188,7 @@ END:
 bool ShareInfo::GetCount(CheckInfo *ci, uint64 use_drives)
 {
 	if (!Lock()) return false;
-	bool ret = Checking(GetTickCount(), use_drives, ci);
+	bool ret = Checking(GetTick(), use_drives, ci);
 	UnLock();
 	return	ret;
 }

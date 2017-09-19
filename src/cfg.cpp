@@ -1,9 +1,9 @@
 ﻿static char *cfg_id = 
-	"@(#)Copyright (C) 2004-2017 H.Shirouzu		cfg.cpp	ver3.30";
+	"@(#)Copyright (C) 2004-2017 H.Shirouzu		cfg.cpp	ver3.31";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2017-03-06(Mon)
+	Update					: 2017-07-30(Sun)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -65,6 +65,8 @@
 #define MAXDIRSIZEOLD_KEY		"max_dirsize"
 #define MAXDIRSIZE_KEY			"max_dirsize2"
 #define MINSECTOR_KEY			"min_sectorsize"
+#define MAXMOVESIZE_KEY			"max_movesize"
+#define MAXDIGESTSIZE_KEY		"max_digestsize"
 //#define SHEXTAUTOCLOSE_KEY	"shext_autoclose"
 //#define SHEXTTASKTRAY_KEY		"shext_tasktray"
 //#define SHEXTNOCONFIRM_KEY	"shext_dd_noconfirm"
@@ -138,15 +140,23 @@
 #define DEFAULT_MAXRUNNUM		3
 #define DEFAULT_MAXOVLNUM		4
 #ifdef _WIN64
-#define DEFAULT_BUFSIZE			128
+#define DEFAULT_BUFSIZE			256
 #define DEFAULT_MAXTRANSSIZE	16
-#define DEFAULT_MAXATTRSIZE		(32768)
-#define DEFAULT_MAXDIRSIZE		(32768)
+#define DEFAULT_MAXATTRSIZE		(8192)
+#define DEFAULT_MAXDIRSIZE		(8192)
+#define DEFAULT_MAXMOVESIZE		(128)
+#define DEFAULT_MAXDIGESTSIZE	(128)
+#define DEFAULT_MOVESIZE		(16)
+#define DEFAULT_DIGESTSIZE		(16)
 #else
-#define DEFAULT_BUFSIZE			64
+#define DEFAULT_BUFSIZE			128
 #define DEFAULT_MAXTRANSSIZE	8
 #define DEFAULT_MAXATTRSIZE		(128)
 #define DEFAULT_MAXDIRSIZE		(128)
+#define DEFAULT_MAXMOVESIZE		(16)
+#define DEFAULT_MAXDIGESTSIZE	(16)
+#define DEFAULT_MOVESIZE		(8)
+#define DEFAULT_DIGESTSIZE		(8)
 #endif
 #define DEFAULT_MAXOPENFILES	256
 #define DEFAULT_NBMINSIZE_NTFS	64		// nbMinSize 参照
@@ -491,6 +501,15 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 		maxDirSize = DEFAULT_MAXDIRSIZE;
 	}
 
+	maxMoveSize = ini.GetInt(MAXMOVESIZE_KEY, DEFAULT_MAXMOVESIZE);
+	if (maxMoveSize < DEFAULT_MOVESIZE) {
+		maxMoveSize = DEFAULT_MOVESIZE;
+	}
+	maxDigestSize = ini.GetInt(MAXDIGESTSIZE_KEY, DEFAULT_MAXDIGESTSIZE);
+	if (maxDigestSize < DEFAULT_DIGESTSIZE) {
+		maxDigestSize = DEFAULT_DIGESTSIZE;
+	}
+
 	minSectorSize	= ini.GetInt(MINSECTOR_KEY, 0);
 	if (minSectorSize % 512) {
 		minSectorSize = 0;
@@ -498,7 +517,7 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 
 	nbMinSizeNtfs	= ini.GetInt(NONBUFMINSIZENTFS_KEY, DEFAULT_NBMINSIZE_NTFS);
 	nbMinSizeFat	= ini.GetInt(NONBUFMINSIZEFAT_KEY, DEFAULT_NBMINSIZE_FAT);
-	timeDiffGrace	= ini.GetInt(TIMEDIFFGRACE_KEY, 0);
+	timeDiffGrace	= ini.GetInt64(TIMEDIFFGRACE_KEY, 0);
 
 	isReadOsBuf		= ini.GetInt(ISREADOSBUF_KEY, FALSE);
 	isWShareOpen	= ini.GetInt(WRITESHAREOPEN_KEY, FALSE);
@@ -751,7 +770,7 @@ BOOL Cfg::WriteIni(void)
 //	ini.SetInt(MAXOPENFILES_KEY, maxOpenFiles);
 	ini.SetInt(NONBUFMINSIZENTFS_KEY, nbMinSizeNtfs);
 	ini.SetInt(NONBUFMINSIZEFAT_KEY, nbMinSizeFat);
-	ini.SetInt(TIMEDIFFGRACE_KEY, timeDiffGrace);
+	ini.SetInt64(TIMEDIFFGRACE_KEY, timeDiffGrace);
 
 	ini.SetInt(ISREADOSBUF_KEY, isReadOsBuf);
 	//ini.SetInt(WRITESHAREOPEN_KEY, isWShareOpen);

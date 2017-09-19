@@ -31,6 +31,8 @@ BOOL TAboutDlg::EvCreate(LPARAM lParam)
 	sprintf(buf, org, FASTCOPY_TITLE, GetVersionStr(), GetVerAdminStr(), GetCopyrightStr());
 	SetDlgItemText(ABOUT_STATIC, buf);
 
+	SetDlgItemText(LIB_STATIC, GetLibCopyrightStr());
+
 	if (rect.left == CW_USEDEFAULT)
 	{
 		GetWindowRect(&rect);

@@ -489,13 +489,24 @@ BOOL MakeFileToPathArray(WCHAR *path_file, PathArray *path, BOOL is_ucs2)
 	DynBuf	buf(size + sizeof(WCHAR));
 
 	if (::ReadFile(hFile, buf, size, &trans, 0) && size == trans) {
-		*(WCHAR *)((BYTE *)buf + size) = 0;
+		BYTE	*top = (BYTE *)buf;
+		*(WCHAR *)(top + size) = 0;
 		if (is_ucs2) {
-			if (path->RegisterMultiPath(buf, NEWLINE_STR) > 0) ret = TRUE;
+			if (size > 2 && top[0] == 0xff && top[1] == 0xfe) {
+				top += 2;
+			}
+			if (path->RegisterMultiPath((WCHAR *)top, NEWLINE_STR) > 0) {
+				ret = TRUE;
+			}
 		}
 		else {
-			Wstr	wstr(buf, IsUTF8(buf) ? BY_UTF8 : BY_MBCS);
-			if (path->RegisterMultiPath(wstr.s(), NEWLINE_STR) > 0) ret = TRUE;
+			if (size > 3 && top[0] == 0xef && top[1] == 0xbb && top[2] == 0xbf) {
+				top += 3;
+			}
+			Wstr	wstr((char *)top, IsUTF8((char *)top) ? BY_UTF8 : BY_MBCS);
+			if (path->RegisterMultiPath(wstr.s(), NEWLINE_STR) > 0) {
+				ret = TRUE;
+			}
 		}
 	}
 	::CloseHandle(hFile);

@@ -1,10 +1,10 @@
 ﻿static char *tdlg_id = 
-	"@(#)Copyright (C) 1996-2016 H.Shirouzu		tdlg.cpp	Ver0.99";
+	"@(#)Copyright (C) 1996-2017 H.Shirouzu		tdlg.cpp	Ver0.99";
 /* ========================================================================
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Dialog Class
 	Create					: 1996-06-01(Sat)
-	Update					: 2015-06-22(Mon)
+	Update					: 2017-06-12(Mon)
 	Copyright				: H.Shirouzu
 	Reference				: 
 	======================================================================== */

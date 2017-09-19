@@ -1,10 +1,10 @@
 ﻿static char *twin_id = 
-	"@(#)Copyright (C) 1996-2016 H.Shirouzu		twin.cpp	Ver0.99";
+	"@(#)Copyright (C) 1996-2017 H.Shirouzu		twin.cpp	Ver0.99";
 /* ========================================================================
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Window Class
 	Create					: 1996-06-01(Sat)
-	Update					: 2015-06-22(Mon)
+	Update					: 2017-06-12(Mon)
 	Copyright				: H.Shirouzu
 	Reference				: 
 	======================================================================== */
@@ -45,7 +45,7 @@ BOOL TWin::Create(LPCSTR className, LPCSTR title, DWORD style, DWORD exStyle, HM
 BOOL TWin::CreateW(const WCHAR *className, const WCHAR *title, DWORD style, DWORD exStyle,
 	HMENU hMenu)
 {
-	if (className == NULL) {
+	if (className == NULL || !*className) {
 		className = TApp::GetApp()->GetDefaultClassW();
 	}
 
@@ -906,13 +906,15 @@ BOOL TWin::Idle(void)
 {
 	MSG		msg;
 
-	if (::PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+	if (isUnicode ? ::PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE) :
+					::PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE))
 	{
 		if (TApp::GetApp()->PreProcMsg(&msg))
 			return	TRUE;
 
 		::TranslateMessage(&msg);
-		::DispatchMessage(&msg);
+		isUnicode ? ::DispatchMessageW(&msg) :
+					::DispatchMessageA(&msg);
 		return	TRUE;
 	}
 

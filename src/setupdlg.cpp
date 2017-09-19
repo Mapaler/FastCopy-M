@@ -171,7 +171,7 @@ BOOL TSetupSheet::SetData()
 		SendDlgItemMessage(HASH_COMBO, CB_ADDSTRING, 0, (LPARAM)"xxHash");
 		SendDlgItemMessage(HASH_COMBO, CB_SETCURSEL,
 			cfg->hashMode <= Cfg::SHA256 ? int(cfg->hashMode) : 3, 0);
-		SetDlgItemInt(TIMEGRACE_EDIT, cfg->timeDiffGrace);
+		SetDlgItemText(TIMEGRACE_EDIT, Fmt("%lld", cfg->timeDiffGrace));
 	}
 	else if (resId == DEL_SHEET) {
 		CheckDlgButton(NSA_CHECK, cfg->enableNSA);
@@ -292,7 +292,10 @@ BOOL TSetupSheet::GetData()
 		cfg->serialVerifyMove = IsDlgButtonChecked(SERIALVERIFYMOVE_CHECK);
 		int val = (int)SendDlgItemMessage(HASH_COMBO, CB_GETCURSEL, 0, 0);
 		cfg->hashMode = (val <= 2) ? (Cfg::HashMode)val : Cfg::XXHASH;
-		cfg->timeDiffGrace    = GetDlgItemInt(TIMEGRACE_EDIT);
+		char buf[128];
+		if (GetDlgItemText(TIMEGRACE_EDIT, buf, sizeof(buf)) > 0) {
+			cfg->timeDiffGrace = strtoll(buf, 0, 10);
+		}
 	}
 	else if (resId == DEL_SHEET) {
 		cfg->enableNSA        = IsDlgButtonChecked(NSA_CHECK);
@@ -479,16 +482,15 @@ void TSetupDlg::SetSheet(int idx)
 #define GETMENUFLAGS_PROC	"GetMenuFlags"
 #define SETADMINMODE_PROC	"SetAdminMode"
 
-BOOL ShellExt::Load(WCHAR *parent_dir, WCHAR *dll_name)
+BOOL ShellExt::Load(const WCHAR *dll_name)
 {
 	if (hShDll) {
 		UnLoad();
 	}
 
-	WCHAR	path[MAX_PATH];
-	MakePathW(path, parent_dir, dll_name);
-	if ((hShDll = TLoadLibraryW(path)) == NULL)
+	if ((hShDll = TLoadLibraryExW(dll_name, TLT_EXEDIR)) == NULL) {
 		return	FALSE;
+	}
 
 	RegisterDllProc  = (HRESULT (WINAPI *)(void))GetProcAddress(hShDll, REGISTER_PROC);
 	UnRegisterDllProc= (HRESULT (WINAPI *)(void))GetProcAddress(hShDll, UNREGISTER_PROC);
@@ -540,7 +542,7 @@ TShellExtDlg::TShellExtDlg(Cfg *_cfg, BOOL _isAdmin, TWin *_parent)
 */
 BOOL TShellExtDlg::EvCreate(LPARAM lParam)
 {
-	if (!shellExt.Load(cfg->execDir, AtoWs(CURRENT_SHEXTDLL))) {
+	if (!shellExt.Load(AtoWs(CURRENT_SHEXTDLL))) {
 		TMsgBox(this).Exec("Can't load " CURRENT_SHEXTDLL);
 		PostMessage(WM_CLOSE, 0, 0);
 		return	FALSE;
