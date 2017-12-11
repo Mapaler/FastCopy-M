@@ -782,8 +782,9 @@ int PathArray::GetMultiPathLen(void)
 BOOL PathArray::RegisterPath(const WCHAR *path)
 {
 #define MAX_ALLOC	100
-	if ((num % MAX_ALLOC) == 0)
+	if ((num % MAX_ALLOC) == 0) {
 		pathArray = (WCHAR **)realloc(pathArray, (num + MAX_ALLOC) * sizeof(WCHAR *));
+	}
 
 	int	len = (int)wcslen(path) + 1;
 	pathArray[num] = (WCHAR *)malloc(len * sizeof(WCHAR));
