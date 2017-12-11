@@ -500,6 +500,29 @@ uint64 MakeHash64(const void *data, size_t size, uint64 iv)
 	return	MAKE_HASH_CORE64(val, mod_val, offset + mod);
 }
 
+void TSetPubKeyBlob(BYTE *n, int n_size, int e, DynBuf *keyblob)
+{
+	keyblob->Alloc(20 + n_size);
+	BYTE	*blob = keyblob->Buf();
+
+	/* PUBLICSTRUC */
+	blob[0] = PUBLICKEYBLOB;
+	blob[1] = CUR_BLOB_VERSION;
+	*(WORD *)(blob+2)   = 0;
+	*(ALG_ID *)(blob+4) = CALG_RSA_KEYX;
+
+	/* RSAPUBKEY */
+	memcpy(blob+8, "RSA1", 4);
+	*(DWORD *)(blob+12) = DWORD(n_size * 8);
+	*(int *)(blob+16) = e;
+
+	/* PUBKEY_DATA */
+	memcpy(blob+20, n, n_size);
+
+	keyblob->SetUsedSize(keyblob->Size());
+}
+
+
 //#define HASHQUALITY_CHECK
 #ifdef HASHQUALITY_CHECK
 extern void CheckHashQuality();

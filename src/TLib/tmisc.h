@@ -228,14 +228,14 @@ public:
 	operator char *() { return (char *)buf; }
 	BYTE	*Buf() { return	buf; }
 	WCHAR	*WBuf() { return (WCHAR *)buf; }
-	size_t	Size() { return size; }
-	size_t	MaxSize() { return maxSize; }
-	size_t	UsedSize() { return usedSize; }
+	size_t	Size() const { return size; }
+	size_t	MaxSize() const { return maxSize; }
+	size_t	UsedSize() const { return usedSize; }
 	BYTE	*UsedEnd() { return	buf + usedSize; }
 	void	SetUsedSize(size_t _used_size) { usedSize = _used_size; }
 	size_t	AddUsedSize(size_t _used_size) { return usedSize += _used_size; }
-	size_t	RemainSize(void) { return size - usedSize; }
-	VBuf& operator =(const VBuf&);
+	size_t	RemainSize(void) const { return size - usedSize; }
+	VBuf& operator =(const VBuf&); // prohibit
 };
 
 template <class T>
@@ -272,7 +272,7 @@ public:
 	const T& operator [](int idx) const {
 		return	Get(idx);
 	}
-	const VBVec<T>& operator =(const VBVec<T> &);	// default definition is none
+	VBVec<T>& operator =(const VBVec<T> &);	// default definition is none
 	bool Aquire(size_t idx) {
 		size_t	need_num = idx + 1;
 		if (need_num <= usedNum) {
@@ -401,8 +401,8 @@ public:
 		}
 		
 	}
-	size_t	Size() { return size; }
-	const GBuf& operator =(const GBuf &);	// default definition is none
+	size_t	Size() const { return size; }
+	const GBuf& operator =(const GBuf &) = delete;
 };
 
 class DynBuf {
@@ -425,6 +425,9 @@ public:
 			}
 		}
 	}
+	DynBuf(const DynBuf &org) {
+		*this = org;
+	}
 	~DynBuf() {
 		free(buf);
 	}
@@ -440,6 +443,7 @@ public:
 		}
 		if ((buf = (char *)malloc(_size))) {
 			size = _size;
+			memset(buf, 0, min(sizeof(WCHAR), size));
 		}
 		return	buf;
 	}
@@ -452,30 +456,31 @@ public:
 	}
 	void Free() 		{ Alloc(0); }
 	BYTE *Buf()			{ return (BYTE *)buf; }
-	const char *s()		{ return (const char *)buf; }
+	const char *s() const { return (const char *)buf; }
 	operator char*()	{ return (char *)buf; }
 	operator BYTE*()	{ return (BYTE *)buf; }
 	operator WCHAR*()	{ return (WCHAR *)buf; }
 	operator void*()	{ return (void *)buf; }
-	size_t Size()		{ return size; }
-	size_t UsedSize()	{ return usedSize; }
+	size_t Size() const		{ return size; }
+	size_t WSize() const	{ return size / sizeof(WCHAR); }
+	size_t UsedSize() const	{ return usedSize; }
 	size_t SetUsedSize(size_t _usedSize) { return usedSize = _usedSize; }
-	size_t	RemainSize(void) { return size - usedSize; }
+	size_t	RemainSize(void) const { return size - usedSize; }
 	size_t	AddUsedSize(size_t _used_size) { return usedSize += _used_size; }
 
-	const DynBuf& operator =(const DynBuf &d) {
+	DynBuf& operator =(const DynBuf &d) {
 		if (Alloc(d.size) && d.size > 0) {
 			memcpy(buf, d.buf, d.size);
 		}
 		usedSize = d.usedSize;
 		return	*this;
 	}
-	bool operator ==(const DynBuf &d) {
+	bool operator ==(const DynBuf &d) const {
 		if (usedSize != d.usedSize) return false;
 		if (usedSize == 0) return true;
 		return	memcmp(buf, d.buf, usedSize) == 0;
 	}
-	bool operator !=(const DynBuf &d) {
+	bool operator !=(const DynBuf &d) const {
 		return	!(*this == d);
 	}
 };
@@ -653,6 +658,8 @@ template<class T> int LocalNewLineToUnixT(const T *src, T *dst, int max_dstlen, 
 	T		*max_dst = dst + max_dstlen - 1;
 	const T	*max_src = src + ((len >= 0) ? len : (max_dstlen * 2));
 
+	if (!src || !dst || max_dstlen <= 0) return 0;
+
 	while (src < max_src && *src && dst < max_dst) {
 		if ((*dst = *src++) != '\r') {
 			dst++;
@@ -667,6 +674,8 @@ template<class T> int UnixNewLineToLocalT(const T *src, T *dst, int max_dstlen, 
 	T		*sv_dst  = dst;
 	T		*max_dst = dst + max_dstlen - 1;
 	const T	*max_src = src + ((len >= 0) ? len : max_dstlen);
+
+	if (!src || !dst || max_dstlen <= 0) return 0;
 
 	while (src < max_src && *src && dst < max_dst) {
 		if ((*dst = *src++) == '\n' && dst + 1 < max_dst) {
@@ -713,45 +722,6 @@ const WCHAR *TGetExeDirW(WCHAR *buf=NULL);
 enum TLoadType { TLT_SYSDIR, TLT_EXEDIR };
 HMODULE TLoadLibraryExW(const WCHAR *dll, TLoadType t);
 
-#define EXTRACE2 ExTrace("[%s (%d) %7.2f] ", __FUNCTION__, __LINE__, \
-	((double)(GetTick() % 10000000))/1000), ExTrace
-#define EXTRACE ExTrace("[%7.2f] ", ((double)(GetTick() % 10000000))/1000), ExTrace
-
-#if defined(_DEBUG)
-#ifndef EX_TRACE
-#define EX_TRACE
-#endif
-#endif
-
-#ifdef EX_TRACE
-#define DBT  EXTRACE
-#define DBT2 EXTRACE2
-void InitExTrace(int trace_len);
-BOOL ExTrace(const char *fmt,...);
-#else
-#define DBT(...)
-#define DBT2(...)
-#define InitExTrace(...)
-#define ExTrace(...)
-#endif
-
-void ForceFlushExceptionLog();
-BOOL InstallExceptionFilter(const char *title, const char *info, const char *fname=NULL);
-
-void OpenDebugConsole(BOOL is_parent=FALSE);
-void CloseDebugConsole();
-BOOL DebugConsoleEnabled();
-
-void OpenDebugFile(const char *logfile);
-void CloseDebugFile();
-
-
-void Debug(const char *fmt,...);
-void DebugW(const WCHAR *fmt,...);
-void DebugU8(const char *fmt,...);
-const char *Fmt(const char *fmt,...);
-const WCHAR *FmtW(const WCHAR *fmt,...);
-
 class TWin;
 class OpenFileDlg {
 public:
@@ -773,9 +743,10 @@ public:
 				char *defaultExt=NULL);
 };
 
-BOOL SymLinkW(const WCHAR *target, const WCHAR *link, const WCHAR *arg=NULL,
-	const WCHAR *desc=NULL);
-BOOL SymLinkU8(const char *target, const char *link, const char *arg=NULL, const char *desc=NULL);
+BOOL ShellLinkW(const WCHAR *target, const WCHAR *link, const WCHAR *arg=NULL,
+	const WCHAR *desc=NULL, const WCHAR *app_id=NULL);
+BOOL ShellLinkU8(const char *target, const char *link, const char *arg=NULL,
+	const char *desc=NULL, const char *app_id=NULL);
 BOOL ReadLinkW(const WCHAR *link, WCHAR *target, WCHAR *arg=NULL, WCHAR *desc=NULL);
 BOOL ReadLinkU8(const char *link, char *target, char *arg=NULL, char *desc=NULL);
 HRESULT UpdateLinkW(const WCHAR *link, const WCHAR *arg=NULL, const WCHAR *desc=NULL,
@@ -809,7 +780,7 @@ BOOL GetDomainGroup(const WCHAR *domain, const WCHAR *uid, WCHAR *group);
 BOOL IsInstalledFont(HDC hDc, const WCHAR *face_name, BYTE charset=DEFAULT_CHARSET);
 
 // Firewall
-BOOL Is3rdPartyFwEnabled(BOOL use_except_list=TRUE);
+BOOL Is3rdPartyFwEnabled(BOOL use_except_list=TRUE, DWORD timeout=5000, BOOL *is_timeout=NULL);
 int Get3rdPartyFwNum();
 BOOL Get3rdPartyFwName(int idx, WCHAR *buf, int max_len);
 
@@ -850,6 +821,19 @@ BOOL SetFwStatus(const WCHAR *path=NULL, const WCHAR *label=NULL, BOOL enable=TR
 BOOL SetFwStatusEx(const WCHAR *path=NULL, const WCHAR *label=NULL, BOOL enable=TRUE);
 BOOL DelFwStatus(const WCHAR *path=NULL);
 CRITICAL_SECTION *TLibCs();
+
+BOOL TIsAdminGroup();
+
+// 1601年1月1日から1970年1月1日までの通算100ナノ秒
+#define UNIXTIME_BASE	((int64)0x019db1ded53e8000)
+
+inline time_t FileTime2UnixTime(FILETIME *ft) {
+	return	(time_t)((*(int64 *)ft - UNIXTIME_BASE) / 10000000);
+}
+inline void UnixTime2FileTime(time_t ut, FILETIME *ft) {
+	*(int64 *)ft = (int64)ut * 10000000 + UNIXTIME_BASE;
+}
+
 
 #endif
 

@@ -45,7 +45,7 @@ BOOL TRegistry::ChangeApp(LPCSTR company, LPSTR appName)
 	Wstr	company_w(company, strMode);
 	Wstr	appName_w(appName, strMode);
 
-	return	ChangeAppW(company ? company_w.s() : NULL, appName ? appName_w.s() : NULL);
+	return	ChangeAppW(company_w.s(), appName_w.s());
 }
 
 BOOL TRegistry::ChangeAppW(const WCHAR *company, const WCHAR *appName)
@@ -236,6 +236,13 @@ BOOL TRegistry::GetStrW(const WCHAR *subKey, WCHAR *str, int size_byte)
 	return	TRUE;
 }
 
+BOOL TRegistry::GetStrMW(const char *subKey, WCHAR *str, int size_byte)
+{
+	Wstr	subKey_w(subKey, strMode);
+
+	return	GetStrW(subKey ? subKey_w.s() : NULL, str, size_byte);
+}
+
 BOOL TRegistry::SetStr(LPCSTR subKey, LPCSTR str)
 {
 	Wstr	subKey_w(subKey, strMode), str_w(str, strMode);
@@ -252,6 +259,13 @@ BOOL TRegistry::SetStrW(const WCHAR *subKey, const WCHAR *str)
 {
 	return	::RegSetValueExW(hKey[openCnt -1], subKey, 0, REG_SZ, (const BYTE *)str,
 			(DWORD((wcslen(str) +1) * sizeof(WCHAR)))) == ERROR_SUCCESS;
+}
+
+BOOL TRegistry::SetStrMW(const char *subKey, const WCHAR *str)
+{
+	Wstr	subKey_w(subKey, strMode);
+
+	return	SetStrW(subKey ? subKey_w.s() : NULL, str);
 }
 
 BOOL TRegistry::GetByte(LPCSTR subKey, BYTE *data, int *size)

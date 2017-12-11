@@ -55,6 +55,7 @@ BOOL TWin::CreateW(const WCHAR *className, const WCHAR *title, DWORD style, DWOR
 			rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
 			parent ? parent->hWnd : NULL, hMenu, TApp::hInst(), NULL))) {
 		TApp::GetApp()->DelWin(this);
+		Debug("*** TWin::CreateW Failed(%d) ***\n", GetLastError());
 		return	FALSE;
 	}
 
@@ -230,6 +231,22 @@ LRESULT TWin::WinProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_MOUSEWHEEL:
 		done = EvMouseWheel(GET_KEYSTATE_WPARAM(wParam), GET_WHEEL_DELTA_WPARAM(wParam),
 			GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+		break;
+
+	case WM_COPY:
+		done = EvCopy();
+		break;
+
+	case WM_PASTE:
+		done = EvPaste();
+		break;
+
+	case WM_CLEAR:
+		done = EvClear();
+		break;
+
+	case WM_CUT:
+		done = EvCut();
 		break;
 
 	case WM_LBUTTONUP:
@@ -511,6 +528,26 @@ BOOL TWin::EvMouseWheel(WORD fwKeys, short zDelta, short xPos, short yPos)
 	return	FALSE;
 }
 
+BOOL TWin::EvCopy()
+{
+	return	FALSE;
+}
+
+BOOL TWin::EvPaste()
+{
+	return	FALSE;
+}
+
+BOOL TWin::EvCut()
+{
+	return	FALSE;
+}
+
+BOOL TWin::EvClear()
+{
+	return	FALSE;
+}
+
 BOOL TWin::EvChar(WCHAR code, LPARAM keyData)
 {
 	return	FALSE;
@@ -616,9 +653,34 @@ int TWin::GetDlgItemInt(int ctlId, BOOL *err, BOOL sign)
 	return	(int)::GetDlgItemInt(hWnd, ctlId, err, sign);
 }
 
+int64 TWin::GetDlgItemInt64(int ctlId, BOOL *err, BOOL sign)
+{
+	WCHAR	wbuf[128];
+
+	if (!::GetDlgItemTextW(hWnd, ctlId, wbuf, wsizeof(wbuf))) {
+		if (err) {
+			*err = TRUE;
+		}
+		return	0;
+	}
+
+	if (sign) {
+		return	wcstoll(wbuf, 0, 10);
+	} else {
+		return	(int64)wcstoull(wbuf, 0, 10);
+	}
+}
+
 BOOL TWin::SetDlgItemInt(int ctlId, int val, BOOL sign)
 {
 	return	::SetDlgItemInt(hWnd, ctlId, val, sign);
+}
+
+BOOL TWin::SetDlgItemInt64(int ctlId, int64 val, BOOL sign)
+{
+	WCHAR	wbuf[128];
+	snwprintfz(wbuf, wsizeof(wbuf), sign ? L"%lld" : L"%llu", val);
+	return	::SetDlgItemTextW(hWnd, ctlId, wbuf);
 }
 
 HWND TWin::GetDlgItem(int ctlId)
@@ -748,7 +810,7 @@ BOOL TWin::SetForegroundWindow(void)
 	return	::SetForegroundWindow(hWnd);
 }
 
-BOOL TWin::SetForceForegroundWindow(void)
+BOOL TWin::SetForceForegroundWindow(BOOL revert_thread_input)
 {
 	if (!hWnd) {
 		return	FALSE;
@@ -761,14 +823,17 @@ BOOL TWin::SetForceForegroundWindow(void)
 
 	foreId = ::GetWindowThreadProcessId(::GetForegroundWindow(), NULL);
 	targId = ::GetWindowThreadProcessId(hWnd, NULL);
-	if (foreId != targId)
+	if (foreId != targId) {
 		::AttachThreadInput(targId, foreId, TRUE);
+		BringWindowToTop();
+	}
 	::SystemParametersInfo(SPI_GETFOREGROUNDLOCKTIMEOUT, 0, (void *)&svTmOut, 0);
 	::SystemParametersInfo(SPI_SETFOREGROUNDLOCKTIMEOUT, 0, 0, 0);
 	BOOL	ret = ::SetForegroundWindow(hWnd);
 	::SystemParametersInfo(SPI_SETFOREGROUNDLOCKTIMEOUT, 0, (void *)(DWORD_PTR)svTmOut, 0);
-	if (foreId != targId)
+	if (foreId != targId && revert_thread_input) {
 		::AttachThreadInput(targId, foreId, FALSE);
+	}
 
 	return	ret;
 }
@@ -850,9 +915,9 @@ BOOL TWin::MoveWindow(int x, int y, int cx, int cy, int bRepaint)
 
 BOOL TWin::MoveCenter(BOOL use_cursor_screen)
 {
-	RECT	screen_rect = { 0, 0,
+	TRect	screen_rect(0, 0,
 		::GetSystemMetrics(SM_CXFULLSCREEN),
-		::GetSystemMetrics(SM_CYFULLSCREEN) };
+		::GetSystemMetrics(SM_CYFULLSCREEN));
 
 	if (use_cursor_screen) {
 		POINT		pt = {0, 0};
@@ -871,10 +936,10 @@ BOOL TWin::MoveCenter(BOOL use_cursor_screen)
 		}
 	}
 
-	long x = screen_rect.left + ((screen_rect.right - screen_rect.left)
-			- (rect.right - rect.left)) / 2;
-	long y = screen_rect.top + ((screen_rect.bottom - screen_rect.top)
-			- (rect.bottom - rect.top)) / 2;
+	TRect	rc;
+	GetWindowRect(&rc);
+	long x = screen_rect.left + (screen_rect.cx() - rc.cx()) / 2;
+	long y = screen_rect.top  + (screen_rect.cy() - rc.cy()) / 2;
 
 	return	SetWindowPos(NULL, x, y, 0, 0, SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE);
 }
@@ -1036,6 +1101,23 @@ BOOL TWin::SetTipTextW(const WCHAR *tip, int width, int tout)
 
 		::SendMessageW(hTipWnd, TTM_ADDTOOLW, 0, (LPARAM)&ti);
 	}
+
+	return	TRUE;
+}
+
+BOOL TWin::UnSetTipText()
+{
+	if (!hWnd || !hTipWnd) {
+		return	FALSE;
+	}
+
+	TOOLINFOW ti = { sizeof(TOOLINFOW) };
+	GetClientRect(&ti.rect);
+
+	ti.uFlags = TTF_SUBCLASS;
+	ti.hwnd = hWnd;
+
+	::SendMessageW(hTipWnd, TTM_DELTOOLW, 0, (LPARAM)&ti);
 
 	return	TRUE;
 }

@@ -21,7 +21,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{E99EE17D-136C-4C37-B78A-18D324E7119C}</ProjectGuid>
     <RootNamespace>TLib</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.14393.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.15063.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
@@ -215,11 +215,14 @@
     </Bscmake>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="ipdict.cpp" />
     <ClCompile Include="tads.cpp" />
     <ClCompile Include="tapi32ex.cpp" />
     <ClCompile Include="tapi32u8.cpp" />
     <ClCompile Include="tapp.cpp" />
     <ClCompile Include="tdlg.cpp" />
+    <ClCompile Include="texcept.cpp" />
+    <ClCompile Include="tinet.cpp" />
     <ClCompile Include="tini.cpp" />
     <ClCompile Include="tmisc.cpp" />
     <ClCompile Include="tregist.cpp" />

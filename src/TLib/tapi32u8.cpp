@@ -182,6 +182,14 @@ BOOL SetFileAttributesU8(const char *path, DWORD attr)
 	return	::SetFileAttributesW(wpath.s(), attr);
 }
 
+BOOL MoveFileExU8(const char *src, const char *dst, DWORD flags)
+{
+	Wstr	wsrc(src);
+	Wstr	wdst(dst);
+
+	return	::MoveFileExW(wsrc.s(), wdst.s(), flags);
+}
+
 HINSTANCE ShellExecuteU8(HWND hWnd, LPCSTR op, LPCSTR file, LPSTR params, LPCSTR dir, int nShow)
 {
 	Wstr	op_w(op), file_w(file), params_w(params), dir_w(dir);

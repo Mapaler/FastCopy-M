@@ -80,9 +80,9 @@ public:
 		FirstInit();
 		Init(w);
 	}
-	Wstr(int len) {
+	Wstr(int _len) {
 		FirstInit();
-		Init(len);
+		Init(_len);
 	}
 	~Wstr() { UnInit(); }
 
@@ -90,9 +90,9 @@ public:
 		Init(w.str);
 		len = w.len;
 	}
-	void Init(const WCHAR *_str, int len=-1) {
+	void Init(const WCHAR *_str, int _len=-1) {
 		UnInit();
-		str = (_str ? wcsdupNew(_str, len) : NULL);
+		str = (_str ? wcsdupNew(_str, _len) : NULL);
 		len = -1;
 	}
 	void Init(const char *_str, StrMode mode=BY_UTF8) {
@@ -199,6 +199,52 @@ public:
 		}
 		return	strip_len;
 	}
+	BOOL GetLine(int idx, Wstr *ln, BOOL is_strip=TRUE) {
+		ln->Init();
+		if (!str || !*str) return FALSE;
+
+		int	cnt=0;
+		const WCHAR *p = str;
+		while (p && *p) {
+			const WCHAR *next = wcschr(p, '\n');
+			if (next) next++;
+			if (cnt == idx) {
+				if (next) {
+					ln->Init(p, int(next - p));
+				} else {
+					*ln = p;
+				}
+				if (is_strip) ln->Strip();
+				return TRUE;
+			}
+			cnt++;
+			p = next;
+		}
+		return	FALSE;
+	}
+	void Strip(const WCHAR *strips=L"\r\n") {
+		int len = Len();
+		while (wcschr(strips, *str)) {
+			memmove(str, str+1, (len--) * sizeof(WCHAR));
+		}
+		while (wcschr(strips, str[len-1])) {
+			len--;
+		}
+		str[len] = 0;
+	}
+	int LineNum() {
+		int	lines = 0;
+
+		const WCHAR *p = str;
+		while (p && *p) {
+			lines++;
+			if ((p = wcschr(p, '\n'))) {
+				p++;
+			}
+		}
+		if (p && *p) lines++;
+		return	lines;
+	}
 };
 
 class U8str {
@@ -226,9 +272,9 @@ public:
 		FirstInit();
 		Init(u.str);
 	}
-	U8str(int len) {
+	U8str(int _len) {
 		FirstInit();
-		Init(len);
+		Init(_len);
 	}
 	~U8str() {
 		UnInit();
@@ -238,9 +284,9 @@ public:
 		Init(w.s());
 		len = w.Len();
 	}
-	void Init(const WCHAR *_str, int len=-1) {
+	void Init(const WCHAR *_str, int _len=-1) {
 		UnInit();
-		str = _str ? WtoU8(_str, len) : NULL;
+		str = _str ? WtoU8(_str, _len) : NULL;
 		len = -1;
 	}
 	void Init(const char *_str, StrMode mode=BY_UTF8, int _len=-1) {
@@ -338,6 +384,52 @@ public:
 		}
 		return (len = (int)strlen(str));
 	}
+	BOOL GetLine(int idx, U8str *ln, BOOL is_strip=TRUE) {
+		ln->Init();
+		if (!str || !*str) return FALSE;
+
+		int	cnt=0;
+		const char *p = str;
+		while (p && *p) {
+			const char *next = strchr(p, '\n');
+			if (next) next++;
+			if (cnt == idx) {
+				if (next) {
+					ln->Init(p, BY_UTF8, int(next - p));
+				} else {
+					*ln = p;
+				}
+				if (is_strip) ln->Strip();
+				return TRUE;
+			}
+			cnt++;
+			p = next;
+		}
+		return	FALSE;
+	}
+	int LineNum() {
+		int	lines = 0;
+
+		const char *p = str;
+		while (p && *p) {
+			lines++;
+			if ((p = strchr(p, '\n'))) {
+				p++;
+			}
+		}
+		if (p && *p) lines++;
+		return	lines;
+	}
+	void Strip(const char *strips="\r\n") {
+		int len = Len();
+		while (strchr(strips, *str)) {
+			memmove(str, str+1, len--);
+		}
+		while (strchr(strips, str[len-1])) {
+			len--;
+		}
+		str[len] = 0;
+	}
 };
 
 class MBCSstr {
@@ -361,9 +453,9 @@ public:
 		FirstInit();
 		Init(m.str);
 	}
-	MBCSstr(int len) {
+	MBCSstr(int _len) {
 		FirstInit();
-		Init(len);
+		Init(_len);
 	}
 	~MBCSstr() { UnInit(); }
 
@@ -371,9 +463,9 @@ public:
 		Init(w.s());
 		len = w.Len();
 	}
-	void Init(const WCHAR *_str, int len=-1) {
+	void Init(const WCHAR *_str, int _len=-1) {
 		UnInit();
-		str = _str ? WtoA(_str) : NULL;
+		str = _str ? WtoA(_str, _len) : NULL;
 		len = -1;
 	}
 	void Init(const char *_str, StrMode mode=BY_MBCS) {
@@ -529,6 +621,7 @@ BOOL InsertMenuU8(HMENU hMenu, UINT idItem, UINT flags, UINT_PTR idNewItem, cons
 BOOL ModifyMenuU8(HMENU hMenu, UINT idItem, UINT flags, UINT_PTR idNewItem, const char *item_str);
 DWORD GetFileAttributesU8(const char *path);
 BOOL SetFileAttributesU8(const char *path, DWORD attr);
+BOOL MoveFileExU8(const char *src, const char *dst, DWORD flags);
 
 UINT DragQueryFileU8(HDROP hDrop, UINT iFile, char *buf, UINT cb);
 void WIN32_FIND_DATA_WtoU8(const WIN32_FIND_DATAW *fdat_w, WIN32_FIND_DATA_U8 *fdat_u8,

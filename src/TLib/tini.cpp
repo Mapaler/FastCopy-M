@@ -219,19 +219,18 @@ BOOL TInifile::WriteIni()
 
 		for (auto sec = TopObj(); sec && p; sec = NextObj(sec)) {
 			auto key = sec->TopObj();
-			int		len = 0;
 			if (key) {
 				if (sec->Name()) {
-					len = sprintf(p, "[%s]\r\n", sec->Name());
+					int len = sprintf(p, "[%s]\r\n", sec->Name());
 					p = NextBuf(&vbuf, len, MIN_LINE_SIZE, MIN_INI_ALLOC);
 				}
 				while (key) {
 					if (key->Key())	{
-						len = sprintf(p, "%s=\"%s\"\r\n", key->Key(), key->Val());
+						int len = sprintf(p, "%s=\"%s\"\r\n", key->Key(), key->Val());
 						p = NextBuf(&vbuf, len, MIN_LINE_SIZE, MIN_INI_ALLOC);
 					}
 					else {
-						len = sprintf(p, "%s\r\n", key->Val());
+						int len = sprintf(p, "%s\r\n", key->Val());
 						p = NextBuf(&vbuf, len, MIN_LINE_SIZE, MIN_INI_ALLOC);
 					}
 					key = sec->NextObj(key);

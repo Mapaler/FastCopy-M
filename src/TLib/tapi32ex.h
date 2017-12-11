@@ -188,9 +188,14 @@ typedef struct _REPARSE_DATA_BUFFER {
 } REPARSE_DATA_BUFFER, *PREPARSE_DATA_BUFFER;
 #endif
 
+#ifndef REPARSE_DATA_BUFFER_HEADER_SIZE
 #define REPARSE_DATA_BUFFER_HEADER_SIZE  FIELD_OFFSET(REPARSE_DATA_BUFFER, GenericReparseBuffer)
+#endif
+
+#ifndef REPARSE_GUID_DATA_BUFFER_HEADER_SIZE
 #define REPARSE_GUID_DATA_BUFFER_HEADER_SIZE \
 			FIELD_OFFSET(REPARSE_GUID_DATA_BUFFER, GenericReparseBuffer)
+#endif
 
 #define IsReparseTagJunction(r) \
 		(((REPARSE_DATA_BUFFER *)r)->ReparseTag == IO_REPARSE_TAG_MOUNT_POINT)
@@ -208,5 +213,7 @@ typedef struct _REPARSE_DATA_BUFFER {
 BOOL TLibInit_Ntdll();
 BOOL TGenRandom(void *buf, size_t len);
 BOOL TGenRandomMT(void *buf, size_t len);
+
+void TSetPubKeyBlob(BYTE *n, int n_size, int e, DynBuf *keyblob);
 
 #endif
