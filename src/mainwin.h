@@ -1,5 +1,5 @@
 ﻿/* static char *mainwin_id = 
-	"@(#)Copyright (C) 2004-2017 H.Shirouzu		mainwin.h	Ver3.30"; */
+	"@(#)Copyright (C) 2004-2017 H.Shirouzu		mainwin.h	Ver3.40"; */
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
@@ -39,6 +39,10 @@
 #define WM_FASTCOPY_KEY				(WM_APP + 105)
 #define WM_FASTCOPY_PATHHISTCLEAR	(WM_APP + 106)
 #define WM_FASTCOPY_FILTERHISTCLEAR	(WM_APP + 107)
+#define WM_FASTCOPY_UPDINFORES		(WM_APP + 120)
+#define WM_FASTCOPY_UPDDLRES		(WM_APP + 121)
+#define WM_FASTCOPY_RESIZESRCEDIT	(WM_APP + 122)
+#define WM_FASTCOPY_SRCEDITFIT		(WM_APP + 123)
 
 #define FASTCOPY_TIMER		100
 #define FASTCOPY_NIM_ID		100
@@ -50,6 +54,7 @@
 #define MAX_HISTORY_CHAR_BUF (MAX_HISTORY_BUF * 4)
 
 #define MINI_BUF 128
+#define MAX_SRCEDITCR 10
 
 #define SHELLEXT_MIN_ALLOC		(16 * 1024)
 #ifdef _WIN64
@@ -74,6 +79,28 @@ struct CopyInfo {
 #define SPEED_AUTO		10
 #define SPEED_SUSPEND	0
 
+struct UpdateData {
+	U8str	ver;
+	U8str	path;
+	int64	size;
+	DynBuf	hash;
+	DynBuf	dlData;
+
+	UpdateData() {
+		Init();
+	}
+	void Init() {
+		DataInit();
+	}
+	void DataInit() {
+		ver.Init();
+		path.Init();
+		size = 0;
+		hash.Free();
+		dlData.Free();
+	}
+};
+
 class TMainDlg : public TDlg {
 protected:
 	enum AutoCloseLevel { NO_CLOSE, NOERR_CLOSE, FORCE_CLOSE };
@@ -86,17 +113,21 @@ protected:
 	FastCopy		fastCopy;
 	FastCopy::Info	info;
 
-	int				orgArgc;
-	WCHAR			**orgArgv;
-	Cfg				cfg;
+	int			orgArgc;
+	WCHAR		**orgArgv;
+	Cfg			cfg;
 	int				MAX_NORMAL_FASTCOPY_ICON; //动态图标个数
 	HICON			*hMainIcon;
-	CopyInfo		*copyInfo;
-	int				finActIdx;
-	int				doneRatePercent;
-	int				lastTotalSec;
-	int				calcTimes;
-	BOOL			isAbort;
+	CopyInfo	*copyInfo;
+	int			finActIdx;
+	int			doneRatePercent;
+	int			lastTotalSec;
+	int			calcTimes;
+	BOOL		isAbort;
+
+	BOOL		captureMode;
+	int			lastYPos;
+	int			dividYPos;
 
 /* share to runas */
 	AutoCloseLevel autoCloseLevel;
@@ -127,6 +158,7 @@ protected:
 	BOOL		isExtendFilter;
 	BOOL		resultStatus;
 	BOOL		isNoUI;
+	int			dlsvtMode; // 0: none, 1: fat, 2: always
 
 	BOOL		shextNoConfirm;
 	BOOL		shextNoConfirmDel;
@@ -145,7 +177,7 @@ protected:
 	int			MaxRunNum() { return maxTempRunNum ? maxTempRunNum : cfg.maxRunNum; }
 
 	// Register to dlgItems in SetSize()
-	enum {	srcbutton_item=0, dstbutton_item, srccombo_item, dstcombo_item,
+	enum {	srcbutton_item=0, srcedit_item, dstbutton_item, dstcombo_item,
 			status_item, mode_item, bufstatic_item, bufedit_item, help_item,
 			ignore_item, estimate_item, verify_item, top_item, list_item, ok_item, atonce_item,
 			owdel_item, acl_item, stream_item, speed_item, speedstatic_item, samedrv_item,
@@ -191,11 +223,18 @@ protected:
 	TSetupDlg		setupDlg;
 	TJobDlg			jobDlg;
 	TFinActDlg		finActDlg;
+	TSrcEdit		srcEdit;
 	TEditSub		pathEdit;
 	TEditSub		errEdit;
+	TSubClassCtl	speedSlider;
+	TSubClassCtl	speedStatic;
+	TSubClassCtl	topCheck;
+	TSubClassCtl	listBtn;
 	HFONT			statusFont;
 	LOGFONTW		statusLogFont;
 	ITaskbarList3	*taskbarList;
+
+	UpdateData		updData;
 
 protected:
 	BOOL	SetCopyModeList(void);
@@ -240,6 +279,16 @@ protected:
 	BOOL	StartFileLog();
 	void	EndFileLog();
 	BOOL	CheckVerifyExtension();
+	void	UpdateCheck();
+	void	UpdateCheckRes(TInetReqReply *_irr);
+	void	UpdateDlRes(TInetReqReply *_irr);
+	void	UpdateExec();
+
+	void	GetSeparateArea(RECT *sep_rc);
+	BOOL	IsSeparateArea(int x, int y);
+	void	ShowHistMenu();
+	void	SetHistPath(int idx);
+	void	ResizeForSrcEdit(int diff_y);
 
 public:
 	TMainDlg();
@@ -250,7 +299,12 @@ public:
 	virtual BOOL	EvNcDestroy(void);
 	virtual BOOL	EvTimer(WPARAM timerID, TIMERPROC proc);
 	virtual BOOL	EvSysCommand(WPARAM uCmdType, POINTS pos);
+
 	virtual BOOL	EvSize(UINT fwSizeType, WORD nWidth, WORD nHeight);
+	virtual BOOL	EvSetCursor(HWND cursorWnd, WORD nHitTest, WORD wMouseMsg);
+	virtual BOOL	EventButton(UINT uMsg, int nHitTest, POINTS pos);
+	virtual BOOL	EvMouseMove(UINT fwKeys, POINTS pos);
+
 	virtual BOOL	EvDropFiles(HDROP hDrop);
 	virtual BOOL	EvActivateApp(BOOL fActivate, DWORD dwThreadID);
 	virtual BOOL	EventScroll(UINT uMsg, int nCode, int nPos, HWND scrollBar);
@@ -314,6 +368,15 @@ int inline wcsicmpEx(WCHAR *s1, WCHAR *s2, int *len)
 	*len = (int)wcslen(s2);
 	return	wcsnicmp(s1, s2, *len);
 }
+
+#define FASTCOPY_UPDATEINFO		"fastcopy-update.dat"
+#ifdef _WIN64
+#define UPDATE_FILENAME			UPDATE64_FILENAME
+#else
+#define UPDATE_FILENAME			UPDATE32_FILENAME
+#endif
+#define UPDATE32_FILENAME		"fastcopy_upd32.exe"
+#define UPDATE64_FILENAME		"fastcopy_upd64.exe"
 
 #endif
 

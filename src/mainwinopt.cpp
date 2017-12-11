@@ -299,6 +299,17 @@ BOOL TMainDlg::CommandLineExecW(int argc, WCHAR **argv)
 				if (idx >= 0) SetFinAct(idx);
 			}
 		}
+		else if (wcsicmpEx(*argv, DLSVT_STR, &len) == 0) {
+			if (wcsicmp(*argv + len, L"none") == 0) {
+				dlsvtMode = 0;
+			}
+			else if (wcsicmp(*argv + len, L"auto") == 0) {
+				dlsvtMode = 1;
+			}
+			else if (wcsicmp(*argv + len, L"always") == 0) {
+				dlsvtMode = 2;
+			}
+		}
 		else if (wcsicmpEx(*argv, TO_STR, &len) == 0) {
 			SetDlgItemTextW(DST_COMBO, dst_path = *argv + len);
 		}
@@ -369,7 +380,7 @@ BOOL TMainDlg::CommandLineExecW(int argc, WCHAR **argv)
 
 	if (!isRunAsStart) {
 		if (job_idx == -1) {
-			SetDlgItemText(SRC_COMBO, "");
+			srcEdit.SetWindowText("");
 			if (!dst_path)
 				SetDlgItemText(DST_COMBO, "");
 		}
@@ -387,11 +398,11 @@ BOOL TMainDlg::CommandLineExecW(int argc, WCHAR **argv)
 			argc--, argv++;
 		}
 
-		int		path_len = pathArray.GetMultiPathLen() + 1;
-		WCHAR	*path = new WCHAR [path_len];
-		if (pathArray.GetMultiPath(path, path_len))
-			SetDlgItemTextW(SRC_COMBO, path);
-		delete [] path;
+		int		path_len = pathArray.GetMultiPathLen(CRLF, NULW) + 1;
+		Wstr	wstr(path_len);
+		if (pathArray.GetMultiPath(wstr.Buf(), path_len, CRLF, NULW)) {
+			srcEdit.SetWindowTextW(wstr.s());
+		}
 
 		if (argc == 1 && wcsicmpEx(*argv, TO_STR, &len) == 0) {
 			dst_path = *argv + len;
@@ -407,7 +418,7 @@ BOOL TMainDlg::CommandLineExecW(int argc, WCHAR **argv)
 			SetExtendFilter();
 		}
 
-		if (::GetWindowTextLengthW(GetDlgItem(SRC_COMBO)) == 0
+		if (srcEdit.GetWindowTextLengthW() == 0
 		|| (!is_delete && ::GetWindowTextLengthW(GetDlgItem(DST_COMBO)) == 0)) {
 			is_noexec = TRUE;
 			if (shellMode != SHELL_NONE)	// コピー先の無い shell起動時は、autoclose を無視する
@@ -495,7 +506,7 @@ BOOL MakeFileToPathArray(WCHAR *path_file, PathArray *path, BOOL is_ucs2)
 			if (size > 2 && top[0] == 0xff && top[1] == 0xfe) {
 				top += 2;
 			}
-			if (path->RegisterMultiPath((WCHAR *)top, NEWLINE_STR) > 0) {
+			if (path->RegisterMultiPath((WCHAR *)top, CRLF) > 0) {
 				ret = TRUE;
 			}
 		}
@@ -504,7 +515,7 @@ BOOL MakeFileToPathArray(WCHAR *path_file, PathArray *path, BOOL is_ucs2)
 				top += 3;
 			}
 			Wstr	wstr((char *)top, IsUTF8((char *)top) ? BY_UTF8 : BY_MBCS);
-			if (path->RegisterMultiPath(wstr.s(), NEWLINE_STR) > 0) {
+			if (path->RegisterMultiPath(wstr.s(), CRLF) > 0) {
 				ret = TRUE;
 			}
 		}

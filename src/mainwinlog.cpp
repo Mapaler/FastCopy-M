@@ -265,12 +265,13 @@ BOOL TMainDlg::WriteLogFooter(HANDLE hFile)
 
 	::SetFilePointer(hFile, 0, 0, FILE_END);
 
-	if (errBufOffset == 0 && ti.total.errFiles == 0 && ti.total.errDirs == 0)
+	if (errBufOffset == 0 && ti.total.allErrFiles == 0 && ti.total.allErrDirs) {
 		len += sprintf(buf + len, "%s%s\r\n"
 			, hFile == hFileLog ? "\r\n" : ""
 			, cfg.isUtf8Log ? AtoU8s(LoadStr(IDS_Log_NoErrors)) : LoadStr(IDS_Log_NoErrors) //No Errors
 			);
-
+	}
+	
 	len += sprintf(buf + len, "\r\n");
 
 	len1 += GetDlgItemText(STATUS_EDIT, buf1 + len1, sizeof(buf1) - len1);

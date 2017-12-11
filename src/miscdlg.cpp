@@ -558,8 +558,6 @@ BOOL BrowseDirDlgW(TWin *parentWin, UINT editCtl, WCHAR *title, int flg)
 				mode = FILESELECT;
 				continue;
 			}
-			mode = SELECT_EXIT;
-			break;
 				}
 			}
 			mode = SELECT_EXIT;
@@ -741,9 +739,6 @@ BOOL BrowseDirDlgW(TWin *parentWin, UINT editCtl, WCHAR *title, int flg)
 			ret = fileDlg.Exec(editCtl, NULL, buf, fileBuf, fileBuf);
 			if (fileDlg.GetMode() == DIRSELECT)
 				mode = DIRSELECT;
-			else
-				mode = SELECT_EXIT;
-			break;
 				}
 			}
 			mode = SELECT_EXIT;

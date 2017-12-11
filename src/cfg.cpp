@@ -1,5 +1,5 @@
 ﻿static char *cfg_id = 
-	"@(#)Copyright (C) 2004-2017 H.Shirouzu		cfg.cpp	ver3.31";
+	"@(#)Copyright (C) 2004-2017 H.Shirouzu		cfg.cpp	ver3.40";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2004-09-15(Wed)
@@ -107,6 +107,9 @@
 #define STATUSFONT_KEY			"status_font"
 #define STATUSFONTSIZE_KEY		"status_fontsize"
 #define PREVENTSLEEP_KEY		"prevent_sleep"
+#define DLSVT_KEY				"dlsvt"
+#define LARGE_FETCH_KEY			"large_fetch"
+#define DIRSEL_KEY				"dirsel"
 
 #define NONBUFMINSIZENTFS_KEY	"nonbuf_minsize_ntfs2"
 #define NONBUFMINSIZEFAT_KEY	"nonbuf_minsize_fat"
@@ -170,6 +173,28 @@
 #define DEFAULT_FASTCOPYLOG		"FastCopy.log"
 #define DEFAULT_INFOSPAN		0 //默认更新速度等级
 
+// Official RSA key for update
+static int  official_e   = 65537;
+static BYTE official_n[] = {	// little endian for MS CryptoAPI
+	0x1f,0xbf,0xc2,0xfc,0xca,0x43,0x2f,0x71,0x3f,0xae,0x96,0x72,0x66,0xdb,0x9d,0x3c,
+	0xe0,0x54,0x36,0x8a,0x26,0xaf,0x0d,0xec,0x5c,0x7e,0x30,0x8e,0x3d,0x92,0x6c,0x24,
+	0x19,0x0d,0x70,0xc2,0xab,0x50,0x6f,0xb1,0x11,0xf5,0x53,0x17,0xaa,0x82,0x46,0x9d,
+	0xde,0x87,0x46,0xad,0x86,0x7d,0x2b,0x03,0x6c,0xe9,0xbd,0x68,0x3e,0xa5,0xbf,0x38,
+	0xc9,0x94,0xc1,0xcb,0x27,0x99,0xcb,0xa5,0x7c,0x76,0x9e,0xe0,0xa3,0x6d,0x9b,0x90,
+	0x12,0xda,0x64,0x2d,0x9a,0xc0,0xcf,0xe6,0xe6,0x6a,0x48,0xe7,0xfd,0x00,0xe3,0x0f,
+	0xe7,0x07,0x29,0x54,0xcf,0x44,0xfe,0xb8,0xcf,0xa7,0x8c,0x67,0x7b,0x78,0x86,0x09,
+	0xc9,0xf1,0xf5,0x49,0xc8,0x4c,0x2c,0xad,0x40,0xca,0xde,0xb9,0x33,0x78,0xdc,0xf6,
+	0xc2,0xa1,0xb2,0xfb,0x15,0x67,0xbb,0x67,0xff,0xba,0xcf,0x80,0x72,0x2e,0xa7,0x06,
+	0xd1,0xca,0x8b,0x9a,0x6d,0x82,0x89,0x5a,0x06,0x47,0x01,0xb4,0xfe,0x2d,0xc0,0x02,
+	0xeb,0xe8,0x14,0x98,0x38,0xf9,0xab,0xd1,0x32,0x34,0x37,0x93,0x75,0x11,0x7b,0x6b,
+	0x61,0xed,0x0a,0xcb,0x49,0xc4,0x27,0xcf,0x86,0x78,0xff,0x09,0x61,0xca,0x3f,0xa8,
+	0x1a,0xbb,0x24,0xb7,0xda,0x2d,0xc9,0xd2,0x6f,0xad,0x91,0xba,0x06,0xd8,0xdf,0xa1,
+	0xde,0x1a,0xf0,0x2d,0xf4,0x4e,0xda,0xa2,0x05,0x45,0xb8,0xf9,0xa3,0x3b,0x36,0xe9,
+	0xa0,0x44,0x9d,0x0e,0x61,0x24,0x37,0xd3,0x18,0x63,0x53,0x10,0x3e,0xf8,0xf3,0xf6,
+	0x22,0xee,0x52,0x7a,0xb6,0x4a,0x1a,0x71,0xe6,0xb9,0xb8,0x27,0xf0,0xa6,0xa9,0xa7,
+};
+
+
 /*
 	Vista以降
 */
@@ -221,7 +246,7 @@ BOOL ConvertVirtualStoreConf(WCHAR *execDir, WCHAR *userDir, WCHAR *virtualDir)
 				is_exists = ::CopyFileW(vs_ini, usr_ini, TRUE);
 			}
 			MakePathW(buf, userDir, L"to_OldDir(VirtualStore).lnk");
-			SymLinkW(virtualDir, buf);
+			ShellLinkW(virtualDir, buf);
 			swprintf(buf, L"%s.obsolete", vs_ini);
 			::MoveFileW(vs_ini, buf);
 			if (::GetFileAttributesW(vs_ini) != 0xffffffff) {
@@ -245,7 +270,7 @@ BOOL ConvertVirtualStoreConf(WCHAR *execDir, WCHAR *userDir, WCHAR *virtualDir)
 
 	MakePathW(buf, userDir, L"to_ExeDir.lnk");
 	if (::GetFileAttributesW(buf) == 0xffffffff) {
-		SymLinkW(execDir, buf);
+		ShellLinkW(execDir, buf);
 	}
 
 	return	TRUE;
@@ -516,16 +541,16 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 		minSectorSize = 0;
 	}
 
-	nbMinSizeNtfs	= ini.GetInt(NONBUFMINSIZENTFS_KEY, DEFAULT_NBMINSIZE_NTFS);
-	nbMinSizeFat	= ini.GetInt(NONBUFMINSIZEFAT_KEY, DEFAULT_NBMINSIZE_FAT);
+	nbMinSizeNtfs	= ini.GetInt64(NONBUFMINSIZENTFS_KEY, DEFAULT_NBMINSIZE_NTFS);
+	nbMinSizeFat	= ini.GetInt64(NONBUFMINSIZEFAT_KEY, DEFAULT_NBMINSIZE_FAT);
 	timeDiffGrace	= ini.GetInt64(TIMEDIFFGRACE_KEY, 0);
 
 	isReadOsBuf		= ini.GetInt(ISREADOSBUF_KEY, FALSE);
 	isWShareOpen	= ini.GetInt(WRITESHAREOPEN_KEY, FALSE);
 	maxHistoryNext	= maxHistory = ini.GetInt(MAX_HISTORY_KEY, DEFAULT_MAX_HISTORY);
 	copyMode		= ini.GetInt(COPYMODE_KEY, DEFAULT_COPYMODE);
-	copyFlags		= ini.GetInt(COPYFLAGS_KEY, DEFAULT_COPYFLAGS);
-	copyUnFlags		= ini.GetInt(COPYUNFLAGS_KEY, DEFAULT_COPYUNFLAGS);
+	copyFlags		= ini.GetInt64(COPYFLAGS_KEY, DEFAULT_COPYFLAGS);
+	copyUnFlags		= ini.GetInt64(COPYUNFLAGS_KEY, DEFAULT_COPYUNFLAGS);
 
 	skipEmptyDir	= ini.GetInt(SKIPEMPTYDIR_KEY, DEFAULT_EMPTYDIR);
 	forceStart		= ini.GetInt(FORCESTART_KEY, DEFAULT_FORCESTART);
@@ -581,6 +606,9 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 	finishNotify	= ini.GetInt(FINISHNOTIFY_KEY, 1);
 	finishNotifyTout = ini.GetInt(FINISHNOTIFYTOUT_KEY, FINISH_NOTIFY_DEFAULT);
 	preventSleep	= ini.GetInt(PREVENTSLEEP_KEY, 1);
+	dlsvtMode		= ini.GetInt(DLSVT_KEY, 0);
+	largeFetch		= ini.GetInt(LARGE_FETCH_KEY, 1);
+	dirSel			= ini.GetInt(DIRSEL_KEY, 0);
 
 	infoSpan		= ini.GetInt(INFOSPAN_KEY, DEFAULT_INFOSPAN);
 	if (infoSpan < 0 || infoSpan > 2) infoSpan = DEFAULT_INFOSPAN;
@@ -748,6 +776,8 @@ BOOL Cfg::PostReadIni(void)
 		}
 	}
 
+	TSetPubKeyBlob(official_n, sizeof(official_n), official_e, &officialPub);
+
 	return	TRUE;
 }
 
@@ -769,8 +799,8 @@ BOOL Cfg::WriteIni(void)
 	ini.SetInt(MINSECTOR_KEY, minSectorSize);
 
 //	ini.SetInt(MAXOPENFILES_KEY, maxOpenFiles);
-	ini.SetInt(NONBUFMINSIZENTFS_KEY, nbMinSizeNtfs);
-	ini.SetInt(NONBUFMINSIZEFAT_KEY, nbMinSizeFat);
+	ini.SetInt64(NONBUFMINSIZENTFS_KEY, nbMinSizeNtfs);
+	ini.SetInt64(NONBUFMINSIZEFAT_KEY, nbMinSizeFat);
 	ini.SetInt64(TIMEDIFFGRACE_KEY, timeDiffGrace);
 
 	ini.SetInt(ISREADOSBUF_KEY, isReadOsBuf);
@@ -778,8 +808,8 @@ BOOL Cfg::WriteIni(void)
 
 	ini.SetInt(MAX_HISTORY_KEY, maxHistoryNext);
 	ini.SetInt(COPYMODE_KEY, copyMode);
-//	ini.SetInt(COPYFLAGS_KEY, copyFlags);
-//	ini.SetInt(COPYUNFLAGS_KEY, copyUnFlags);
+//	ini.SetInt64(COPYFLAGS_KEY, copyFlags);
+//	ini.SetInt64(COPYUNFLAGS_KEY, copyUnFlags);
 
 	ini.SetInt(SKIPEMPTYDIR_KEY, skipEmptyDir);
 	ini.SetInt(IGNORE_ERR_KEY, ignoreErr);
@@ -834,6 +864,10 @@ BOOL Cfg::WriteIni(void)
 	ini.SetInt(FINISHNOTIFY_KEY, finishNotify);
 //	ini.SetInt(FINISHNOTIFYTOUT_KEY, finishNotifyTout);
 	ini.SetInt(PREVENTSLEEP_KEY, preventSleep);
+	ini.SetInt(DLSVT_KEY, dlsvtMode);
+	ini.SetInt(LARGE_FETCH_KEY, largeFetch);
+	ini.SetInt(DIRSEL_KEY, dirSel);
+
 	ini.SetInt(INFOSPAN_KEY, infoSpan);
 
 	char	val[256];
@@ -1099,9 +1133,10 @@ BOOL Cfg::AddFinActW(const FinAct *finAct)
 	}
 
 #define ALLOC_FINACT	100
-	if ((finActMax % ALLOC_FINACT) == 0)
+	if ((finActMax % ALLOC_FINACT) == 0) {
 		finActArray =
 			(FinAct **)realloc(finActArray, sizeof(FinAct *) * (finActMax + ALLOC_FINACT));
+	}
 
 	finActArray[finActMax++] = new FinAct(*finAct);
 	return	TRUE;
