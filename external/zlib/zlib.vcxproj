@@ -68,32 +68,32 @@
     <_ProjectFileVersion>12.0.21005.1</_ProjectFileVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>..\..\lib\</OutDir>
-    <IntDir>..\..\Obj\DebugZlib\</IntDir>
+    <OutDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\lib\</OutDir>
+    <IntDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj\</IntDir>
     <TargetName>$(ProjectName)_d</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>..\..\x64\lib\</OutDir>
-    <IntDir>..\..\x64\Obj\DebugZLib\</IntDir>
+    <OutDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\lib\</OutDir>
+    <IntDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj\</IntDir>
     <TargetName>$(ProjectName)_d</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>..\..\lib\</OutDir>
-    <IntDir>..\..\Obj\ReleaseZlib\</IntDir>
+    <OutDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\lib\</OutDir>
+    <IntDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>..\..\x64\lib\</OutDir>
-    <IntDir>..\..\x64\Obj\ReleaseZLib\</IntDir>
+    <OutDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\lib\</OutDir>
+    <IntDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <PrecompiledHeaderOutputFile>Debug\zlib.pch</PrecompiledHeaderOutputFile>
-      <AssemblerListingLocation>Debug\</AssemblerListingLocation>
-      <ObjectFileName>Debug\</ObjectFileName>
-      <ProgramDataBaseFileName>Debug\</ProgramDataBaseFileName>
+      <PrecompiledHeaderOutputFile>>$(IntDir)\$(TargetName).pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ProgramDataBaseFileName>$(IntDir)</ProgramDataBaseFileName>
       <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DebugInformationFormat>OldStyle</DebugInformationFormat>
@@ -108,7 +108,7 @@
     </Lib>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <OutputFile>Debug\zlib.bsc</OutputFile>
+      <OutputFile>$(IntDir)\$(TargetName).bsc</OutputFile>
     </Bscmake>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -119,10 +119,10 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <PrecompiledHeaderOutputFile>x64\Debug\zlib.pch</PrecompiledHeaderOutputFile>
-      <AssemblerListingLocation>x64\Debug\</AssemblerListingLocation>
-      <ObjectFileName>x64\Debug\</ObjectFileName>
-      <ProgramDataBaseFileName>x64\Debug\</ProgramDataBaseFileName>
+      <PrecompiledHeaderOutputFile>>$(IntDir)\$(TargetName).pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ProgramDataBaseFileName>$(IntDir)</ProgramDataBaseFileName>
       <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DebugInformationFormat>OldStyle</DebugInformationFormat>
@@ -137,7 +137,7 @@
     </Lib>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <OutputFile>x64\Debug\zlib.bsc</OutputFile>
+      <OutputFile>>$(IntDir)\$(TargetName).bsc</OutputFile>
     </Bscmake>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -148,10 +148,10 @@
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <PrecompiledHeaderOutputFile>Release\zlib.pch</PrecompiledHeaderOutputFile>
-      <AssemblerListingLocation>Release\</AssemblerListingLocation>
-      <ObjectFileName>Release\</ObjectFileName>
-      <ProgramDataBaseFileName>Release\</ProgramDataBaseFileName>
+      <PrecompiledHeaderOutputFile>>$(IntDir)\$(TargetName).pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ProgramDataBaseFileName>$(IntDir)</ProgramDataBaseFileName>
       <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
@@ -169,7 +169,7 @@
     </Lib>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <OutputFile>Release\zlib.bsc</OutputFile>
+      <OutputFile>>$(IntDir)\$(TargetName).bsc</OutputFile>
     </Bscmake>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -183,10 +183,10 @@
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <PrecompiledHeaderOutputFile>x64\Release\zlib.pch</PrecompiledHeaderOutputFile>
-      <AssemblerListingLocation>x64\Release\</AssemblerListingLocation>
-      <ObjectFileName>x64\Release\</ObjectFileName>
-      <ProgramDataBaseFileName>x64\Release\</ProgramDataBaseFileName>
+      <PrecompiledHeaderOutputFile>>$(IntDir)\$(TargetName).pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ProgramDataBaseFileName>$(IntDir)</ProgramDataBaseFileName>
       <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -202,7 +202,7 @@
     </Lib>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <OutputFile>x64\Release\zlib.bsc</OutputFile>
+      <OutputFile>>$(IntDir)\$(TargetName).bsc</OutputFile>
     </Bscmake>
   </ItemDefinitionGroup>
   <ItemGroup>
