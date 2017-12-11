@@ -144,8 +144,9 @@ BOOL TSetupSheet::SetData()
 			::EnableWindow(GetDlgItem(SECTOR4096_CHECK), FALSE);
 		}
 		CheckDlgButton(READOSBUF_CHECK, cfg->isReadOsBuf);
-		SetDlgItemInt(NONBUFMINNTFS_EDIT, cfg->nbMinSizeNtfs);
-		SetDlgItemInt(NONBUFMINFAT_EDIT, cfg->nbMinSizeFat);
+		SetDlgItemInt64(NONBUFMINNTFS_EDIT, cfg->nbMinSizeNtfs);
+		SetDlgItemInt64(NONBUFMINFAT_EDIT, cfg->nbMinSizeFat);
+		CheckDlgButton(LARGEFETCH_CHK, cfg->largeFetch);
 	}
 	else if (resId == PHYSDRV_SHEET) {
 		SetDlgItemText(DRIVEMAP_EDIT, cfg->driveMap);
@@ -166,6 +167,7 @@ BOOL TSetupSheet::SetData()
 		CheckDlgButton(MOVEATTR_CHECK, cfg->enableMoveAttr);
 		CheckDlgButton(SERIALMOVE_CHECK, cfg->serialMove);
 		CheckDlgButton(SERIALVERIFYMOVE_CHECK, cfg->serialVerifyMove);
+
 		SendDlgItemMessage(HASH_COMBO, CB_ADDSTRING, 0, (LPARAM)"MD5");
 		SendDlgItemMessage(HASH_COMBO, CB_ADDSTRING, 0, (LPARAM)"SHA-1");
 		SendDlgItemMessage(HASH_COMBO, CB_ADDSTRING, 0, (LPARAM)"SHA-256");
@@ -173,6 +175,12 @@ BOOL TSetupSheet::SetData()
 		SendDlgItemMessage(HASH_COMBO, CB_SETCURSEL,
 			cfg->hashMode <= Cfg::SHA256 ? int(cfg->hashMode) : 3, 0);
 		SetDlgItemText(TIMEGRACE_EDIT, Fmt("%lld", cfg->timeDiffGrace));
+
+		SendDlgItemMessage(DLSVT_CMB, CB_ADDSTRING, 0, (LPARAM)LoadStr(IDS_DLSVT_NONE));
+		SendDlgItemMessage(DLSVT_CMB, CB_ADDSTRING, 0, (LPARAM)LoadStr(IDS_DLSVT_FAT));
+		SendDlgItemMessage(DLSVT_CMB, CB_ADDSTRING, 0, (LPARAM)LoadStr(IDS_DLSVT_ALWAYS));
+		SendDlgItemMessage(DLSVT_CMB, CB_SETCURSEL, cfg->dlsvtMode, 0);
+
 	}
 	else if (resId == DEL_SHEET) {
 		CheckDlgButton(NSA_CHECK, cfg->enableNSA);
@@ -195,6 +203,7 @@ BOOL TSetupSheet::SetData()
 	}
 	else if (resId == MISC_SHEET) {
 		CheckDlgButton(EXECCONFIRM_CHECK, cfg->execConfirm);
+		CheckDlgButton(DIRSEL_CHK, cfg->dirSel);
 		CheckDlgButton(TASKBAR_CHECK, cfg->taskbarMode);
 		CheckDlgButton(FINISH_CHECK, (cfg->finishNotify & 1));
 		CheckDlgButton(SPAN1_RADIO + cfg->infoSpan, 1);
@@ -269,12 +278,9 @@ BOOL TSetupSheet::GetData()
 			cfg->minSectorSize = IsDlgButtonChecked(SECTOR4096_CHECK) ? 4096 : 0;
 		}
 		cfg->isReadOsBuf   = IsDlgButtonChecked(READOSBUF_CHECK);
-		cfg->nbMinSizeNtfs = GetDlgItemInt(NONBUFMINNTFS_EDIT);
-		cfg->nbMinSizeFat  = GetDlgItemInt(NONBUFMINFAT_EDIT);
-
-		char	buf[sizeof(cfg->driveMap)];
-		GetDlgItemText(DRIVEMAP_EDIT, buf, sizeof(buf));
-		strcpy(cfg->driveMap, buf);
+		cfg->nbMinSizeNtfs = GetDlgItemInt64(NONBUFMINNTFS_EDIT);
+		cfg->nbMinSizeFat  = GetDlgItemInt64(NONBUFMINFAT_EDIT);
+		cfg->largeFetch    = IsDlgButtonChecked(LARGEFETCH_CHK);
 	}
 	else if (resId == PHYSDRV_SHEET) {
 		GetDlgItemText(DRIVEMAP_EDIT, cfg->driveMap, sizeof(cfg->driveMap));
@@ -291,12 +297,14 @@ BOOL TSetupSheet::GetData()
 		cfg->enableMoveAttr   = IsDlgButtonChecked(MOVEATTR_CHECK);
 		cfg->serialMove       = IsDlgButtonChecked(SERIALMOVE_CHECK);
 		cfg->serialVerifyMove = IsDlgButtonChecked(SERIALVERIFYMOVE_CHECK);
+
 		int val = (int)SendDlgItemMessage(HASH_COMBO, CB_GETCURSEL, 0, 0);
 		cfg->hashMode = (val <= 2) ? (Cfg::HashMode)val : Cfg::XXHASH;
 		char buf[128];
 		if (GetDlgItemText(TIMEGRACE_EDIT, buf, sizeof(buf)) > 0) {
 			cfg->timeDiffGrace = strtoll(buf, 0, 10);
 		}
+		cfg->dlsvtMode = (int)SendDlgItemMessage(DLSVT_CMB, CB_GETCURSEL, 0, 0);
 	}
 	else if (resId == DEL_SHEET) {
 		cfg->enableNSA        = IsDlgButtonChecked(NSA_CHECK);
@@ -314,6 +322,7 @@ BOOL TSetupSheet::GetData()
 	}
 	else if (resId == MISC_SHEET) {
 		cfg->execConfirm = IsDlgButtonChecked(EXECCONFIRM_CHECK);
+		cfg->dirSel = IsDlgButtonChecked(DIRSEL_CHK);
 		cfg->taskbarMode = IsDlgButtonChecked(TASKBAR_CHECK);
 		if (IsDlgButtonChecked(FINISH_CHECK)) {
 			cfg->finishNotify |= 1;

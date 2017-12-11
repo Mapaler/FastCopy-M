@@ -14,7 +14,10 @@
 #include "tlib/tlib.h"
 #include "shareinfo.h"
 
-#define SEMICLN_SPC			L"; "
+#define CRLF			L"\r\n"
+#define SEMICLN			L";"
+#define SEMICLN_SPC		L"; "
+#define NULW			L""
 
 class Logging {
 protected:
@@ -48,17 +51,17 @@ public:
 	virtual ~PathArray();
 	void	Init(void);
 	void	SetMode(DWORD _flags) { flags = _flags; }
-	int		RegisterMultiPath(const WCHAR *multi_path, const WCHAR *separator=L";");
+	int		RegisterMultiPath(const WCHAR *multi_path, const WCHAR *separator=SEMICLN);
 	int		GetMultiPath(WCHAR *multi_path, int max_len, const WCHAR *separator=SEMICLN_SPC,
-				const WCHAR *escape_char=L";");
+				const WCHAR *escape_chars=SEMICLN_SPC, BOOL with_endsep=FALSE);
 	int		GetMultiPathLen(const WCHAR *separator=SEMICLN_SPC,
-				const WCHAR *escape_char=L";");
+				const WCHAR *escape_chars=SEMICLN_SPC, BOOL with_endsep=FALSE);
 
 	PathArray& operator=(const PathArray& init);
 
 	WCHAR	*Path(int idx) const { return idx < num ? pathArray[idx]->path : NULL; }
 	int		PathLen(int idx) const { return idx < num ? pathArray[idx]->len : 0; }
-	int		Num(void) const { return	num; }
+	int		Num(void) const { return num; }
 	BOOL	RegisterPath(const WCHAR *path);
 	BOOL	ReplacePath(int idx, WCHAR *new_path);
 

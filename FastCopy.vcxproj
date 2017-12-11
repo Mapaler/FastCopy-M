@@ -21,7 +21,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{D6FF3145-1A10-4739-8E42-C5327BF51584}</ProjectGuid>
     <RootNamespace>FastCopy</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.14393.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.15063.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -297,6 +297,7 @@
     <ClCompile Include="src\mainwin.cpp" />
     <ClCompile Include="src\mainwinlog.cpp" />
     <ClCompile Include="src\mainwinopt.cpp" />
+    <ClCompile Include="src\mainwinupd.cpp" />
     <ClCompile Include="src\miscdlg.cpp" />
     <ClCompile Include="src\regexp.cpp" />
     <ClCompile Include="src\setupdlg.cpp" />
@@ -325,6 +326,7 @@
     <Image Include="src\icon\icon5.ico" />
     <Image Include="src\icon\icon6.ico" />
     <Image Include="src\icon\icon7.ico" />
+    <Image Include="src\menu.ico" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\cfg.h" />
@@ -338,6 +340,11 @@
     <ClInclude Include="src\shareinfo.h" />
     <ClInclude Include="src\utility.h" />
     <ClInclude Include="src\version.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="sep.cur" />
+    <None Include="src\cursor1.cur" />
+    <None Include="src\sep.cur" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

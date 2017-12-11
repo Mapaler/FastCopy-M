@@ -46,7 +46,8 @@ BOOL TAboutDlg::EvCreate(LPARAM lParam)
 	if (rect.left == CW_USEDEFAULT)
 	{
 		GetWindowRect(&rect);
-		int xsize = rect.right - rect.left, ysize = rect.bottom - rect.top;
+		int xsize = rect.cx();
+		int	ysize = rect.cy();
 		int	cx = ::GetSystemMetrics(SM_CXFULLSCREEN), cy = ::GetSystemMetrics(SM_CYFULLSCREEN);
 		int	x = (cx - xsize)/2;
 		int y = (cy - ysize)/2;
@@ -55,7 +56,7 @@ BOOL TAboutDlg::EvCreate(LPARAM lParam)
 			xsize, ysize, FALSE);
 	}
 	else
-		MoveWindow(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, FALSE);
+		MoveWindow(rect.left, rect.top, rect.cx(), rect.cy(), FALSE);
 
 	return	TRUE;
 }
@@ -96,7 +97,7 @@ BOOL TExecConfirmDlg::EvCreate(LPARAM lParam)
 		GetWindowRect(&rect);
 		rect.left += 30, rect.right += 30;
 		rect.top += 30, rect.bottom += 30;
-		MoveWindow(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, FALSE);
+		MoveWindow(rect.left, rect.top, rect.cx(), rect.cy(), FALSE);
 	}
 
 	SetDlgItem(SRC_EDIT, XY_FIT);
@@ -147,7 +148,7 @@ BOOL TExecConfirmDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hWndCtl)
 			if (IsDlgButtonChecked(OWDEL_CHECK))
 				info->flags |= flags;
 			else
-				info->flags &= ~(DWORD)flags;
+				info->flags &= ~(int64)flags;
 		}
 		return	TRUE;
 	}
@@ -323,22 +324,23 @@ BOOL BrowseDirDlgW(TWin *parentWin, UINT editCtl, WCHAR *title, int flg)
 	WCHAR		fileBuf[MAX_PATH_EX] = L"";
 	WCHAR		buf[MAX_PATH_EX] = L"";
 	BOOL		ret = FALSE;
-	WCHAR		*c_root_v = L"C:\\";
 	PathArray	pathArray;
 
 	parentWin->GetDlgItemTextW(editCtl, fileBuf, MAX_PATH_EX);
-	pathArray.RegisterMultiPath(fileBuf);
+	pathArray.RegisterMultiPath(fileBuf, CRLF);
 
 	if (pathArray.Num() > 0) {
 		wcscpy(fileBuf, pathArray.Path(0));
 	}
 	else {
+		WCHAR	*c_root_v = L"C:\\";
 		wcscpy(fileBuf, c_root_v);
 	}
 
-	DirFileMode mode = DIRSELECT;
+	DirFileMode mode = (flg & BRDIR_INITFILESEL) ? FILESELECT : DIRSELECT;
+
 	TBrowseDirDlgW	dirDlg(title, fileBuf, flg, parentWin);
-	TOpenFileDlg	fileDlg(parentWin, TOpenFileDlg::MULTI_OPEN, OFDLG_DIRSELECT);
+	TOpenFileDlg	fileDlg(parentWin, TOpenFileDlg::MULTI_OPEN,
 
 	//新式选择文件夹
 	HRESULT hr = S_OK;
@@ -529,26 +531,35 @@ BOOL BrowseDirDlgW(TWin *parentWin, UINT editCtl, WCHAR *title, int flg)
 				if (hr != HRESULT_FROM_WIN32(ERROR_CANCELLED))
 				{
 					//XP不支持的情况
-					if (dirDlg.Exec()) {
-						if (flg & BRDIR_BACKSLASH) {
-							MakePathW(buf, fileBuf, L"");
-							wcscpy(fileBuf, buf);
-						}
-						if (flg & BRDIR_MULTIPATH) {
-							if ((flg & BRDIR_CTRLADD) == 0 ||
-								(::GetAsyncKeyState(VK_CONTROL) & 0x8000) == 0) {
-								pathArray.Init();
-							}
-							pathArray.RegisterPath(fileBuf);
-							pathArray.GetMultiPath(fileBuf, MAX_PATH_EX);
-						}
-						parentWin->SetDlgItemTextW(editCtl, fileBuf);
-						ret = TRUE;
+			if (dirDlg.Exec()) {
+				if (fileBuf[0] == '\\') {
+					GetRootDirW(fileBuf, buf);
+					if (wcslen(buf) > wcslen(fileBuf)) { // netdrv root で末尾の \ がない
+						wcscpy(fileBuf, buf);
 					}
-					else if (dirDlg.GetMode() == FILESELECT) {
-						mode = FILESELECT;
-						continue;
+				}
+				if ((flg & BRDIR_BACKSLASH)) {
+					MakePathW(buf, fileBuf, NULW);
+					wcscpy(fileBuf, buf);
+				}
+				if (flg & BRDIR_MULTIPATH) {
+					if ((flg & BRDIR_CTRLADD) == 0 ||
+						(::GetKeyState(VK_CONTROL) & 0x8000) == 0) {
+						pathArray.Init();
 					}
+					pathArray.RegisterPath(fileBuf);
+					pathArray.GetMultiPath(fileBuf, MAX_PATH_EX, CRLF, NULW,
+						(flg & BRDIR_TAILCR) ? TRUE : FALSE);
+				}
+				parentWin->SetDlgItemTextW(editCtl, fileBuf);
+				ret = TRUE;
+			}
+			else if (dirDlg.GetMode() == FILESELECT) {
+				mode = FILESELECT;
+				continue;
+			}
+			mode = SELECT_EXIT;
+			break;
 				}
 			}
 			mode = SELECT_EXIT;
@@ -726,13 +737,13 @@ BOOL BrowseDirDlgW(TWin *parentWin, UINT editCtl, WCHAR *title, int flg)
 				if (hr != HRESULT_FROM_WIN32(ERROR_CANCELLED))
 				{
 					//XP不支持的情况
-					buf[wcscpyz(buf, LoadStrW(IDS_ALLFILES_FILTER)) + 1] = 0;
-					fileDlg.Exec(editCtl, NULL, buf, fileBuf, fileBuf);
-					if (fileDlg.GetMode() == DIRSELECT)
-						mode = DIRSELECT;
-					else
-						mode = SELECT_EXIT;
-					break;
+			buf[wcscpyz(buf, LoadStrW(IDS_ALLFILES_FILTER)) + 1] =  0;
+			ret = fileDlg.Exec(editCtl, NULL, buf, fileBuf, fileBuf);
+			if (fileDlg.GetMode() == DIRSELECT)
+				mode = DIRSELECT;
+			else
+				mode = SELECT_EXIT;
+			break;
 				}
 			}
 			mode = SELECT_EXIT;
@@ -747,6 +758,7 @@ TBrowseDirDlgW::TBrowseDirDlgW(WCHAR *title, WCHAR *_fileBuf, int _flg, TWin *pa
 {
 	fileBuf = _fileBuf;
 	flg = _flg;
+	hBtn = NULL;
 
 	iMalloc = NULL;
 	SHGetMalloc(&iMalloc);
@@ -756,7 +768,7 @@ TBrowseDirDlgW::TBrowseDirDlgW(WCHAR *title, WCHAR *_fileBuf, int _flg, TWin *pa
 	brInfo.pszDisplayName = fileBuf;
 	brInfo.lpszTitle = title;
 	brInfo.ulFlags = BIF_RETURNONLYFSDIRS|BIF_USENEWUI|BIF_UAHINT|BIF_RETURNFSANCESTORS
-					 /*|BIF_SHAREABLE*/;
+					 /*|BIF_SHAREABLE|BIF_BROWSEINCLUDEFILES*/;
 	brInfo.lpfn = TBrowseDirDlgW::BrowseDirDlg_Proc;
 	brInfo.lParam = (LPARAM)this;
 	brInfo.iImage = 0;
@@ -822,11 +834,12 @@ BOOL TBrowseDirDlgW::AttachWnd(HWND _hWnd)
 	ILFree(pidl);
 
 // ボタン作成
-	RECT	tmp_rect;
-	::GetWindowRect(GetDlgItem(IDOK), &tmp_rect);
-	POINT	pt = { tmp_rect.left, tmp_rect.top };
+	TRect	ok_rect;
+	::GetWindowRect(GetDlgItem(IDOK), &ok_rect);
+	POINT	pt = { ok_rect.left, ok_rect.top };
 	::ScreenToClient(hWnd, &pt);
-	int		cx = (pt.x - 30) / 2, cy = tmp_rect.bottom - tmp_rect.top;
+	int		cx = (pt.x - 30) / 2;
+	int		cy = ok_rect.cy();
 
 //	::CreateWindow(BUTTON_CLASS, LoadStr(IDS_MKDIR), WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,
 //		10, pt.y, cx, cy, hWnd, (HMENU)MKDIR_BUTTON, TApp::GetInstance(), NULL);
@@ -835,10 +848,17 @@ BOOL TBrowseDirDlgW::AttachWnd(HWND _hWnd)
 
 	if (flg & BRDIR_FILESELECT) {
 		GetClientRect(&rect);
-		int		file_cx = cx * 3 / 2;
-		::CreateWindow(BUTTON_CLASS, LoadStr(IDS_FILESELECT),
-			WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON, rect.right - file_cx - 18, 10, file_cx, cy,
+		int	file_cx = cx * 3 / 2;
+		hBtn = ::CreateWindowW(BUTTON_CLASS_W, LoadStrW(IDS_FILESELECT),
+			WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON|BS_MULTILINE,
+			rect.right - file_cx - 18, 10, file_cx, cy * 3 / 2 + 2,
 			hWnd, (HMENU)FILESELECT_BUTTON, TApp::GetInstance(), NULL);
+
+		::BringWindowToTop(hBtn);
+
+		for (HWND hTmp=GetWindow(hWnd, GW_CHILD); hTmp; hTmp=::GetWindow(hTmp, GW_HWNDNEXT)) {
+			::SetWindowLong(hTmp, GWL_STYLE, ::GetWindowLong(hTmp, GWL_STYLE)|WS_CLIPSIBLINGS);
+		}
 	}
 
 	HFONT	hDlgFont = (HFONT)SendDlgItemMessage(IDOK, WM_GETFONT, 0, 0L);
@@ -847,7 +867,7 @@ BOOL TBrowseDirDlgW::AttachWnd(HWND _hWnd)
 //		SendDlgItemMessage(MKDIR_BUTTON, WM_SETFONT, (UINT)hDlgFont, 0L);
 //		SendDlgItemMessage(RMDIR_BUTTON, WM_SETFONT, (UINT)hDlgFont, 0L);
 		if (flg & BRDIR_FILESELECT) {
-			SendDlgItemMessage(FILESELECT_BUTTON, WM_SETFONT, (LPARAM)hDlgFont, 0L);
+			::SendMessage(hBtn, WM_SETFONT, (LPARAM)hDlgFont, 0L);
 		}
 	}
 
@@ -890,6 +910,39 @@ BOOL TBrowseDirDlgW::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl)
 		mode = FILESELECT;
 		PostMessage(WM_CLOSE, 0, 0);
 		return	TRUE;
+	}
+	return	FALSE;
+}
+
+BOOL TBrowseDirDlgW::EventCtlColor(UINT uMsg, HDC hDcCtl, HWND hWndCtl, HBRUSH *result)
+{
+	if (uMsg == WM_CTLCOLORBTN && hWndCtl == hBtn) {
+	}
+	return	FALSE;
+}
+
+#pragma comment (lib, "msimg32.lib")
+
+void DrawGrad(HDC hDc, TRect rc, int gap)
+{
+	COLOR16 r=0xdddd, g=0xffff, b=0xdddd, r2=0x6ccc, g2=0xcfff, b2=0x6ccc;
+	TRIVERTEX tx[] = {
+			{ gap, gap, r, g, b, 0 },
+			{ rc.cx() - gap, rc.cy() - gap, r2, g2, b2 }
+	};
+	GRADIENT_RECT gr[] = { { 0, 1 } };
+
+	::GradientFill(hDc, tx, 2, &gr, 1, GRADIENT_FILL_RECT_V);
+}
+
+BOOL TBrowseDirDlgW::EvNotify(UINT ctlID, NMHDR *pNmHdr)
+{
+	NMCUSTOMDRAW	*ncd = (NMCUSTOMDRAW *)pNmHdr;
+	if (ncd->dwDrawStage == CDDS_PREPAINT && !(ncd->uItemState & CDIS_HOT)) {
+		if (pNmHdr->code == NM_CUSTOMDRAW && pNmHdr->hwndFrom == hBtn) {
+			DrawGrad(ncd->hdc, ncd->rc, 2);
+			return	CDRF_DODEFAULT;
+		}
 	}
 	return	FALSE;
 }
@@ -964,7 +1017,7 @@ BOOL TConfirmDlg::EvCreate(LPARAM lParam)
 		GetWindowRect(&rect);
 		rect.left += 30, rect.right += 30;
 		rect.top += 30, rect.bottom += 30;
-		MoveWindow(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, FALSE);
+		MoveWindow(rect.left, rect.top, rect.cx(), rect.cy(), FALSE);
 	}
 
 	Show();
@@ -987,7 +1040,7 @@ BOOL TOpenFileDlg::Exec(UINT editCtl, WCHAR *title, WCHAR *filter, WCHAR *defaul
 		return FALSE;
 
 	parent->GetDlgItemTextW(editCtl, buf, MAX_OFNBUF);
-	pathArray.RegisterMultiPath(buf);
+	pathArray.RegisterMultiPath(buf, CRLF);
 
 	if (init_data) {
 		wcscpy(buf, init_data);
@@ -999,7 +1052,7 @@ BOOL TOpenFileDlg::Exec(UINT editCtl, WCHAR *title, WCHAR *filter, WCHAR *defaul
 	if (Exec(buf, title, filter, defaultDir) == FALSE)
 		return	FALSE;
 
-	if ((::GetAsyncKeyState(VK_CONTROL) & 0x8000) == 0) {
+	if ((::GetKeyState(VK_CONTROL) & 0x8000) == 0) {
 		pathArray.Init();
 	}
 
@@ -1013,7 +1066,8 @@ BOOL TOpenFileDlg::Exec(UINT editCtl, WCHAR *title, WCHAR *filter, WCHAR *defaul
 				offset += wcscpyz(buf + dir_len, buf + offset);
 				pathArray.RegisterPath(buf);
 			}
-			if (pathArray.GetMultiPath(buf, MAX_OFNBUF) >= 0) {
+			if (pathArray.GetMultiPath(buf, MAX_OFNBUF, CRLF, NULW,
+				(flg & OFDLG_TAILCR) ? TRUE : 0) >= 0) {
 				parent->SetDlgItemTextW(editCtl, buf);
 				return	TRUE;
 			}
@@ -1021,11 +1075,12 @@ BOOL TOpenFileDlg::Exec(UINT editCtl, WCHAR *title, WCHAR *filter, WCHAR *defaul
 		}
 	}
 	pathArray.RegisterPath(buf);
-	if (flg & OFDLG_WITHQUOTE) {
-		pathArray.GetMultiPath(buf, MAX_OFNBUF, L";", L" ");
+	if (flg & OFDLG_WITHQUOTE) {	// FinAct用
+		pathArray.GetMultiPath(buf, MAX_OFNBUF, CRLF, L" ");
 	}
 	else {
-		pathArray.GetMultiPath(buf, MAX_OFNBUF);
+		pathArray.GetMultiPath(buf, MAX_OFNBUF, CRLF, NULW,
+			(flg & OFDLG_TAILCR) ? TRUE : 0);
 	}
 	parent->SetDlgItemTextW(editCtl, buf);
 	return	TRUE;
@@ -1102,6 +1157,38 @@ UINT WINAPI TOpenFileDlg::OpenFileDlgProc(HWND hdlg, UINT msg, WPARAM wParam, LP
 	return FALSE;
 }
 
+int CalcLineCx(HDC hDc, const WCHAR *s)
+{
+	int		cx = 0;
+
+	for (const WCHAR *p=s; p && *p; ) {
+		const WCHAR *next_p = wcschr(p, '\n');
+		if (next_p) {
+			next_p++;
+		}
+		int	len = next_p ? int(next_p - p) : -1;
+		TRect	rc;
+		::DrawTextW(hDc, p, len, &rc, DT_LEFT|DT_CALCRECT|DT_SINGLELINE|DT_NOPREFIX);
+		cx = max(cx, rc.cx());
+		p = next_p;
+	}
+	return	cx;
+}
+
+BOOL CalcTextBoxSize(HDC hDc, const WCHAR *s, TSize *sz)
+{
+	int		max_cx = CalcLineCx(hDc, s);
+	TRect	rc(0, 0, max_cx, 0);
+
+	::DrawTextW(hDc, s, -1, &rc, DT_LEFT|DT_CALCRECT|DT_NOPREFIX|DT_WORDBREAK);
+
+	sz->cx = rc.cx();
+	sz->cy = rc.cy();
+
+	return	TRUE;
+}
+
+
 /*
 	TOpenFileDlg用サブクラス生成
 */
@@ -1112,31 +1199,91 @@ BOOL TOpenFileDlg::AttachWnd(HWND _hWnd)
 	if ((flg & OFDLG_DIRSELECT) == 0)
 		return	ret;
 
-// ボタン作成
-	RECT	ok_rect;
-
-	::GetWindowRect(GetDlgItem(IDOK), &ok_rect);
-	GetWindowRect(&rect);
-
-	int	cx = (ok_rect.right - ok_rect.left) * 2;
-	int	cy = ok_rect.bottom - ok_rect.top;
-	int	x = ::GetSystemMetrics(SM_CXDLGFRAME);
-	int	y = ok_rect.top - rect.top - ::GetSystemMetrics(SM_CYDLGFRAME) + cy * 4 / 3;
-	int parent_cy = cy + y + 45 + ::GetSystemMetrics(SM_CYDLGFRAME);
-
-	if (parent_cy > rect.bottom - rect.top) {
-		MoveWindow(rect.left, rect.top, rect.right - rect.left, parent_cy, TRUE);
-	}
-
-	::CreateWindow(BUTTON_CLASS, LoadStr(IDS_DIRSELECT), WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,
-		x, y, cx, cy, hWnd, (HMENU)DIRSELECT_BUTTON, TApp::GetInstance(), NULL);
-
-	HFONT	hDlgFont = (HFONT)SendDlgItemMessage(IDOK, WM_GETFONT, 0, 0L);
-	if (hDlgFont)
-		SendDlgItemMessage(DIRSELECT_BUTTON, WM_SETFONT, (LPARAM)hDlgFont, 0L);
+	SetTimer(OFDLG_TIMER, 100, 0);
 
 	return	ret;
 }
+
+BOOL TOpenFileDlg::EvTimer(WPARAM timerID, TIMERPROC proc)
+{
+	if (timerID == OFDLG_TIMER) {
+		KillTimer(timerID);
+		PostMessage(WM_OFN_AFTERPROC, 0, 0);
+		return	TRUE;
+	}
+	return	FALSE;
+}
+
+BOOL TOpenFileDlg::EventCtlColor(UINT uMsg, HDC hDcCtl, HWND hWndCtl, HBRUSH *result)
+{
+	if (uMsg == WM_CTLCOLORBTN && hWndCtl == hBtn) {
+	}
+	return	FALSE;
+}
+
+BOOL TOpenFileDlg::EvNotify(UINT ctlID, NMHDR *pNmHdr)
+{
+	NMCUSTOMDRAW	*ncd = (NMCUSTOMDRAW *)pNmHdr;
+	if (ncd->dwDrawStage == CDDS_PREPAINT && !(ncd->uItemState & CDIS_HOT)) {
+		if (pNmHdr->code == NM_CUSTOMDRAW && pNmHdr->hwndFrom == hBtn) {
+			DrawGrad(ncd->hdc, ncd->rc, 2);
+			return	CDRF_DODEFAULT;
+		}
+	}
+	return	FALSE;
+}
+
+BOOL TOpenFileDlg::EvSize(UINT fwSizeType, WORD nWidth, WORD nHeight)
+{
+	return FALSE;
+}
+
+BOOL TOpenFileDlg::EventApp(UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	if (uMsg == WM_OFN_AFTERPROC) {
+		GetWindowRect(&rect);
+
+		MINMAXINFO	mi = {};
+		SendMessage(WM_GETMINMAXINFO, 0, (LPARAM)&mi);
+		int		base_size = mi.ptMinTrackSize.x;
+
+	// ボタン作成
+		TSize	sz;
+		HFONT	hFont = (HFONT)SendDlgItemMessage(IDOK, WM_GETFONT, 0, 0L);
+		HDC		hDc = ::GetDC(hWnd);
+		HGDIOBJ	sv = ::SelectObject(hDc, hFont);
+		const WCHAR	*btn_label = LoadStrW(IDS_DIRSELECT);
+
+		CalcTextBoxSize(hDc, btn_label, &sz);
+		::SelectObject(hDc, sv);
+		::ReleaseDC(hWnd, hDc);
+
+		sz.Inflate(20, 15);
+		int	need_size = base_size + sz.cx - 70;
+
+		if (rect.cx() < need_size) {
+			MoveWindow(rect.left, rect.top, need_size, rect.cy(), TRUE);
+			GetWindowRect(&rect);
+		}
+
+		hBtn = ::CreateWindowW(BUTTON_CLASS_W, btn_label,
+			WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON|BS_MULTILINE,
+			base_size - 90, 3, sz.cx, sz.cy,
+			hWnd, (HMENU)DIRSELECT_BUTTON, TApp::GetInstance(), NULL);
+
+		::SendMessage(hBtn, WM_SETFONT, (LPARAM)hFont, 0L);
+
+		::BringWindowToTop(hBtn);
+
+		// 子ウィンドウ同士のクリップを有効に
+		for (HWND hTmp=GetWindow(hWnd, GW_CHILD); hTmp; hTmp=::GetWindow(hTmp, GW_HWNDNEXT)) {
+			::SetWindowLong(hTmp, GWL_STYLE, ::GetWindowLong(hTmp, GWL_STYLE)|WS_CLIPSIBLINGS);
+		}
+		return	TRUE;
+	}
+	return	FALSE;
+}
+
 
 /*
 	BrowseDlg用 WM_COMMAND 処理
@@ -1228,18 +1375,15 @@ BOOL TJobDlg::AddJob()
 	if (GetDlgItemTextW(TITLE_COMBO, title, MAX_PATH) <= 0)
 		return	FALSE;
 
-	int		src_len = (int)mainParent->SendDlgItemMessage(SRC_COMBO, WM_GETTEXTLENGTH, 0, 0) + 1;
-	if (src_len >= MAX_HISTORY_BUF) {
-		TMsgBox(this).Exec("Source is too long (max.8192 chars)");
-		return	FALSE;
-	}
+	int	srcbuf_len = (int)mainParent->SendDlgItemMessageW(SRC_EDIT, WM_GETTEXTLENGTH, 0, 0) + 1;
 
 	Job			job;
 	int			idx = (int)mainParent->SendDlgItemMessage(MODE_COMBO, CB_GETCURSEL, 0, 0);
 	CopyInfo	*info = mainParent->GetCopyInfo();
-	WCHAR		*src = new WCHAR [src_len];
+	DynBuf		src_buf(srcbuf_len * sizeof(WCHAR));
 	WCHAR		dst[MAX_PATH_EX]=L"";
-	WCHAR		inc[MAX_PATH]=L"", exc[MAX_PATH]=L"";
+	DynBuf		inc;
+	DynBuf		exc;
 	WCHAR		from_date[MINI_BUF]=L"", to_date[MINI_BUF]=L"";
 	WCHAR		min_size[MINI_BUF]=L"", max_size[MINI_BUF]=L"";
 
@@ -1251,27 +1395,44 @@ BOOL TJobDlg::AddJob()
 	job.enableStream = mainParent->IsDlgButtonChecked(STREAM_CHECK);
 	job.enableVerify = mainParent->IsDlgButtonChecked(VERIFY_CHECK);
 	job.isFilter = mainParent->IsDlgButtonChecked(FILTER_CHECK);
-	mainParent->GetDlgItemTextW(SRC_COMBO, src, src_len);
+
+	mainParent->GetDlgItemTextW(SRC_EDIT, src_buf, srcbuf_len);
+	PathArray	srcArray;
+	srcArray.RegisterMultiPath(src_buf, CRLF);
+	int		src_len = srcArray.GetMultiPathLen();
+	if (src_len >= MAX_HISTORY_BUF) {
+		TMsgBox(this).Exec("Source is too long (max.8192 chars)");
+		return	FALSE;
+	}
+	Wstr	src(src_len);
+	srcArray.GetMultiPath(src.Buf(), src_len);
 
 	if (info[idx].mode != FastCopy::DELETE_MODE) {
 		mainParent->GetDlgItemTextW(DST_COMBO, dst, MAX_PATH_EX);
 		HMENU	hMenu = ::GetSubMenu(::GetMenu(mainParent->hWnd), 2);
-		if (::GetMenuState(hMenu, SAMEDISK_MENUITEM, MF_BYCOMMAND) & MF_CHECKED)
+		if (::GetMenuState(hMenu, SAMEDISK_MENUITEM, MF_BYCOMMAND) & MF_CHECKED) {
 			job.diskMode = 1;
-		else if (::GetMenuState(hMenu, DIFFDISK_MENUITEM, MF_BYCOMMAND) & MF_CHECKED)
+		}
+		else if (::GetMenuState(hMenu, DIFFDISK_MENUITEM, MF_BYCOMMAND) & MF_CHECKED) {
 			job.diskMode = 2;
+		}
 	}
 
 	if (job.isFilter) {
-		mainParent->GetDlgItemTextW(INCLUDE_COMBO, inc, MAX_PATH);
-		mainParent->GetDlgItemTextW(EXCLUDE_COMBO, exc, MAX_PATH);
+		auto	inc_len = ::GetWindowTextLengthW(mainParent->GetDlgItem(INCLUDE_COMBO)) + 1;
+		auto	exc_len = ::GetWindowTextLengthW(mainParent->GetDlgItem(EXCLUDE_COMBO)) + 1;
+		inc.Alloc(inc_len * sizeof(WCHAR));
+		exc.Alloc(exc_len * sizeof(WCHAR));
+		mainParent->GetDlgItemTextW(INCLUDE_COMBO, inc, inc_len);
+		mainParent->GetDlgItemTextW(EXCLUDE_COMBO, exc, exc_len);
+
 		mainParent->GetDlgItemTextW(FROMDATE_COMBO, from_date, MAX_PATH);
 		mainParent->GetDlgItemTextW(TODATE_COMBO, to_date, MAX_PATH);
 		mainParent->GetDlgItemTextW(MINSIZE_COMBO, min_size, MAX_PATH);
 		mainParent->GetDlgItemTextW(MAXSIZE_COMBO, max_size, MAX_PATH);
 	}
 
-	job.SetString(title, src, dst, info[idx].cmdline_name, inc, exc,
+	job.SetString(title, src.Buf(), dst, info[idx].cmdline_name, inc, exc,
 		from_date, to_date, min_size, max_size);
 	if (cfg->AddJobW(&job)) {
 		cfg->WriteIni();
@@ -1279,7 +1440,6 @@ BOOL TJobDlg::AddJob()
 	}
 	else TMsgBox(this).Exec("Add Job Error");
 
-	delete [] src;
 	return	TRUE;
 }
 
@@ -1636,7 +1796,6 @@ BOOL TFinDlg::EvCreate(LPARAM lParam)
 
 void TFinDlg::Update()
 {
-	int		running = 0, waiting = 0;
 	char	buf[100];
 	int		len = strcpyz(buf, main_msg);
 	ShareInfo::CheckInfo ci;
@@ -1914,5 +2073,109 @@ int TEditSub::ExSetText(const WCHAR *buf, int max_len, DWORD flags, UINT codepag
 	se.codepage = codepage;
 
 	return	(int)SendMessageW(EM_SETTEXTEX, (WPARAM)&se, (LPARAM)buf);
+}
+
+BOOL TSrcEdit::AttachWnd(HWND _hWnd)
+{
+	if (!TSubClassCtl::AttachWnd(_hWnd)) {
+		return	FALSE;
+	}
+	SendMessage(EM_SETMARGINS, EC_LEFTMARGIN, 1);
+
+	GetWindowRect(&orgRect);
+
+	LOGFONT		lf = {};
+	::GetObject((HFONT)SendMessage(WM_GETFONT, 0, 0L), sizeof(lf), (void *)&lf);
+
+	marginCy = 10;
+	baseCy = abs(lf.lfHeight); // 暫定...
+	if (baseCy == 11) {
+		baseCy += 2;
+	}
+
+//	HDC		hDc = ::GetDC(hWnd);
+//	Debug("base=%d lf=%d caps=%d, rc=%d\n",
+//		baseCy, lf.lfHeight, GetDeviceCaps(hDc, LOGPIXELSY), orgRect.cy());
+//	::ReleaseDC(hWnd, hDc);
+
+	return	TRUE;
+}
+
+int char_num(const WCHAR *str, WCHAR ch)
+{
+	int	cnt = 0;
+
+	while (*str) {
+		if (*str++ == ch) cnt++;
+	}
+	return	cnt;
+}
+
+int TSrcEdit::NeedDiffY()
+{
+	int		len = GetWindowTextLengthW() + 1;
+	Wstr	wstr(len);
+
+	if (GetWindowTextW(wstr.Buf(), len)) {
+		int		crnum = max(min(char_num(wstr.s(), L'\n') + 1, maxCr), 2);
+		int		needCy = baseCy * crnum + marginCy;
+
+	//	Debug("need=%d org=%d cr=%d\n", needCy, orgRect.cy(), crnum);
+
+		return	max(needCy - orgRect.cy(), 0);
+	}
+	return	0;
+}
+
+void TSrcEdit::Fit(BOOL allow_reduce)
+{
+	int	diff = NeedDiffY();
+
+	GetWindowRect(&rect);
+	int	cur_diff = rect.cy() - orgRect.cy();
+
+	if (diff > cur_diff || allow_reduce && diff != cur_diff) {
+	//	Debug("fit %d %d\n", diff, cur_diff);
+		parent->PostMessage(WM_FASTCOPY_RESIZESRCEDIT, 0, diff);
+	}
+}
+
+BOOL TSrcEdit::EvChar(WCHAR code, LPARAM keyData)
+{
+	switch (code) {
+	case VK_RETURN:
+		parent->PostMessage(WM_FASTCOPY_SRCEDITFIT, 0, 0);
+		break;
+
+	case 0x01: // Control-A
+		SendMessage(EM_SETSEL, 0, -1);
+		Debug("send emsetsel\n");
+		break;
+	}
+	return	FALSE;
+}
+
+BOOL TSrcEdit::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hWndCtl)
+{
+	return	FALSE;
+}
+
+BOOL TSrcEdit::SetWindowTextW(const WCHAR *text)
+{
+	BOOL	ret = TWin::SetWindowTextW(text);
+
+	parent->PostMessage(WM_FASTCOPY_SRCEDITFIT, 0, 1);
+	return	ret;
+}
+
+BOOL TSrcEdit::EvCut()
+{
+	return	FALSE;
+}
+
+BOOL TSrcEdit::EvPaste()
+{
+	parent->PostMessage(WM_FASTCOPY_SRCEDITFIT, 0, 1);
+	return	FALSE;
 }
 

@@ -76,11 +76,15 @@ struct Job {
 	Job() {
 		Init();
 	}
-	Job(const Job& job) {
-		Init();
-		Set(&job);
+	Job(const Job& org) {
+		*this = org;
 	}
 	~Job() { UnSet(); }
+	Job& operator=(const Job &org) {
+		Init();
+		Set(&org);
+		return *this;
+	}
 };
 
 struct FinAct {
@@ -114,11 +118,15 @@ struct FinAct {
 	FinAct() {
 		Init();
 	}
-	FinAct(const FinAct& action) {
-		Init();
-		Set(&action);
+	FinAct(const FinAct& org) {
+		*this = org;
 	}
 	~FinAct() { UnSet(); }
+	FinAct& operator=(const FinAct& org) {
+		Init();
+		Set(&org);
+		return *this;
+	}
 };
 
 class Cfg {
@@ -142,16 +150,16 @@ public:
 	int		maxMoveSize;	// MB
 	int		maxDigestSize;	// MB
 	int		minSectorSize;
-	int		nbMinSizeNtfs;
-	int		nbMinSizeFat;
+	int64	nbMinSizeNtfs;
+	int64	nbMinSizeFat;
 	int64	timeDiffGrace;
 	BOOL	isReadOsBuf;
 	BOOL	isWShareOpen;
 	int		maxHistory;
 	int		maxHistoryNext;
 	int		copyMode;
-	int		copyFlags;
-	int		copyUnFlags;
+	int64	copyFlags;
+	int64	copyUnFlags;
 	int		skipEmptyDir;	// 0:no, 1:filter-mode only, 2:always
 	int		forceStart;		// 0:delete only, 1:always(copy+delete), 2:always wait
 	BOOL	ignoreErr;
@@ -200,6 +208,9 @@ public:
 	int		testMode;
 	BOOL	isRunasButton;
 	BOOL	isSameDirRename;
+	BOOL	dlsvtMode; // 0: none, 1: fat, 2: always
+	BOOL	largeFetch;
+	BOOL	dirSel;
 
 	struct ShExtCfg {
 		BOOL	autoClose;
@@ -234,6 +245,7 @@ public:
 	char	driveMap[64];
 	WCHAR	statusFont[LF_FACESIZE];
 	int		statusFontSize;
+	DynBuf	officialPub;	// for update from ipmsg.org
 
 	BOOL	needIniConvert;
 

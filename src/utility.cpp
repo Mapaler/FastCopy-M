@@ -96,10 +96,12 @@ WCHAR **CommandLineToArgvExW(WCHAR *cmdLine, int *_argc)
 
 	argc = 0;
 	while (1) {
-		if ((argc % MAX_ARG_ALLOC) == 0)
+		if ((argc % MAX_ARG_ALLOC) == 0) {
 			argv = (WCHAR **)realloc(argv, (argc + MAX_ARG_ALLOC) * sizeof(WCHAR *));
-		if ((argv[argc] = strtok_pathW(argc ? NULL : cmdLine, separantor, &p)) == NULL)
+		}
+		if ((argv[argc] = strtok_pathW(argc ? NULL : cmdLine, separantor, &p)) == NULL) {
 			break;
+		}
 		argc++;
 	}
 
@@ -169,18 +171,27 @@ int PathArray::RegisterMultiPath(const WCHAR *_multi_path, const WCHAR *separato
 	return	cnt;
 }
 
+inline BOOL has_chars(const WCHAR *str, const WCHAR *chars)
+{
+	if (!str || !chars) return FALSE;
+
+	for ( ; *chars; chars++) {
+		if (wcschr(str, *chars)) return TRUE;
+	}
+	return FALSE;
+}
+
 int PathArray::GetMultiPath(WCHAR *multi_path, int max_len,
-	const WCHAR *separator, const WCHAR *escape_char)
+	const WCHAR *separator, const WCHAR *escape_chars, BOOL end_sep)
 {
 	int		sep_len = (int)wcslen(separator);
 	int		total_len = 0;
-	int		escape_val = escape_char ? escape_char[0] : 0;
 
 	for (int i=0; i < num; i++) {
-		BOOL	is_escape = escape_val && wcschr(pathArray[i]->path, escape_val);
+		BOOL	is_escape = has_chars(pathArray[i]->path, escape_chars);
 		int		need_len = pathArray[i]->len + 1 + (is_escape ? 2 : 0) + (i ? sep_len : 0);
 
-		if (max_len - total_len < need_len) {
+		if (max_len - (end_sep ? sep_len : 0) - total_len < need_len) {
 			multi_path[total_len] = 0;
 			return -1;
 		}
@@ -199,21 +210,25 @@ int PathArray::GetMultiPath(WCHAR *multi_path, int max_len,
 			total_len++;
 		}
 	}
-	multi_path[total_len] = 0;
+	if (end_sep) {
+		total_len += wcscpyz(multi_path + total_len, separator);
+	}
+	else {
+		multi_path[total_len] = 0;
+	}
 	return	total_len;
 }
 
-int PathArray::GetMultiPathLen(const WCHAR *separator, const WCHAR *escape_char)
+int PathArray::GetMultiPathLen(const WCHAR *separator, const WCHAR *escape_chars, BOOL end_sep)
 {
 	int		total_len = 0;
 	int		sep_len = (int)wcslen(separator);
-	int		escape_val = escape_char ? escape_char[0] : 0;
 
 	for (int i=0; i < num; i++) {
-		BOOL	is_escape = escape_val /* && wcschr(pathArray[i]->path, escape_val)*/;
+		BOOL	is_escape = has_chars(pathArray[i]->path, escape_chars);
 		total_len += pathArray[i]->len + (is_escape ? 2 : 0) + (i ? sep_len : 0);
 	}
-	return	total_len + 1;
+	return	total_len + 1 + (end_sep ? sep_len : 0);
 }
 
 BOOL PathArray::SetPath(int idx, const WCHAR *path, int len)
@@ -465,11 +480,12 @@ int DriveMng::SetDriveID(const WCHAR *_root)
 		char	reg_path[MAX_PATH * 2];
 		BYTE	buf[1024];
 		int		size = sizeof(buf);
-		WCHAR	*wbuf = (WCHAR *)buf, *wp;
+		WCHAR	*wbuf = (WCHAR *)buf;
 		DWORD	val = 0;
 
 		::sprintf(reg_path, FMT_DOSDEVICES, root[0]);
 		if (reg.GetByte(reg_path, buf, &size)) {
+			WCHAR	*wp;
 			if (wcsncmp(wbuf, L"\\??\\", 4) == 0 && (wp = wcschr(wbuf, '#'))
 				&& (wp = wcschr(wp+1, '#')) && (wp = wcschr(wp, '&'))) {
 				val = wcstoul(wp+1, 0, 16);
