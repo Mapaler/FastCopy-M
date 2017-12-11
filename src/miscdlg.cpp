@@ -450,7 +450,7 @@ BOOL BrowseDirDlgW(TWin *parentWin, UINT editCtl, WCHAR *title, int flg)
 
 										// 处理选择多个文件夹
 										if ((flg & BRDIR_CTRLADD) == 0 ||
-											(::GetAsyncKeyState(VK_CONTROL) & 0x8000) == 0) {
+											(::GetKeyState(VK_CONTROL) & 0x8000) == 0) {
 											pathArray.Init();
 										}
 										for (DWORD i = 0; i < dwFolderCount; i++)
@@ -463,13 +463,20 @@ BOOL BrowseDirDlgW(TWin *parentWin, UINT editCtl, WCHAR *title, int flg)
 												if (SUCCEEDED(psi->GetDisplayName(SIGDN_FILESYSPATH,
 													&pszPath)))
 												{
+													if (fileBuf[0] == '\\') {
+														GetRootDirW(fileBuf, buf);
+														if (wcslen(buf) > wcslen(fileBuf)) { // netdrv root で末尾の \ がない
+															wcscpy(fileBuf, buf);
+														}
+													}
 													wcscpy(fileBuf, pszPath);
-													if (flg & BRDIR_BACKSLASH) {
-														MakePathW(buf, fileBuf, L"");
+													if ((flg & BRDIR_BACKSLASH)) {
+														MakePathW(buf, fileBuf, NULW);
 														wcscpy(fileBuf, buf);
 													}
 													pathArray.RegisterPath(fileBuf);
-													pathArray.GetMultiPath(fileBuf, MAX_PATH_EX);
+													pathArray.GetMultiPath(fileBuf, MAX_PATH_EX, CRLF, NULW,
+														(flg & BRDIR_TAILCR) ? TRUE : FALSE);
 													CoTaskMemFree(pszPath);
 												}
 												psi->Release();
@@ -656,7 +663,7 @@ BOOL BrowseDirDlgW(TWin *parentWin, UINT editCtl, WCHAR *title, int flg)
 
 										// 处理选择多个文件夹
 										if ((flg & BRDIR_CTRLADD) == 0 ||
-											(::GetAsyncKeyState(VK_CONTROL) & 0x8000) == 0) {
+											(::GetKeyState(VK_CONTROL) & 0x8000) == 0) {
 											pathArray.Init();
 										}
 										for (DWORD i = 0; i < dwFolderCount; i++)
@@ -669,13 +676,20 @@ BOOL BrowseDirDlgW(TWin *parentWin, UINT editCtl, WCHAR *title, int flg)
 												if (SUCCEEDED(psi->GetDisplayName(SIGDN_FILESYSPATH,
 													&pszPath)))
 												{
+													if (fileBuf[0] == '\\') {
+														GetRootDirW(fileBuf, buf);
+														if (wcslen(buf) > wcslen(fileBuf)) { // netdrv root で末尾の \ がない
+															wcscpy(fileBuf, buf);
+														}
+													}
 													wcscpy(fileBuf, pszPath);
-													if (flg & BRDIR_BACKSLASH) {
-														MakePathW(buf, fileBuf, L"");
+													if ((flg & BRDIR_BACKSLASH)) {
+														MakePathW(buf, fileBuf, NULW);
 														wcscpy(fileBuf, buf);
 													}
 													pathArray.RegisterPath(fileBuf);
-													pathArray.GetMultiPath(fileBuf, MAX_PATH_EX);
+													pathArray.GetMultiPath(fileBuf, MAX_PATH_EX, CRLF, NULW,
+														(flg & BRDIR_TAILCR) ? TRUE : FALSE);
 													CoTaskMemFree(pszPath);
 												}
 												psi->Release();
