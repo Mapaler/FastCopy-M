@@ -37,6 +37,14 @@ TFastCopyApp::TFastCopyApp(HINSTANCE _hI, LPSTR _cmdLine, int _nCmdShow)
 
 	Debug("FileStat=%zd\n", offsetof(FileStat, cFileName));
 
+	TInetSetUserAgent(Fmt("FastCopy %s%s", GetVersionStr(),
+#ifdef _WIN64
+	"(x64)"
+#else
+	""
+#endif
+	));
+
 //	LoadLibrary("SHELL32.DLL");
 //	LoadLibrary("COMCTL32.DLL");
 //	LoadLibrary("COMDLG32.dll");
@@ -87,9 +95,10 @@ int WINAPI WinMain(HINSTANCE _hI, HINSTANCE, LPSTR arg, int show)
   説  明 ： 
   注  意 ： 
 =========================================================================*/
-TMainDlg::TMainDlg() : TDlg(MAIN_DIALOG), aboutDlg(this), setupDlg(&cfg, this),
-	jobDlg(&cfg, this), finActDlg(&cfg, this),
-	pathEdit(this), errEdit(this)
+TMainDlg::TMainDlg() : TDlg(MAIN_DIALOG),
+	aboutDlg(this), setupDlg(&cfg, this), jobDlg(&cfg, this), finActDlg(&cfg, this),
+	srcEdit(MAX_SRCEDITCR, this), pathEdit(this), errEdit(this),
+	speedSlider(this), speedStatic(this), topCheck(this), listBtn(this)
 #ifdef USE_LISTVIEW
 	, listHead(this), listView(this)
 #endif
@@ -123,7 +132,7 @@ TMainDlg::TMainDlg() : TDlg(MAIN_DIALOG), aboutDlg(this), setupDlg(&cfg, this),
 	}
 	if (!cfg.ReadIni(user_dir, virtual_dir)) {
 		MessageBox("Can't initialize...", FASTCOPY, MB_OK);
-		PostQuitMessage(0);
+		TApp::Exit(-1);
 		return;
 	}
 
@@ -146,6 +155,7 @@ TMainDlg::TMainDlg() : TDlg(MAIN_DIALOG), aboutDlg(this), setupDlg(&cfg, this),
 	maxTempRunNum = 0;
 	forceStart = cfg.forceStart;
 	finishNotify = cfg.finishNotify;
+	dlsvtMode = cfg.dlsvtMode;
 
 	isTaskTray = FALSE;
 	noConfirmDel = noConfirmStop = FALSE;
@@ -170,6 +180,10 @@ TMainDlg::TMainDlg() : TDlg(MAIN_DIALOG), aboutDlg(this), setupDlg(&cfg, this),
 	listBufOffset = 0;
 	timerCnt = 0;
 	timerLast = 0;
+
+	captureMode = FALSE;
+	lastYPos = 0;
+	dividYPos = 0;
 
 	statusFont = NULL;
 	memset(&statusLogFont, 0, sizeof(statusLogFont));
@@ -3321,7 +3335,7 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 		comma_int64(s1, ti.total.allErrFiles);
 		comma_int64(s2, ti.total.allErrDirs);
 
-		sprintf(buf, ti.total.errFiles || ti.total.errDirs ?
+		sprintf(buf, ti.total.allErrFiles || ti.total.allErrDirs ?
 			"%s (%s : %s  %s : %s)" : "%s"
 			, LoadStr(IDS_Info_Finished) //Finished
 			, LoadStr(IDS_Info_ErrorFiles) //ErrorFiles

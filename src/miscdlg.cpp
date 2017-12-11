@@ -341,7 +341,8 @@ BOOL BrowseDirDlgW(TWin *parentWin, UINT editCtl, WCHAR *title, int flg)
 
 	TBrowseDirDlgW	dirDlg(title, fileBuf, flg, parentWin);
 	TOpenFileDlg	fileDlg(parentWin, TOpenFileDlg::MULTI_OPEN,
-
+		OFDLG_DIRSELECT|((flg & BRDIR_TAILCR) ? OFDLG_TAILCR : 0));
+		
 	//新式选择文件夹
 	HRESULT hr = S_OK;
 
