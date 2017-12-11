@@ -72,11 +72,11 @@
 <body bgcolor="#eeffff">
 
 <div align="center">
-<h1 class="help_head1">FastCopy ver3.32</h1>
+<h1 class="help_head1">FastCopy ver3.40</h1>
 </div>
 <div class="help_all">
 
-<div align="right">2017/08/07 H.Shirouzu (白水啓章)</div>
+<div align="right">2017/12/09 H.Shirouzu (白水啓章)</div>
 
 <a name="index"/>
 <h2 class="help_head2">Index</h2>
@@ -158,8 +158,8 @@
 <a name="environment"/>
 <h2 class="help_head2">3. 動作環境</h2>
 <div class="help_section">
-	Windows XP SP3/Vista/7/8/8.1/10<br>
-	Windows Server 2003(&R2)/2008(&R2)/2012(&R2)/2016
+	Windows Vista/7/8/8.1/10<br>
+	Windows Server 2008(&R2)/2012(&R2)/2016
 </div>
 
 <a name="install"/>
@@ -174,9 +174,7 @@
 
 	<h3 class="help_head3">アンインストール</h3>
 	<div class="help_sub_section">
-		インストールディレクトリの setup.exe を使ってアンインストールすることができます。<br>
-		（ショートカットの削除とシェル拡張の解除を行います）<br>
-		なお、シェル拡張を行っていた場合、完全な削除は OS再起動後になります。<br>
+		インストールディレクトリの setup.exe を使ってアンインストールすることができます。
 	</div>
 </div>
 
@@ -191,8 +189,7 @@
 	<div class="help_sub_section">
 		Source(コピー元) と DestDir(コピー先ディレクトリ) を指定します。<br>
 		（デフォルトでは、過去10世代分記憶します）<br>
-		Source を複数指定（ドラッグ＆ドロップ可）する場合は、セミコロンで区切ります。<br>
-		（なお、セミコロンを含むパス名は、""で括って指定します）<br>
+		Source を複数指定（ドラッグ＆ドロップ可）する場合は、改行して各行にパス名を書きます。<br>
 		<br>
 		Source へのドラッグ＆ドロップ時に CTLキーを押している場合、現在の Source 内容に追加する形になります。（押していない場合は、現在の Source 内容はクリアされます）<br>
 		また、DestDir 入力欄への（ディレクトリの）ドロップも可能です。
@@ -271,7 +268,7 @@
 		 （各ステージが、複数のファイルを跨ったパイプラインのように並列して処理されます）
 		 </td></tr>
 		<tr><td nowrap><strong>完了時間予測</strong></td>
-		<td>コピー開始前に、コピー元の総ファイル数・総ファイルサイズを調べることで、完了時間を予測します。
+		<td>コピー開始前に、総ファイル数・総ファイルサイズを調べることで、完了時間を予測します。
 （なお、削除モードでの予測はできません。また、移動モードの場合、削除時間は予測に含んでいません）</td></tr>
 		<tr><td nowrap><strong>Top</strong></td>
 		<td>常に最前面に表示します。</td></tr>
@@ -415,7 +412,14 @@
 		</div>
 		<h4 class="help_head4">ヘルプ</h4>
 		<div class="help_sub_section">
-			このファイルを開きます。
+			<table class="help_table" border="3">
+			<tr><td nowrap><strong>ヘルプ</strong></td><td>このヘルプを開きます</td></tr>
+			<tr><td nowrap><strong>アップデート確認</strong></td>
+				<td><a href="https://ipmsg.org/fastcopy-update.dat">https://ipmsg.org/fastcopy-update.dat</a> にアクセスして、アップデートが存在するか問い合わせます。</td></tr>
+			<tr><td nowrap><strong>サポート掲示板</strong></td><td>FastCopy関連の質問や提案をする掲示板です</td></tr>
+			<tr><td nowrap><strong>最新版URL</strong></td><td>FastCopyのホームページを開きます</td></tr>
+			<tr><td nowrap><strong>FastCopyについて</strong></td><td>バージョン＆著作権を表示します</td></tr>
+			</table>
 		</div>
 		<a name="elevate">
 		<h4 class="help_head4">特権</h4>
@@ -467,6 +471,12 @@
 				転送速度が遅くなったり、OSのファイルキャッシュによって、他のプログラムのメモリがスワップアウトされる可能性が増えるのでお薦めしません。</td></tr>
 			<tr><td nowrap><strong>NTFS系/FAT系</strong></td><td>指定サイズ未満の書込み時に<strong>ダイレクトI/Oを使いません</strong>。<br>
 読込みOSキャッシュを利用と同じデメリットがありますが、ごく小さなファイルに限ってはヘッドシークの低減によって高速化につながるため、デフォルトではNTFS64KB未満、FATでは128KB未満では利用する設定になっています。</td></tr>
+			</table>
+			<br>
+
+			<table class="help_table" border="4">
+			<tr><th colspan="2">ディレクトリ読み取り</th></tr>
+			<tr><td nowrap><strong>一括読み取りを有効にする</strong></td><td><a href="https://msdn.microsoft.com/ja-jp/library/windows/desktop/aa364419(v=vs.85).aspx" target="_blank">FIND_FIRST_EX_LARGE_FETCH</a>フラグを有効にして、ディレクトリエントリの読み取り速度を向上させます。</td></tr>
 			</table>
 		</div>
 
@@ -582,7 +592,7 @@
 			<tr><td nowrap><strong>表示更新間隔</strong></td><td>実行時の表示更新時間を指定します。アイコンの回転速度にも同期します</td></tr>
 			<tr><td><strong>終了時にバルーン通知</td><td>タスクトレイ格納時に終了をバルーン通知で知らせます</td></tr>
 			<tr><td><strong>コピー中は、自動スリープを防止する</td><td>OS設定で自動スリープが設定されていても、コピー中はスリープしません。<br>（ただしエラーダイアログ表示中は移行を防止しません）</td></tr>
-			<tr><td nowrap><strong>英語UI</strong></td><td>英語UIモードになります。再起動後に有効です</td></tr>
+			<tr><td nowrap><strong>English UI</strong></td><td>英語UIモードになります。再起動後に有効です</td></tr>
 			</table>
 		</div>
 	</div>
@@ -793,9 +803,16 @@
 
 <table class="help_table" border="4">
 <tr><th>Version</th><th>説明</th></tr>
+<tr><td>v3.40</td><td>
+アップデート機能（メニュー → ヘルプ → アップデート確認）の追加。<br>
+Source入力欄を複数行表示可能にし（セミコロンではなく）改行で複数ファイルを表現する形に。<br>
+予測時間の精度を向上（Sourceに加えて、Destも事前探索する形に）。<br>
+Sourceボタンの初期動作をファイル選択画面に変更（設定→その他、から変更可能）。<br>
+LargeFetch機能の無効化を選択可能に（設定→I/O設定）。
+</td></tr>
 <tr><td>v3.32</td><td>
-非日本語環境で、Aboutダイアログを開くと例外が発生していたのを修正<br>
-/srcfile_w= で指定したファイルのBOMを正しく認識できていなかったのを修正
+非日本語環境で、Aboutダイアログを開くと例外が発生していたのを修正。<br>
+/srcfile_w= で指定したファイルのBOMを正しく認識できていなかったのを修正。
 </td></tr>
 <tr><td>v3.31</td><td>
 メインバッファ初期サイズを拡大（x64:128MB→256MB、x86:64MB→128MB）。<br>

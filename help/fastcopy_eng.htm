@@ -72,11 +72,11 @@
 <body bgcolor="#eeffff">
 
 <div align="center">
-<h1 class="help_head1">FastCopy ver3.32</h1>
+<h1 class="help_head1">FastCopy ver3.40</h1>
 </div>
 <div class="help_all">
 
-<div align="right">2017/08/07 H.Shirouzu</div>
+<div align="right">2017/12/09 H.Shirouzu</div>
 
 <center>
 <strong>Warning :</strong> This document was made with the Japanese-English translation software. <br>
@@ -178,8 +178,7 @@ I want to correct this document. (If you made corrections, please send to <a hre
 
 	<h3 class="help_head3">Uninstallation</h3>
 	<div class="help_sub_section">
-		If you want to uninstall, please run setup.exe located in the installed directory.<br>
-		(Uninstall removes shortcut and unregister shell extension)
+		If you want to uninstall, please run setup.exe located in the installed directory.
 	</div>
 </div>
 
@@ -194,7 +193,7 @@ I want to correct this document. (If you made corrections, please send to <a hre
 	<h3 class="help_head3">Source / DestDir</h3>
 	<div class="help_sub_section">
 		FastCopy retains the history of 10 entries in Source/DestDir. (This can be increased or decreased in the Option | Main settings dialog.)<br>
-		If you want to specify two or more files/dirs in the Source field, please use semicolon as a separator.<br>
+		If you want to specify two or more files/dirs in the Source field, please describe a pathname line by line.<br>
 		If you want to add files/dirs to the Source field by using drag and drop, simply drop with pushing CTRL.<br>
 		<br>
 		You can also drag & drop to DestDir field.
@@ -272,7 +271,7 @@ I want to correct this document. (If you made corrections, please send to <a hre
 		... Action detail: Read(Src) -> MD5(Src) -> Write(Dst) -> Read(Dst) -> MD5(Dst) -> Compare MD5(Src/Dst) (Of course, all actions are processed in parallel as much as possible)
 		</td></tr>
 		<tr><td nowrap><strong>Estimate</strong></td>
-		<td>Display the estimated complete time. This will make FastCopy to investigate source tree before starting.</td></tr>
+		<td>Display the estimated complete time. This will make FastCopy to investigate files/dirs to be copied, before starting.</td></tr>
 		<tr><td nowrap><strong>Top</strong></td>
 		<td>FastCopy window is always top-level.</td></tr>
 		<tr><td nowrap><strong>Start at once</strong></td>
@@ -419,7 +418,14 @@ It can be specified include filter strings(<a href="#wild_card">UNIX wildcard fo
 		</div>
 		<h4 class="help_head4">Help</h4>
 		<div class="help_sub_section">
-			Show this help.
+			<table class="help_table" border="3">
+			<tr><td nowrap><strong>Help</strong></td><td>Show this help</td></tr>
+			<tr><td nowrap><strong>Check Update</strong></td>
+				<td>Access <a href="https://ipmsg.org/fastcopy-update.dat">https://ipmsg.org/fastcopy-update.dat</a> and check to require to update.</td></tr>
+			<tr><td nowrap><strong>Support Forum</strong></td><td>Questions/Opinions about FastCopy</td></tr>
+			<tr><td nowrap><strong>Lastest Version</strong></td><td>Open FastCopy WebPage</td></tr>
+			<tr><td nowrap><strong>About FastCopy</strong></td><td>Show Version and Copyright</td></tr>
+			</table>
 		</div>
 		<a name="elevate">
 		<h4 class="help_head4">Elevate</h4>
@@ -468,6 +474,11 @@ It can be specified include filter strings(<a href="#wild_card">UNIX wildcard fo
 			<tr><td nowrap><strong>on NTFS/on FAT</strong></td><td>It is not use DirectI/O, if the file that filesize is under than specified size(KB)<br>
 demerit points are same as read, but sometimes many head seeks occur in writing very small files by DirectI/O.</td></tr>
 			</table>
+			<br>
+
+			<table class="help_table" border="4">
+			<tr><th colspan="2">Directory Fetch</th></tr>
+			<tr><td nowrap><strong>Enable Large fetch mode (Win7 or later only)</strong></td><td>Enable <a href="https://msdn.microsoft.com/ja-jp/library/windows/desktop/aa364419(v=vs.85).aspx" target="_blank">FIND_FIRST_EX_LARGE_FETCH</a> flag and improve directory fetch performance.</td></tr>
 		</div>
 
 		<a name="setting_physical"/>
@@ -801,6 +812,13 @@ demerit points are same as read, but sometimes many head seeks occur in writing 
 <table class="help_table" border="4">
 <tr><th>Version</th><th>Detail</th></tr>
 
+<tr><td>v3.40</td><td>
+Add Update Check (Menu -&gt; Help -&gt; Check Update).<br>
+Support multi-line input in Source Edit Control.<br>
+Improve estimating precision. (Investigate not only source but also destination)<br>
+Change default action of Source button. (It shows FileSelection Dialog as default. It can be changed in Settings -&gt; Misc)<br>
+Support to enable/disable Large Fetch option. (Settings -&gt; I/O Settings)
+</td></tr>
 <tr><td>v3.32</td><td>
 Fix an exception occurred when opening the AboutDialog.<br>
 Fix to interpret BOM that is specified by /srcfile_w option.
