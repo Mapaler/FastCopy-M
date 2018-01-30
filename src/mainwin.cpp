@@ -658,7 +658,7 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 	}
 	else {
 		Show();
-
+		/* //去除自动检查更新
 		if (cfg.updCheck) {	// 最新版確認
 			time_t	now = time(NULL);
 
@@ -668,6 +668,7 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 				UpdateCheck(TRUE);
 			}
 		}
+		*/
 	}
 
 	return	TRUE;

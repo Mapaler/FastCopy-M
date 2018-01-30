@@ -605,7 +605,7 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 	dlsvtMode		= ini.GetInt(DLSVT_KEY, 0);
 	largeFetch		= ini.GetInt(LARGE_FETCH_KEY, 1);
 	dirSel			= ini.GetInt(DIRSEL_KEY, 0);
-	updCheck		= ini.GetInt(UPDCHECK_KEY, 1);
+	updCheck		= ini.GetInt(UPDCHECK_KEY, 0); //设置0，启动时不检查更新
 	lastUpdCheck	= ini.GetInt64(LASTUPDCHECK_KEY, 0);
 
 	infoSpan		= ini.GetInt(INFOSPAN_KEY, DEFAULT_INFOSPAN);

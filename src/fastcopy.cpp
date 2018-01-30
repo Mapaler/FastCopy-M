@@ -5154,7 +5154,7 @@ void FastCopy::Aborting(BOOL is_auto)
 {
 	isAbort = TRUE;
 	WCHAR	err_msg[256];
-	swprintf(err_msg, L"%s%s", LoadStrW(IDS_Err_Aborting), is_auto ? L" (automatic)" : L"");//L" Aborted by User"
+	swprintf(err_msg, L"%s%s", LoadStrW(IDS_Err_Aborting), is_auto ? LoadStrW(IDS_Err_Aborting_Automatic) : L"");//L" Aborted by User"
 	WriteErrLog(err_msg);
 	if (isExec && isListing) {
 		PutList(err_msg, PL_ERRMSG);
