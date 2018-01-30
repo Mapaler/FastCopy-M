@@ -116,6 +116,7 @@ protected:
 	TWin			*parent;
 	LPOFNHOOKPROC	hook;
 	OpenMode		openMode;
+	VBuf			vbuf;
 
 public:
 	TOpenFileDlg(TWin *_parent, OpenMode _openMode=OPEN, int _flg=0, LPOFNHOOKPROC _hook=NULL) {
@@ -128,7 +129,7 @@ public:
 	static UINT WINAPI OpenFileDlgProc(HWND hdlg, UINT msg, WPARAM wParam, LPARAM lParam);
 	virtual BOOL AttachWnd(HWND _hWnd);
 	virtual BOOL EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl);
-	virtual BOOL Exec(WCHAR *target, WCHAR *title=NULL, WCHAR *filter=NULL, WCHAR *defaultDir=NULL);
+	virtual BOOL Exec(WCHAR *title=NULL, WCHAR *filter=NULL, WCHAR *defaultDir=NULL);
 	virtual BOOL Exec(UINT editCtl, WCHAR *title=NULL, WCHAR *filter=NULL, WCHAR *defaultDir=NULL,
 						WCHAR *init_data=NULL);
 	virtual BOOL EventApp(UINT uMsg, WPARAM wParam, LPARAM lParam);

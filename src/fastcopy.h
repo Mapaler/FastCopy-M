@@ -1,9 +1,9 @@
 ﻿/* static char *fastcopy_id = 
-	"@(#)Copyright (C) 2004-2017 H.Shirouzu		fastcopy.h	Ver3.40"; */
+	"@(#)Copyright (C) 2004-2018 H.Shirouzu		fastcopy.h	Ver3.41"; */
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2017-07-30(Sun)
+	Update					: 2018-01-27(Sat)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-09
@@ -338,7 +338,6 @@ public:
 		int		debugFlags;		// (I/ )	// 1: timestamp debug
 		size_t	bufSize;		// (I/ )
 		int		maxOpenFiles;	// (I/ )
-		size_t	maxTransSize;	// (I/ )
 		size_t	maxOvlSize;		// (I/ )
 		DWORD	maxOvlNum;		// (I/ )
 		size_t	maxAttrSize;	// (I/ )
@@ -549,6 +548,7 @@ protected:
 	FINDEX_INFO_LEVELS
 			findInfoLv; // FindFirstFileEx用info level
 	DWORD	findFlags;  // FindFirstFileEx用flags
+	DWORD	frdFlags;	// ForceRemoveDirectoryW用flags
 
 	// セクタ情報など
 	int		srcSectorSize;

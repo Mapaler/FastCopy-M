@@ -1,9 +1,9 @@
 ﻿static char *cfg_id = 
-	"@(#)Copyright (C) 2004-2017 H.Shirouzu		cfg.cpp	ver3.40";
+	"@(#)Copyright (C) 2004-2018 H.Shirouzu		cfg.cpp	ver3.41";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2017-07-30(Sun)
+	Update					: 2018-01-27(Sat)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-08-23
@@ -56,7 +56,6 @@
 #define ISRUNASBUTTON_KEY		"is_runas_button"
 #define ISSAMEDIRRENAME_KEY		"is_samedir_rename"
 #define BUFSIZE_KEY				"bufsize"
-#define MAXTRANSSIZE_KEY		"max_transize"
 #define MAXRUNNUM_KEY			"max_runnum"
 #define MAXOVLSIZE_KEY			"max_ovlsize"
 #define MAXOVLNUM_KEY			"max_ovlnum"
@@ -110,6 +109,8 @@
 #define DLSVT_KEY				"dlsvt"
 #define LARGE_FETCH_KEY			"large_fetch"
 #define DIRSEL_KEY				"dirsel"
+#define UPDCHECK_KEY			"updCheck"
+#define LASTUPDCHECK_KEY		"lastUpdCheck"
 
 #define NONBUFMINSIZENTFS_KEY	"nonbuf_minsize_ntfs2"
 #define NONBUFMINSIZEFAT_KEY	"nonbuf_minsize_fat"
@@ -143,9 +144,9 @@
 #define DEFAULT_FORCESTART		0
 #define DEFAULT_MAXRUNNUM		3
 #define DEFAULT_MAXOVLNUM		4
+#define DEFAULT_MAXOVLSIZE		1
 #ifdef _WIN64
 #define DEFAULT_BUFSIZE			256
-#define DEFAULT_MAXTRANSSIZE	16
 #define DEFAULT_MAXATTRSIZE		(8192)
 #define DEFAULT_MAXDIRSIZE		(8192)
 #define DEFAULT_MAXMOVESIZE		(128)
@@ -154,7 +155,6 @@
 #define DEFAULT_DIGESTSIZE		(16)
 #else
 #define DEFAULT_BUFSIZE			128
-#define DEFAULT_MAXTRANSSIZE	8
 #define DEFAULT_MAXATTRSIZE		(128)
 #define DEFAULT_MAXDIRSIZE		(128)
 #define DEFAULT_MAXMOVESIZE		(16)
@@ -500,17 +500,13 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 	iniVersion		= ini.GetInt(INI_VERSION_KEY, CUR_INI_VERSION);
 	bufSize			= ini.GetInt(BUFSIZE_KEY, DEFAULT_BUFSIZE);
 	maxRunNum		= ini.GetInt(MAXRUNNUM_KEY, DEFAULT_MAXRUNNUM);
-	maxTransSize	= ini.GetInt(MAXTRANSSIZE_KEY, DEFAULT_MAXTRANSSIZE);
-	maxTransSize	= min(maxTransSize, 4095);
-	maxOvlNum		= ini.GetInt(MAXOVLNUM_KEY, DEFAULT_MAXOVLNUM);
-	maxOvlSize		= ini.GetInt(MAXOVLSIZE_KEY, 0);
-	maxOvlSize		= min(maxOvlSize, 4095);
 
-	if ((maxTransSize % maxOvlNum)) {
-		maxTransSize = (maxTransSize + maxOvlNum - 1) / maxOvlNum * maxOvlNum;
-	}
-	if (bufSize < maxTransSize * BUFIO_SIZERATIO) {
-		bufSize = maxTransSize * BUFIO_SIZERATIO;
+	maxOvlNum		= ini.GetInt(MAXOVLNUM_KEY, DEFAULT_MAXOVLNUM);
+	maxOvlSize		= ini.GetInt(MAXOVLSIZE_KEY, DEFAULT_MAXOVLSIZE);
+	maxOvlSize		= min(max(maxOvlSize, 1), 4095);
+
+	if (bufSize < maxOvlNum * maxOvlSize * BUFIO_SIZERATIO) {
+		bufSize = maxOvlNum * maxOvlSize * BUFIO_SIZERATIO;
 	}
 	maxOpenFiles	= ini.GetInt(MAXOPENFILES_KEY, DEFAULT_MAXOPENFILES);
 
@@ -609,6 +605,8 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 	dlsvtMode		= ini.GetInt(DLSVT_KEY, 0);
 	largeFetch		= ini.GetInt(LARGE_FETCH_KEY, 1);
 	dirSel			= ini.GetInt(DIRSEL_KEY, 0);
+	updCheck		= ini.GetInt(UPDCHECK_KEY, 1);
+	lastUpdCheck	= ini.GetInt64(LASTUPDCHECK_KEY, 0);
 
 	infoSpan		= ini.GetInt(INFOSPAN_KEY, DEFAULT_INFOSPAN);
 	if (infoSpan < 0 || infoSpan > 2) infoSpan = DEFAULT_INFOSPAN;
@@ -709,10 +707,6 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 		job.enableStream = ini.GetInt(STREAM_KEY, FALSE);
 		job.enableVerify = ini.GetInt(VERIFY_KEY, FALSE);
 		job.isFilter = ini.GetInt(FILTER_KEY, FALSE);
-		job.bufSize = ini.GetInt(BUFSIZE_KEY, DEFAULT_BUFSIZE);
-		if (job.bufSize < maxTransSize * BUFIO_SIZERATIO) {
-			job.bufSize = maxTransSize * BUFIO_SIZERATIO;
-		}
 
 		AddJobW(&job);
 	}
@@ -792,9 +786,9 @@ BOOL Cfg::WriteIni(void)
 
 	ini.SetInt(BUFSIZE_KEY, bufSize);
 	ini.SetInt(MAXRUNNUM_KEY, maxRunNum);
-	ini.SetInt(MAXTRANSSIZE_KEY, maxTransSize);
+
 	ini.SetInt(MAXOVLNUM_KEY, maxOvlNum);
-//	ini.SetInt(MAXOVLSIZE_KEY, maxOvlSize);
+	ini.SetInt(MAXOVLSIZE_KEY, maxOvlSize);
 
 	ini.SetInt(MINSECTOR_KEY, minSectorSize);
 
@@ -867,6 +861,8 @@ BOOL Cfg::WriteIni(void)
 	ini.SetInt(DLSVT_KEY, dlsvtMode);
 	ini.SetInt(LARGE_FETCH_KEY, largeFetch);
 	ini.SetInt(DIRSEL_KEY, dirSel);
+	ini.SetInt(UPDCHECK_KEY, updCheck);
+	ini.SetInt64(LASTUPDCHECK_KEY, lastUpdCheck);
 
 	ini.SetInt(INFOSPAN_KEY, infoSpan);
 
@@ -947,7 +943,6 @@ BOOL Cfg::WriteIni(void)
 		ini.SetInt(STREAM_KEY,		job->enableStream);
 		ini.SetInt(VERIFY_KEY,		job->enableVerify);
 		ini.SetInt(FILTER_KEY,		job->isFilter);
-		ini.SetInt(BUFSIZE_KEY,		job->bufSize);
 	}
 	sprintf(buf, FMT_JOB_KEY, i);
 	ini.DelSection(buf);

@@ -33,6 +33,7 @@ protected:
 	Cfg			*cfg;
 	TSetupDlg	*setupDlg;
 	SheetDefSv	*sv;
+	BOOL		initDone;
 
 public:
 	TSetupSheet() { cfg = NULL; sv = NULL; }

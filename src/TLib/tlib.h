@@ -752,6 +752,10 @@ public:
 		obj->prev = NULL;
 		num--;
 	}
+	void UpdObj(T *obj) {
+		DelObj(obj);
+		AddObj(obj);
+	}
 	void PushObj(T *obj) { // add to top
 		obj->next = top.next;
 		obj->prev = &top;
@@ -835,6 +839,7 @@ public:
 	}
 	void PutObj(int list_type, T *obj)  { list[list_type].AddObj(obj);         }
 	void DelObj(int list_type, T *obj)  { list[list_type].DelObj(obj);         }
+	void UpdObj(int list_type, T *obj)  { list[list_type].UpdObj(obj);         }
 	T	*TopObj(int list_type)          { return list[list_type].TopObj();     }
 	T	*EndObj(int list_type)          { return list[list_type].EndObj();     }
 	T	*NextObj(int list_type, T *obj) { return list[list_type].NextObj(obj); }
@@ -1062,8 +1067,6 @@ public:
 #include "tinet.h"
 #include "ipdict.h"
 
-#if _MSC_VER >= 1900 && _MSC_VER <= 1911
 void TGsFailureHack();
-#endif
 
 #endif

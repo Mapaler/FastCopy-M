@@ -1,9 +1,9 @@
 ﻿/* static char *cfg_id = 
-	"@(#)Copyright (C) 2005-2017 H.Shirouzu		cfg.h	Ver3.31"; */
+	"@(#)Copyright (C) 2005-2018 H.Shirouzu		cfg.h	Ver3.41"; */
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2005-01-23(Sun)
-	Update					: 2017-07-30(Sun)
+	Update					: 2018-01-27(Sat)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -18,7 +18,6 @@ struct Job {
 	WCHAR	*src;
 	WCHAR	*dst;
 	WCHAR	*cmd;
-	int		bufSize;
 	int		estimateMode;
 	int		diskMode;
 	BOOL	ignoreErr;
@@ -141,7 +140,6 @@ public:
 	int		iniVersion;
 	int		bufSize;		// MB
 	int		maxRunNum;
-	int		maxTransSize;	// MB
 	int		maxOvlSize;		// MB
 	int		maxOvlNum;
 	int		maxOpenFiles;
@@ -211,6 +209,8 @@ public:
 	BOOL	dlsvtMode; // 0: none, 1: fat, 2: always
 	BOOL	largeFetch;
 	BOOL	dirSel;
+	BOOL	updCheck;
+	time_t	lastUpdCheck;
 
 	struct ShExtCfg {
 		BOOL	autoClose;

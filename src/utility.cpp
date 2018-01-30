@@ -1,9 +1,9 @@
 ﻿static char *utility_id = 
-	"@(#)Copyright (C) 2004-2016 H.Shirouzu		utility.cpp	ver3.30";
+	"@(#)Copyright (C) 2004-2018 H.Shirouzu		utility.cpp	ver3.41";
 /* ========================================================================
 	Project  Name			: general routine
 	Create					: 2004-09-15(Wed)
-	Update					: 2017-03-06(Mon)
+	Update					: 2018-01-27(Sat)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -283,6 +283,10 @@ BOOL PathArray::ReplacePath(int idx, WCHAR *new_path)
 
 PathArray& PathArray::operator=(const PathArray& init)
 {
+	if (&init == this) {
+		return	*this;
+	}
+
 	Init();
 
 	pathArray = (PathObj **)malloc(((((num = init.num) / MAX_ALLOC) + 1) * MAX_ALLOC)
@@ -454,19 +458,23 @@ int DriveMng::SetDriveID(const WCHAR *_root)
 		HANDLE	hFile = ::CreateFileW(vol_name, FILE_READ_ATTRIBUTES,
 								FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, 0);
 		if (hFile != INVALID_HANDLE_VALUE) {
-			VOLUME_DISK_EXTENTS vde = {};
+			DynBuf	buf(32 * 1024);
+			VOLUME_DISK_EXTENTS &vde = *(VOLUME_DISK_EXTENTS *)buf.Buf();
 			DWORD	size;
 			DWORD	val = 0;
 			if (::DeviceIoControl(hFile, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS, 0, 0,
-					&vde, sizeof(vde), &size, 0) || GetLastError() == ERROR_MORE_DATA) {
+					&vde, (DWORD)buf.Size(), &size, 0)) {
 				if (vde.NumberOfDiskExtents >= 1) {
 					// SetDriveMapが ID: 1～Nを利用するため、オフセット0x1000を加算
 					val = vde.Extents[0].DiskNumber | 0x1000;
-					//Debug("disk id = %d\n", vde.Extents[0].DiskNumber);
+					//for (auto i = 0; i < vde.NumberOfDiskExtents; i++) {
+					//	DebugW(L"disk id(%d / %s / %s) = %d\n",
+					//		i, root, vol_name, vde.Extents[i].DiskNumber);
+					//}
 				}
 			}
 			else {
-				Debug("IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS err=%x\n", GetLastError());
+				Debug("IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS err=%x %s\n", GetLastError(), root);
 			}
 			::CloseHandle(hFile);
 			if (val) {
@@ -692,7 +700,47 @@ BOOL ForceRemoveDirectoryW(const WCHAR *path, DWORD flags)
 	if (::RemoveDirectoryW(path)) {
 		return TRUE;
 	}
-	if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) {
+	if (flags == 0) {
+		return FALSE;
+	}
+
+	DWORD	err = ::GetLastError();
+	if ((flags & FMF_EMPTY_RETRY) && err == ERROR_DIR_NOT_EMPTY) {
+		HANDLE	fh;
+		BOOL	ret = FALSE;
+		DWORD	wso = 0;
+
+		if ((fh = ::FindFirstChangeNotificationW(path, TRUE, FILE_NOTIFY_CHANGE_FILE_NAME
+			|FILE_NOTIFY_CHANGE_DIR_NAME)) != INVALID_HANDLE_VALUE) {
+		}
+		if (::RemoveDirectoryW(path)) {
+			ret = TRUE;
+		}
+		else {
+			for (int i=0; i < 10; i++) {
+				wso = ::WaitForSingleObject(fh, 100);
+				if (::RemoveDirectoryW(path)) {
+					ret = TRUE;
+					DebugW(L"ForceRemoveDirectoryW2 cnt=%d wso=%d\n", i, wso);
+					break;
+				}
+				if (::GetLastError() != ERROR_DIR_NOT_EMPTY) {
+					break;
+				}
+				if (wso == WAIT_TIMEOUT) {
+					break;
+				}
+				::FindNextChangeNotification(fh);
+			}
+		}
+		::FindCloseChangeNotification(fh);
+
+		DebugW(L"ForceRemoveDirectoryW notify %d wso=%x\n", ret, wso);
+
+		return	ret ? ret : ::RemoveDirectoryW(path);
+	}
+
+	if (err != ERROR_ACCESS_DENIED) {
 		return FALSE;
 	}
 

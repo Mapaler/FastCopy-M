@@ -1,9 +1,9 @@
 ﻿static char *setuplg_id = 
-	"@(#)Copyright (C) 2015-2017 H.Shirouzu		setupdlg.cpp	ver3.30";
+	"@(#)Copyright (C) 2015-2018 H.Shirouzu		setupdlg.cpp	ver3.41";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2015-07-17(Fri)
-	Update					: 2017-03-06(Mon)
+	Update					: 2018-01-25(Thu)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-08-13
@@ -22,6 +22,7 @@ BOOL TSetupSheet::Create(int _resId, Cfg *_cfg, TSetupDlg *_parent)
 	cfg    = _cfg;
 	resId  = _resId;
 	parent = setupDlg = _parent;
+	initDone = FALSE;
 
 	if (resId == MAIN_SHEET) sv = new SheetDefSv;
 
@@ -41,6 +42,9 @@ BOOL TSetupSheet::EvCreate(LPARAM lParam)
 	SetWindowLong(GWL_EXSTYLE, GetWindowLong(GWL_EXSTYLE)|WS_EX_CONTROLPARENT);
 
 	SetData();
+
+	initDone = TRUE;
+
 	return	TRUE;
 }
 
@@ -48,30 +52,33 @@ BOOL TSetupSheet::CheckData()
 {
 	if (resId == MAIN_SHEET) {
 		if (GetDlgItemInt(BUFSIZE_EDIT) <
-			setupDlg->GetSheet(IO_SHEET)->GetDlgItemInt(MAXTRANS_EDIT) * BUFIO_SIZERATIO) {
+			setupDlg->GetSheet(IO_SHEET)->GetDlgItemInt(OVLSIZE_EDIT) *
+			setupDlg->GetSheet(IO_SHEET)->GetDlgItemInt(OVLNUM_EDIT) * BUFIO_SIZERATIO) {
+			SetDlgItemInt(BUFSIZE_EDIT, cfg->bufSize);
 			MessageBox(LoadStr(IDS_SMALLBUF_SETERR));
 			return	FALSE;
 		}
 		return	TRUE;
 	}
 	else if (resId == IO_SHEET) {
-		if (GetDlgItemInt(MAXTRANS_EDIT) <= 0 || GetDlgItemInt(MAXOVL_EDIT) <= 0) {
+		SetDlgItemInt(MAXTRANS_EDIT, GetDlgItemInt(OVLSIZE_EDIT) * GetDlgItemInt(OVLNUM_EDIT));
+
+		if (GetDlgItemInt(OVLSIZE_EDIT) <= 0 || GetDlgItemInt(OVLNUM_EDIT) <= 0) {
 			MessageBox(LoadStr(IDS_SMALLVAL_SETERR));
 			return	FALSE;
 		}
-		if (GetDlgItemInt(MAXTRANS_EDIT) > 4095) { // under 4GB
+		if (GetDlgItemInt(OVLSIZE_EDIT) > 4095) { // under 4GB
 			MessageBox(LoadStr(IDS_BIGVAL_SETERR));
 			return	FALSE;
 		}
-		if (GetDlgItemInt(MAXTRANS_EDIT) % GetDlgItemInt(MAXOVL_EDIT)) {
-			MessageBox(LoadStr(IDS_MAXOVL_SETERR));
-			return	FALSE;
-		}
-		if (GetDlgItemInt(MAXTRANS_EDIT) * BUFIO_SIZERATIO >
+		if (GetDlgItemInt(OVLSIZE_EDIT) * GetDlgItemInt(OVLNUM_EDIT) * BUFIO_SIZERATIO >
 			setupDlg->GetSheet(MAIN_SHEET)->GetDlgItemInt(BUFSIZE_EDIT)) {
+			SetDlgItemInt(OVLSIZE_EDIT, cfg->maxOvlSize);
+			SetDlgItemInt(OVLNUM_EDIT, cfg->maxOvlNum);
 			MessageBox(LoadStr(IDS_BIGIO_SETERR));
 			return	FALSE;
 		}
+
 		return	TRUE;
 	}
 	else if (resId == PHYSDRV_SHEET) {
@@ -136,8 +143,9 @@ BOOL TSetupSheet::SetData()
 		CheckDlgButton(OWDEL_CHECK, cfg->enableOwdel);
 	}
 	else if (resId == IO_SHEET) {
-		SetDlgItemInt(MAXTRANS_EDIT, cfg->maxTransSize);
-		SetDlgItemInt(MAXOVL_EDIT, cfg->maxOvlNum);
+		SetDlgItemInt(OVLSIZE_EDIT, cfg->maxOvlSize);
+		SetDlgItemInt(OVLNUM_EDIT, cfg->maxOvlNum);
+		SetDlgItemInt(MAXTRANS_EDIT, cfg->maxOvlSize * cfg->maxOvlNum);
 		if (cfg->minSectorSize == 0 || cfg->minSectorSize == 4096) {
 			CheckDlgButton(SECTOR4096_CHECK, cfg->minSectorSize == 4096);
 		} else {
@@ -202,6 +210,7 @@ BOOL TSetupSheet::SetData()
 		::EnableWindow(GetDlgItem(STREAMERRLOG_CHECK), TRUE);
 	}
 	else if (resId == MISC_SHEET) {
+		CheckDlgButton(UPDATE_CHK, cfg->updCheck);
 		CheckDlgButton(EXECCONFIRM_CHECK, cfg->execConfirm);
 		CheckDlgButton(DIRSEL_CHK, cfg->dirSel);
 		CheckDlgButton(TASKBAR_CHECK, cfg->taskbarMode);
@@ -272,8 +281,8 @@ BOOL TSetupSheet::GetData()
 		ReflectToMainWindow();
 	}
 	else if (resId == IO_SHEET) {
-		cfg->maxTransSize  = GetDlgItemInt(MAXTRANS_EDIT);
-		cfg->maxOvlNum     = GetDlgItemInt(MAXOVL_EDIT);
+		cfg->maxOvlSize  = GetDlgItemInt(OVLSIZE_EDIT);
+		cfg->maxOvlNum   = GetDlgItemInt(OVLNUM_EDIT);
 		if (cfg->minSectorSize == 0 || cfg->minSectorSize == 4096) {
 			cfg->minSectorSize = IsDlgButtonChecked(SECTOR4096_CHECK) ? 4096 : 0;
 		}
@@ -321,6 +330,7 @@ BOOL TSetupSheet::GetData()
 		cfg->streamErrLog   = IsDlgButtonChecked(STREAMERRLOG_CHECK);
 	}
 	else if (resId == MISC_SHEET) {
+		cfg->updCheck = IsDlgButtonChecked(UPDATE_CHK);
 		cfg->execConfirm = IsDlgButtonChecked(EXECCONFIRM_CHECK);
 		cfg->dirSel = IsDlgButtonChecked(DIRSEL_CHK);
 		cfg->taskbarMode = IsDlgButtonChecked(TASKBAR_CHECK);
@@ -380,6 +390,17 @@ BOOL TSetupSheet::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hWndCtl)
 		ShowHelpW(NULL, cfg->execDir, LoadStrW(IDS_FASTCOPYHELP), section);
 		return	TRUE;
 	}
+	else {
+		if (resId == IO_SHEET && initDone) {
+			if (wNotifyCode == EN_CHANGE && (wID == OVLSIZE_EDIT || wID == OVLNUM_EDIT)) {
+				int	os = GetDlgItemInt(OVLSIZE_EDIT);
+				int	on = GetDlgItemInt(OVLNUM_EDIT);
+				SetDlgItemInt(MAXTRANS_EDIT, os * on);
+				Debug("set %d\n", os * on);
+			}
+		}
+	}
+
 	return	FALSE;
 }
 

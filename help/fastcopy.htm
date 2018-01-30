@@ -72,11 +72,11 @@
 <body bgcolor="#eeffff">
 
 <div align="center">
-<h1 class="help_head1">FastCopy ver3.40</h1>
+<h1 class="help_head1">FastCopy ver3.41</h1>
 </div>
 <div class="help_all">
 
-<div align="right">2017/12/09 H.Shirouzu (白水啓章)</div>
+<div align="right">2018/01/27 H.Shirouzu (白水啓章)</div>
 
 <a name="index"/>
 <h2 class="help_head2">Index</h2>
@@ -142,7 +142,7 @@
 <h2 class="help_head2">2. ライセンス</h2>
 <div class="help_section">
 	<div class="help_license">
-	FastCopy ver3.x Copyright(C) 2004-2017 by SHIROUZU Hiroaki<br>
+	FastCopy ver3.x Copyright(C) 2004-2018 by SHIROUZU Hiroaki<br>
 	<br>
 	FastCopy ver3.x は GNU Public License ver3 のオープンソースソフトウェアです。<br>
 	詳細は同梱の <a href="license-gpl3.txt">license-gpl3.txt</a> をご覧ください。<br>
@@ -453,13 +453,14 @@
 			I/O用の基本パラメータ設定を行います。
 
 			<table class="help_table" border="4">
-			<tr><td nowrap><strong>最大I/O単位(MB)</strong></td><td>1回にOSにリクエストするReadFile/WriteFileのサイズを指定します<br>
-				「最大I/O単位÷重畳数」が実際のリクエストサイズになります。<br>
+			<tr><td nowrap><strong>I/O単位(MB)</strong></td><td>1回にOSにリクエストするReadFile/WriteFileのサイズを指定します<br>
+				「I/O単位 * 非同期I/O発行数」が、OS内で同時に実行される「最大I/Oサイズ」になります。<br>
+				なお、手元での実験では I/O単位を2～4MB以上に大きくするとネットワークドライブでの転送速度が少し低下するため、1MBを推奨値としています。<br>
 				（<a href="#mainwin">Buffer 指定</a>は、最大I/O単位の2倍以上が必要です）<br><br>
-				この値を極端に大きくすると、カーネル内リソース不足で I/Oエラーになることがあります。
+				この値（と下記の非同期I/O発行数）を極端に大きくすると、カーネル内リソース不足で I/Oエラーになることがあります。
 				</td></tr>
-			<tr><td nowrap><strong>重畳数（非同期I/O発行数）</strong></td><td><strong>（v3.0以降）</strong>ReadFile/WriteFile API発行毎に完了を待たず、並行してAPIを発行することで（特にネットワークドライブに対する）I/O速度を向上させています。<br>
-			（<strong>なお、重畳数を1にすると非同期I/Oを使わず、v2.xまでと同じ動作になります</strong>）</td></tr>
+			<tr><td nowrap><strong>非同期I/O発行数</strong></td><td><strong>（v3.0以降）</strong>ReadFile/WriteFile API発行毎に完了を待たず、並行してAPIを発行することで（特にネットワークドライブに対する）I/O速度を向上させています。<br>
+			（<strong>なお、この数を1にすると非同期I/Oを使わず、v2.xまでと同じ動作になります</strong>）</td></tr>
 			<tr><td nowrap><strong>最小セクタ長を4096と見なす</strong></td><td><strong>（v3.2以降）</strong>書き込み側ルートディレクトリは512byteセクタでかつ、（ジャンクション等により）配下ディレクトリが4096byteセクタに変化する場合に ON にします。<br>
 			（ONにすると、1byteファイルにも常に4096byteバッファを用意するため、小容量ファイルでのバッファ利用効率が若干下がります。なお、読み込み側ドライブ側セクタサイズ変化は自動追随するため、チェックは不要です）</td></tr>
 			</table>
@@ -587,6 +588,7 @@
 		<div class="help_sub_section">
 			その他のオプションです。
 			<table class="help_table" border="4">
+			<tr><td nowrap><strong>起動時にアップデート確認</strong></td><td>引数なしで起動した時に、最新版が存在するか確認します（前回の確認から1日以上経過している時のみ）</td></tr>
 			<tr><td nowrap><strong>実行前に確認ダイアログ</strong></td><td>実行前に確認します</td></tr>
 			<tr><td><strong>最小化時、タスクトレイではなく、タスクバーを使用</strong></td><td>タスクバーを使用します</td></tr>
 			<tr><td nowrap><strong>表示更新間隔</strong></td><td>実行時の表示更新時間を指定します。アイコンの回転速度にも同期します</td></tr>
@@ -788,7 +790,7 @@
 	<li>万一、異常終了（例外）した場合、fastcopy_exception.log が生成されます。
 	（作者に送ると、品質向上のための手がかりになります）
 </div>
-
+ 
 <a name="todo"/>
 <h2 class="help_head2">11. ToDo</h2>
 <div class="help_section">
@@ -803,6 +805,14 @@
 
 <table class="help_table" border="4">
 <tr><th>Version</th><th>説明</th></tr>
+<tr><td>v3.41</td><td>
+I/O関連パラメータと設定方法を変更し、特にネットワークドライブでのパフォーマンスを向上。<br>
+起動時の自動アップデートチェックの追加（設定→その他、から変更可能）。<br>
+削除モードで、コピーモード用オプションが表示されることがあったのを修正。<br>
+削除時の「ディレクトリが空でない」エラーが稀に発生していたのを低減（OS側の問題への暫定対処）。<br>
+2つ以上の物理HDDを使ったボリュームの、同一/別ドライブ判定が不正確だったのを修正。<br>
+その他リファイン。
+</td></tr>
 <tr><td>v3.40</td><td>
 アップデート機能（メニュー → ヘルプ → アップデート確認）の追加。<br>
 Source入力欄を複数行表示可能にし（セミコロンではなく）改行で複数ファイルを表現する形に。<br>

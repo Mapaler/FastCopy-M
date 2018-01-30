@@ -833,7 +833,8 @@ inline time_t FileTime2UnixTime(FILETIME *ft) {
 inline void UnixTime2FileTime(time_t ut, FILETIME *ft) {
 	*(int64 *)ft = (int64)ut * 10000000 + UNIXTIME_BASE;
 }
-
+void time_to_SYSTEMTIME(time_t t, SYSTEMTIME *st, BOOL is_local=TRUE);
+time_t SYSTEMTIME_to_time(const SYSTEMTIME &st, BOOL is_local=TRUE);
 
 #endif
 

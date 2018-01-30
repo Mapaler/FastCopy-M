@@ -1,5 +1,5 @@
 ﻿/* static char *mainwin_id = 
-	"@(#)Copyright (C) 2004-2017 H.Shirouzu		mainwin.h	Ver3.40"; */
+	"@(#)Copyright (C) 2004-2017 H.Shirouzu		mainwin.h	Ver3.41"; */
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
@@ -44,9 +44,11 @@
 #define WM_FASTCOPY_RESIZESRCEDIT	(WM_APP + 122)
 #define WM_FASTCOPY_SRCEDITFIT		(WM_APP + 123)
 
-#define FASTCOPY_TIMER		100
-#define FASTCOPY_NIM_ID		100
-#define FASTCOPY_FIN_TIMER	110
+#define FASTCOPY_TIMER			100
+#define FASTCOPY_FIN_TIMER		110
+#define FASTCOPY_PAINT_TIMER	120
+
+#define FASTCOPY_NIM_ID			100
 
 #define FASTCOPYLOG_MUTEX	"FastCopyLogMutex"
 
@@ -279,7 +281,7 @@ protected:
 	BOOL	StartFileLog();
 	void	EndFileLog();
 	BOOL	CheckVerifyExtension();
-	void	UpdateCheck();
+	void	UpdateCheck(BOOL is_silent=FALSE);
 	void	UpdateCheckRes(TInetReqReply *_irr);
 	void	UpdateDlRes(TInetReqReply *_irr);
 	void	UpdateExec();
@@ -369,6 +371,7 @@ int inline wcsicmpEx(WCHAR *s1, WCHAR *s2, int *len)
 	return	wcsnicmp(s1, s2, *len);
 }
 
+#define IPMSG_SITE				"ipmsg.org"
 #define FASTCOPY_UPDATEINFO		"fastcopy-update.dat"
 #ifdef _WIN64
 #define UPDATE_FILENAME			UPDATE64_FILENAME

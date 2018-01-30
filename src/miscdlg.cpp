@@ -1,9 +1,9 @@
 ﻿static char *miscdlg_id = 
-	"@(#)Copyright (C) 2005-2016 H.Shirouzu		miscdlg.cpp	ver3.20";
+	"@(#)Copyright (C) 2005-2018 H.Shirouzu		miscdlg.cpp	ver3.41";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2005-01-23(Sun)
-	Update					: 2016-09-28(Wed)
+	Update					: 2018-01-25(Thu)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-22
@@ -1038,29 +1038,36 @@ BOOL TConfirmDlg::EvCreate(LPARAM lParam)
 /*
 	ファイルダイアログ用汎用ルーチン
 */
+#define MAX_OFNBUF	(MAX_WPATH * 4)
+
 BOOL TOpenFileDlg::Exec(UINT editCtl, WCHAR *title, WCHAR *filter, WCHAR *defaultDir,
 	WCHAR *init_data)
 {
-#define	MAX_OFNBUF	(MAX_WPATH * 4)
-	VBuf		vbuf(MAX_OFNBUF * sizeof(WCHAR));
-	WCHAR		*buf = vbuf.WBuf();
+	int			len = ::GetWindowTextLengthW(parent->GetDlgItem(editCtl)) + 1;
 	PathArray	pathArray;
 
-	if (parent == NULL)
+	if (parent == NULL) {
 		return FALSE;
+	}
 
-	parent->GetDlgItemTextW(editCtl, buf, MAX_OFNBUF);
-	pathArray.RegisterMultiPath(buf, CRLF);
+	vbuf.AllocBuf(max(MAX_OFNBUF, len) * sizeof(WCHAR));
+	auto	w = [&]() { return vbuf.WBuf(); };	// only alias
+
+	parent->GetDlgItemTextW(editCtl, w(), (int)vbuf.Size());
+	pathArray.RegisterMultiPath(w(), CRLF);
 
 	if (init_data) {
-		wcscpy(buf, init_data);
+		wcscpy(w(), init_data);
 	}
 	else if (pathArray.Num() > 0) {
-		wcscpy(buf, pathArray.Path(0));
+		wcscpy(w(), pathArray.Path(0));
 	}
 
-	if (Exec(buf, title, filter, defaultDir) == FALSE)
+	if (Exec(title, filter, defaultDir) == FALSE) {
+		vbuf.FreeBuf();
 		return	FALSE;
+	}
+	// w() will be changed in Exec()
 
 	if ((::GetKeyState(VK_CONTROL) & 0x8000) == 0) {
 		pathArray.Init();
@@ -1069,30 +1076,35 @@ BOOL TOpenFileDlg::Exec(UINT editCtl, WCHAR *title, WCHAR *filter, WCHAR *defaul
 	if (defaultDir) {
 		int		dir_len = (int)wcslen(defaultDir);
 		int		offset = dir_len + 1;
-		if (buf[offset]) {  // 複数ファイル
-			if (buf[wcslen(buf) -1] != '\\')	// ドライブルートのみ例外
-				buf[dir_len++] = '\\';
-			for (; buf[offset]; offset++) {
-				offset += wcscpyz(buf + dir_len, buf + offset);
-				pathArray.RegisterPath(buf);
+
+		if (w()[offset]) {  // 複数ファイル
+			if (w()[wcslen(w()) -1] != '\\') {	// ドライブルートのみ例外
+				w()[dir_len++] = '\\';
 			}
-			if (pathArray.GetMultiPath(buf, MAX_OFNBUF, CRLF, NULW,
-				(flg & OFDLG_TAILCR) ? TRUE : 0) >= 0) {
-				parent->SetDlgItemTextW(editCtl, buf);
-				return	TRUE;
+			for (; w()[offset]; offset++) {
+				offset += wcscpyz(w() + dir_len, w() + offset);
+				pathArray.RegisterPath(w());
 			}
-			else return	MessageBox("Too Many files...\n"), FALSE;
+			BOOL	tail = (flg & OFDLG_TAILCR) ? TRUE : FALSE;
+			int		len = pathArray.GetMultiPathLen(CRLF, NULW, tail);
+			vbuf.AllocBuf(len * sizeof(WCHAR *));
+
+			pathArray.GetMultiPath(w(), (int)vbuf.Size(), CRLF, NULW, tail);
+			parent->SetDlgItemTextW(editCtl, w());
+			vbuf.FreeBuf();
+			return	TRUE;
 		}
 	}
-	pathArray.RegisterPath(buf);
-	if (flg & OFDLG_WITHQUOTE) {	// FinAct用
-		pathArray.GetMultiPath(buf, MAX_OFNBUF, CRLF, L" ");
-	}
-	else {
-		pathArray.GetMultiPath(buf, MAX_OFNBUF, CRLF, NULW,
-			(flg & OFDLG_TAILCR) ? TRUE : 0);
-	}
-	parent->SetDlgItemTextW(editCtl, buf);
+	pathArray.RegisterPath(w());
+	auto	sep  = (flg & OFDLG_WITHQUOTE) ? L" " : NULW;
+	auto	tail = ((flg & OFDLG_WITHQUOTE) || !(flg & OFDLG_TAILCR)) ? FALSE : TRUE;
+
+	len = pathArray.GetMultiPathLen(CRLF, sep, tail);
+	vbuf.AllocBuf(len * sizeof(WCHAR));
+	pathArray.GetMultiPath(w(), (int)vbuf.Size(), CRLF, sep, tail);
+
+	parent->SetDlgItemTextW(editCtl, w());
+	vbuf.FreeBuf();
 	return	TRUE;
 }
 
@@ -1100,24 +1112,35 @@ BOOL TOpenFileDlg::Exec(UINT editCtl, WCHAR *title, WCHAR *filter, WCHAR *defaul
 #define OFN_ENABLESIZING 0x00800000
 #endif
 
-BOOL TOpenFileDlg::Exec(WCHAR *target, WCHAR *title, WCHAR *filter, WCHAR *defaultDir)
+BOOL TOpenFileDlg::Exec(WCHAR *title, WCHAR *filter, WCHAR *defaultDir)
 {
-	OPENFILENAMEW	ofn;
-	VBuf	vbuf(MAX_WPATH * sizeof(WCHAR));
+	OPENFILENAMEW	ofn = {};
 	WCHAR	szDirName[MAX_PATH] = L"";
-	WCHAR	*szFile = vbuf.WBuf();
 	WCHAR	*fname = NULL;
+	auto	w = [&]() { return vbuf.WBuf(); };	// only alias
 
 	mode = FILESELECT;
 
-	if (target[0]) {
-		DWORD	attr = ::GetFileAttributesW(target);
-		if (attr != 0xffffffff && (attr & FILE_ATTRIBUTE_DIRECTORY))
-			wcscpy(szDirName, target);
-		else if (::GetFullPathNameW(target, MAX_PATH, szDirName, &fname) && fname) {
-			fname[-1] = 0;
+	if (w()[0]) {
+		DWORD	attr = ::GetFileAttributesW(w());
+		if (attr != 0xffffffff && (attr & FILE_ATTRIBUTE_DIRECTORY)) {
+			int len = wcsncpyz(szDirName, w(), wsizeof(szDirName));
+			if (len > 4) {
+				auto	&ch = szDirName[len -1];
+				if (ch == '/' || ch == '\\') {
+					ch = 0;
+				}
+			}
 		}
+		else if (::GetFullPathNameW(w(), MAX_PATH, szDirName, &fname) && fname) {
+			fname[-1] = 0; // 親ディレクトリ取り出し
+		}
+		w()[0] = 0; // ファイル名を空にしないとOFNがコケる…
 	}
+	if (vbuf.Size() < MAX_OFNBUF * sizeof(WCHAR)) {
+		vbuf.AllocBuf(MAX_OFNBUF * sizeof(WCHAR));
+	}
+
 	if (szDirName[0] == 0 && defaultDir)
 		wcscpy(szDirName, defaultDir);
 	memset(&ofn, 0, sizeof(ofn));
@@ -1125,8 +1148,8 @@ BOOL TOpenFileDlg::Exec(WCHAR *target, WCHAR *title, WCHAR *filter, WCHAR *defau
 	ofn.hwndOwner = parent ? parent->hWnd : NULL;
 	ofn.lpstrFilter = (WCHAR *)filter;
 	ofn.nFilterIndex = filter ? 1 : 0;
-	ofn.lpstrFile = szFile;
-	ofn.nMaxFile = MAX_WPATH;
+	ofn.lpstrFile = w();
+	ofn.nMaxFile = DWORD(vbuf.Size() / sizeof(WCHAR));
 	ofn.lpstrTitle = (WCHAR *)title;
 	ofn.lpstrInitialDir = szDirName;
 	ofn.lCustData = (LPARAM)this;
@@ -1145,10 +1168,10 @@ BOOL TOpenFileDlg::Exec(WCHAR *target, WCHAR *title, WCHAR *filter, WCHAR *defau
 
 	::SetCurrentDirectoryW(orgDir);
 	if (ret) {
-		if (openMode == MULTI_OPEN)
-			memcpy(target, szFile, MAX_WPATH * sizeof(WCHAR));
-		else
-			wcscpy(target, ofn.lpstrFile);
+//		if (openMode == MULTI_OPEN)
+//			memcpy(w(), szFile, MAX_WPATH * sizeof(WCHAR));
+//		else
+//			wcscpy(w(), ofn.lpstrFile);
 
 		if (defaultDir)
 			wcscpy(defaultDir, ofn.lpstrFile);
@@ -1163,6 +1186,33 @@ UINT WINAPI TOpenFileDlg::OpenFileDlgProc(HWND hdlg, UINT msg, WPARAM wParam, LP
 	case WM_INITDIALOG:
 		((TOpenFileDlg *)(((OPENFILENAMEW *)lParam)->lCustData))->AttachWnd(hdlg);
 		return TRUE;
+
+	case WM_NOTIFY:
+		if (NMHDR *nh = (NMHDR *)lParam) {
+			Debug("notify=%d\n", nh->code - CDN_FIRST);
+			if (nh->code == CDN_SELCHANGE) {
+				auto	ont = (OFNOTIFYW *)lParam;
+				auto	ofn = ont->lpOFN;
+				auto	dlg = (TOpenFileDlg *)(ofn->lCustData);
+				LRESULT	dlen = dlg->SendMessageW(CDM_GETFOLDERPATH, 0, 0);
+				LRESULT	flen = dlg->SendMessageW(CDM_GETSPEC, 0, 0);
+				size_t	need = (dlen + flen + MAX_PATH) * sizeof(WCHAR);
+
+				if (dlg->vbuf.Size() < need) {
+					dlg->vbuf.AllocBuf(need);
+					ofn->lpstrFile = dlg->vbuf.WBuf();
+					ofn->nMaxFile = (DWORD)dlg->vbuf.Size();
+					Debug("size %zd\n", need);
+				}
+
+//				dlg->SendMessageW(CDM_GETFOLDERPATH, need/2, (LPARAM)dlg->vbuf.Buf());
+//				DebugW(L"dir=%s\n", dlg->vbuf.WBuf());
+//				dlg->SendMessageW(CDM_GETSPEC, need/2, (LPARAM)dlg->vbuf.Buf());
+//				DebugW(L"file=%s\n", dlg->vbuf.WBuf());
+
+				return	0;
+			}
+		}
 	}
 	return FALSE;
 }
@@ -1306,10 +1356,12 @@ BOOL TOpenFileDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl)
 		mode = DIRSELECT;
 		PostMessage(WM_CLOSE, 0, 0);
 		return	TRUE;
+
+	case IDOK:
+		return	FALSE;
 	}
 	return	FALSE;
 }
-
 
 /*
 	Job Dialog初期化処理
@@ -1397,7 +1449,6 @@ BOOL TJobDlg::AddJob()
 	WCHAR		from_date[MINI_BUF]=L"", to_date[MINI_BUF]=L"";
 	WCHAR		min_size[MINI_BUF]=L"", max_size[MINI_BUF]=L"";
 
-	job.bufSize = mainParent->GetDlgItemInt(BUFSIZE_EDIT);
 	job.estimateMode = mainParent->IsDlgButtonChecked(ESTIMATE_CHECK);
 	job.ignoreErr = mainParent->IsDlgButtonChecked(IGNORE_CHECK);
 	job.enableOwdel = mainParent->IsDlgButtonChecked(OWDEL_CHECK);

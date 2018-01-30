@@ -1,5 +1,5 @@
 ﻿======================================================================
-                   FastCopy  ver3.40                   2017/12/09
+                   FastCopy  ver3.41                   2018/01/27
                                                  SHIROUZU Hiroaki
                    FastCopy-M branch                   2017/03/06
                                                  Mapaler
@@ -27,7 +27,7 @@
 License:
 	-------------------------------------------------------------------------
 	 FastCopy ver3.x
-	 Copyright(C) 2004-2017 SHIROUZU Hiroaki All rights reserved.
+	 Copyright(C) 2004-2018 SHIROUZU Hiroaki All rights reserved.
 
 	 This program is free software. You can redistribute it and/or modify
 	 it under the GNU General Public License version 3.

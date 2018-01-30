@@ -1,5 +1,5 @@
 ﻿======================================================================
-                     FastCopy  ver3.40                 2017/12/09
+                     FastCopy  ver3.41                 2018/01/27
                                             H.Shirouzu（白水啓章）
                      FastCopy-M branch                 2017/03/06
                                             Mapaler  （枫谷剑仙）
@@ -43,7 +43,7 @@
 
 ライセンス：
 	FastCopy ver3.x
-	Copyright(C) 2004-2017 SHIROUZU Hiroaki All rights reserved.
+	Copyright(C) 2004-2018 SHIROUZU Hiroaki All rights reserved.
 
 	 全ソースコードは GPLv3 で公開しています。
 	 VC++ 等をお持ちであれば、ご自由にカスタマイズしてのご利用も

@@ -769,16 +769,17 @@ int snprintfz(char *buf, int size, const char *fmt,...)
 
 int vsnprintfz(char *buf, int size, const char *fmt, va_list ap)
 {
+	if (!buf) {
+		return	(int)vsnprintf(buf, size, fmt, ap);
+	}
+
 	if (size <= 0) return 0;
 
-	int len = (int)vsnprintf(buf, size -1, fmt, ap);
+	int len = (int)vsnprintf(buf, size, fmt, ap);
 
-	if (len <= 0) {
+	if (len <= 0 || len >= size) {
 		buf[size -1] = 0;
 		len = (int)strlen(buf);
-	}
-	else if (len == (size -1)) {
-		buf[size -1] = 0;
 	}
 
 	va_end(ap);
@@ -798,16 +799,16 @@ int snwprintfz(WCHAR *buf, int wsize, const WCHAR *fmt,...)
 
 int vsnwprintfz(WCHAR *buf, int wsize, const WCHAR *fmt, va_list ap)
 {
+	if (!buf) {
+		return	(int)vswprintf(buf, wsize, fmt, ap);
+	}
 	if (wsize <= 0) return 0;
 
-	int len = (int)_vsnwprintf(buf, wsize -1, fmt, ap);
+	int len = (int)vswprintf(buf, wsize, fmt, ap);
 
-	if (len <= 0) {
+	if (len <= 0 || len >= wsize) {
 		buf[wsize -1] = 0;
 		len = (int)wcslen(buf);
-	}
-	else if (len == (wsize -1)) {
-		buf[wsize -1] = 0;
 	}
 
 	va_end(ap);
@@ -1771,7 +1772,8 @@ BOOL ForceSetTrayIcon(HWND hWnd, UINT id, DWORD pref)
 		CoCreateInstance(TrayNotifyId, NULL, CLSCTX_LOCAL_SERVER, __uuidof(ITrayNotify8),
 			(void **)&tn);
 		if (tn) {
-			if (SUCCEEDED(tn->SetPreference(&ni))) ret = TRUE;
+			auto	hr = tn->SetPreference(&ni);
+			if (SUCCEEDED(hr)) ret = TRUE;
 			tn->Release();
 		}
 	} else {
@@ -1780,7 +1782,8 @@ BOOL ForceSetTrayIcon(HWND hWnd, UINT id, DWORD pref)
 		CoCreateInstance(TrayNotifyId, NULL, CLSCTX_LOCAL_SERVER, __uuidof(ITrayNotify),
 			(void **)&tn);
 		if (tn) {
-			if (SUCCEEDED(tn->SetPreference(&ni))) ret = TRUE;
+			auto	hr = tn->SetPreference(&ni);
+			if (SUCCEEDED(hr)) ret = TRUE;
 			tn->Release();
 		}
 	}
@@ -2432,17 +2435,21 @@ void bo_test()
 	bo_test_core(p);
 }
 
-#if _MSC_VER >= 1900 && _MSC_VER <= 1911
+#if !defined(_DEBUG) &&  _MSC_VER >= 1900 && _MSC_VER <= 1912
+#define ENABLE_GS_FAILURE_HACK
 extern "C" __declspec(noreturn) void __cdecl __raise_securityfailure(PEXCEPTION_POINTERS const exception_pointers);
+#endif
+
 // バッファオーバーフローをApp側例外ハンドラでキャッチするためのhack
 // Prevent to avoid FastCopy's ExceptionFilter by __report_gsfailure/__report_securityfailure
 //  like a _set_security_error_handler
 void TGsFailureHack()
 {
-#ifndef _DEBUG
+#ifdef ENABLE_GS_FAILURE_HACK
 	DWORD	flag = 0;
 
 //	__raise_securityfailure(NULL);
+
 	BYTE	*p = (BYTE *)&__raise_securityfailure;
 	if (::VirtualProtect(p, 32, PAGE_EXECUTE_READWRITE, &flag)) {
 #ifdef _WIN64
@@ -2464,8 +2471,6 @@ void TGsFailureHack()
 	}
 #endif
 }
-#endif
-
 
 /*
 	マスク情報をアルファ値として引き継ぐ形でDIBSectionを作成
@@ -2716,6 +2721,38 @@ BOOL TIsAdminGroup()
 	}();
 
 	return	ret;
+}
+
+
+void time_to_SYSTEMTIME(time_t t, SYSTEMTIME *st, BOOL is_local)
+{
+	FILETIME	ft;
+	UnixTime2FileTime(t, &ft);
+
+	if (is_local) {
+		SYSTEMTIME	st_tmp;
+		::FileTimeToSystemTime(&ft, &st_tmp);
+		::SystemTimeToTzSpecificLocalTime(NULL, &st_tmp, st);
+	}
+	else {
+		::FileTimeToSystemTime(&ft, st);
+	}
+}
+
+time_t SYSTEMTIME_to_time(const SYSTEMTIME &st, BOOL is_local)
+{
+	FILETIME	ft;
+
+	if (is_local) {
+		SYSTEMTIME	st_tmp;
+		::TzSpecificLocalTimeToSystemTime(NULL, &st, &st_tmp);
+		::SystemTimeToFileTime(&st_tmp, &ft);
+	}
+	else {
+		::SystemTimeToFileTime(&st, &ft);
+	}
+
+	return	FileTime2UnixTime(&ft);
 }
 
 

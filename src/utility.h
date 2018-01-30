@@ -181,7 +181,7 @@ BOOL DeleteReparsePoint(HANDLE hFile, void *buf);
 BOOL IsReparseDataSame(void *d1, void *d2);
 BOOL ResetAcl(const WCHAR *path, BOOL myself_acl=FALSE);
 
-enum { FMF_NONE=0, FMF_ACL=1, FMF_MYACL=2, FMF_ATTR=0x100 }; // flags
+enum { FMF_NONE=0, FMF_ACL=1, FMF_MYACL=2, FMF_EMPTY_RETRY=4, FMF_ATTR=0x100 }; // flags
 BOOL ForceRemoveDirectoryW(const WCHAR *path, DWORD flags=FMF_NONE);
 BOOL ForceDeleteFileW(const WCHAR *path, DWORD flags=FMF_NONE);
 HANDLE ForceCreateFileW(const WCHAR *path, DWORD mode, DWORD share, SECURITY_ATTRIBUTES *sa,

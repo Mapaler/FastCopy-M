@@ -1,20 +1,24 @@
 ﻿static char *mainwinupd_id = 
-	"@(#)Copyright (C) 2017 H.Shirouzu		mainwinupd.cpp	ver3.40";
+	"@(#)Copyright (C) 2017-2018 H.Shirouzu		mainwinupd.cpp	ver3.41";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2017-07-30(Sun)
+	Update					: 2018-01-27(Sat)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
 
 #include "mainwin.h"
+#include <time.h>
 
 using namespace std;
 
-void TMainDlg::UpdateCheck()
+static BOOL IsSilent = FALSE;
+
+void TMainDlg::UpdateCheck(BOOL is_silent)
 {
-	TInetAsync("ipmsg.org", FASTCOPY_UPDATEINFO, hWnd, WM_FASTCOPY_UPDINFORES);
+	IsSilent = is_silent;
+	TInetAsync(IPMSG_SITE, FASTCOPY_UPDATEINFO, hWnd, WM_FASTCOPY_UPDINFORES);
 }
 
 void TMainDlg::UpdateCheckRes(TInetReqReply *_irr)
@@ -22,14 +26,18 @@ void TMainDlg::UpdateCheckRes(TInetReqReply *_irr)
 	shared_ptr<TInetReqReply>	irr(_irr);
 
 	if (irr->reply.UsedSize() == 0 || irr->code != HTTP_STATUS_OK) {
-		SetDlgItemText(STATUS_EDIT, Fmt("Can't access(%d) https://ipmsg.org", irr->code));
+		if (!IsSilent) {
+			SetDlgItemText(STATUS_EDIT, Fmt("Can't access(%d) https://%s", irr->code, IPMSG_SITE));
+		}
 		return;
 	}
 
 	IPDict	dict(irr->reply.Buf(), irr->reply.UsedSize());
 
 	if (!ipdict_verify(&dict, &cfg.officialPub)) {
-		SetDlgItemText(STATUS_EDIT, "Verify error");
+		if (!IsSilent) {
+			SetDlgItemText(STATUS_EDIT, "Verify error");
+		}
 		return;
 	}
 
@@ -46,27 +54,37 @@ void TMainDlg::UpdateCheckRes(TInetReqReply *_irr)
 	IPDict	data;
 
 	if (!dict.get_dict(key, &data)) {
-		SetDlgItemText(STATUS_EDIT, Fmt("%s: key not found(%s)", FASTCOPY_UPDATEINFO, key));
+		if (!IsSilent) {
+			SetDlgItemText(STATUS_EDIT, Fmt("%s: key not found(%s)", FASTCOPY_UPDATEINFO, key));
+		}
 		return;
 	}
 
 	updData.DataInit();
 	if (!data.get_str("ver", &updData.ver)) {
-		SetDlgItemText(STATUS_EDIT, Fmt("%s: ver not found", FASTCOPY_UPDATEINFO));
+		if (!IsSilent) {
+			SetDlgItemText(STATUS_EDIT, Fmt("%s: ver not found", FASTCOPY_UPDATEINFO));
+		}
 		return;
 	}
 
 	if (!data.get_str("path", &updData.path)) {
-		SetDlgItemText(STATUS_EDIT, Fmt("%s: ver not found", FASTCOPY_UPDATEINFO));
+		if (!IsSilent) {
+			SetDlgItemText(STATUS_EDIT, Fmt("%s: ver not found", FASTCOPY_UPDATEINFO));
+		}
 		return;
 	}
 	if (!data.get_bytes("hash", &updData.hash) || updData.hash.UsedSize() != SHA256_SIZE) {
-		SetDlgItemText(STATUS_EDIT, Fmt("%s: hash not found or size(%zd) err",
-			FASTCOPY_UPDATEINFO, updData.hash.UsedSize()));
+		if (!IsSilent) {
+			SetDlgItemText(STATUS_EDIT, Fmt("%s: hash not found or size(%zd) err",
+				FASTCOPY_UPDATEINFO, updData.hash.UsedSize()));
+		}
 		return;
 	}
 	if (!data.get_int("size", &updData.size)) {
-		SetDlgItemText(STATUS_EDIT, Fmt("%s: size not found err", FASTCOPY_UPDATEINFO));
+		if (!IsSilent) {
+			SetDlgItemText(STATUS_EDIT, Fmt("%s: size not found err", FASTCOPY_UPDATEINFO));
+		}
 		return;
 	}
 
@@ -78,18 +96,21 @@ void TMainDlg::UpdateCheckRes(TInetReqReply *_irr)
 		self_ver, new_ver);
 
 	if (self_ver >= new_ver) {
-		SetDlgItemText(STATUS_EDIT, Fmt("Not need update (%s -> %s)", GetVersionStr(TRUE),
-			updData.ver.s()));
+		if (!IsSilent) {
+			SetDlgItemText(STATUS_EDIT, Fmt(LoadStr(IDS_UPDFMT_NOTNEED), GetVersionStr(TRUE),
+				updData.ver.s()));
+		}
 		return;
 	}
 
 	if (fastCopy.IsStarting() || isDelay) {
-		SetDlgItemText(STATUS_EDIT, Fmt("New version (%s) found\r\nBut running now",
-			updData.ver.s()));
+		if (!IsSilent) {
+			SetDlgItemText(STATUS_EDIT, Fmt(LoadStr(IDS_UPDFMT_UPDBUSY), updData.ver.s()));
+		}
 		return;
 	}
 
-	if (MessageBox(Fmt("New version (v%s) found\r\nUpdate now?", updData.ver.s()), FASTCOPY,
+	if (MessageBox(Fmt(LoadStr(IDS_UPDFMT_UPDMSG), updData.ver.s()), FASTCOPY,
 		MB_OKCANCEL) == IDOK) {
 		TInetAsync("ipmsg.org", updData.path.s(), hWnd, WM_FASTCOPY_UPDDLRES);
 	}
