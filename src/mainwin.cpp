@@ -2350,6 +2350,12 @@ BOOL TMainDlg::ExecFinalAction(BOOL is_sound_wait)
 		}
 	}
 
+	//quit after finish
+	if (!is_err || (act->flags & FinAct::ERR_CMD) == 0) {
+		if(IDYES == MessageBox(LoadStr(IDS_UPDFMT_FINMSG), FASTCOPY, MB_YESNO))
+			EndDialog(IDCANCEL);
+	}
+
 	if ((act->flags & (FinAct::SUSPEND|FinAct::HIBERNATE|FinAct::SHUTDOWN))
 	&& act->shutdownTime >= 0 && (!is_err || (act->flags & FinAct::ERR_CMD) == 0)) {
 		TFinDlg	finDlg(this);

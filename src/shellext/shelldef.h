@@ -11,6 +11,10 @@
 #ifndef SHELLDEF_H
 #define SHELLDEF_H
 
+#ifdef FASTCOPY
+#undef FASTCOPY
+#endif
+
 #define FASTCOPY		"FastCopy"
 #define FASTCOPYUSER	"FastCopyUser"
 #define FASTCOPY_EXE	"FastCopy.exe"

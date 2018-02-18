@@ -40,6 +40,10 @@
 #define Attr(d) ((d)->dwFileAttributes)
 #define IsSymlink(d) (IsReparse((d)->dwFileAttributes) && (d)->dwReserved0==IO_REPARSE_TAG_SYMLINK)
 
+#ifdef FASTCOPY
+#undef FASTCOPY
+#endif
+
 #define FASTCOPY			"FastCopy-M"
 #define FASTCOPYW			L"FastCopy-M"
 
