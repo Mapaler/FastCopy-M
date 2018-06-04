@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -21,31 +21,31 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{D6FF3145-1A10-4739-8E42-C5327BF51584}</ProjectGuid>
     <RootNamespace>FastCopy</RootNamespace>
-    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.15063.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
-    <PlatformToolset>v140</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
-    <PlatformToolset>v140_xp</PlatformToolset>
+    <PlatformToolset>v141_xp</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
-    <PlatformToolset>v140</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
-    <PlatformToolset>v140</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -137,7 +137,7 @@
       <AdditionalLibraryDirectories>lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <DelayLoadDLLs>comctl32.dll;crypt32.dll;winmm.dll;mpr.dll;Shlwapi.dll;</DelayLoadDLLs>
+      <DelayLoadDLLs>comctl32.dll;crypt32.dll;winmm.dll;mpr.dll;Shlwapi.dll;psapi.dll;gdiplus.dll;Shell32.dll</DelayLoadDLLs>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -191,7 +191,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
-      <DelayLoadDLLs>comctl32.dll;crypt32.dll;winmm.dll;mpr.dll;Shlwapi.dll;</DelayLoadDLLs>
+      <DelayLoadDLLs>comctl32.dll;crypt32.dll;winmm.dll;mpr.dll;Shlwapi.dll;psapi.dll;gdiplus.dll;Shell32.dll</DelayLoadDLLs>
     </Link>
     <Manifest>
       <AdditionalManifestFiles>src\$(TargetFileName).manifest;%(AdditionalManifestFiles)</AdditionalManifestFiles>
@@ -301,6 +301,7 @@
     <ClCompile Include="src\mainwin.cpp" />
     <ClCompile Include="src\mainwinlog.cpp" />
     <ClCompile Include="src\mainwinopt.cpp" />
+    <ClCompile Include="src\mainwinupd.cpp" />
     <ClCompile Include="src\miscdlg.cpp" />
     <ClCompile Include="src\regexp.cpp" />
     <ClCompile Include="src\setupdlg.cpp" />
@@ -322,14 +323,17 @@
     </Manifest>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="fastcopy.bmp" />
-    <Image Include="src\fastcopy.bmp" />
-    <Image Include="src\fastcopy.ico" />
-    <Image Include="src\fastcopy.png" />
-    <Image Include="src\fastcopy2.ico" />
-    <Image Include="src\fastcopy3.ico" />
-    <Image Include="src\fastcopy4.ico" />
-    <Image Include="src\fcwait.ico" />
+    <Image Include="src\res\fastcopy.ico" />
+    <Image Include="src\res\fastcopy2.ico" />
+    <Image Include="src\res\fastcopy3.ico" />
+    <Image Include="src\res\fastcopy4.ico" />
+    <Image Include="src\res\fcdone.ico" />
+    <Image Include="src\res\fcerr.ico" />
+    <Image Include="src\res\fcwait.ico" />
+    <Image Include="src\res\menu.ico" />
+    <Image Include="src\res\pause.ico" />
+    <Image Include="src\res\play.ico" />
+    <Image Include="src\res\tray.gif" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\cfg.h" />
@@ -343,6 +347,9 @@
     <ClInclude Include="src\shareinfo.h" />
     <ClInclude Include="src\utility.h" />
     <ClInclude Include="src\version.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="src\res\sep.cur" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

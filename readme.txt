@@ -1,5 +1,5 @@
 ﻿======================================================================
-                     FastCopy  ver3.32                 2017/08/07
+                     FastCopy  ver3.50                 2018/05/29
                                             H.Shirouzu（白水啓章）
 ======================================================================
 
@@ -32,7 +32,7 @@
 
 ライセンス：
 	FastCopy ver3.x
-	Copyright(C) 2004-2017 SHIROUZU Hiroaki All rights reserved.
+	Copyright(C) 2004-2018 SHIROUZU Hiroaki All rights reserved.
 
 	 全ソースコードは GPLv3 で公開しています。
 	 VC++ 等をお持ちであれば、ご自由にカスタマイズしてのご利用も
@@ -40,12 +40,12 @@
 	 場合は別途、お問い合わせください）
 	 詳しくは同梱の license.txt をご覧ください。
 
-	xxHash library Copyright (C) 2012-2014 Mr.Yann Collet, All rights reserved.
+	xxHash library Copyright (C) 2012-2016 Mr.Yann Collet, All rights reserved.
 	  more details: external/xxhash/LICENSE
 
 使用法等：
 	ヘルプ(fastcopy.chm) を参照してください。
 
 ソース・ビルドについて：
-	VS2015 以降でビルドできます。
+	VS2017 以降でビルドできます。
 

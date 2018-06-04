@@ -13,10 +13,11 @@
 #define VERSION_H
 
 void SetVersionStr(BOOL is_admin=FALSE, BOOL is_noui=FALSE);
-const char *GetVersionStr();
+const char *GetVersionStr(BOOL is_base=FALSE);
 const char *GetVerAdminStr();
 const char *GetCopyrightStr(void);
 const char *GetLibCopyrightStr(void);
+double VerStrToDouble(const char *s);
 
 #endif
 

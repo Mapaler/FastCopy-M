@@ -17,6 +17,8 @@
 #include <stddef.h>
 #include <atomic>
 
+using namespace std;
+
 HWND CreateWindowU8(const char *class_name, const char *window_name, DWORD style,
 	int x, int y, int width, int height, HWND hParent, HMENU hMenu, HINSTANCE hInst, void *param)
 {
@@ -182,6 +184,14 @@ BOOL SetFileAttributesU8(const char *path, DWORD attr)
 	return	::SetFileAttributesW(wpath.s(), attr);
 }
 
+BOOL MoveFileExU8(const char *src, const char *dst, DWORD flags)
+{
+	Wstr	wsrc(src);
+	Wstr	wdst(dst);
+
+	return	::MoveFileExW(wsrc.s(), wdst.s(), flags);
+}
+
 HINSTANCE ShellExecuteU8(HWND hWnd, LPCSTR op, LPCSTR file, LPSTR params, LPCSTR dir, int nShow)
 {
 	Wstr	op_w(op), file_w(file), params_w(params), dir_w(dir);
@@ -330,23 +340,21 @@ BOOL SHGetSpecialFolderPathU8(HWND hWnd, char *path, int csidl, BOOL fCreate)
 =========================================================================*/
 BOOL GetMenuStringU8(HMENU hMenu, UINT uItem, char *buf, int bufsize, UINT flags)
 {
-	WCHAR	*wbuf = new WCHAR [bufsize];
-	BOOL	ret = ::GetMenuStringW(hMenu, uItem, wbuf, bufsize, flags);
+	auto	wbuf = make_unique<WCHAR[]>(bufsize);
+	BOOL	ret = ::GetMenuStringW(hMenu, uItem, wbuf.get(), bufsize, flags);
 	if (ret) {
-		WtoU8(wbuf, buf, bufsize);
+		WtoU8(wbuf.get(), buf, bufsize);
 	}
-	delete [] wbuf;
 	return	ret;
 }
 
 DWORD GetModuleFileNameU8(HMODULE hModule, char *buf, DWORD bufsize)
 {
-	WCHAR	*wbuf = new WCHAR [bufsize];
-	DWORD	ret = ::GetModuleFileNameW(hModule, wbuf, bufsize);
+	auto	wbuf = make_unique<WCHAR[]>(bufsize);
+	DWORD	ret = ::GetModuleFileNameW(hModule, wbuf.get(), bufsize);
 	if (ret) {
-		WtoU8(wbuf, buf, bufsize);
+		WtoU8(wbuf.get(), buf, bufsize);
 	}
-	delete [] wbuf;
 	return	ret;
 }
 
@@ -355,26 +363,6 @@ UINT GetDriveTypeU8(const char *path)
 	Wstr	wpath(path);
 
 	return	::GetDriveTypeW(wpath.s());
-}
-
-LPSTR LoadStrU8(UINT resId, HINSTANCE hI)
-{
-	extern HINSTANCE defaultStrInstance;
-
-	static TResHash	*hash = new TResHash(1000);
-
-	WCHAR		buf[1024];
-	TResHashObj	*obj;
-
-	if ((obj = hash->Search(resId)) == NULL) {
-		if (::LoadStringW(hI ? hI : defaultStrInstance, resId, buf, sizeof(buf) / sizeof(WCHAR))
-				>= 0) {
-			U8str	buf_u8(buf);
-			obj = new TResHashObj(resId, strdup(buf_u8.s()));
-			hash->Register(obj);
-		}
-	}
-	return	obj ? (char *)obj->val : NULL;
 }
 
 /*=========================================================================

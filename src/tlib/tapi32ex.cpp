@@ -18,6 +18,7 @@
 #include <random>
 
 #ifdef USE_XXHASH
+#define XXH_STATIC_LINKING_ONLY
 #include "../../external/xxhash/xxhash.h"
 #endif
 
@@ -231,6 +232,29 @@ BOOL TGenRandom(void *buf, size_t len)
 }
 
 
+//#ifdef USE_XXHASH
+#if 0	// 手抜きハッシュの方が10倍高速だったため、MakeHash用としてはxxHashは使わない
+u_int MakeHash(const void *data, size_t size, u_int iv)
+{
+	XXH32_state_s	xh;
+
+	XXH32_reset(&xh, iv);
+	XXH32_update(&xh, data, size);
+
+	return	XXH32_digest(&xh);
+}
+
+uint64 MakeHash64(const void *data, size_t size, uint64 iv)
+{
+	XXH64_state_s	xh;
+
+	XXH64_reset(&xh, iv);
+	XXH64_update(&xh, data, size);
+
+	return	XXH64_digest(&xh);
+}
+
+#else
 #define THASH_RAND64_NUM1  757 /* prime number */
 #define THASH_RAND_NUM1   1511  /* prime number */
 
@@ -499,6 +523,30 @@ uint64 MakeHash64(const void *data, size_t size, uint64 iv)
 
 	return	MAKE_HASH_CORE64(val, mod_val, offset + mod);
 }
+#endif
+
+void TSetPubKeyBlob(BYTE *n, int n_size, int e, DynBuf *keyblob)
+{
+	keyblob->Alloc(20 + n_size);
+	BYTE	*blob = keyblob->Buf();
+
+	/* PUBLICSTRUC */
+	blob[0] = PUBLICKEYBLOB;
+	blob[1] = CUR_BLOB_VERSION;
+	*(WORD *)(blob+2)   = 0;
+	*(ALG_ID *)(blob+4) = CALG_RSA_KEYX;
+
+	/* RSAPUBKEY */
+	memcpy(blob+8, "RSA1", 4);
+	*(DWORD *)(blob+12) = DWORD(n_size * 8);
+	*(int *)(blob+16) = e;
+
+	/* PUBKEY_DATA */
+	memcpy(blob+20, n, n_size);
+
+	keyblob->SetUsedSize(keyblob->Size());
+}
+
 
 //#define HASHQUALITY_CHECK
 #ifdef HASHQUALITY_CHECK
@@ -508,7 +556,7 @@ extern void CheckHashQuality64();
 
 void tapi32_test()
 {
-//	CheckHashQuality();
+	CheckHashQuality();
 	CheckHashQuality64();
 }
 
@@ -551,7 +599,7 @@ void CheckHashQuality()
 	Debug("Start %s mode=%s num=%d\n", hash_name, mode, MAX_HASH);
 
 	char	buf[500];
-	memset(buf, 0, sizeof(buf));
+	memset(buf, 0xcc, sizeof(buf));
 	int		len = 500;
 	DWORD	&val = *(DWORD *)buf;
 	DWORD	t = GetTick();
@@ -598,7 +646,7 @@ void CheckHashQuality64()
 
 	THashObj64	*obj = NULL;
 	char	buf[500];
-	memset(buf, 0, sizeof(buf));
+	memset(buf, 0xcc, sizeof(buf));
 	int		len = 500;
 	uint64	&val = *(uint64 *)buf;
 	uint64	hash_sum = 0;
@@ -620,11 +668,11 @@ void CheckHashQuality64()
 	Debug("Start %s mode=%s num=%d\n", hash_name, mode, MAX_HASH64);
 
 	for (uint64 i=0; i < MAX_HASH64; i++) {
-#if 1
+#if 0
 		len = sprintf(buf, "%08lld", (int64)i);
 	//	swap_s(buf, len);
 		len += sprintf(buf+len, "___________________________str");
-#elif 0
+#elif 1
 		val = i;
 #else
 		val = (rand64_data1[i % THASH_RAND_NUM1]);
@@ -693,5 +741,20 @@ void makerand() {
 	}
 }
 
+#endif
+
+#if 0
+void makehash_test()
+{
+	u_int	val = 0;
+	DWORD	targ[16] {};
+	auto	&i = targ[0];
+
+	DWORD	tick = GetTickCount();
+	for ( ; i < 100000000; i++) {
+		val += MakeHash(targ, sizeof(targ));
+	}
+	Debug(Fmt("%.3f,  val=%x\n", (float)(GetTickCount() - tick) / 1000, val));
+}
 #endif
 

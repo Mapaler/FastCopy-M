@@ -15,28 +15,44 @@ TApp *TApp::tapp = NULL;
 #define MAX_TAPPWIN_HASH	1009
 #define ENGLISH_TEST		0
 
+
+void TLibInit()
+{
+	static BOOL once = []() {
+#if ENGLISH_TEST
+		TSetDefaultLCID(0x409); // for English Dialog Test
+#else
+		TSetDefaultLCID();
+#endif
+		::CoInitialize(NULL);
+		::InitCommonControls();
+		return	 TRUE;
+	}();
+}
+
 TApp::TApp(HINSTANCE _hI, LPSTR _cmdLine, int _nCmdShow)
 {
+	TLibInit();
+
 	hInstance		= _hI;
 	cmdLine			= _cmdLine;
 	nCmdShow		= _nCmdShow;
 	mainWnd			= NULL;
 	preWnd			= NULL;
-	defaultClass	= "tapp";
-	defaultClassW	= L"tapp";
+	result			= 0;
+
+	WCHAR	cname[MAX_PATH];
+	snwprintfz(cname, wsizeof(cname), L"tapp_%d", ::GetCurrentProcessId());
+
+	defaultClassW	= wcsdup(cname);
+	defaultClass	= WtoA(cname);
+
 	tapp			= this;
 	hash			= new TWinHashTbl(MAX_TAPPWIN_HASH);
 	twinId			= 1;
 
 	InitInstanceForLoadStr(hInstance);
 
-#if ENGLISH_TEST
-	TSetDefaultLCID(0x409); // for English Dialog Test
-#else
-	TSetDefaultLCID();
-#endif
-	::CoInitialize(NULL);
-	::InitCommonControls();
 }
 
 TApp::~TApp()
@@ -62,7 +78,20 @@ int TApp::Run(void)
 		::DispatchMessageW(&msg);
 	}
 
+	PostRun();
+
 	return	(int)msg.wParam;
+}
+
+void TApp::Exit(int _result)
+{
+	if (tapp && tapp->mainWnd && ::IsWindow(tapp->mainWnd->hWnd)) {
+		tapp->result = _result;
+		tapp->mainWnd->Destroy();
+	}
+	else {
+		::ExitProcess(_result);
+	}
 }
 
 BOOL TApp::PreProcMsg(MSG *msg)	// for TranslateAccel & IsDialogMessage
@@ -81,19 +110,25 @@ LRESULT CALLBACK TApp::WinProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 {
 	TApp	*app = TApp::GetApp();
 	TWin	*win = app->SearchWnd(hWnd);
+	LRESULT	ret = 0;
 
 	if (win) {
-		return	win->WinProc(uMsg, wParam, lParam);
+		ret = win->WinProc(uMsg, wParam, lParam);
 	}
-
-	if ((win = app->preWnd))
-	{
+	else if ((win = app->preWnd)) {
 		app->preWnd = NULL;
 		app->AddWinByWnd(win, hWnd);
-		return	win->WinProc(uMsg, wParam, lParam);
+		ret = win->WinProc(uMsg, wParam, lParam);
+	}
+	else {
+		ret = ::DefWindowProcW(hWnd, uMsg, wParam, lParam);
 	}
 
-	return	::DefWindowProcW(hWnd, uMsg, wParam, lParam);
+	if (uMsg == WM_DESTROY && app->mainWnd == win) {
+		::PostQuitMessage(app->result);
+	}
+
+	return	ret;
 }
 
 BOOL TApp::InitApp(void)	// reference kwc
@@ -112,10 +147,9 @@ BOOL TApp::InitApp(void)	// reference kwc
 	wc.lpszMenuName		= NULL;
 	wc.lpszClassName	= defaultClassW;
 
-	if (::FindWindowW(defaultClassW, NULL) == NULL)
-	{
-		if (::RegisterClassW(&wc) == 0)
-			return FALSE;
+	if (::RegisterClassW(&wc) == 0) {
+		Debug("*** TApp::InitApp RegisteClass Failed(%d) ***\n", GetLastError());
+		return FALSE;
 	}
 
 	return	TRUE;

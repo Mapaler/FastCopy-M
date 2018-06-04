@@ -1,9 +1,9 @@
 ﻿/* static char *cfg_id = 
-	"@(#)Copyright (C) 2005-2017 H.Shirouzu		cfg.h	Ver3.31"; */
+	"@(#)Copyright (C) 2005-2018 H.Shirouzu		cfg.h	Ver3.41"; */
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2005-01-23(Sun)
-	Update					: 2017-07-30(Sun)
+	Update					: 2018-01-27(Sat)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -18,7 +18,6 @@ struct Job {
 	WCHAR	*src;
 	WCHAR	*dst;
 	WCHAR	*cmd;
-	int		bufSize;
 	int		estimateMode;
 	int		diskMode;
 	BOOL	ignoreErr;
@@ -76,11 +75,15 @@ struct Job {
 	Job() {
 		Init();
 	}
-	Job(const Job& job) {
-		Init();
-		Set(&job);
+	Job(const Job& org) {
+		*this = org;
 	}
 	~Job() { UnSet(); }
+	Job& operator=(const Job &org) {
+		Init();
+		Set(&org);
+		return *this;
+	}
 };
 
 struct FinAct {
@@ -114,11 +117,15 @@ struct FinAct {
 	FinAct() {
 		Init();
 	}
-	FinAct(const FinAct& action) {
-		Init();
-		Set(&action);
+	FinAct(const FinAct& org) {
+		*this = org;
 	}
 	~FinAct() { UnSet(); }
+	FinAct& operator=(const FinAct& org) {
+		Init();
+		Set(&org);
+		return *this;
+	}
 };
 
 class Cfg {
@@ -133,7 +140,6 @@ public:
 	int		iniVersion;
 	int		bufSize;		// MB
 	int		maxRunNum;
-	int		maxTransSize;	// MB
 	int		maxOvlSize;		// MB
 	int		maxOvlNum;
 	int		maxOpenFiles;
@@ -142,16 +148,16 @@ public:
 	int		maxMoveSize;	// MB
 	int		maxDigestSize;	// MB
 	int		minSectorSize;
-	int		nbMinSizeNtfs;
-	int		nbMinSizeFat;
+	int64	nbMinSizeNtfs;
+	int64	nbMinSizeFat;
 	int64	timeDiffGrace;
 	BOOL	isReadOsBuf;
 	BOOL	isWShareOpen;
 	int		maxHistory;
 	int		maxHistoryNext;
 	int		copyMode;
-	int		copyFlags;
-	int		copyUnFlags;
+	int64	copyFlags;
+	int64	copyUnFlags;
 	int		skipEmptyDir;	// 0:no, 1:filter-mode only, 2:always
 	int		forceStart;		// 0:delete only, 1:always(copy+delete), 2:always wait
 	BOOL	ignoreErr;
@@ -200,6 +206,11 @@ public:
 	int		testMode;
 	BOOL	isRunasButton;
 	BOOL	isSameDirRename;
+	BOOL	dlsvtMode; // 0: none, 1: fat, 2: always
+	BOOL	largeFetch;
+	BOOL	dirSel;
+	BOOL	updCheck;
+	time_t	lastUpdCheck;
 
 	struct ShExtCfg {
 		BOOL	autoClose;
@@ -234,6 +245,7 @@ public:
 	char	driveMap[64];
 	WCHAR	statusFont[LF_FACESIZE];
 	int		statusFontSize;
+	DynBuf	officialPub;
 
 	BOOL	needIniConvert;
 

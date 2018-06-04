@@ -157,10 +157,10 @@ bool RegExp::RegisterWildCard(const WCHAR *wild_str, RegExp::CaseSense cs)
 
 	int			escape = 0;
 	StatesType	type = NORMAL_TBL;
-	WCHAR		ch = 0, last_ch, start_ch, end_ch;
+	WCHAR		ch = 0, start_ch, end_ch;
 
 	do {
-		last_ch = ch;
+		WCHAR last_ch = ch;
 		ch = *wild_str++;	// 0 も文末判定文字として登録
 
 		if (mode == NORMAL) {

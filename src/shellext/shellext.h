@@ -11,10 +11,6 @@
 #ifndef SHELLEXT_H
 #define SHELLEXT_H
 
-#if _MSC_VER <= 1200
-#define UINT_PTR	UINT
-#endif
-
 #ifndef CFSTR_PREFERREDDROPEFFECT
 #define CFSTR_PREFERREDDROPEFFECT "Preferred DropEffect"
 #endif

@@ -34,6 +34,10 @@
 	border-color: #aaaaaa;
 	font-size: 95%;
 }
+.help_table_mini {
+	font-size: 90%;
+	margin: 10px;
+}
 .tr_default {
 	background-color: #aaffaa;
 }
@@ -72,11 +76,11 @@
 <body bgcolor="#eeffff">
 
 <div align="center">
-<h1 class="help_head1">FastCopy ver3.32</h1>
+<h1 class="help_head1">FastCopy ver3.50</h1>
 </div>
 <div class="help_all">
 
-<div align="right">2017/08/07 H.Shirouzu (白水啓章)</div>
+<div align="right">2018/05/29 H.Shirouzu (白水啓章)</div>
 
 <a name="index"/>
 <h2 class="help_head2">Index</h2>
@@ -88,6 +92,7 @@
 	<a href="#usage">5. 使用法＆画面説明</a><br>
 		<div class="help_sub_section">
 		<a href="#source_dst">1) Source/DestDir</a><br>
+		　<a href="#backslash_behavior">DestDir末尾の'\'の意味</a><br>
 		<a href="#mode">2) 動作モード</a><br>
 		<a href="#buttons">3) ボタン＆オプション指定</a><br>
 		<a href="#filter">4) フィルタ指定</a><br>
@@ -97,7 +102,7 @@
 	<a href="#settings">6. 設定</a><br>
 		<div class="help_sub_section">
 		<a href="#gen_settings">1) 一般設定</a><br>
-		<a href="#shell">2) 拡張設定（シェル拡張・フォント等）</a><br>
+		<a href="#font">2) フォント設定</a><br>
 		<a href="#finact">3) 終了時処理</a><br>
 		<a href="#job">4) ジョブ管理</a>
 		</div>
@@ -105,8 +110,7 @@
 	<a href="#warning">8. 注意（危険なところ）</a><br>
 	<a href="#contact">9. サポート掲示板＆最新版</a><br>
 	<a href="#misc">10. その他</a><br>
-	<a href="#todo">11. ToDo</a><br>
-	<a href="#history">12. 履歴</a><br>
+	<a href="#history">11. 履歴</a><br>
 </div>
 
 <a name="about"/>
@@ -142,7 +146,7 @@
 <h2 class="help_head2">2. ライセンス</h2>
 <div class="help_section">
 	<div class="help_license">
-	FastCopy ver3.x Copyright(C) 2004-2017 by SHIROUZU Hiroaki<br>
+	FastCopy ver3.x Copyright(C) 2004-2018 by SHIROUZU Hiroaki<br>
 	<br>
 	FastCopy ver3.x は GNU Public License ver3 のオープンソースソフトウェアです。<br>
 	詳細は同梱の <a href="license-gpl3.txt">license-gpl3.txt</a> をご覧ください。<br>
@@ -158,8 +162,8 @@
 <a name="environment"/>
 <h2 class="help_head2">3. 動作環境</h2>
 <div class="help_section">
-	Windows XP SP3/Vista/7/8/8.1/10<br>
-	Windows Server 2003(&R2)/2008(&R2)/2012(&R2)/2016
+	Windows Vista/7/8/8.1/10<br>
+	Windows Server 2008(&R2)/2012(&R2)/2016
 </div>
 
 <a name="install"/>
@@ -167,23 +171,21 @@
 <div class="help_section">
 	<h3 class="help_head3">インストール</h3>
 	<div class="help_sub_section">
-		setup.exe を実行して、任意のディレクトリにインストールしてください。<br>
-		（インストールディレクトリへのコピーと、ショートカットの作成を行います）<br>
-		USB メモリ等に格納して使用する場合は、fastcopy.exe, fastcopy.chm のみをコピーしてお使いください。（この場合、シェル拡張は使えません）
+		FastCopy3xx_installer[64].exe を実行して、任意のディレクトリにインストールしてください。<br>
+		USB メモリ等に格納して使用する場合は、インストーラの展開を押して、FastCopy.exe等を取り出してください。
 	</div>
 
 	<h3 class="help_head3">アンインストール</h3>
 	<div class="help_sub_section">
 		インストールディレクトリの setup.exe を使ってアンインストールすることができます。<br>
-		（ショートカットの削除とシェル拡張の解除を行います）<br>
-		なお、シェル拡張を行っていた場合、完全な削除は OS再起動後になります。<br>
+		Win7以降ではOSの設定/コントロールパネル等にある「プログラムと機能」から、アンインストール可能です。
 	</div>
 </div>
 
 <a name="usage"/>
 <h2 class="help_head2">5. 使用法＆画面説明</h2>
 <div class="help_section">
-	ウィンドウの最小化で、タスクトレイに格納します。<br>
+	ウィンドウの最小化で、タスク通知領域に格納します。<br>
 	動作中は、各種ステータスが表示されます。<br>
 	（ファイル数の括弧内はディレクトリ数を表します）<br>
 	<a name="source_dst"/>
@@ -191,14 +193,13 @@
 	<div class="help_sub_section">
 		Source(コピー元) と DestDir(コピー先ディレクトリ) を指定します。<br>
 		（デフォルトでは、過去10世代分記憶します）<br>
-		Source を複数指定（ドラッグ＆ドロップ可）する場合は、セミコロンで区切ります。<br>
-		（なお、セミコロンを含むパス名は、""で括って指定します）<br>
+		Source を複数指定（ドラッグ＆ドロップ可）する場合は、改行して各行にパス名を書きます。<br>
 		<br>
 		Source へのドラッグ＆ドロップ時に CTLキーを押している場合、現在の Source 内容に追加する形になります。（押していない場合は、現在の Source 内容はクリアされます）<br>
 		また、DestDir 入力欄への（ディレクトリの）ドロップも可能です。
 
 		<a name="backslash_behavior"/>
-		<h4 class="help_head4">DestDir 指定の末尾に '\' があるかどうかによる挙動の違い</h4>
+		<h4 class="help_head4">DestDir末尾の '\' の有無による挙動の違い</h4>
 		<table class="help_table" border="4">
 			<tr><td nowrap><strong>末尾に'\'がある</strong></td><td>
 			Source ディレクトリ自体を含めて、DestDir 配下にコピーします。<br>
@@ -254,9 +255,7 @@
 		・<strong>SHIFTキーを押しながらリストアップを押す</strong>と（ログ設定でファイルログを有効にしている場合）リストアップ内容がファイルログに記録されます。（ログ設定でファイル日付・サイズ記録オプションを設定している場合、それらも表示・記録されます）
 		</td></tr>
 		<tr><td nowrap><strong>Buffer 指定</strong></td>
-		<td>Read/Write に使う、バッファサイズを MB 単位で指定します。<br>
-			v3.0以降、64bit版では<strong>4096MB以上</strong>を指定可能になりました。（意味があるかは？ですが）<br>
-			（<a href="#setting_io">最大I/O単位</a>の2倍以上の値が必要です）</td></tr>
+		<td>Read/Write に使う、バッファサイズを表示します。クリックすると設定が表示されます</td></tr>
 		<tr><td nowrap><strong>速度コントロール</strong></td>
 		<td>最大(Full Speed)、自動速度制限(Auto Slow)(*1)、速度指定(90%～10%)、停止(Suspend) を指定することができます。重いと感じる場合は「自動速度制限」を試すと良いでしょう（マウスや最前面ウィンドウの変化を検知すると、一定時間、遅くします）。また「最大」以外の場合は、プロセス優先度クラスを「低」に落とします。（<a href="#job">ジョブ管理</a>での保存項目対象にはなりません）</td></tr>
 		<tr><td nowrap><strong>エラー時継続</strong></td>
@@ -269,18 +268,17 @@
 		 なお、具体的には、次のような比較を行います。<br>
 		 Read(Src) -> MD5(Src) -> Write(Dst) -> Read(Dst) -> MD5(Dst) -> MD5比較(Src/Dst) <br>
 		 （各ステージが、複数のファイルを跨ったパイプラインのように並列して処理されます）
+		 <br><br>
+		ベリファイエラーが発生した場合、コピー元・先のハッシュ値を表示した上で、コピー先のファイル名に.fc_verify_errを付与したものに変更します。
+
 		 </td></tr>
 		<tr><td nowrap><strong>完了時間予測</strong></td>
-		<td>コピー開始前に、コピー元の総ファイル数・総ファイルサイズを調べることで、完了時間を予測します。
+		<td>コピー開始前に、総ファイル数・総ファイルサイズを調べることで、完了時間を予測します。
 （なお、削除モードでの予測はできません。また、移動モードの場合、削除時間は予測に含んでいません）</td></tr>
-		<tr><td nowrap><strong>Top</strong></td>
-		<td>常に最前面に表示します。</td></tr>
 		<tr><td nowrap><strong>直ちに開始</strong></td>
 		<td>他の FastCopy が実行中の場合に、その完了を待つことなく、直ちに実行を開始します。（なお、他の FastCopy がコピー・移動中でない場合、このボタンは現れません）（<a href="#setting_parallel">同時実行</a>）</strong></td></tr>
-		<tr><td nowrap><strong>「?」</strong></td>
-		<td>ヘルプを表示します。</td></tr>
 		</table>
-		（*1)FastCopy がアクティブでない状態でマウス移動を検出すると速度制限します。具体的には、I/O 動作の合間にウェイトを入れる、プロセス優先度を下げる、I/O優先度を下げる(Vista以降)、最大I/Oサイズを1MBに低下させる、等により動作速度を制限します。なお、動作内容は、将来、変更される可能性があります<br>
+		（*1)FastCopy がアクティブでない状態でマウス移動を検出すると速度制限します。具体的には、I/O 動作の合間にウェイトを入れる、プロセス優先度を下げる、I/O優先度を下げる、最大I/Oサイズを1MBに低下させる、等により動作速度を制限します。なお、動作内容は、将来、変更される可能性があります<br>
 
 		<br>
 		<a name="options"/>
@@ -323,8 +321,7 @@
 		</table>
 		<br>
 		<a name="filter_ps"/>
-		備考１）削除モードで、include に「ファイル指定あり＆ディレクトリ指定なし」の場合にディレクトリ削除しません。<br>
-		　（ver2.11 までの「フィルタ指定時＝常にディレクトリ削除しない」から挙動を変えています）<br>
+		備考１）削除モードで、Include に「ファイル指定あり＆ディレクトリ指定なし」の場合にディレクトリ削除しません。<br>
 		備考２）ファイルを1つ以上指定した場合、マッチしないファイルはコピーされません。<br>
 		備考３）ディレクトリを1つ以上指定した場合、マッチしないディレクトリ配下以外はコピーされません。<br>
 		<br>
@@ -332,18 +329,70 @@
 		<a name="long_filter"/>
 		<table class="help_table" border="4">
 		<tr><td><strong>相対パス指定</strong></td><td>
-			include/exclude の先頭文字が \ でない場合、相対パス指定となり、パスの末尾方向からの一致を検索します。<br>
-			Source指定が C:\dir\ の時、include指定に subdir[1-9]\xxx\ とすると、C:\dir\subdir2\xxx\ や C:\dir\dir\subdir3\xxx\ などのマッチするディレクトリとなり、その配下のファイルのみがコピーされます。<br>
-			subdir[1-9]\file.* とファイルをinclude指定した場合、C:\dir\zzz\subdir9\file.txt などがマッチし、コピー対象になります。
+			Include/Exclude の先頭文字が \ でない場合、相対パス指定となり、パスの末尾方向からの一致を検索します。<br>
+
+			<table class="help_table_mini" border="1">
+			<tr class="tr_default"><td colspan="2"><strong>ディレクトリの Include指定の例</strong></td></tr>
+			<tr><td>Source指定</td><td>C:\dir\</td></tr>
+			<tr><td>Include指定</td><td>subdir[1-9]\xxx\</td></tr>
+			<tr><td>マッチ例</td><td>
+				C:\dir\subdir2\xxx\ や <br>
+				C:\dir\aaa\subdir3\xxx\ など
+			</td></tr>
+			<tr><td>効果</td><td>マッチしたディレクトリとその配下全てがコピーされます。</td></tr>
+			</table>
+
+			<table class="help_table_mini" border="1">
+			<tr class="tr_default"><td colspan="2"><strong>ファイルの Include指定の例</strong></td></tr>
+			<tr><td>Source指定</td><td>C:\dir\</td></tr>
+			<tr><td>Include指定</td><td>subdir[1-9]\file.*</td></tr>
+			<tr><td>マッチ例</td><td>
+				C:\dir\aaa\subdir9\file.txt や<br>
+				C:\dir\bbb\ccc\subdir9\file.doc など
+			</td></tr>
+			<tr><td>効果</td><td>マッチしたファイルがコピーされます。</td></tr>
+			</table>
+
 		</td></tr>
-		<tr><td><strong>開始パス指定</strong></td><td>
-			include/exclude の先頭文字が \ ではじまる場合、開始パス指定となり、パスの先頭方向（下記、フィルタ検査の開始点を参照）からの一致を検索します。<br>
-			Source指定が C:\dir\ の時、include指定に \subdir[1-9]\xxx\ とすると、C:\dir\subdir2\xxx\ や C:\dir\subdir3\xxx\ などのマッチするディレクトリ配下のファイルのみがコピー対象になります。<br>
-			include に \subdir[1-9]\file.* とファイルを指定した場合も、C:\dir\subdir9\file.txt などがコピー対象になり、それより深いディレクトリのファイルにはマッチしません。
+		<tr><td><strong>前方一致指定</strong></td><td>
+			Include/Exclude の先頭文字が \ ではじまる場合、前方一致指定となり、パスの先頭方向（下記、フィルタ検査の開始点を参照）からの一致を検索します。<br>
+
+			<table class="help_table_mini" border="1">
+			<tr class="tr_default"><td colspan="2"><strong>ディレクトリの Include指定の例</strong></td></tr>
+			<tr><td>Source指定</td><td>C:\dir\</td></tr>
+			<tr><td>Include指定</td><td><strong>\</strong>subdir[1-9]\xxx\</td></tr>
+			<tr><td>マッチ例</td><td>
+				C:\dir\subdir2\xxx\ や <br>
+				C:\dir\subdir3\xxx\ など。
+			</td></tr>
+			<tr><td>効果</td><td>マッチしたディレクトリとその配下全てがコピーされます。</td></tr>
+			<tr><td>備考（マッチしない例）</td><td>
+				C:\dir\aaa\subdir2\xxx\ など、階層が違うもの。
+			</td></tr>
+			</table>
+
+			<table class="help_table_mini" border="1">
+			<tr class="tr_default"><td colspan="2"><strong>ファイルの Include指定の例</strong></td></tr>
+			<tr><td>Source指定</td><td>C:\dir\</td></tr>
+			<tr><td>Include指定</td><td><strong>\</strong>subdir[1-9]\file.*</td></tr>
+			<tr><td>マッチ例</td><td>
+				C:\dir\subdir2\file.txt や<br>
+				C:\dir\subdir9\file.doc など
+			</td></tr>
+			<tr><td>効果</td><td>マッチしたファイルがコピーされます。</td></tr>
+			<tr><td>備考（マッチしない例）</td><td>
+				C:\dir\aaa\subdir9\file.txt など、階層が違うもの。
+			</td></tr>
+			</table>
+
 		</td></tr>
-		<tr><td><strong>フィルタ検査の開始点</strong></td><td>
-			Source指定が C:\src\; C:\src\file.txt; C:\src\dir* のいずれかの場合、
-			フィルタ検査の開始点（先頭）は C:\src\ になります。<br>
+		<tr><td><strong>フィルタ検査の開始位置</strong></td><td>
+			Source指定が<br>
+			C:\src\;<br>
+			C:\src\file.txt;<br>
+			C:\src\dir*<br>
+			のいずれかの場合、フィルタ検査の開始位置（先頭）は<br>
+			C:\src\ の次の文字からになります。（C:\src\ まではフィルタ検査範囲に入りません）
 		</td></tr>
 		</table>
 		<br>
@@ -356,7 +405,7 @@
 		<tr><td>[abc]</td><td>abc のどれか 1文字</td>
 		<tr><td>[!abc]</td><td>abc のどれか 1文字以外。'!' の代わりに '^' でも可</td>
 		<tr><td>[a-z]</td><td>a-z までの任意の1文字</td>
-		<tr><td>\</td><td>先頭の\は開始パス指定を意味します。パス途中の\はディレクトリ区切りを意味します。末尾の\はディレクトリ指定を表します。<br>
+		<tr><td>\</td><td>先頭の\は前方一致指定を意味します。パス途中の\はディレクトリ区切りを意味します。末尾の\はディレクトリ指定を表します。<br>
 			[] の中で\はエスケープ文字になります。例えば "["や"]"をファイル名文字の一部として指定したい場合は、[\[] などとします</td>
 		</table>
 		<br>
@@ -410,12 +459,20 @@
 			<tr><td nowrap><strong>FastCopyDir</strong></td><td>fastcopy.log や fastcopy2.ini が置かれているディレクトリを開きます</td></tr>
 			<tr><td nowrap><strong>起動時位置にする</strong></td><td>起動時に、常に現在の位置で開くようにします</td></tr>
 			<tr><td nowrap><strong>起動時サイズにする</strong></td><td>起動時に、常に現在のサイズで開くようにします</td></tr>
+			<tr><td nowrap><strong>常に最前面に表示</strong></td><td>常に最前面に表示します。</td></tr>
 			<tr><td nowrap><strong>閉じる</strong></td><td>FastCopyを終了します</td></tr>
 			</table>
 		</div>
 		<h4 class="help_head4">ヘルプ</h4>
 		<div class="help_sub_section">
-			このファイルを開きます。
+			<table class="help_table" border="3">
+			<tr><td nowrap><strong>ヘルプ</strong></td><td>このヘルプを開きます</td></tr>
+			<tr><td nowrap><strong>アップデート確認</strong></td>
+				<td><a href="https://fastcopy.jp/fastcopy-update.dat">https://fastcopy.jp/fastcopy-update.dat</a> にアクセスして、アップデートが存在するか問い合わせます。</td></tr>
+			<tr><td nowrap><strong>サポート掲示板</strong></td><td>FastCopy関連の質問や提案をする掲示板です</td></tr>
+			<tr><td nowrap><strong>最新版URL</strong></td><td>FastCopyのホームページを開きます</td></tr>
+			<tr><td nowrap><strong>FastCopyについて</strong></td><td>バージョン＆著作権を表示します</td></tr>
+			</table>
 		</div>
 		<a name="elevate">
 		<h4 class="help_head4">特権</h4>
@@ -440,7 +497,11 @@
 		<h4 class="help_head4">デフォルト設定</h4>
 		<div class="help_sub_section">
 		起動画面のデフォルト値を指定します。<br>
-		項目説明は <a href="#mainwin">こちら</a>をご覧ください。
+
+		<table class="help_table" border="4">
+		<tr><td nowrap><strong>メイン画面のデフォルト値</strong></td><td>項目説明は <a href="#mainwin">こちら</a>をご覧ください。</td></tr>
+		<tr><td nowrap><strong>Language</strong></td><td>表示言語を変更します（再起動後に有効になります）</td></tr>
+		</table>
 		</div>
 
 		<a name="setting_io"/>
@@ -449,14 +510,16 @@
 			I/O用の基本パラメータ設定を行います。
 
 			<table class="help_table" border="4">
-			<tr><td nowrap><strong>最大I/O単位(MB)</strong></td><td>1回にOSにリクエストするReadFile/WriteFileのサイズを指定します<br>
-				「最大I/O単位÷重畳数」が実際のリクエストサイズになります。<br>
-				（<a href="#mainwin">Buffer 指定</a>は、最大I/O単位の2倍以上が必要です）<br><br>
-				この値を極端に大きくすると、カーネル内リソース不足で I/Oエラーになることがあります。
+			<tr><td nowrap><strong>メインバッファサイズ(MB)</strong></td><td>Read/Writeで使うメインバッファを指定します。
 				</td></tr>
-			<tr><td nowrap><strong>重畳数（非同期I/O発行数）</strong></td><td><strong>（v3.0以降）</strong>ReadFile/WriteFile API発行毎に完了を待たず、並行してAPIを発行することで（特にネットワークドライブに対する）I/O速度を向上させています。<br>
-			（<strong>なお、重畳数を1にすると非同期I/Oを使わず、v2.xまでと同じ動作になります</strong>）</td></tr>
-			<tr><td nowrap><strong>最小セクタ長を4096と見なす</strong></td><td><strong>（v3.2以降）</strong>書き込み側ルートディレクトリは512byteセクタでかつ、（ジャンクション等により）配下ディレクトリが4096byteセクタに変化する場合に ON にします。<br>
+			<tr><td nowrap><strong>I/O単位(MB)</strong></td><td>1回にOSにリクエストするReadFile/WriteFileのサイズを指定します<br>
+				「I/O単位 * 非同期I/O発行数」が、OS内で同時に実行される「最大I/Oサイズ」になります。<br>
+				なお、手元での実験では I/O単位を2～4MB以上に大きくするとネットワークドライブでの転送速度が少し低下するため、1MBを推奨値としています。<br>
+				この値（と下記の非同期I/O発行数）を極端に大きくすると、カーネル内リソース不足で I/Oエラーになることがあります。
+				</td></tr>
+			<tr><td nowrap><strong>非同期I/O発行数</strong></td><td>ReadFile/WriteFile API発行毎に完了を待たず、並行してAPIを発行することで（特にネットワークドライブに対する）I/O速度を向上させています。<br>
+			（<strong>なお、この数を1にすると非同期I/Oを使いません</strong>）</td></tr>
+			<tr><td nowrap><strong>最小セクタ長を4096と見なす</strong></td><td>書き込み側ルートディレクトリは512byteセクタでかつ、（ジャンクション等により）配下ディレクトリが4096byteセクタに変化する場合に ON にします。<br>
 			（ONにすると、1byteファイルにも常に4096byteバッファを用意するため、小容量ファイルでのバッファ利用効率が若干下がります。なお、読み込み側ドライブ側セクタサイズ変化は自動追随するため、チェックは不要です）</td></tr>
 			</table>
 			<br>
@@ -467,6 +530,12 @@
 				転送速度が遅くなったり、OSのファイルキャッシュによって、他のプログラムのメモリがスワップアウトされる可能性が増えるのでお薦めしません。</td></tr>
 			<tr><td nowrap><strong>NTFS系/FAT系</strong></td><td>指定サイズ未満の書込み時に<strong>ダイレクトI/Oを使いません</strong>。<br>
 読込みOSキャッシュを利用と同じデメリットがありますが、ごく小さなファイルに限ってはヘッドシークの低減によって高速化につながるため、デフォルトではNTFS64KB未満、FATでは128KB未満では利用する設定になっています。</td></tr>
+			</table>
+			<br>
+
+			<table class="help_table" border="4">
+			<tr><th colspan="2">ディレクトリ読み取り</th></tr>
+			<tr><td nowrap><strong>一括読み取りを有効にする</strong></td><td><a href="https://msdn.microsoft.com/ja-jp/library/windows/desktop/aa364419(v=vs.85).aspx" target="_blank">FIND_FIRST_EX_LARGE_FETCH</a>フラグを有効にして、ディレクトリエントリの読み取り速度を向上させます。</td></tr>
 			</table>
 		</div>
 
@@ -529,7 +598,7 @@
 					（移動・削除動作では設定に関わらず常にONとなります）<br>
 					なお、シンボリックリンクの作成には特権（管理者権限）が必要となります。</td></tr>
 			<tr><td><strong>「移動（全上書き）」を「移動（日付・サイズ）」 に変更</strong></td>
-			  <td>移動先に日付・サイズが同じファイルがあれば同一と見做して、コピーすることなく移動元から削除します</td></tr>
+			  <td>移動先に日付・サイズが同じファイルがある場合、コピーすることなく移動元から削除します</td></tr>
 			<tr><td><strong>移動を逐次方式に</strong></td><td>通常は移動予定リスト（数千～数万ファイル）が一杯にならない限り、コピー元の削除を始めませんが、これをチェックするとファイルコピー終了毎に終わり次第（なるべく）即座にコピー元を削除します</td></tr>
 			<tr><td  nowrap><strong>移動（ベリファイ時）</strong></td><td>上と同じ動作ですが、ベリファイが終わり次第、となります</td></tr>
 			<tr><td  nowrap><strong>ハッシュ方式（ベリファイ用）</strong></td><td>ベリファイ用ハッシュ方式(MD5/SHA-1/SHA-256)を選択します</td></tr>
@@ -537,7 +606,7 @@
 			通常はファイルシステム種類に基づくタイムスタンプ精度（NTFS=100ns単位、FAT=2秒単位等）の差を自動補正して判定しますが、一部のNAS等で秒未満の更新日付が正確でない環境では手動で同一と見做す更新日付の許容範囲を設定してください。（msec単位）</td></tr>
 			</table>
 			<a name="junction_ps">
-			<strong>（*1）</strong>例えば C:\Users\(user)\AppData\Local\Applicatoin Data は C:\Users\(user)\AppData\Local を指しており、実体/配下コピーすると無限に再帰します（C:\Users\(user)\AppData\Local\Applicatoin Data\Applicatoin Data\Applicatoin Data\…）。従い、実体/配下コピーを有効にする場合は注意が必要です。
+			<strong>（*1）</strong>例えば "C:\Users\(user)\AppData\Local\Applicatoin Data" は "C:\Users\(user)\AppData\Local" を指しています。これを「実体/配下コピー」すると無限に再帰します。（C:\Users\(user)\AppData\Local\Applicatoin Data\Applicatoin Data\Applicatoin Data\…）。従い、実体/配下コピーを有効にする場合は注意が必要です。
 		</div>
 
 		<a name="setting_del"/>
@@ -546,7 +615,7 @@
 			削除関連オプションです。
 			<table class="help_table" border="4">
 			<tr><td><strong>フィルタ指定での削除時にもディレクトリ削除する</strong></td>
-			  <td>デフォルトでは include指定にファイルのみが指定されディレクトリ指定がない場合、ディレクトリを削除しません。<br>
+			  <td>デフォルトでは Include指定にファイルのみが指定されディレクトリ指定がない場合、ディレクトリを削除しません。<br>
 				これをチェックすると、常にディレクトリも削除します。（<a href="#filter_ps">注意</a>）</tr>
 			<tr><td><strong>復元無効化にNSA方式を使う （３回上書きのためとても遅い）</strong></td>
 			  <td>復元無効化をON（＝削除する前にランダムデータで１回上書き＆ファイル名をリネーム後に削除）にした際、１回ではなく、３回上書きします（２回ランダムなデータで上書きした後、最後に 0 で１回上書き）。</td></tr>
@@ -570,6 +639,29 @@
 			<tr><td nowrap><strong>ACLエラーをログに記録する</strong></td><td>非NTFS環境（Samba等）や非特権状態では大量にエラーログが出ることがあります</td></tr>
 			<tr><td><strong>副次Streamエラーをログに記録する</strong></td><td>Samba環境（Samba等）では大量にエラーログが出ることがあります</td></tr>
 			</table>
+			<br>
+			ログ内に出てくる記号の意味について。
+			<table class="help_table" border="4">
+			<tr><td nowrap>+</td><td>ファイル/ディレクトリの作成</td></tr>
+			<tr><td nowrap>-</td><td>ファイル/ディレクトリの削除</td></tr>
+			<tr><td nowrap>-&gt;</td><td>シンボリックリンク/ジャンクションの作成</td></tr>
+			<tr><td nowrap>=&gt;</td><td>ハードリンクの作成</td></tr>
+			<tr><td nowrap>!!</td><td>ベリファイエラー（ハッシュ値の不一致）</td></tr>
+			</table>
+
+		</div>
+
+		<a name="setting_shell"/>
+		<h4 class="help_head4">シェル拡張</h4>
+		<div class="help_sub_section">
+			シェル拡張を行います。<br>
+			通常起動すると個人用拡張となり、管理者権限で起動すると全ユーザ向け拡張になります。
+		</div>
+
+		<a name="setting_tray"/>
+		<h4 class="help_head4">最小化時の設定</h4>
+		<div class="help_sub_section">
+			最小化時に、タスクトレイを使うか、タスクバーを使うかを選択します。<br>
 		</div>
 
 		<a name="setting_misc"/>
@@ -577,24 +669,17 @@
 		<div class="help_sub_section">
 			その他のオプションです。
 			<table class="help_table" border="4">
+			<tr><td nowrap><strong>起動時にアップデート確認</strong></td><td>引数なしで起動した時に、最新版が存在するか確認します（前回の確認から1日以上経過している時のみ）</td></tr>
 			<tr><td nowrap><strong>実行前に確認ダイアログ</strong></td><td>実行前に確認します</td></tr>
-			<tr><td><strong>最小化時、タスクトレイではなく、タスクバーを使用</strong></td><td>タスクバーを使用します</td></tr>
 			<tr><td nowrap><strong>表示更新間隔</strong></td><td>実行時の表示更新時間を指定します。アイコンの回転速度にも同期します</td></tr>
-			<tr><td><strong>終了時にバルーン通知</td><td>タスクトレイ格納時に終了をバルーン通知で知らせます</td></tr>
+			<tr><td><strong>終了時にバルーン通知</td><td>タスク通知領域格納時に終了をバルーン通知で知らせます</td></tr>
 			<tr><td><strong>コピー中は、自動スリープを防止する</td><td>OS設定で自動スリープが設定されていても、コピー中はスリープしません。<br>（ただしエラーダイアログ表示中は移行を防止しません）</td></tr>
-			<tr><td nowrap><strong>英語UI</strong></td><td>英語UIモードになります。再起動後に有効です</td></tr>
 			</table>
 		</div>
 	</div>
 
-	<a name="shell"/>
-	<h3 class="help_head3">設定 → 拡張設定 → シェル拡張設定（個人用/全体用）</h3>
-	<div class="help_sub_section">
-		Explorer の右クリックメニューに、FastCopy のコピー・削除メニューを登録/解除します。<br>
-		（システム全体に反映可能な「全体用」は管理者権限が必要です。メニュー右端の「特権」で昇格してください）
-	</div>
-
-	<h3 class="help_head3">設定 → 拡張設定 → メインフォント変更＆リセット</h3>
+	<a name="font"/>
+	<h3 class="help_head3">設定 → フォント設定 → メインフォント変更＆リセット</h3>
 	<div class="help_sub_section">
 		メインウィンドウ中央の情報枠のフォントを変更します。<br>
 		各桁を揃えて表示したい場合は、固定ピッチフォントの利用をお勧めします。
@@ -666,7 +751,7 @@
 	<tr><td>GUI モードと違い、区切り文字は空白文字になります。<br>
 			空白文字を含むパス名は、"" で括って指定してください</td></tr>
 	<tr><td>/to= は必ず末尾で指定します</td></tr>
-	<tr><td>実行終了まで待ちたい場合は、start /wait fastcopy.exe [/オプション類] ... とします</td></tr>
+	<tr><td>実行終了まで待ちたい場合は、start "" /wait fastcopy.exe [/オプション類] ... とします</td></tr>
 	</table><br>
 	指定可能なオプションは、以下の通りです。（なお、'=' の前後には空白を入れないで下さい）<br><br>
 
@@ -699,7 +784,7 @@
 	-->
 	<tr><td nowrap><strong>/auto_close</strong></td><td>コピー終了後、自動的に終了します</td></tr>
 	<tr><td nowrap><strong>/force_close</strong></td><td>コピー終了後、エラーが発生していた場合も、強制的に終了します</td></tr>
-	<tr><td nowrap><strong>/open_window</strong></td><td>タスクトレイに格納しません（直ちに実行開始しない場合は指定不要）</td></tr>
+	<tr><td nowrap><strong>/open_window</strong></td><td>タスク通知領域に格納しません（直ちに実行開始しない場合は指定不要）</td></tr>
 	<tr><td nowrap><strong>/estimate</strong></td><td>コピー完了時間予測を行います（/estimate=FALSE で抑止）</td></tr>
 	<tr><td nowrap><strong>/balloon(=FALSE)</strong></td><td>完了時にバルーン表示を行います（/balloon=FALSE で抑止）</td></tr>
 	<tr><td nowrap><strong>/no_ui</strong></td><td><a name="no_ui"/>原則として問い合わせダイアログを出しません。（バックグラウンド動作用。内部的に /no_confirm_del と /no_confirm_stop と /force_close もセットされます。セッション０分離（主にタスクスケジューラ起動）では自動的に/no_uiがセットされます。ただし終了時アクションでのカウントダウンは実スクリーンの有無に関わらず行われます）</td></tr>
@@ -717,7 +802,7 @@
 	<tr><td nowrap><strong>/force_start(=N)</strong></td><td>他の FastCopy がコピー実行中の場合も直ちに実行します。<br>（/force_start=2～N で同時実行上限数指定）</td></tr>
 	<tr><td nowrap><strong>/disk_mode=<br>&nbsp;&nbsp;(auto|same|diff)</strong></td><td><a href="#disk_mode">自動/同一/別HDDモード</a>を指定します。（デフォルト: auto）</td></tr>
 	<tr><td nowrap><strong>/speed=(full|autoslow|<br>&nbsp;&nbsp;9-1(90%-10%)|suspend)</strong></td><td>速度コントロールを行います</td></tr>
-	<tr><td nowrap><strong>/srcfile="files.txt</strong></td><td>Source内容をファイルで指定します。１行に１ファイルを記述します。（なお、大量のファイルを指定すると、Sourceコンボボックスの表示/再描画に非常に時間が掛かります）</td></tr>
+	<tr><td nowrap><strong>/srcfile="files.txt</strong></td><td>Source内容をファイルで指定します。１行に１ファイルを記述します。（なお、大量ファイルの指定はお勧めしません）</td></tr>
 	<tr><td nowrap><strong>/srcfile_w="files.txt"</strong></td><td>/srcfile= と同様ですが、UNICODE で記述します</td></tr>
 	<tr><td nowrap><strong>/include="..."</strong></td><td>Include フィルタを指定します（<a href="#filter">詳細</a>）</td></tr>
 	<tr><td nowrap><strong>/exclude="..."</strong></td><td>Exclude フィルタを指定します（<a href="#filter">詳細</a>）</td></tr>
@@ -736,7 +821,10 @@
 	</table>
 	<br>
 	<strong>例）</strong> C:\test 配下を D:\Backup Folder に差分コピーする場合<br>
-		　fastcopy.exe /cmd=diff C:\test /to="D:\Backup Folder\"
+		　fastcopy.exe /cmd=diff C:\test /to="D:\Backup Folder\"<br>
+	<br>
+	<strong>終了ステータスについて）</strong> コマンドが成功した場合は 0、失敗した場合は -1 を返します。
+
 </div>
 
 
@@ -757,18 +845,18 @@
 <h2 class="help_head2">9. サポート掲示板＆最新版</h2>
 <div class="help_section">
 	サポート掲示板: <a href="https://groups.google.com/forum/?hl=ja#!forum/fastcopy">https://groups.google.com/forum/?hl=ja#!forum/fastcopy</a><br>
-	最新版: <a href="http://ipmsg.org/tools/fastcopy.html">http://ipmsg.org/tools/fastcopy.html</a><br>
-	個人ページ: <a href="http://ipmsg.org/private/">http://ipmsg.org/private/</a>
+	最新版: <a href="https://fastcopy.jp">https://fastcopy.jp</a><br>
+	個人ページ: <a href="https://ipmsg.org/private/">https://ipmsg.org/private/</a>
 </div>
 
 
 <a name="misc"/>
 <h2 class="help_head2">10. その他（設定保存先等）</h2>
 <div class="help_section">
-	<li>設定ファイル(<strong>FastCopy2.ini</strong>)およびログファイルは、<br>
+	<li>設定ファイル(<strong>FastCopy2.ini</strong>)およびログファイルは下記に作られます。<br>
 	<div class="help_sub_section">
-	<strong>Vista以降かつ \Program Files 配下にインストールした場合</strong>、\Users\(USER)\AppData\roaming\FastCopy\ 配下に（メニューのファイル(F) → UserDir(U)）保存します。<br>
-	<strong>それ以外の場合</strong>、FastCopy.exe の存在するディレクトリに保存されます。<br>
+	<strong>Program Files 配下にインストールした場合</strong>、\Users\(USER)\AppData\roaming\FastCopy\（メニューのファイル(F) → UserDir(U)）。<br>
+	<strong>それ以外の場合</strong>、FastCopy.exe の存在するディレクトリ。<br>
 	</div>
 	<li><strong>他のアプリケーション等への組み込みについて</strong><br>
 	<div class="help_sub_section">
@@ -778,25 +866,50 @@
 	<li>万一、異常終了（例外）した場合、fastcopy_exception.log が生成されます。
 	（作者に送ると、品質向上のための手がかりになります）
 </div>
-
-<a name="todo"/>
-<h2 class="help_head2">11. ToDo</h2>
-<div class="help_section">
-	<li>ネットワーク対応（２つのPCに入れた fastcopy 同士で高速転送）
-	<li>簡易比較の高速化
-</div>
-
-
+ 
 <a name="history"/>
-<h2 class="help_head2">12. 履歴</h2>
+<h2 class="help_head2">11. 履歴</h2>
 <div class="help_section">
 
 <table class="help_table" border="4">
 <tr><th>Version</th><th>説明</th></tr>
-<tr><td>v3.32</td><td>
-非日本語環境で、Aboutダイアログを開くと例外が発生していたのを修正<br>
-/srcfile_w= で指定したファイルのBOMを正しく認識できていなかったのを修正
+
+<tr><td>v3.50</td><td>
+Source選択ダイアログで、ファイルとフォルダを同時に選択できるように。<br>
+I/Oサイズ＆重畳数を適応的に変化させることで、ネットワークドライブのパフォーマンスを向上。<br>
+（レイテンシ大の環境では、Explorerや従来版に比べて2倍以上高速に）<br>
+最小化時、タスク通知領域にアイコンが隠れる場合はタスクバーに表示するように。<br>
+エラー時の終了コードが0（正しくは-1）になっていた問題の修正<br>
+設定類の改良（最小化時の動作の追加、シェル拡張の移動等）<br>
+インストーラ方式に変更し、インストーラに「ファイル展開（のみ）」を追加<br>
+例外時にダンプも出力するように。<br>
+「アプリと機能」からも、アンインストールできるように。<br>
+完了状態をアイコン上部の色でも表現（緑：完了、赤：エラー）。<br>
+公式ホームページを <a href="https://fastcopy.jp">https://fastcopy.jp</a> に変更。
 </td></tr>
+
+<tr><td>v3.41</td><td>
+I/O関連パラメータと設定方法を変更し、特にネットワークドライブでのパフォーマンスを向上。<br>
+起動時の自動アップデートチェックの追加（設定→その他、から変更可能）。<br>
+削除モードで、コピーモード用オプションが表示されることがあったのを修正。<br>
+削除時の「ディレクトリが空でない」エラーが稀に発生していたのを低減（OS側の問題への暫定対処）。<br>
+2つ以上の物理HDDを使ったボリュームの、同一/別ドライブ判定が不正確だったのを修正。<br>
+その他リファイン。
+</td></tr>
+
+<tr><td>v3.40</td><td>
+アップデート機能（メニュー → ヘルプ → アップデート確認）の追加。<br>
+Source入力欄を複数行表示可能にし（セミコロンではなく）改行で複数ファイルを表現する形に。<br>
+予測時間の精度を向上（Sourceに加えて、Destも事前探索する形に）。<br>
+Sourceボタンの初期動作をファイル選択画面に変更（設定→その他、から変更可能）。<br>
+LargeFetch機能の無効化を選択可能に（設定→I/O設定）。
+</td></tr>
+
+<tr><td>v3.32</td><td>
+非日本語環境で、Aboutダイアログを開くと例外が発生していたのを修正。<br>
+/srcfile_w= で指定したファイルのBOMを正しく認識できていなかったのを修正。
+</td></tr>
+
 <tr><td>v3.31</td><td>
 メインバッファ初期サイズを拡大（x64:128MB→256MB、x86:64MB→128MB）。<br>
 最大属性バッファを拡大（x64:1GB→8GB）。<br>
@@ -807,217 +920,33 @@
 転送バッファ分割の改善。<br>
 インストーラにおける、DLLプリロード攻撃対策。
 </td></tr>
+
 <tr><td>v3.30</td><td>
-ベリファイモード選択にxxHashを追加。<br>
+<a href="#hash_mode">ベリファイモード選択</a>にxxHashを追加。<br>
 テスト用ファイル作成モード設定を追加（[読み込みなしでの]非同期I/Oを使った書き込み速度テスト＆ダミーファイル作成）。<br>
-開始パスフィルタで、階層の違うパス指定を複数行うと最も深い指定のみ利用される問題を修正。<br>
+<a href="#filter">前方一致フィルタ</a>で、深さの違うフィルタ指定を複数行うと最も深い指定のみ利用される問題を修正。<br>
 ネットワークドライブの同一判定を間違えることがあったのを修正。<br>
 ジョブ登録では、バッファ設定を個別保存しないポリシーに変更。<br>
 その他リファイン
 </td></tr>
-<tr><td>v3.27</td><td>
-No UIモード起動（スケジューラ起動等）で、コピー動作前チェック（パス検査等）でエラーが発生した場合に、詳細内容がログに記録されるように。<br>
-その他リファイン。
-</td></tr>
-<tr><td>v3.26</td><td>
-ACL/副次Stream有効時の速度を改善。<br>
-シェル拡張にアイコンを表示するように。<br>
-ジョブ管理画面のジョブリスト順をメニューのジョブ順と合わせるように。<br>
-手動（or nouiによる自動）中断の場合、abortをログに記録するように。<br>
-動作環境に Windows Server 2016を追加。<br>
-インストーラ改良。
-</td></tr>
-<tr><td>v3.25</td><td>
-ベリファイ用ハッシュ（MD5/SHA-1/SHA-256）を設定から選択可能に。<br>
-32bit版で、ベリファイ中にエラー終了することがあったのを修正。
-</td></tr>
-<tr><td>v3.24</td><td>
-ごく一部の環境で、終了時に例外が発生することがあったのを修正。
-</td></tr>
-<tr><td>v3.23</td><td>
-64bit版で、I/OバッファをAPI上限の4095MBまで設定可能に。<br>
-複数プロセスを動作させた場合に、稀に他のFastCopyの終了待ちが発生することがあったのを修正。<br>
-各種リファイン。
-</td></tr>
-<tr><td>v3.22</td><td>
-512eHDD での若干の高速化（512byteセクタでも4KBセクタHDDとしてDirectI/Oを行う）。<br>
-拡張フィルタでの相対日付でマイナス指定が無効だったのを修正。<br>
-みなし最小セクタ設定が保存されない問題を修正。
-</td></tr>
-<tr><td>v3.21</td><td>
-コマンドラインで /cmd=(sync|move) を受け付けなくなっていたのを修正。
-</td></tr>
-<tr><td>v3.20</td><td>
+</table>
+<br>
+
+過去のバージョンのサマリ（詳細な情報は<a href="https://fastcopy.jp/help/fc_history.html" target="_blank">こちら</a>）
+
+<table class="help_table" border="4">
+<tr><th>Version</th><th>説明</th></tr>
+<tr><td>v3.00<br> - v3.27</td><td>
+<a href="#setting_io">非同期I/O</a>サポート、<a href="#filter">フィルタ相対パス</a>、<a href="#setting_parallel">同時実行動作の最適化</a>、<a href="#license">GPLv3 に変更</a><br>
+
 ユーザレベル（非管理者）でのシェル拡張を可能に。<br>
-コピー動作中の自動スリープを抑止するオプションの追加。<br>
 ディレクトリ探索の高速化（高レイテンシ環境or大規模エントリ用。FIND_FIRST_EX_LARGE_FETCH利用）。<br>
-みなし最小セクタサイズ設定を追加（ジャンクション等により、書き込み側の途中ディレクトリでセクタサイズが4096byteになる場合用）。<br>
-/NoUI時は予測機能をOFFに。（/estimate=TRUE で変更可能）。<br>
-ハッシュモードに SHA-256を追加。（fastcopy2.ini [main] hash_mode=2 を設定。hash_mode=1 で SHA-1）<br>
-/balloonオプションを追加。（/balloon=FALSE でballoon表示を抑止します）<br>
-/force_startで同時実行上限数を指定可能に。（/force_start=2～N）<br>
-拡張フィルタ用日付指定で、時分秒まで設定可能に（/from_date(to_date)="YYYYMMDD[hhmmss]" or "YYYY/MM/DD [hh:mm:ss]"）<br>
-ヘルプ内で Ctrl +F による検索を可能に。
+<a href="#hash_mode">ベリファイモード選択</a>にSHA-256を追加。<br>
+テスト用ファイル作成モード設定を追加（[読み込みなしでの]非同期I/Oを使った書き込み速度テスト＆ダミーファイル作成）。
 </td></tr>
-<tr><td>v3.13-v3.14</td><td>
-一部環境で、起動時に例外が発生することがあったのを修正。
-</td></tr>
-<tr><td>v3.12</td><td>
-通常表示（非アイコン）＋予測ON時にタスクバーにプログレス表示。<br>
-ログ記録で「UTF-8で記録」OFFでもUTF-8記録されていた問題を修正。<br>
-公式サポート掲示板へのリンク追加。
-</td></tr>
-<tr><td>v3.11</td><td>
-タスクトレイで動作完了した時にバルーン通知できるように。<br>
-ジョブ設定から Windowsタスクスケジューラを起動できるように。<br>
-ベリファイ時、相違があった場合はファイル名末尾に .fc_verify_err を付与してリネーム。
-</td></tr>
-<tr><td>v3.10</td><td>
-メイン情報枠のフォントを変更可能に。<br>
-ACLエントリが多く＆階層が深い場合に、稀に例外が発生（or ACLコピーに失敗）することがあったのを修正。
-</td></tr>
-<tr><td>v3.09</td><td>
-Win10(x64)アップデート版で、タスクトレイ格納時に例外が発生することがあったのを修正。<br>
-</td></tr>
-<tr><td>v3.08</td><td>
-Win10(x86)アップデート版で、タスクトレイ格納時に例外が発生することがあったのを修正。<br>
-その他リファイン
-</td></tr>
-<tr><td>v3.07</td><td>
-ファイルログ記録が有効な場合にメモリリークしていた問題を修正（1万ファイルにつき1MB前後）
-</td></tr>
-<tr><td>v3.06</td><td>
-リストアップ時にリパースポイント種別表示(->)が出なかったのを修正。<br>
-NoUIモードでも確認ダイアログが出ることがあったのを修正。<br>
-ACL/副次Stream有効時＋ネットワークドライブへの書き込み時に稀に例外が出ることがあったのを修正。<br>
-その他リファイン。
-</td></tr>
-<tr><td>v3.05</td><td>
-OSのテキスト表示拡大環境でも、なるべく文字を読みやすく。<br>
-復元防止削除で、4GB以上を超えるファイルで処理が停止する問題を修正。<br>
-インストーラでショートカットが作成されない問題を修正。<br>
-その他リファイン。
-</td></tr>
-<tr><td>v3.04</td><td>
-/linkdestを指定するとエラーになる問題を修正。<br>
-フィルタ指定でキャラクタクラス内にエスケープ文字があるとマッチしなくなる問題を修正。<br>
-</td></tr>
-<tr><td>v3.03</td><td>
-32bit版はAthlonXP等の古い環境でも動作するように。<br>
-リパースファイルのベリファイ付移動が完了しない問題を修正。<br>
-新規インストール時の「移動」設定初期値を「逐次移動ON」に変更。<br>
-その他リファイン（「実行」ボタンを初期フォーカスに。英語版UIフォント変更。英語ヘルプ改良）。
-</td></tr>
-<tr><td>v3.02</td><td>
-DeDuplication機能（Windows Server 2008以降）でリパース化されたファイルに対応（/reparse に関わらず常に実体参照するように）。
-</td></tr>
-<tr><td>v3.01</td><td>
-１つのディレクトリ「直下」に多数のファイル（65,537ファイル(64bit版)/131,072ファイル(32bit版)以上）があった場合に、メモリ確保エラーで処理が中断することがあったのを修正
-</td></tr>
-<tr><td>v3.00</td><td>
-Read/Write に<a href="#setting_io">非同期I/Oを用いる</a>ことで（特にネットワークドライブ間の）転送速度を向上。<br>
-Include/Excludeフィルタ指定で最終パス要素以外に、<a href="#filter">相対パス＆開始パスを指定可能</a>に。<br>
-複数のFastCopy起動時の<a href="#setting_parallel">同時実行動作の最適化</a>。（別々の物理ドライブへの処理は並列実行、同じ物理ドライブへの処理は実行順を守って順次実行、シャットダウン処理は他のFastCopy処理終了を待ってから実施）<br>
-<a href="#no_ui">/no_uiオプション</a>（問い合わせダイアログを出さない）を追加（＆タスクスケジューラ起動で自動有効）。<br>
-4096MB を超えたバッファ指定を可能に（64bit版のみ）。<br>
-ファイルログに<a href="#setting_log">タイムスタンプ・ファイルサイズを付加</a>可能に。<br>
-更新日付に<a href="#setting_copyopt">許容誤差設定</a>を追加。<br>
-同一物理HDDグループ判定の精度を向上。<br>
-ヘルプファイルを充実＆各種ダイアログから当該項目ヘルプを呼び出せるように。<br>
-各所の数値表示を見やすく（フォント変更、カンマ区切り、小数点精度調整）。<br>
-設定ファイルを FastCopy.ini → <strong><font color="red">FastCopy2.ini</font></strong> に変更＆ini内エンコードのUTF-8化＆一部書式変更。<br>
-ライセンスを 2条項BSD から <a href="#license">GPLv3 に変更</a>。<br>
-その他リファイン。
-</td></tr>
-<tr><td>v2.11</td><td>英語UIモードで、コマンドライン・シェル拡張の引数が無視されていたのを修正</td></tr>
-<tr><td>v2.10</td><td>
-Vista以降 の 120DPI モードでも綺麗に表示されるように。
-ACL/Stream有効にした状態で上書きコピーに失敗することがあったのを修正。
-表示頻度を 250ms/500ms/1000ms から選択できるように。
-ジョブ名をウィンドウタイトルに入れるように。
-（タスクトレイではなく）タスクバーで最小化する設定を追加。
-終了時処理でのコマンド実行条件を柔軟に。
-その他、リファイン
-</td></tr>
-<tr><td>v2.08</td><td>Sourceディレクトリ選択で、CTLキーを押しながらのOK押下でパス名追加動作に。パス履歴が保存されない問題の修正(v2.07のみ)。</td></tr>
-<tr><td>v2.07</td><td>メインウィンドウリサイズ時のコンボボックスの自動補完/選択を抑止。その他リファイン</td></tr>
-<tr><td>v2.06</td><td>ベリファイ時にエラーとなることがあったのを修正(v2.05のみ)。</td></tr>
-<tr><td>v2.05</td><td>Win98で設定が保存できない問題を修正。ACL/副次Streamエラーの記録を選択可能に。</td></tr>
-<tr><td>v2.04</td><td>特権昇格後にもドラッグ＆ドロップできるように。FastCopyシェル拡張DLLを日本語ディレクトリ内においた場合にシェル拡張が利用できなかった問題を修正。設定ダイアログ＆その他リファイン</td></tr>
-<tr><td>v2.03</td><td>英語UI時に「特権」メニュー項目が効かない問題を修正。その他リファイン</td></tr>
-<tr><td>v2.02</td><td>x64 ネイティブ版をリリース。Vista以降で \Program Files 配下にインストールした場合、UAC環境でなくても fastcopy.ini やログファイルを \Users\(USER)\AppData\roaming\FastCopy 配下に保存するように変更。セミコロンを含むファイル名を指定するとエラーが出る場合があったのを修正。その他、修正＆リファイン。</td></tr>
-<tr><td>v2.01</td><td>同一HDD内での大量移動が完了しないことがあったのを修正。Source/DestDir指定に絶対パスを必要としない形に戻した。</td></tr>
-<tr><td>v2.00</td><td>簡易比較機能の追加（CTLキーを押しながら「リストアップ」）。UAC有効な環境で \Program Files 配下にインストールした場合、fastcopy.ini やログファイルを \Users\(USER)\AppData\roaming\FastCopy 配下に保存するように変更。物理HDDグループを手動設定を可能に。DestDir指定の中間ディレクトリが存在しない場合は作成するように。64bitOSでの32bitシェル拡張に対応。ジョブ管理削除時の例外発生を修正。</td></tr>
-<tr><td>v1.99r4</td><td>コピー先に、大文字小文字の違うファイル名が存在する場合に、コピー元に合わせるように変更（全上書き以外）。詳細エラーが表示されないことがあったのを修正</td></tr>
-<tr><td>v1.99r3</td><td>同一HDD内の別パーティション間コピーが、別HDDモードに誤判定される問題の修正(v.199r2のみ)。時間予測の精度を少し向上。</td></tr>
-<tr><td>v1.99r2</td><td>詳細ファイルログ機能(/filelog)を追加（ベリファイ時はハッシュ値(Default:MD5)も出力）。移動モードでのフィルタ機能を利用可能に。起動を高速化（iniファイルを独自ライブラリ経由のアクセスに変更）。Sourceで直接指定したファイルに対しても、フィルタが効くように変更。/srcfile で MBCS文字を使えなかった問題を修正。その他リファイン。</td></tr>
-<tr><td>v1.98</td><td>拡張（サイズ＆更新日付）フィルタを追加（設定→拡張フィルタ表示）</td></tr>
-<tr><td>v1.97</td><td>終了時処理設定時のサウンド再生が行われないことがあったのを修正。その他リファイン</td></tr>
-<tr><td>v1.96</td><td>ハードリンク再現オプション指定時(/linkdest)、ファイル更新の動作を、既存ファイルを上書き→削除＆再作成に変更した。また、ハードリンク再現オプション指定に関わらず、ファイル更新動作を削除＆再作成にするオプション(/recreate)を追加</td></tr>
-<tr><td>v1.95</td><td>ハードリンクを再現するオプション(/linkdest)の追加。終了時処理通知ダイアログが最前面表示されるように変更。コピー終了時に不正なメモリ開放をすることがあったのを修正(v1.93-v1.94)。ACL/Streamのコピーに失敗することがあったのを修正。</td></tr>
-<tr><td>v1.94</td><td>ヘルプファイルが開かなかったのを修正(v1.93のみ)</td></tr>
-<tr><td>v1.93</td><td>終了時処理設定（Shutdown、コマンド実行等を可能に）を追加。「ログを開く」メニューを追加。ファイルによるSource指定オプション（/srcfile=）を追加。ジョブ管理で「削除モード」を「移動モード」として保存していたのを修正（v1.80-v1.92）。インストーラのショートカット作成オプションが効いていなかったのを修正（v1.92のみ）</td></tr>
-<tr><td>v1.92</td><td>シェル拡張に「タスクトレイで実行」オプションを追加。エラー発生時に、コピー先に不完全なファイルが残ることがあったのを修正。英語モードの表記を少し改善</td></tr>
-<tr><td>v1.91</td><td>英語UIモードの追加。復元無効化付き削除に失敗することがあったのを修正。ベリファイ付き移動時に、稀に処理が進まなくなる可能性があったのを修正。ディレクトリ選択ダイアログでネットワークドライブが見えなくなっていたのを修正。</td></tr>
-<tr><td>v1.90</td><td>ベリファイ動作の高速化（I/O とハッシュ計算を別スレッド化して並列処理）。ベリファイ用ハッシュアルゴリズムに MD5 を追加し、MD5をデフォルトに変更（fastcopy.ini で <strike>[main] using_MD5 = 0 とすれば SHA-1 を利用</strike>。<a href="#hash_mode">設定方法が変わりました</a>）。ウィンドウの位置＆サイズ固定機能、および、Source ⇔ DestDir 交換機能を追加。</td></tr>
-<tr><td>v1.84</td><td>フィルタ文字列登録で、（種類ごとの）登録文字数合計が62*n文字（メタ文字を除く）の境界で終わる文字列が登録されなかったのを修正。</td></tr>
-<tr><td>v1.83</td><td>読み込み側OSキャッシュ利用ONの場合も、ベリファイ用読み込み時は無効化するようにした</td></tr>
-<tr><td>v1.82</td><td>読み込み側OSキャッシュを利用するオプション追加（OSキャッシュに載っているファイルは高速読み込みされるが、そうでない場合、無駄にOSキャッシュを利用して他の仮想メモリをスワップアウトさせる原因になるので、標準では非推奨）</td></tr>
-<tr><td>v1.81</td><td>ベリファイ付き移動でベリファイエラーが発生すると終了しない場合があったのを修正</td></tr>
-<tr><td>v1.80</td><td>書き込みデータのベリファイ(SHA-1)オプションを追加。シェル拡張での「貼り付け」をサポート。移動（全上書き）を（サイズ・日付）に変更するオプションの追加。逐次移動オプションの追加。移動モード時に一部でエラーが発生した場合にも、正常にコピーできたファイルについては削除を継続する動作に変更。最大IOサイズ設定が大きすぎる場合（=ERROR_NO_SYSTEM_RESOURCES発生時）に、自動的にIOサイズを落として継続可能にした。終了予測を若干改善。継続不能時も確認ダイアログを出さないオプション(/no_confirm_stop)を追加。プロセスの戻り値について、エラー発生時には -1 を返すようにした</td></tr>
-<tr><td>v1.71</td><td>Win2000/Me/98 でシェル拡張登録時に異常終了することがあったのを修正</td></tr>
-<tr><td>v1.70</td><td>ジャンクション＆シンボリックリンクに対応（デフォルトでは配下ではなく、リンク自体をコピー。削除では常にリンクだけを削除）。Vista UAC（特権昇格）対応。64bit版シェル拡張DLL同梱。エラーログのUTF-8出力オプション追加。復元無効化削除でもハードリンクされているファイル場合は上書きなしの削除に。ログファイル名指定オプション(/logfile=)追加。エラーログ領域が小さくなっていたのを修正。その他リファイン。</td></tr>
-<tr><td>v1.63</td><td>include/excludeフィルタの上限文字数を62->2048文字に変更。その他、リファイン</td></tr>
-<tr><td>v1.62</td><td>v1.60,v1.61で、コピー先ファイル作成エラーが発生する場合があったのを修正</td></tr>
-<tr><td>v1.61</td><td>v1.60で、src フィールドの入力が8192文字を超えていた場合に、実行時に 8192文字に切り詰められてしまう問題を修正</td></tr>
-<tr><td>v1.60</td><td>NTFS アクセスコントロールリスト(ACL)、副次ストリームのサポート。削除時の復元無効化オプション（単純上書き＆NSA方式）追加。自動速度制限をスライダコントロールに変更（フルスピードから完全停止まで、12段階のコントロール）。自動速度制限時にプロセス優先度クラスを調整。</td></tr>
-<tr><td>v1.55</td><td>タスクトレイ実行時の問い合わせダイアログが左上に出ていたのを修正(v1.53以降)</td></tr>
-<tr><td>v1.54</td><td>NT4.0で動作するように修正</td></tr>
-<tr><td>v1.53</td><td>コマンドラインでタスクトレイ実行する場合は、フォーカスを奪わないように修正。マルチモニタ使用時に、マウスの存在するモニタ側にウィンドウを出すように変更。/error_stopが効いていなかったのを修正(v1.52のみ)。</td></tr>
-<tr><td>v1.52</td><td>自動速度制限機能の追加。一部の UDFファイルシステムで、同一タイムスタンプ判定が必要以上に厳しくなっていたのを修正。コマンドラインオプションの抑止指定（=FALSE）が有効に働いていなかったのを修正</td></tr>
-<tr><td>v1.51</td><td>完了時間予測機能利用時に、異なる複数のディレクトリをsrcに指定すると落ちることがあったのを修正</td></tr>
-<tr><td>v1.50</td><td>同期モードでのフィルタ指定を可能に。その他、リファイン</td></tr>
-<tr><td>v1.40</td><td>ジョブ管理機能の追加。処理内容の事前リストアップ機能の追加。多重実行制御オプションの追加。フィルタ指定時に、空ディレクトリを作成しないオプションを追加。自動/同一/別HDDモード指定の追加。メインウィンドウのリサイズを可能に。APIエラーの説明表示。その他、リファイン</td></tr>
-<tr><td>v1.32</td><td>コマンドライン時に Include/Excludeフィルタが無効になっていたのを修正。その他、リファイン</td></tr>
-<tr><td>v1.31</td><td>Include/Excludeフィルタで、多数の指定をした場合に、実行直後に落ちることがあったのを修正</td></tr>
-<tr><td>v1.30</td><td>Include/Excludeフィルタ機能追加。同一ディレクトリ内でドラッグ＆ドロップした場合、複製を作成可能に。Source選択でファイル選択ダイアログ追加。さらに若干の高速化。シェル経由起動＋キャンセルした場合、削除モード以外は自動終了しないように。その他リファイン。</td></tr>
-<tr><td>v1.21</td><td>一部環境でシェル拡張メニューが出ない現象（v1.20でエンバグ）を修正</td></tr>
-<tr><td>v1.20</td><td>コピー完了時間予測機能追加。シェル拡張で、複数ファイル選択＋開くが機能しないことがあったのを修正。その他リファイン</td></tr>
-<tr><td>v1.12</td><td>シェル拡張のサブメニュー化オプション追加。シェル経由で大量のファイルを選択した場合に固まることがあったのを修正(v1.10-1.11 のみ)。ネットワークプレースでのシェル拡張の挙動を変更。その他リファイン</td></tr>
-<tr><td>v1.11</td><td>一部環境で、実行が開始できない問題を修正</td></tr>
-<tr><td>v1.10</td><td>メインウィンドウのUNICODE化（UNICODEファイル名のドラッグ＆ドロップ等に対応）。セミコロンを含むパス名のファイルをドラッグ＆ドロップした場合、パス名を""で囲むように変更。シェル起動実行時の確認ダイアログを出さないモード追加。シェル拡張有効時に、スタートメニュー配下のディレクトリが開けなくなることがあったのを修正。その他リファイン。</td></tr>
-<tr><td>v1.00</td><td>移動モードのサポート。シェル拡張機能追加。最前面オプション追加。エラーログ詳細化。/force_close オプション追加。メインメニュー＆設定ダイアログ追加。英語OS対応。その他リファイン。</td></tr>
-<tr><td>v0.99</td><td>同一HDD内の別ドライブレターを別HDDモードと見なすことがあった（v0.90以降でエンバグ）のを修正。DestDir へのドラッグ＆ドロップを可能に。表示関係の修正、その他リファイン。</td></tr>
-<tr><td>v0.98</td><td>削除中のキャンセルが効かないことがあったのを修正</td></tr>
-<tr><td>v0.97</td><td>エラーログ表示追加。ログファイルオプション追加。ドラッグ＆ドロップ時の挙動を変更</td></tr>
-<tr><td>v0.96</td><td>高速削除モード追加。コマンドラインモードでのタスクトレイ格納条件を変更</td></tr>
-<tr><td>v0.95</td><td>ヘルプが開かないことがあったのを修正</td></tr>
-<tr><td>v0.94</td><td>設定保存先をレジストリから ini ファイルに変更。DestDir にルートを指定すると落ちることがあったのを修正</td></tr>
-<tr><td>v0.93</td><td>デバッグ用ルーチンが残っていたのを削除</td></tr>
-<tr><td>v0.92</td><td>オプション設定を保存するようにした。コピー先ディレクトリが空の場合に落ちることがあったのを修正</td></tr>
-<tr><td>v0.91</td><td>内部リファイン。</td></tr>
-<tr><td>v0.90</td><td>コピー元の複数指定およびドラッグ＆ドロップ指定を可能に。
-      コマンドライン時、タスクトレイモードをデフォルトに。
-      まれに余分に更新が発生する場合があったのを修正。</td></tr>
-<tr><td>v0.88</td><td>コマンドラインモード、タスクトレイ格納、
-      トレイ内アイコンアクション(?)、手抜きヘルプの追加。</td></tr>
-<tr><td>v0.87</td><td>履歴の保存＆各種設定保存。</td></tr>
-<tr><td>v0.86</td><td>同期モードの追加。</td></tr>
-<tr><td>v0.85</td><td>ファイル名比較で大文字小文字の区別をしないよう修正。</td></tr>
-<tr><td>v0.84</td><td>FAT/Sambaでの同一日付判定の修正。その他修正。</td></tr>
-<tr><td>v0.83</td><td>Update（上書きは、日付が新しいファイルのみ）モード追加。</td></tr>
-<tr><td>v0.82</td><td>src にワイルドカード指定が使えなくなっていたのを修正。</td></tr>
-<tr><td>v0.81</td><td>src/dstディレクトリエントリ取得を並列動作（別HDDモード）。</td></tr>
-<tr><td>v0.80</td><td>差分コピーモード追加。</td></tr>
-<tr><td>v0.70</td><td>同一HDD、別HDD モードの自動判定。</td></tr>
-<tr><td>v0.66</td><td>一部バグフィクス。</td></tr>
-<tr><td>v0.65</td><td>ドライブタイプで動作を変化。エラー処理追加。</td></tr>
-<tr><td>v0.64</td><td>稀にデッドロックを起こす可能性を発見したので修正。</td></tr>
-<tr><td>v0.63</td><td>Cancel ボタンの動作を「R/W Thread を Suspend した上
-      で確認」に変更。ファイル名表示はワードラップなしに。</td></tr>
-<tr><td>v0.62</td><td>NT系で物理メモリロックをデフォルトにするのをやめる。</td></tr>
-<tr><td>v0.61</td><td>ステータス領域を EDIT_BOX に変更（コピー可能に）。</td></tr>
-<tr><td>v0.60</td><td>98系で動作するように修正。エラー無視チェック追加。</td></tr>
+
+<tr><td>v2.00</td><td><a href="#job">ジョブ管理</a>、<a href="#setting_copyopt">Symlink対応</a>、<a href="#buttons">簡易比較</a>、<a href="#options">ACL/AltStremサポート</a>、<a href="#buttons">速度コントロール</a>追加等</td></tr>
+<tr><td>v1.00</td><td>移動モード、<a href="#shell">シェル拡張</a>追加、英語OS対応等</td></tr>
 <tr><td>v0.50</td><td>α版ファーストリリース。 (2004/09/27)</td></tr>
 </table>
 </div>

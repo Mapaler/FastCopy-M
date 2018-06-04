@@ -1,9 +1,9 @@
 ﻿/* static char *miscdlg_id = 
-	"@(#)Copyright (C) 2005-2016 H.Shirouzu		miscdlg.h	Ver3.20"; */
+	"@(#)Copyright (C) 2005-2018 H.Shirouzu		miscdlg.h	Ver3.50"; */
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2005-01-23(Sun)
-	Update					: 2016-09-28(Wed)
+	Update					: 2018-05-28(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -61,14 +61,18 @@ protected:
 	IMalloc		*iMalloc;
 	BROWSEINFOW	brInfo;		// W version との差は、文字ポインタ系メンバの型の違いのみ
 	int			flg;
+	HWND		hBtn;
 
 public:
 	TBrowseDirDlgW(WCHAR *title, WCHAR *_fileBuf, int _flg, TWin *parentWin);
 	virtual ~TBrowseDirDlgW();
-	virtual BOOL	AttachWnd(HWND _hWnd);
-	virtual BOOL	EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl);
-	virtual BOOL	SetFileBuf(LPARAM list);
-	virtual BOOL	Exec();
+	virtual BOOL AttachWnd(HWND _hWnd);
+	virtual BOOL EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl);
+	virtual BOOL EventCtlColor(UINT uMsg, HDC hDcCtl, HWND hWndCtl, HBRUSH *result);
+	virtual BOOL EvNotify(UINT ctlID, NMHDR *pNmHdr);
+
+	virtual BOOL SetFileBuf(LPARAM list);
+	virtual BOOL Exec();
 	DirFileMode GetMode(void) { return mode; };
 	BOOL	GetParentDirW(WCHAR *srcfile, WCHAR *dir);
 	static int CALLBACK BrowseDirDlg_Proc(HWND hWnd, UINT uMsg, LPARAM lParam, LPARAM data);
@@ -78,6 +82,9 @@ public:
 #define BRDIR_CTRLADD		0x0002
 #define BRDIR_BACKSLASH		0x0004
 #define BRDIR_FILESELECT	0x0008
+#define BRDIR_TAILCR		0x0010
+#define BRDIR_INITFILESEL	0x0020
+
 BOOL BrowseDirDlgW(TWin *parentWin, UINT editCtl, WCHAR *title, int flg=0);
 
 class TInputDlg : public TDlg
@@ -92,28 +99,47 @@ public:
 
 #define OFDLG_DIRSELECT		0x0001
 #define OFDLG_WITHQUOTE		0x0002
+#define OFDLG_TAILCR		0x0004
+#define OFDLG_CHDIRREFLECT	0x0008
+#define OFDLG_TIMER			100
+
+#define WM_OFN_AFTERPROC	(WM_APP + 100)
+#define WM_OFN_SIZE			(WM_APP + 101)
 
 class TOpenFileDlg : public TSubClass {
 public:
 	enum	OpenMode { OPEN, MULTI_OPEN, SAVE, NODEREF_SAVE };
 	int		flg;
+	HWND	hBtn;
 	DirFileMode mode;
 
 protected:
 	TWin			*parent;
 	LPOFNHOOKPROC	hook;
 	OpenMode		openMode;
+	VBuf			vbuf;
+	WCHAR			*defaultDir;
 
 public:
 	TOpenFileDlg(TWin *_parent, OpenMode _openMode=OPEN, int _flg=0, LPOFNHOOKPROC _hook=NULL) {
-		parent = _parent; hook = _hook; openMode = _openMode; flg = _flg;
+		parent = _parent;
+		hook = _hook;
+		openMode = _openMode;
+		flg = _flg;
+		hBtn = NULL;
 	}
 	static UINT WINAPI OpenFileDlgProc(HWND hdlg, UINT msg, WPARAM wParam, LPARAM lParam);
 	virtual BOOL AttachWnd(HWND _hWnd);
 	virtual BOOL EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl);
-	virtual BOOL Exec(WCHAR *target, WCHAR *title=NULL, WCHAR *filter=NULL, WCHAR *defaultDir=NULL);
+	virtual BOOL Exec(WCHAR *title=NULL, WCHAR *filter=NULL, WCHAR *_defaultDir=NULL);
 	virtual BOOL Exec(UINT editCtl, WCHAR *title=NULL, WCHAR *filter=NULL, WCHAR *defaultDir=NULL,
 						WCHAR *init_data=NULL);
+	virtual BOOL EventApp(UINT uMsg, WPARAM wParam, LPARAM lParam);
+	virtual BOOL EvSize(UINT fwSizeType, WORD nWidth, WORD nHeight);
+	virtual BOOL EvTimer(WPARAM timerID, TIMERPROC proc);
+	virtual BOOL EventCtlColor(UINT uMsg, HDC hDcCtl, HWND hWndCtl, HBRUSH *result);
+	virtual BOOL EvNotify(UINT ctlID, NMHDR *pNmHdr);
+	UINT	NotifyProc(OFNOTIFYW *ont);
 
 	DirFileMode GetMode(void) { return mode; };
 };
@@ -220,6 +246,27 @@ public:
 
 	virtual BOOL	EvCommand(WORD wNotifyCode, WORD wID, LPARAM hWndCtl);
 	virtual BOOL	EvContextMenu(HWND childWnd, POINTS pos);
+};
+
+class TSrcEdit : public TSubClassCtl {
+protected:
+	int		maxCr;
+	int		baseCy;
+	int		marginCy;
+
+public:
+	TSrcEdit(int _maxCr, TWin *_parent) : TSubClassCtl(_parent), maxCr(_maxCr) {}
+
+	virtual BOOL	AttachWnd(HWND _hWnd);
+	virtual BOOL	EvCommand(WORD wNotifyCode, WORD wID, LPARAM hWndCtl);
+	virtual BOOL	EvChar(WCHAR code, LPARAM keyData);
+	virtual BOOL	EvCut();
+	virtual BOOL	EvPaste();
+
+	virtual BOOL	SetWindowTextW(const WCHAR *text);
+
+	int		NeedDiffY(int *real);
+	void	Fit(BOOL allow_reduce=FALSE);
 };
 
 

@@ -1,9 +1,9 @@
 ﻿static char *utility_id = 
-	"@(#)Copyright (C) 2004-2016 H.Shirouzu		utility.cpp	ver3.30";
+	"@(#)Copyright (C) 2004-2018 H.Shirouzu		utility.cpp	ver3.50";
 /* ========================================================================
 	Project  Name			: general routine
 	Create					: 2004-09-15(Wed)
-	Update					: 2017-03-06(Mon)
+	Update					: 2018-05-28(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -12,6 +12,8 @@
 #include <stddef.h>
 #include "utility.h"
 #include <aclapi.h>
+
+using namespace std;
 
 /*=========================================================================
 	拡張 strtok()
@@ -91,19 +93,82 @@ WCHAR **CommandLineToArgvExW(WCHAR *cmdLine, int *_argc)
 {
 #define MAX_ARG_ALLOC	16
 	int&	argc = *_argc;
-	WCHAR	**argv = NULL, *p;
+	WCHAR	**argv = NULL;
+	WCHAR	*p = NULL;
 	WCHAR	*separantor = L" \t";
 
 	argc = 0;
 	while (1) {
-		if ((argc % MAX_ARG_ALLOC) == 0)
+		if ((argc % MAX_ARG_ALLOC) == 0) {
 			argv = (WCHAR **)realloc(argv, (argc + MAX_ARG_ALLOC) * sizeof(WCHAR *));
-		if ((argv[argc] = strtok_pathW(argc ? NULL : cmdLine, separantor, &p)) == NULL)
+		}
+		if ((argv[argc] = strtok_pathW(argc ? NULL : cmdLine, separantor, &p)) == NULL) {
 			break;
+		}
 		argc++;
 	}
 
 	return	argv;
+}
+
+/*=========================================================================
+	PathArray::PathObj
+=========================================================================*/
+PathArray::PathObj& PathArray::PathObj::operator=(const PathArray::PathObj& init)
+{
+	if (&init == this) {
+		return	*this;
+	}
+	path	= make_unique<WCHAR[]>(init.len + 1);
+	memcpy(path.get(), init.path.get(), (init.len + 1) * sizeof(WCHAR));
+
+	uppr	= make_unique<WCHAR[]>(init.upprLen + 1);
+	memcpy(uppr.get(), init.uppr.get(), (init.upprLen + 1) * sizeof(WCHAR));
+
+	len		= init.len;
+	upprLen	= init.upprLen;
+	isDir	= init.isDir;
+	hashId	= init.hashId;
+
+	return	*this;
+}
+
+BOOL PathArray::PathObj::Set(const WCHAR *_path)
+{
+	path = NULL;
+	uppr = NULL;
+	len = 0;
+	isDir = FALSE;
+
+	if (_path && (len = (int)wcslen(_path)) > 0) {
+		int	alloc_len = len + 1;
+
+		path = make_unique<WCHAR[]>(alloc_len);
+		memcpy(path.get(), _path, alloc_len * sizeof(WCHAR));
+
+		upprLen = len;
+		auto ch = _path[len-1];
+		if (ch == '\\' || ch == '/') {
+			isDir = TRUE;
+			upprLen--;
+		}
+		uppr = make_unique<WCHAR[]>(upprLen + 1);
+		memcpy(uppr.get(), _path, upprLen * sizeof(WCHAR));
+		uppr[upprLen] = 0;
+
+		::CharUpperW(uppr.get());
+		hashId = MakeHash(uppr.get(), upprLen * sizeof(WCHAR));
+	}
+	return	TRUE;
+}
+
+int PathArray::PathObj::Get(WCHAR *_path)
+{
+	if (!path) return 0;
+
+	memcpy(_path, path.get(), (len + 1) * sizeof(WCHAR));
+
+	return	len;
 }
 
 /*=========================================================================
@@ -139,20 +204,15 @@ void PathArray::Init(void)
 	pathArray = NULL;
 }
 
-BOOL PathArray::PathObj::Set(const WCHAR *_path, int _len)
+BOOL PathArray::IsSameVal(THashObj *_obj, const void *_val)
 {
-	path = NULL;
-	len = 0;
+	PathObj	*p1 = (PathObj *)_obj;
+	PathObj	*p2 = (PathObj *)_val;
 
-	if (_path) {
-		if (_len < 0) _len = (int)wcslen(_path);
-		len = _len;
-		int	alloc_len = len + 1;
-		path = (WCHAR *)malloc(alloc_len * sizeof(WCHAR));
-		memcpy(path, _path, alloc_len * sizeof(WCHAR));
-	}
-	return	TRUE;
+	return	p1->hashId == p2->hashId &&
+			wcscmp(p1->uppr.get(), p2->uppr.get()) == 0;
 }
+
 
 int PathArray::RegisterMultiPath(const WCHAR *_multi_path, const WCHAR *separator)
 {
@@ -169,18 +229,28 @@ int PathArray::RegisterMultiPath(const WCHAR *_multi_path, const WCHAR *separato
 	return	cnt;
 }
 
+inline BOOL has_chars(const WCHAR *str, const WCHAR *chars)
+{
+	if (!str || !chars) return FALSE;
+
+	for ( ; *chars; chars++) {
+		if (wcschr(str, *chars)) return TRUE;
+	}
+	return FALSE;
+}
+
 int PathArray::GetMultiPath(WCHAR *multi_path, int max_len,
-	const WCHAR *separator, const WCHAR *escape_char)
+	const WCHAR *separator, const WCHAR *escape_chars, BOOL end_sep)
 {
 	int		sep_len = (int)wcslen(separator);
 	int		total_len = 0;
-	int		escape_val = escape_char ? escape_char[0] : 0;
 
 	for (int i=0; i < num; i++) {
-		BOOL	is_escape = escape_val && wcschr(pathArray[i]->path, escape_val);
-		int		need_len = pathArray[i]->len + 1 + (is_escape ? 2 : 0) + (i ? sep_len : 0);
+		auto	pa = pathArray[i];
+		BOOL	is_escape = has_chars(pa->path.get(), escape_chars);
+		int		need_len = pa->len + 1 + (is_escape ? 2 : 0) + (i ? sep_len : 0);
 
-		if (max_len - total_len < need_len) {
+		if (max_len - (end_sep ? sep_len : 0) - total_len < need_len) {
 			multi_path[total_len] = 0;
 			return -1;
 		}
@@ -192,63 +262,68 @@ int PathArray::GetMultiPath(WCHAR *multi_path, int max_len,
 			multi_path[total_len] = '"';
 			total_len++;
 		}
-		memcpy(multi_path + total_len, pathArray[i]->path, pathArray[i]->len * sizeof(WCHAR));
-		total_len += pathArray[i]->len;
+		total_len += pa->Get(multi_path + total_len);
+
 		if (is_escape) {
 			multi_path[total_len] = '"';
 			total_len++;
 		}
 	}
-	multi_path[total_len] = 0;
+	if (end_sep) {
+		total_len += wcscpyz(multi_path + total_len, separator);
+	}
+	else {
+		multi_path[total_len] = 0;
+	}
 	return	total_len;
 }
 
-int PathArray::GetMultiPathLen(const WCHAR *separator, const WCHAR *escape_char)
+int PathArray::GetMultiPathLen(const WCHAR *separator, const WCHAR *escape_chars, BOOL end_sep)
 {
 	int		total_len = 0;
 	int		sep_len = (int)wcslen(separator);
-	int		escape_val = escape_char ? escape_char[0] : 0;
 
 	for (int i=0; i < num; i++) {
-		BOOL	is_escape = escape_val /* && wcschr(pathArray[i]->path, escape_val)*/;
-		total_len += pathArray[i]->len + (is_escape ? 2 : 0) + (i ? sep_len : 0);
+		auto	pa = pathArray[i];
+		BOOL	is_escape = has_chars(pa->path.get(), escape_chars);
+		total_len += pa->len + (is_escape ? 2 : 0) + (i ? sep_len : 0);
 	}
-	return	total_len + 1;
+	return	total_len + 1 + (end_sep ? sep_len : 0);
 }
 
-BOOL PathArray::SetPath(int idx, const WCHAR *path, int len)
+BOOL PathArray::SetPath(int idx, PathObj *obj)
 {
-	if (len < 0) len = (int)wcslen(path);
-	pathArray[idx] = new PathObj(path, len);
-	Register(pathArray[idx], MakeHashId(pathArray[idx]));
+	pathArray[idx] = obj;
+	Register(pathArray[idx], pathArray[idx]->hashId);
 	return	TRUE;
 }
 
-/*
-BOOL PathArray::PathObj *PathArray::SearchPathObj(const WCHAR *path)
+BOOL PathArray::SetPath(int idx, const WCHAR *path)
 {
-	THashObj *top = hashTbl + (MakeHash(id) % hashNum);
-
-	for (THashObj *obj=top->nextHash; obj != top; obj=obj->nextHash) {
-		if (obj->id == id)
-			return obj;
-	}
-	return	NULL;
-}*/
+	pathArray[idx] = new PathObj(path);
+	Register(pathArray[idx], pathArray[idx]->hashId);
+	return	TRUE;
+}
 
 BOOL PathArray::RegisterPath(const WCHAR *path)
 {
 	if (!path || !path[0]) return	FALSE;
 
-	int len = (int)wcslen(path);
+	auto	obj = new PathObj(path);
 
-	if ((flags & ALLOW_SAME) == 0 && Search(path, MakeHashId(path, len))) return FALSE;
+	if ((flags & ALLOW_SAME) == 0) {
+		if (auto f = (PathObj *)Search(obj, obj->hashId)) {
+			*f = *obj;
+			delete obj;
+			return FALSE;
+		}
+	}
 
 #define MAX_ALLOC	100
 	if ((num % MAX_ALLOC) == 0) {
 		pathArray = (PathObj **)realloc(pathArray, (num + MAX_ALLOC) * sizeof(WCHAR *));
 	}
-	SetPath(num++, path, len);
+	SetPath(num++, obj);
 
 	return	TRUE;
 }
@@ -266,19 +341,33 @@ BOOL PathArray::ReplacePath(int idx, WCHAR *new_path)
 	return	TRUE;
 }
 
+void PathArray::Sort()
+{
+	sort(pathArray, pathArray + num, [](const PathObj *p1, const PathObj *p2) {
+		return	/*p1->isDir > p2->isDir ||
+				p1->isDir == p2->isDir &&*/
+				 wcscmp(p1->uppr.get(), p2->uppr.get()) < 0;
+	});
+}
+
 PathArray& PathArray::operator=(const PathArray& init)
 {
+	if (&init == this) {
+		return	*this;
+	}
+
 	Init();
 
 	pathArray = (PathObj **)malloc(((((num = init.num) / MAX_ALLOC) + 1) * MAX_ALLOC)
 				* sizeof(WCHAR *));
 
 	for (int i=0; i < init.num; i++) {
-		SetPath(i, init.pathArray[i]->path, init.pathArray[i]->len);
+		SetPath(i, new PathObj(*init.pathArray[i]));
 	}
 
 	return	*this;
 }
+
 
 /*=========================================================================
 	DriveMng
@@ -417,10 +506,13 @@ int DriveMng::SetDriveID(const WCHAR *_root)
 		REMOTE_NAME_INFOW	*pni = (REMOTE_NAME_INFOW *)buf;
 
 		if (::WNetGetUniversalNameW(root, REMOTE_NAME_INFO_LEVEL, pni, &size) != NO_ERROR) {
-			//Debug("WNetGetUniversalNameW err=%d\n", GetLastError());
+			DBG("WNetGetUniversalNameW err=%d\n", GetLastError());
 			return -1;
 		}
-		wcscpy(root, pni->lpUniversalName);
+		if (pni->lpUniversalName) {
+			wcscpy(root, pni->lpUniversalName);
+		} // NULL の場合、root をそのまま使う
+
 		::CharUpperW(root);
 		ModifyNetRoot(root);
 		uint64	hash_id = MakeHash64(root, wcslen(root) * sizeof(WCHAR));
@@ -439,19 +531,23 @@ int DriveMng::SetDriveID(const WCHAR *_root)
 		HANDLE	hFile = ::CreateFileW(vol_name, FILE_READ_ATTRIBUTES,
 								FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, 0);
 		if (hFile != INVALID_HANDLE_VALUE) {
-			VOLUME_DISK_EXTENTS vde = {};
+			DynBuf	buf(32 * 1024);
+			VOLUME_DISK_EXTENTS &vde = *(VOLUME_DISK_EXTENTS *)buf.Buf();
 			DWORD	size;
 			DWORD	val = 0;
 			if (::DeviceIoControl(hFile, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS, 0, 0,
-					&vde, sizeof(vde), &size, 0) || GetLastError() == ERROR_MORE_DATA) {
+					&vde, (DWORD)buf.Size(), &size, 0)) {
 				if (vde.NumberOfDiskExtents >= 1) {
 					// SetDriveMapが ID: 1～Nを利用するため、オフセット0x1000を加算
 					val = vde.Extents[0].DiskNumber | 0x1000;
-					//Debug("disk id = %d\n", vde.Extents[0].DiskNumber);
+					//for (auto i = 0; i < vde.NumberOfDiskExtents; i++) {
+					//	DBGW(L"disk id(%d / %s / %s) = %d\n",
+					//		i, root, vol_name, vde.Extents[i].DiskNumber);
+					//}
 				}
 			}
 			else {
-				Debug("IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS err=%x\n", GetLastError());
+				DBG("IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS err=%x %s\n", GetLastError(), root);
 			}
 			::CloseHandle(hFile);
 			if (val) {
@@ -465,11 +561,12 @@ int DriveMng::SetDriveID(const WCHAR *_root)
 		char	reg_path[MAX_PATH * 2];
 		BYTE	buf[1024];
 		int		size = sizeof(buf);
-		WCHAR	*wbuf = (WCHAR *)buf, *wp;
+		WCHAR	*wbuf = (WCHAR *)buf;
 		DWORD	val = 0;
 
 		::sprintf(reg_path, FMT_DOSDEVICES, root[0]);
 		if (reg.GetByte(reg_path, buf, &size)) {
+			WCHAR	*wp;
 			if (wcsncmp(wbuf, L"\\??\\", 4) == 0 && (wp = wcschr(wbuf, '#'))
 				&& (wp = wcschr(wp+1, '#')) && (wp = wcschr(wp, '&'))) {
 				val = wcstoul(wp+1, 0, 16);
@@ -676,7 +773,47 @@ BOOL ForceRemoveDirectoryW(const WCHAR *path, DWORD flags)
 	if (::RemoveDirectoryW(path)) {
 		return TRUE;
 	}
-	if (flags == 0 || ::GetLastError() != ERROR_ACCESS_DENIED) {
+	if (flags == 0) {
+		return FALSE;
+	}
+
+	DWORD	err = ::GetLastError();
+	if ((flags & FMF_EMPTY_RETRY) && err == ERROR_DIR_NOT_EMPTY) {
+		HANDLE	fh;
+		BOOL	ret = FALSE;
+		DWORD	wso = 0;
+
+		if ((fh = ::FindFirstChangeNotificationW(path, TRUE, FILE_NOTIFY_CHANGE_FILE_NAME
+			|FILE_NOTIFY_CHANGE_DIR_NAME)) != INVALID_HANDLE_VALUE) {
+		}
+		if (::RemoveDirectoryW(path)) {
+			ret = TRUE;
+		}
+		else {
+			for (int i=0; i < 10; i++) {
+				wso = ::WaitForSingleObject(fh, 100);
+				if (::RemoveDirectoryW(path)) {
+					ret = TRUE;
+					DBGW(L"ForceRemoveDirectoryW2 cnt=%d wso=%d\n", i, wso);
+					break;
+				}
+				if (::GetLastError() != ERROR_DIR_NOT_EMPTY) {
+					break;
+				}
+				if (wso == WAIT_TIMEOUT) {
+					break;
+				}
+				::FindNextChangeNotification(fh);
+			}
+		}
+		::FindCloseChangeNotification(fh);
+
+		DBGW(L"ForceRemoveDirectoryW notify %d wso=%x\n", ret, wso);
+
+		return	ret ? ret : ::RemoveDirectoryW(path);
+	}
+
+	if (err != ERROR_ACCESS_DENIED) {
 		return FALSE;
 	}
 
@@ -802,13 +939,12 @@ HANDLE ForceCreateFileW(const WCHAR *path, DWORD mode, DWORD share, SECURITY_ATT
 /*
  DataList ...  List with data(hash/fileID...)
 */
-DataList::DataList(ssize_t size, ssize_t max_size, ssize_t _grow_size, VBuf *_borrowBuf,
-	ssize_t _min_margin)
+DataList::DataList(ssize_t size, ssize_t max_size, ssize_t _grow_size, ssize_t _min_margin)
 {
 	num = 0;
 	top = end = NULL;
 
-	if (size) Init(size, max_size, _grow_size, _borrowBuf, _min_margin);
+	if (size) Init(size, max_size, _grow_size, _min_margin);
 }
 
 DataList::~DataList()
@@ -816,14 +952,13 @@ DataList::~DataList()
 	UnInit();
 }
 
-BOOL DataList::Init(ssize_t size, ssize_t max_size, ssize_t _grow_size, VBuf *_borrowBuf,
-	ssize_t _min_margin)
+BOOL DataList::Init(ssize_t size, ssize_t max_size, ssize_t _grow_size, ssize_t _min_margin)
 {
 	grow_size = _grow_size;
 	min_margin = _min_margin;
 	cv.Initialize();
 
-	BOOL ret = buf.AllocBuf(size, max_size, _borrowBuf);
+	BOOL ret = buf.AllocBuf(size, max_size);
 	Clear();
 	return	ret;
 }

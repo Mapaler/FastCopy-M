@@ -245,8 +245,9 @@ BOOL TMainDlg::WriteLogFooter(HANDLE hFile)
 
 	::SetFilePointer(hFile, 0, 0, FILE_END);
 
-	if (errBufOffset == 0 && ti.total.errFiles == 0 && ti.total.errDirs == 0)
+	if (errBufOffset == 0 && ti.total.allErrFiles == 0 && ti.total.allErrDirs) {
 		len += sprintf(buf + len, "%s No Errors\r\n", hFile == hFileLog ? "\r\n" : "");
+	}
 
 	len += sprintf(buf + len, "\r\n");
 	len += GetDlgItemText(STATUS_EDIT, buf + len, sizeof(buf) - len);

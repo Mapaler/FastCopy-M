@@ -98,6 +98,9 @@ LRESULT TDlg::WinProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		if (!::IsIconic(hWnd)) {
 			GetWindowRect(&rect);
 		}
+		if (parent && parent->hWnd) {
+			parent->GetWindowRect(&pRect);
+		}
 		EvNcDestroy();
 		TApp::GetApp()->DelWin(this);
 		hWnd = 0;
@@ -220,6 +223,22 @@ LRESULT TDlg::WinProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
 			GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 		return	0;
 
+	case WM_COPY:
+		EvCopy();
+		return	0;
+
+	case WM_PASTE:
+		EvPaste();
+		return	0;
+
+	case WM_CLEAR:
+		EvClear();
+		return	0;
+
+	case WM_CUT:
+		EvCut();
+		return	0;
+
 	case WM_LBUTTONUP:
 	case WM_RBUTTONUP:
 	case WM_NCLBUTTONUP:
@@ -334,6 +353,11 @@ BOOL TDlg::EvCreate(LPARAM lParam)
 	return	TRUE;
 }
 
+BOOL TDlg::EvClose()
+{
+	return	TRUE;
+}
+
 void TDlg::EndDialog(int result)
 {
 	if (hTipWnd) {
@@ -378,6 +402,10 @@ int TDlg::SetDlgItem(UINT ctl_id, DWORD flags)
 	item->wpos.y = wp.rcNormalPosition.top;
 	item->wpos.cx = wp.rcNormalPosition.right - wp.rcNormalPosition.left;
 	item->wpos.cy = wp.rcNormalPosition.bottom - wp.rcNormalPosition.top;
+	item->diffX  = 0;
+	item->diffY  = 0;
+	item->diffCx = 0;
+	item->diffCy = 0;
 	item->flags = flags;
 	item->id = ctl_id;
 
@@ -391,25 +419,35 @@ BOOL TDlg::FitDlgItems()
 	}
 
 	GetWindowRect(&rect);
-	int	xdiff = (rect.right - rect.left) - (orgRect.right - orgRect.left);
-	int ydiff = (rect.bottom - rect.top) - (orgRect.bottom - orgRect.top);
+	int	xdiff = rect.cx() - orgRect.cx();
+	int ydiff = rect.cy() - orgRect.cy();
+	int	addx = 0;
+	int	addy = 0;
 
 	HDWP	hdwp = ::BeginDeferWindowPos(maxItems);	// MAX item number
-	UINT	dwFlg = SWP_SHOWWINDOW | SWP_NOZORDER;
 
 	for (int i=0; i < maxItems; i++) {
 		DlgItem *item = dlgItems + i;
-		DWORD	f = item->flags;
+		int		ix = item->wpos.x + addx + item->diffX;
+		int		iy = item->wpos.y + addy + item->diffY;
+		int		cx = item->wpos.cx + item->diffCx;
+		int		cy = item->wpos.cy + item->diffCy;
+		DWORD	f  = item->flags;
+		UINT	dwFlg = ((f & FIT_SKIP) ? SWP_HIDEWINDOW : SWP_SHOWWINDOW) | SWP_NOZORDER;
 
-		if (f & FIT_SKIP) continue;
-		int x = (f & LEFT_FIT) == LEFT_FIT ? item->wpos.x :
-				(f & HMID_FIT) == HMID_FIT ? item->wpos.x + xdiff/2 : item->wpos.x + xdiff;
-		int y = (f & TOP_FIT)  == TOP_FIT  ? item->wpos.y :
-				(f & VMID_FIT) == VMID_FIT ? item->wpos.y + ydiff/2 : item->wpos.y + ydiff;
-		int w = (f & X_FIT)    == X_FIT    ? item->wpos.cx + xdiff : item->wpos.cx;
-		int h = (f & Y_FIT)    == Y_FIT    ? item->wpos.cy + ydiff : item->wpos.cy;
+		int x = (f & LEFT_FIT) ? ix : (f & MIDX_FIT) ? ix + xdiff/2 : ix + xdiff;
+		int y = (f & TOP_FIT)  ? iy : (f & MIDY_FIT) ? iy + ydiff/2 : iy + ydiff;
+		int w = (f & MIDCX_FIT) ? cx + xdiff/2 : (f & X_FIT) == X_FIT ? cx + xdiff : cx;
+		int h = (f & MIDCY_FIT) ? cy + ydiff/2 : (f & Y_FIT) == Y_FIT ? cy + ydiff : cy;
 
-		if (!(hdwp = ::DeferWindowPos(hdwp, item->hWnd, 0, x, y, w, h, dwFlg))) return FALSE;
+		if (f & DIFF_CASCADE) {
+			addx  += item->diffCx;
+			addy  += item->diffCy;
+			xdiff -= item->diffCx;
+			ydiff -= item->diffCy;
+		}
+
+		::DeferWindowPos(hdwp, item->hWnd, 0, x, y, w, h, dwFlg);
 	}
 	::EndDeferWindowPos(hdwp);
 

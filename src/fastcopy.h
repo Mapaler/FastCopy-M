@@ -1,9 +1,9 @@
 ﻿/* static char *fastcopy_id = 
-	"@(#)Copyright (C) 2004-2017 H.Shirouzu		fastcopy.h	Ver3.31"; */
+	"@(#)Copyright (C) 2004-2018 H.Shirouzu		fastcopy.h	Ver3.50"; */
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2017-07-30(Sun)
+	Update					: 2018-05-28(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -22,9 +22,11 @@
 #define MIN_SECTOR_SIZE		(512)
 #define BIG_SECTOR_SIZE		(4096)
 #define MAX_BUF				(1024 * 1024 * 1024)
-#define MIN_BUF				(1024 * 1024)
-#define BIGTRANS_ALIGN		(1024 * 1024)
+#define MINREMAIN_BUF		(1024 * 1024)
+#define MIN_BUF				(256 * 1024)
+#define BIGTRANS_ALIGN		(256 * 1024)
 #define APP_MEMSIZE			(6 * 1024 * 1024)
+//#define NETDIRECT_SIZE	(64 * 1024 * 1024)
 #define PATH_LOCAL_PREFIX	L"\\\\?\\"
 #define PATH_UNC_PREFIX		L"\\\\?\\UNC"
 #define PATH_LOCAL_PREFIX_LEN	4
@@ -82,42 +84,64 @@
 #define FASTCOPY_STOP_EVENT		0x02
 
 struct TotalTrans {
-	BOOL	isPreSearch;
-	int		preDirs;
-	int		preFiles;
-	int64	preTrans;
 	int		readDirs;
 	int		readFiles;
 	int		readAclStream;
 	int64	readTrans;
+
 	int		writeDirs;
 	int		writeFiles;
 	int		linkFiles;
 	int		writeAclStream;
 	int64	writeTrans;
+
 	int		verifyFiles;
 	int64	verifyTrans;
+
 	int		deleteDirs;
 	int		deleteFiles;
 	int64	deleteTrans;
+
 	int		skipDirs;
 	int		skipFiles;
 	int64	skipTrans;
+
 	int		filterSrcSkips;
 	int		filterDelSkips;
 	int		filterDstSkips;
-	int		errDirs;
-	int		errFiles;
-	int64	errTrans;
-	int64	errStreamTrans;
-	int		errAclStream;
+
+	int		allErrFiles;
+	int		allErrDirs;
+	int64	allErrTrans;
+
+	int		rErrDirs;
+	int		rErrFiles;
+	int64	rErrTrans;
+
+	int		wErrDirs;
+	int		wErrFiles;
+	int64	wErrTrans;
+
+	int		dErrDirs;
+	int		dErrFiles;
+	int64	dErrTrans;
+
+	int64	rErrStreamTrans;
+	int		rErrAclStream;
+
+	int64	wErrStreamTrans;
+	int		wErrAclStream;
+
 	int		openRetry;
-	BOOL	abortCnt;
+	int		abortCnt;
 };
 
 struct TransInfo {
+	BOOL				isPreSearch;
+	TotalTrans			preTotal;
 	TotalTrans			total;
-	DWORD				tickCount;
+	DWORD				fullTickCount;
+	DWORD				execTickCount;
 	BOOL				isSameDrv;
 	DWORD				ignoreEvent;
 	DWORD				waitTick;
@@ -171,13 +195,13 @@ struct FileStat {
 	BYTE		digest[SHA256_SIZE];
 	WCHAR		cFileName[2];	// 2 == dummy
 
-	int64	FileSize() { return *(int64 *)&nFileSizeLow; } // Low/Highの順序
+	int64&	FileSize() { return *(int64 *)&nFileSizeLow; } // Low/Highの順序
 	void	SetFileSize(int64 file_size) { *(int64 *)&nFileSizeLow = file_size; }
 	void	SetLinkData(DWORD *data) { memcpy(digest, data, sizeof(DWORD) * 3); }
 	DWORD	*GetLinkData() { return (DWORD *)digest; }
-	int64	CreateTime() { return *(int64 *)&ftCreationTime;   }
-	int64	AccessTime() { return *(int64 *)&ftLastAccessTime; }
-	int64	WriteTime()  { return *(int64 *)&ftLastWriteTime; }
+	int64&	CreateTime() { return *(int64 *)&ftCreationTime;   }
+	int64&	AccessTime() { return *(int64 *)&ftLastAccessTime; }
+	int64&	WriteTime()  { return *(int64 *)&ftLastWriteTime; }
 };
 
 inline int64 WriteTime(const WIN32_FIND_DATAW &fdat) {
@@ -247,7 +271,7 @@ class FastCopy {
 public:
 	enum Mode { DIFFCP_MODE, SYNCCP_MODE, MOVE_MODE, MUTUAL_MODE, DELETE_MODE, TEST_MODE };
 	enum OverWrite { BY_NAME, BY_ATTR, BY_LASTEST, BY_CONTENTS, BY_ALWAYS };
-	enum FsType { FSTYPE_NONE, FSTYPE_NTFS, FSTYPE_FAT, FSTYPE_NETWORK };
+	enum FsType { FSTYPE_NONE=0, FSTYPE_NTFS=0x1, FSTYPE_FAT=0x2, FSTYPE_NETWORK=0x10 };
 	enum Flags {
 		CREATE_OPENERR_FILE	=	0x00000001,
 		USE_OSCACHE_READ	=	0x00000002,
@@ -271,6 +295,7 @@ public:
 		DEL_BEFORE_CREATE	=	0x00080000,
 		DELDIR_WITH_FILTER	=	0x00100000,
 		NET_BKUPWR_NOOVL	=	0x00200000,
+		NO_LARGE_FETCH		=	0x00400000,
 		WRITESHARE_OPEN		=	0x00800000,
 		//
 		LISTING				=	0x01000000,
@@ -279,6 +304,11 @@ public:
 		REPORT_ACL_ERROR	=	0x20000000,
 		REPORT_STREAM_ERROR	=	0x40000000,
 		//
+	};
+	enum DlsvtMode {
+		DLSVT_NONE			=	0x00000000,
+		DLSVT_FAT			=	0x00000001,
+		DLSVT_ALWAYS		=	0x00000002,
 	};
 	enum VerifyFlags {
 		VERIFY_MD5			=	0x00000001,
@@ -300,23 +330,37 @@ public:
 		DWORD	ignoreEvent;	// (I/ )
 		Mode	mode;			// (I/ )
 		OverWrite overWrite;	// (I/ )
-		int		flags;			// (I/ )
+		int64	flags;			// (I/ )
 		int		verifyFlags;	// (I/ )
+		int		dlsvtMode;		// (I/ )
 		int64	timeDiffGrace;	// (I )
 		int		fileLogFlags;	// (I/ )
 		int		debugFlags;		// (I/ )	// 1: timestamp debug
 		size_t	bufSize;		// (I/ )
 		int		maxOpenFiles;	// (I/ )
-		size_t	maxTransSize;	// (I/ )
 		size_t	maxOvlSize;		// (I/ )
+		BOOL	IsNormalOvl(int64 fsize) { return fsize >= maxOvlSize * min(maxOvlNum, 20); }
+		BOOL	IsMinOvl(int64 fsize) { return fsize >= MIN_BUF * 2; }
 		DWORD	maxOvlNum;		// (I/ )
+		DWORD	GenOvlSize(int64 fsize) {
+			int64 size = fsize / min(maxOvlNum, 20);
+			if (size > MIN_BUF) {
+				auto i = get_nlz64(size);
+				DWORD unit = 1 << i;
+				if (unit > maxOvlSize) {
+					unit = (DWORD)maxOvlSize;
+				}
+				return	unit;
+			}
+			return MIN_BUF;
+		}
 		size_t	maxAttrSize;	// (I/ )
 		size_t	maxDirSize;		// (I/ )
 		size_t	maxMoveSize;	// (I/ )
 		size_t	maxDigestSize;	// (I/ )
 		int		minSectorSize;	// (I/ ) 最小セクタサイズ
-		int		nbMinSizeNtfs;	// (I/ ) FILE_FLAG_NO_BUFFERING でオープンする最小サイズ
-		int		nbMinSizeFat;	// (I/ ) FILE_FLAG_NO_BUFFERING でオープンする最小サイズ (FAT用)
+		int64	nbMinSizeNtfs;	// (I/ ) FILE_FLAG_NO_BUFFERING でオープンする最小サイズ
+		int64	nbMinSizeFat;	// (I/ ) FILE_FLAG_NO_BUFFERING でオープンする最小サイズ (FAT用)
 		int		maxLinkHash;	// (I/ ) Dest Hardlink 用 hash table サイズ
 		int64	allowContFsize;	// (I/ )
 		HWND	hNotifyWnd;		// (I/ )
@@ -374,6 +418,7 @@ public:
 
 protected:
 	enum Command {
+		CHECKCREATE_TOPDIR,
 		WRITE_FILE, WRITE_BACKUP_FILE, WRITE_FILE_CONT, WRITE_ABORT, WRITE_BACKUP_ACL,
 		WRITE_BACKUP_EADATA, WRITE_BACKUP_ALTSTREAM, WRITE_BACKUP_END, CASE_CHANGE,
 		CREATE_HARDLINK, REMOVE_FILES, MKDIR, INTODIR, DELETE_FILES, RETURN_PARENT, REQ_EOF,
@@ -505,8 +550,10 @@ protected:
 	int		depthIdxOffset;
 	BOOL	isListing;
 	BOOL	isListingOnly;
+	BOOL	isPreSearch;
+	BOOL	isExec;
 	int		maxStatSize;	// max size of FileStat
-	int		nbMinSize;		// struct Info 参照
+	int64	nbMinSize;		// struct Info 参照
 	int64	timeDiffGrace;
 	BOOL	enableAcl;
 	BOOL	enableStream;
@@ -515,6 +562,7 @@ protected:
 	FINDEX_INFO_LEVELS
 			findInfoLv; // FindFirstFileEx用info level
 	DWORD	findFlags;  // FindFirstFileEx用flags
+	DWORD	frdFlags;	// ForceRemoveDirectoryW用flags
 
 	// セクタ情報など
 	int		srcSectorSize;
@@ -529,7 +577,9 @@ protected:
 	DWORD	flagOvl;
 	WCHAR	src_root[MAX_PATH];
 
+	TotalTrans	preTotal;	// ファイルコピー統計情報
 	TotalTrans	total;		// ファイルコピー統計情報
+	TotalTrans	*curTotal;
 
 	// filter
 	inline DWORD FilterBits(int file_dir_idx, int inc_exc_idx) {
@@ -595,6 +645,7 @@ protected:
 
 	// 時間情報
 	DWORD	startTick;
+	DWORD	preTick;
 	DWORD	endTick;
 	DWORD	suspendTick;
 	DWORD	waitTick;
@@ -605,6 +656,7 @@ protected:
 	BOOL	isSameDrv;
 	BOOL	isSameVol;
 	BOOL	isRename;
+	BOOL	isDlsvt;
 	enum	DstReqKind { DSTREQ_NONE=0, DSTREQ_READSTAT=1, DSTREQ_DIGEST=2 } dstAsyncRequest;
 	void	*dstAsyncInfo;
 	BOOL	dstRequestResult;
@@ -679,8 +731,8 @@ protected:
 	BOOL CheckAndCreateDestDir(int dst_len);
 	BOOL FinishNotify(void);
 	BOOL ClearNonSurrogateReparse(WIN32_FIND_DATAW *fdat);
-	BOOL PreSearch(void);
-	BOOL PreSearchProc(WCHAR *path, int prefix_len, int dir_len, FilterRes fr);
+//	BOOL PreSearch(void);
+//	BOOL PreSearchProc(WCHAR *path, int prefix_len, int dir_len, FilterRes fr);
 	BOOL PutMoveList(WCHAR *path, int path_len, FileStat *stat, MoveObj::Status status);
 	void FlushMoveListCore(MoveObj *data);
 	BOOL FlushMoveList(BOOL is_finish=FALSE);
@@ -715,7 +767,7 @@ protected:
 	BOOL CloseMultiFilesProc(int maxCnt=0);
 	WCHAR *RestorePath(WCHAR *path, int idx, int dir_len);
 	BOOL WaitOverlapped(HANDLE hFile, OverLap *ovl);
-	void SetTotalErrInfo(BOOL is_stream, int64 err_trans);
+	void SetTotalErrInfo(BOOL is_stream, int64 err_trans, BOOL is_write=FALSE);
 	BOOL ReadFileWithReduce(HANDLE hFile, void *buf, DWORD size, OverLap *ovl=NULL);
 	BOOL ReadFileAltStreamProc(int *open_idx, int dir_len, FileStat *stat);
 	BOOL ReadFileReparse(Command cmd, int idx, int dir_len, FileStat *stat);
@@ -758,8 +810,8 @@ protected:
 	BOOL WriteFileBackupProc(HANDLE fh, int dst_len);
 	BOOL ChangeToWriteModeCore(BOOL is_finish=FALSE);
 	BOOL ChangeToWriteMode(BOOL is_finish=FALSE);
-	ReqHead *AllocReqBuf(int req_size, int64 _data_size);
-	ReqHead *PrepareReqBuf(int req_size, int64 data_size, int64 file_id);
+	ReqHead *AllocReqBuf(int req_size, int64 _data_size, int64 fsize);
+	ReqHead *PrepareReqBuf(int req_size, int64 data_size, int64 file_id, int64 fsize=0);
 	BOOL CancelReqBuf(ReqHead *req);
 	BOOL SendRequest(Command cmd, ReqHead *buf=NULL, FileStat *stat=NULL);
 	BOOL SendRequestCore(Command cmd, ReqHead *buf, FileStat *stat);
@@ -775,7 +827,13 @@ protected:
 	BOOL InitDeletePath(int idx);
 	BOOL InitDstPath(void);
 	BOOL InitDepthBuf(void);
-	FsType GetFsType(const WCHAR *root_dir);
+	FsType	GetFsType(const WCHAR *root_dir);
+	BOOL	IsLocalNTFS(FsType fstype) {
+		return (IsNTFS(fstype) && !IsNetFs(fstype)) ? TRUE : FALSE;
+	}
+	BOOL	IsNTFS(FsType fstype) { return (fstype & FSTYPE_NTFS) ? TRUE : FALSE; }
+	BOOL	IsNetFs(FsType fstype) { return (fstype & FSTYPE_NETWORK) ? TRUE : FALSE; }
+	BOOL	IsLocalFs(FsType fstype) { return !IsNetFs(fstype); }
 	int GetSectorSize(const WCHAR *root_dir, BOOL use_cluster=FALSE);
 	int MakeUnlimitedPath(WCHAR *buf);
 	BOOL PutList(WCHAR *path, DWORD opt, DWORD lastErr=0, int64 wtime=-1, int64 size=-1,
@@ -804,16 +862,6 @@ protected:
 	void TestWriteEnd();
 	void OvlLog(OverLap *ovl, const void *buf, const WCHAR *fmt,...); // for debug
 };
-
-// 1601年1月1日から1970年1月1日までの通算100ナノ秒
-#define UNIXTIME_BASE	((_int64)0x019db1ded53e8000)
-
-inline __time64_t FileTime2UnixTime(FILETIME *ft) {
-	return	(__time64_t)((*(_int64 *)ft - UNIXTIME_BASE) / 10000000);
-}
-inline void UnixTime2FileTime(__time64_t ut, FILETIME *ft) {
-	*(_int64 *)ft = (_int64)ut * 10000000 + UNIXTIME_BASE;
-}
 
 //	RegisterInfoProc
 //	InitConfigProc

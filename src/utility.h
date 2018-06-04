@@ -1,9 +1,9 @@
 ﻿/* static char *utility_id = 
-	"@(#)Copyright (C) 2004-2017 H.Shirouzu		utility.h	Ver3.30"; */
+	"@(#)Copyright (C) 2004-2018 H.Shirouzu		utility.h	Ver3.50"; */
 /* ========================================================================
 	Project  Name			: Utility
 	Create					: 2004-09-15(Wed)
-	Update					: 2017-03-06(Mon)
+	Update					: 2018-05-28(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -14,7 +14,10 @@
 #include "tlib/tlib.h"
 #include "shareinfo.h"
 
-#define SEMICLN_SPC			L"; "
+#define CRLF			L"\r\n"
+#define SEMICLN			L";"
+#define SEMICLN_SPC		L"; "
+#define NULW			L""
 
 class Logging {
 protected:
@@ -26,20 +29,28 @@ public:
 class PathArray : public THashTbl {
 protected:
 	struct PathObj : THashObj {
-		WCHAR	*path;
-		int		len;
-		PathObj(const WCHAR *_path, int len=-1) { Set(_path, len); }
-		~PathObj() { if (path) free(path); }
-		BOOL Set(const WCHAR *_path, int len=-1);
+		std::unique_ptr<WCHAR[]> path;
+		std::unique_ptr<WCHAR[]> uppr;
+		int		len = 0;
+		int		upprLen = 0;
+		BOOL	isDir = FALSE;
+		u_int	hashId = 0;
+
+		PathObj(const WCHAR *_path) { Set(_path); }
+		PathObj(const PathObj &obj) { *this = obj; }
+		~PathObj() {}
+		PathObj& operator=(const PathObj& init);
+
+		BOOL	Set(const WCHAR *_path);
+		int		Get(WCHAR *_path);
 	};
 	int		num;
 	PathObj	**pathArray;
 	DWORD	flags;
-	BOOL	SetPath(int idx, const WCHAR *path, int len=-1);
+	BOOL	SetPath(int idx, PathObj *obj);
+	BOOL	SetPath(int idx, const WCHAR *path);
 
-	virtual BOOL IsSameVal(THashObj *obj, const void *val) {
-		return wcsicmp(((PathObj *)obj)->path, (WCHAR *)val) == 0;
-	}
+	virtual BOOL IsSameVal(THashObj *obj, const void *val);
 
 public:
 	enum { ALLOW_SAME=1, NO_REMOVE_QUOTE=2 };
@@ -48,24 +59,20 @@ public:
 	virtual ~PathArray();
 	void	Init(void);
 	void	SetMode(DWORD _flags) { flags = _flags; }
-	int		RegisterMultiPath(const WCHAR *multi_path, const WCHAR *separator=L";");
+	int		RegisterMultiPath(const WCHAR *multi_path, const WCHAR *separator=SEMICLN);
 	int		GetMultiPath(WCHAR *multi_path, int max_len, const WCHAR *separator=SEMICLN_SPC,
-				const WCHAR *escape_char=L";");
+				const WCHAR *escape_chars=SEMICLN_SPC, BOOL with_endsep=FALSE);
 	int		GetMultiPathLen(const WCHAR *separator=SEMICLN_SPC,
-				const WCHAR *escape_char=L";");
+				const WCHAR *escape_chars=SEMICLN_SPC, BOOL with_endsep=FALSE);
 
 	PathArray& operator=(const PathArray& init);
 
-	WCHAR	*Path(int idx) const { return idx < num ? pathArray[idx]->path : NULL; }
+	WCHAR	*Path(int idx) const { return idx < num ? pathArray[idx]->path.get() : NULL; }
 	int		PathLen(int idx) const { return idx < num ? pathArray[idx]->len : 0; }
-	int		Num(void) const { return	num; }
+	int		Num(void) const { return num; }
 	BOOL	RegisterPath(const WCHAR *path);
 	BOOL	ReplacePath(int idx, WCHAR *new_path);
-
-	u_int	MakeHashId(const void *data, int len=-1) {
-		return MakeHash(data, (len >= 0 ? len : wcslen((WCHAR *)data)) * sizeof(WCHAR));
-	}
-	u_int	MakeHashId(const PathObj *obj) { return MakeHash(obj->path, obj->len * sizeof(WCHAR));}
+	void	Sort();
 };
 
 #define MAX_DRIVES			(64)	// A-Z + UNC_drives
@@ -127,12 +134,10 @@ protected:
 	Condition	cv;
 
 public:
-	DataList(ssize_t size=0, ssize_t max_size=0, ssize_t _grow_size=0, VBuf *_borrowBuf=NULL,
-		ssize_t _min_margin=65536);
+	DataList(ssize_t size=0, ssize_t max_size=0, ssize_t _grow_size=0, ssize_t _min_margin=65536);
 	~DataList();
 
-	BOOL Init(ssize_t size, ssize_t max_size, ssize_t _grow_size, VBuf *_borrowBuf=NULL,
-		ssize_t _min_margin=65536);
+	BOOL Init(ssize_t size, ssize_t max_size, ssize_t _grow_size, ssize_t _min_margin=65536);
 	void UnInit();
 
 	void Lock() { cv.Lock(); }
@@ -151,6 +156,8 @@ public:
 	ssize_t Size() { return buf.Size(); }
 	ssize_t Grow(ssize_t grow_size) { return buf.Grow(grow_size); }
 	ssize_t MinMargin() { return min_margin; }
+
+	void	EnableDumpExcept(BOOL on=TRUE) { buf.EnableDumpExcept(on); }
 };
 
 
@@ -178,7 +185,7 @@ BOOL DeleteReparsePoint(HANDLE hFile, void *buf);
 BOOL IsReparseDataSame(void *d1, void *d2);
 BOOL ResetAcl(const WCHAR *path, BOOL myself_acl=FALSE);
 
-enum { FMF_NONE=0, FMF_ACL=1, FMF_MYACL=2, FMF_ATTR=0x100 }; // flags
+enum { FMF_NONE=0, FMF_ACL=1, FMF_MYACL=2, FMF_EMPTY_RETRY=4, FMF_ATTR=0x100 }; // flags
 BOOL ForceRemoveDirectoryW(const WCHAR *path, DWORD flags=FMF_NONE);
 BOOL ForceDeleteFileW(const WCHAR *path, DWORD flags=FMF_NONE);
 HANDLE ForceCreateFileW(const WCHAR *path, DWORD mode, DWORD share, SECURITY_ATTRIBUTES *sa,

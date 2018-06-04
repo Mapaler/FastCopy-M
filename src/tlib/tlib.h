@@ -72,10 +72,11 @@ typedef unsigned _int64 uint64;
 
 #include <tchar.h>
 #include "tmisc.h"
+#include "texcept.h"
 #include "tapi32ex.h"
 //#include "tapi32u8.h"	 /* describe last line */
 
-extern DWORD TWinVersion;	// define in tmisc.cpp
+extern OSVERSIONINFOEX	TOSVerInfo;	// define in tmisc.cpp
 
 #define WINEXEC_ERR_MAX		31
 #define TLIB_SLEEPTIMER		32000
@@ -83,26 +84,29 @@ extern DWORD TWinVersion;	// define in tmisc.cpp
 #define TLIB_CRYPT		0x00000001
 #define TLIB_PROTECT	0x00000002
 
-#define IsNewShell()	(LOBYTE(LOWORD(TWinVersion)) >= 4)
+#define IsWinXP()		(TOSVerInfo.dwMajorVersion >= 6 || TOSVerInfo.dwMajorVersion == 5 \
+							&& TOSVerInfo.dwMajorVersion >= 1)
 
-#define IsWin31()		(LOBYTE(LOWORD(TWinVersion)) == 3 && HIBYTE(LOWORD(TWinVersion)) < 20)
-#define IsWin95()		(LOBYTE(LOWORD(TWinVersion)) >= 4 && TWinVersion >= 0x80000000)
+#define IsWin2003Only()	(TOSVerInfo.dwMajorVersion == 5 && TOSVerInfo.dwMinorVersion == 2)
 
-#define IsWinNT350()	(LOBYTE(LOWORD(TWinVersion)) == 3 && TWinVersion < 0x80000000 \
-							&& HIBYTE(LOWORD(TWinVersion)) == 50)
-#define IsWinNT()		(LOBYTE(LOWORD(TWinVersion)) >= 4 && TWinVersion < 0x80000000)
-#define IsWin2K()		(LOBYTE(LOWORD(TWinVersion)) >= 5 && TWinVersion < 0x80000000)
-#define IsWinXP()		((LOBYTE(LOWORD(TWinVersion)) >= 6 || LOBYTE(LOWORD(TWinVersion)) == 5 \
-							&& HIBYTE(LOWORD(TWinVersion)) >= 1) && TWinVersion < 0x80000000)
-#define IsWinVista()	(LOBYTE(LOWORD(TWinVersion)) >= 6 && TWinVersion < 0x80000000)
-#define IsWin7()		((LOBYTE(LOWORD(TWinVersion)) >= 7 || LOBYTE(LOWORD(TWinVersion)) == 6 \
-							&& HIBYTE(LOWORD(TWinVersion)) >= 1) && TWinVersion < 0x80000000)
-#define IsWin8()		((LOBYTE(LOWORD(TWinVersion)) >= 7 || LOBYTE(LOWORD(TWinVersion)) == 6 \
-							&& HIBYTE(LOWORD(TWinVersion)) >= 2) && TWinVersion < 0x80000000)
+#define IsWinVista()	(TOSVerInfo.dwMajorVersion >= 6)
+
+#define IsWin7()		(TOSVerInfo.dwMajorVersion >= 7 || TOSVerInfo.dwMajorVersion == 6 \
+							&& TOSVerInfo.dwMinorVersion >= 1)
+
+#define IsWin8()		(TOSVerInfo.dwMajorVersion >= 7 || TOSVerInfo.dwMajorVersion == 6 \
+							&& TOSVerInfo.dwMinorVersion >= 2)
+
 /* manifest に supported OS の記述が必須 */
-#define IsWin81()		((LOBYTE(LOWORD(TWinVersion)) >= 7 || LOBYTE(LOWORD(TWinVersion)) == 6 \
-							&& HIBYTE(LOWORD(TWinVersion)) >= 3) && TWinVersion < 0x80000000)
-#define IsWin10()		(LOBYTE(LOWORD(TWinVersion)) >= 10 && TWinVersion < 0x80000000)
+#define IsWin81()		(TOSVerInfo.dwMajorVersion >= 7 || TOSVerInfo.dwMajorVersion == 6 \
+							&& TOSVerInfo.dwMinorVersion >= 3)
+
+#define IsWin10()		(TOSVerInfo.dwMajorVersion >= 10)
+
+#define IsWin10Fall()	(TOSVerInfo.dwMajorVersion > 10 || TOSVerInfo.dwMajorVersion == 10 \
+						 && (TOSVerInfo.dwMinorVersion >= 1 || TOSVerInfo.dwBuildNumber >= 16299))
+
+#define IsWinSvr()		(TOSVerInfo.wProductType != VER_NT_WORKSTATION)
 
 #define IsLang(lang)	(PRIMARYLANGID(LANGIDFROMLCID(GetThreadLocale())) == lang)
 #define wsizeof(x)		(sizeof(x) / sizeof(WCHAR))
@@ -112,6 +116,7 @@ extern DWORD TWinVersion;	// define in tmisc.cpp
 #endif
 
 #define BUTTON_CLASS		"BUTTON"
+#define BUTTON_CLASS_W		L"BUTTON"
 #define COMBOBOX_CLASS		"COMBOBOX"
 #define EDIT_CLASS			"EDIT"
 #define LISTBOX_CLASS		"LISTBOX"
@@ -224,12 +229,15 @@ struct WINPOS {
 enum DlgItemFlags {
 	NONE_FIT	= 0x000,
 	LEFT_FIT	= 0x001,
-	HMID_FIT	= 0x002,
-	RIGHT_FIT	= 0x004,
-	TOP_FIT		= 0x008,
-	VMID_FIT	= 0x010,
-	BOTTOM_FIT	= 0x020,
-	FIT_SKIP	= 0x800,
+	MIDCX_FIT	= 0x002,
+	MIDX_FIT	= 0x004,
+	RIGHT_FIT	= 0x008,
+	TOP_FIT		= 0x010,
+	MIDCY_FIT	= 0x020,
+	MIDY_FIT	= 0x040,
+	BOTTOM_FIT	= 0x080,
+	FIT_SKIP	= 0x100,
+	DIFF_CASCADE= 0x200,
 	X_FIT		= LEFT_FIT|RIGHT_FIT,
 	Y_FIT		= TOP_FIT|BOTTOM_FIT,
 	XY_FIT		= X_FIT|Y_FIT,
@@ -240,6 +248,10 @@ struct DlgItem {
 	HWND	hWnd;
 	UINT	id;
 	WINPOS	wpos;
+	int		diffX;
+	int		diffY;
+	int		diffCx;
+	int		diffCy;
 };
 
 // UTF8 string class
@@ -285,6 +297,9 @@ struct TRect : public RECT {
 		right  = x + cx;
 		bottom = y + cy;
 	}
+	void	InitDefault() {
+		Init(CW_USEDEFAULT, CW_USEDEFAULT, 0, 0);
+	}
 	long&	x() { return left; }
 	long&	y() { return top; }
 	long	cx() const { return right - left; }
@@ -327,6 +342,14 @@ struct TRect : public RECT {
 	}
 	bool operator !=(const TRect &rc) {
 		return !(*this == rc);
+	}
+	void ScreenToClient(HWND hWnd) {
+		::ScreenToClient(hWnd, (POINT *)&left);
+		::ScreenToClient(hWnd, (POINT *)&right);
+	}
+	void ClientToScreen(HWND hWnd) {
+		::ClientToScreen(hWnd, (POINT *)&left);
+		::ClientToScreen(hWnd, (POINT *)&right);
 	}
 };
 
@@ -403,6 +426,7 @@ class TWin : public THashObj {
 protected:
 	TRect			rect;
 	TRect			orgRect;
+	TRect			pRect; // parent
 	HACCEL			hAccel;
 	TWin			*parent;
 	BOOL			sleepBusy;	// for TWin::Sleep() only
@@ -464,6 +488,11 @@ public:
 	virtual BOOL	EvWindowPosChanging(WINDOWPOS *pos);
 	virtual BOOL	EvMouseWheel(WORD fwKeys, short zDelta, short xPos, short yPos);
 
+	virtual BOOL	EvPaste();
+	virtual BOOL	EvCopy();
+	virtual BOOL	EvCut();
+	virtual BOOL	EvClear();
+
 	virtual BOOL	EventButton(UINT uMsg, int nHitTest, POINTS pos);
 	virtual BOOL	EventKey(UINT uMsg, int nVirtKey, LONG lKeyData);
 	virtual BOOL	EventMenuLoop(UINT uMsg, BOOL fIsTrackPopupMenu);
@@ -486,6 +515,8 @@ public:
 	virtual BOOL	SetDlgItemTextU8(int ctlId, const char *buf);
 	virtual int		GetDlgItemInt(int ctlId, BOOL *err=NULL, BOOL sign=TRUE);
 	virtual BOOL	SetDlgItemInt(int ctlId, int val, BOOL sign=TRUE);
+	virtual int64	GetDlgItemInt64(int ctlId, BOOL *err=NULL, BOOL sign=TRUE);
+	virtual BOOL	SetDlgItemInt64(int ctlId, int64 val, BOOL sign=TRUE);
 	virtual HWND	GetDlgItem(int ctlId);
 	virtual BOOL	CheckDlgButton(int ctlId, UINT check);
 	virtual UINT	IsDlgButtonChecked(int ctlId);
@@ -497,7 +528,7 @@ public:
 	virtual	int		MessageBoxU8(LPCSTR msg, LPCSTR title="msg", UINT style=MB_OK);
 	virtual BOOL	BringWindowToTop(void);
 	virtual BOOL	SetForegroundWindow(void);
-	virtual BOOL	SetForceForegroundWindow(void);
+	virtual BOOL	SetForceForegroundWindow(BOOL revert_thread_input=FALSE);
 	virtual BOOL	ShowWindow(int mode);
 	virtual BOOL	PostMessage(UINT uMsg, WPARAM wParam, LPARAM lParam);
 	virtual BOOL	PostMessageW(UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -519,6 +550,7 @@ public:
 	virtual int		GetWindowTextLengthU8(void);
 	virtual BOOL	InvalidateRect(const RECT *rc, BOOL fErase);
 	virtual HWND	SetFocus();
+	virtual BOOL	RestoreRectFromParent();
 
 	virtual LONG_PTR SetWindowLong(int index, LONG_PTR val);
 	virtual LONG_PTR GetWindowLong(int index);
@@ -543,6 +575,7 @@ public:
 
 	virtual BOOL	CreateTipWnd(const WCHAR *tip=NULL, int width=0, int tout=0);
 	virtual BOOL	SetTipTextW(const WCHAR *tip, int width=0, int tout=0);
+	virtual BOOL	UnSetTipText();
 	virtual BOOL	CloseTipWnd();
 };
 
@@ -566,6 +599,7 @@ public:
 	virtual BOOL	FitDlgItems();
 
 	virtual BOOL	EvCreate(LPARAM lParam);
+	virtual BOOL	EvClose(void);
 	virtual BOOL	EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl);
 	virtual BOOL	EvSysCommand(WPARAM uCmdType, POINTS pos);
 	virtual BOOL	EvQueryOpen(void);
@@ -603,6 +637,16 @@ public:
 	virtual	BOOL	PreProcMsg(MSG *msg);
 };
 
+class TWrapWnd : public TWin {
+public:
+	TWrapWnd(HWND _hWnd) : TWin() {
+		hWnd = _hWnd;
+	}
+	~TWrapWnd() {
+		hWnd = NULL;
+	}
+};
+
 BOOL TRegisterClass(LPCSTR class_name, UINT style=CS_DBLCLKS, HICON hIcon=0, HCURSOR hCursor=0,
 		HBRUSH hbrBackground=0, int classExtra=0, int wndExtra=0, LPCSTR menu_str=0);
 BOOL TRegisterClassU8(LPCSTR class_name, UINT style=CS_DBLCLKS, HICON hIcon=0, HCURSOR hCursor=0,
@@ -637,6 +681,7 @@ protected:
 	TWin		*preWnd;
 	HINSTANCE	hInstance;
 	DWORD		twinId;
+	int			result;
 
 	virtual BOOL	InitApp(void);
 
@@ -646,6 +691,10 @@ public:
 	virtual void	InitWindow() = 0;
 	virtual int		Run();
 	virtual BOOL	PreProcMsg(MSG *msg);
+	virtual int		Result() { return result; }
+	virtual void	SetResult(int _result) { result = _result; }
+	virtual void	PostRun() {}
+	static void	Exit(int _result=0);
 
 	LPCSTR	GetDefaultClass() { return defaultClass; }
 	LPCWSTR	GetDefaultClassW() { return defaultClassW; }
@@ -707,6 +756,10 @@ public:
 		obj->next = NULL;
 		obj->prev = NULL;
 		num--;
+	}
+	void UpdObj(T *obj) {
+		DelObj(obj);
+		AddObj(obj);
 	}
 	void PushObj(T *obj) { // add to top
 		obj->next = top.next;
@@ -791,6 +844,7 @@ public:
 	}
 	void PutObj(int list_type, T *obj)  { list[list_type].AddObj(obj);         }
 	void DelObj(int list_type, T *obj)  { list[list_type].DelObj(obj);         }
+	void UpdObj(int list_type, T *obj)  { list[list_type].UpdObj(obj);         }
 	T	*TopObj(int list_type)          { return list[list_type].TopObj();     }
 	T	*EndObj(int list_type)          { return list[list_type].EndObj();     }
 	T	*NextObj(int list_type, T *obj) { return list[list_type].NextObj(obj); }
@@ -850,10 +904,12 @@ public:
 	BOOL	GetStr(LPCSTR key, LPSTR str, int size_byte);
 	BOOL	GetStrA(LPCSTR key, LPSTR str, int size_byte);
 	BOOL	GetStrW(const WCHAR *key, WCHAR *str, int size_byte);
+	BOOL	GetStrMW(const char *key, WCHAR *str, int size_byte);
 
 	BOOL	SetStr(LPCSTR key, LPCSTR str);
 	BOOL	SetStrA(LPCSTR key, LPCSTR str);
 	BOOL	SetStrW(const WCHAR *key, const WCHAR *str);
+	BOOL	SetStrMW(const char *key, const WCHAR *str);
 
 	BOOL	GetByte(LPCSTR key, BYTE *data, int *size);
 	BOOL	GetByteW(const WCHAR *key, BYTE *data, int *size);
@@ -1013,9 +1069,13 @@ public:
 
 
 #include "tapi32u8.h"
+#include "tinet.h"
+#include "ipdict.h"
+#include "scopeexit.h"
+#include "tcmndlg.h"
 
-#if _MSC_VER == 1900
 void TGsFailureHack();
-#endif
+void TLibInit();
 
 #endif
+

@@ -16,6 +16,9 @@ public:
 		st_num = 0;
 		SetMaxState(max_state);
 	}
+	RegStates(const RegStates& org)  {
+		*this = org;
+	}
 	~RegStates() {}
 
 	void Reset() {

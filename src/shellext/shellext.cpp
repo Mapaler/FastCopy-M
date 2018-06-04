@@ -1,9 +1,9 @@
 ﻿static char *shellext_id = 
-	"@(#)Copyright (C) 2005-2016 H.Shirouzu		shellext.cpp	Ver3.26";
+	"@(#)Copyright (C) 2005-2018 H.Shirouzu		shellext.cpp	Ver3.41";
 /* ========================================================================
 	Project  Name			: Shell Extension for Fast Copy
 	Create					: 2005-01-23(Sun)
-	Update					: 2016-12-08(Thu)
+	Update					: 2018-01-25(Thu)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -19,6 +19,8 @@
 #include "shelldef.h"
 #include "shellext.h"
 #pragma data_seg()
+
+using namespace std;
 
 static ShellExtSystem	*SysObj = NULL;
 
@@ -333,8 +335,8 @@ STDMETHODIMP ShellExt::QueryContextMenu(HMENU hMenu, UINT iMenu, UINT cmdFirst, 
 			iMenu++;
 		}
 		SysObj->lastMenu = hMenu;
-		DbgLogW(L" added cnt=%d self=%x set menu=%x/%x\r\n",
-			ref_cnt, this, hMenu, SysObj->lastMenu);
+		DbgLogW(L" added cnt=%d self=%x set menu=%x/%x i=%d\r\n",
+			ref_cnt, this, hMenu, SysObj->lastMenu, iMenu);
 	}
 
 	return	ResultFromScode(MAKE_SCODE(SEVERITY_SUCCESS, 0, SHEXT_MENU_MAX));
@@ -369,7 +371,6 @@ STDMETHODIMP ShellExt::InvokeCommand(CMINVOKECOMMANDINFO *info)
 	char	arg[MAX_PATH_EX], *cmd_str = "";
 	PROCESS_INFORMATION	pr_info;
 	BOOL	isClip = cmd == 2;
-	BOOL	is_del = FALSE;
 	int		menu_flags = GetMenuFlags(isAdmin);
 
 	if (isClip && isCut || cmd == 1 && is_dd) {
@@ -377,7 +378,6 @@ STDMETHODIMP ShellExt::InvokeCommand(CMINVOKECOMMANDINFO *info)
 	}
 	else if (cmd == 1 && !is_dd) {
 		cmd_str = "/cmd=delete";
-		is_del = TRUE;
 	}
 
 	sprintf(arg, "\"%s\" %s %s=%x", SysObj->ExeName, cmd_str, SHELLEXT_OPT, menu_flags);
@@ -392,7 +392,8 @@ STDMETHODIMP ShellExt::InvokeCommand(CMINVOKECOMMANDINFO *info)
 		PathArray	&src = isClip ? clipArray : srcArray;
 		PathArray	&dst = (isClip && dstArray.Num() == 0) ? srcArray : dstArray;
 		DWORD		len = src.GetMultiPathLen();
-		WCHAR		*buf = new WCHAR[max(len, MAX_PATH_EX)];
+		auto		_buf = make_unique<WCHAR[]>(max(len, MAX_PATH_EX));
+		auto		buf = _buf.get();
 		// dstArray が無い場合は、\0 まで出力
 		len = src.GetMultiPath(buf, len) + (!is_dd && !isClip ? 1 : 0);
 
@@ -410,7 +411,6 @@ STDMETHODIMP ShellExt::InvokeCommand(CMINVOKECOMMANDINFO *info)
 			DbgLogW(L"send fastcopy dst=%s\r\n", buf);
 			::WriteFile(hWrite, buf, len * sizeof(WCHAR *), &len, 0);
 		}
-		delete [] buf;
 		::CloseHandle(pr_info.hProcess);
 		::CloseHandle(pr_info.hThread);
 
@@ -782,8 +782,9 @@ int PathArray::GetMultiPathLen(void)
 BOOL PathArray::RegisterPath(const WCHAR *path)
 {
 #define MAX_ALLOC	100
-	if ((num % MAX_ALLOC) == 0)
+	if ((num % MAX_ALLOC) == 0) {
 		pathArray = (WCHAR **)realloc(pathArray, (num + MAX_ALLOC) * sizeof(WCHAR *));
+	}
 
 	int	len = (int)wcslen(path) + 1;
 	pathArray[num] = (WCHAR *)malloc(len * sizeof(WCHAR));

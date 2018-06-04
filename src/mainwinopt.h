@@ -30,6 +30,7 @@
 	L"  [/acl] [/stream] [/reparse] [/verify]\r\n" \
 	L"  [/linkdest] [/recreate]\r\n" \
 	L"  [/wipe_del] [/skip_empty_dir]\r\n\r\n" \
+	L"  [/dlsvt=(none|auto|always)]\r\n" \
 \
 	L"  [/disk_mode=(diff|same|auto)]\r\n" \
 	L"  [/bufsize=N(MB)] [/estimate]\r\n"  \
@@ -87,6 +88,7 @@
 #define SRCFILEW_STR		L"/srcfile_w="
 #define SRCFILE_STR			L"/srcfile="
 #define FINACT_STR			L"/postproc="
+#define DLSVT_STR			L"/dlsvt="
 #define TO_STR				L"/to="
 
 #define CMD_COPY_NAME_STR		L"noexist_only"
@@ -118,8 +120,6 @@
 #define STANDBY_STR			L"Standby"
 #define HIBERNATE_STR		L"Hibernate"
 #define SHUTDOWN_STR		L"Shutdown"
-
-#define NEWLINE_STR			L"\r\n"
 
 #endif
 

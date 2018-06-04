@@ -7,6 +7,8 @@
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
+#ifndef __INST_H__
+#define __INST_H__
 
 enum InstMode { SETUP_MODE, UNINSTALL_MODE };
 
@@ -21,6 +23,7 @@ struct InstallCfg {
 	WCHAR		*virtualDir;
 	WCHAR		*startMenu;
 	WCHAR		*deskTop;
+	Wstr		setuped;
 };
 
 class TInstSheet : public TDlg
@@ -42,8 +45,12 @@ class TInstDlg : public TDlg
 {
 protected:
 	TSubClassCtl	staticText;
-	TInstSheet		*propertySheet;
+	TSubClassCtl	extractBtn;
+	TSubClassCtl	startBtn;
+	TInstSheet		*propertySheet = NULL;
 	InstallCfg		cfg;
+	IPDict			ipDict;
+	U8str           ver;
 
 public:
 	TInstDlg(char *cmdLine);
@@ -59,8 +66,9 @@ public:
 	BOOL	UnInstall(void);
 	BOOL	RunAsAdmin(BOOL is_imme);
 	void	ChangeMode(void);
-	void	PostQuit(DWORD exit_code);
-	BOOL	RemoveSameLink(const char *dir, char *remove_path=NULL);
+	void	Extract(void);
+	void	Exit(DWORD exit_code);
+	BOOL	RemoveSameLink(const WCHAR *dir, WCHAR *remove_path=NULL);
 };
 
 class TInstApp : public TApp
@@ -75,11 +83,11 @@ public:
 class TBrowseDirDlg : public TSubClass
 {
 protected:
-	char	*fileBuf;
-	BOOL	dirtyFlg;
+	WCHAR	*fileBuf = NULL;
+	BOOL	dirtyFlg = FALSE;
 
 public:
-	TBrowseDirDlg(char *_fileBuf) { fileBuf = _fileBuf; }
+	TBrowseDirDlg(WCHAR *_fileBuf) { fileBuf = _fileBuf; }
 	virtual BOOL	AttachWnd(HWND _hWnd);
 	virtual BOOL	EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl);
 	virtual BOOL	SetFileBuf(LPARAM list);
@@ -89,20 +97,20 @@ public:
 class TInputDlg : public TDlg
 {
 protected:
-	char	*dirBuf;
+	WCHAR	*dirBuf;
 
 public:
-	TInputDlg(char *_dirBuf, TWin *_win) : TDlg(INPUT_DIALOG, _win) { dirBuf = _dirBuf; }
+	TInputDlg(WCHAR *_dirBuf, TWin *_win) : TDlg(INPUT_DIALOG, _win) { dirBuf = _dirBuf; }
 	virtual BOOL	EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl);
 };
 
 class TLaunchDlg : public TDlg
 {
 protected:
-	char *msg;
+	WCHAR *msg;
 
 public:
-	TLaunchDlg(LPCSTR _msg, TWin *_win);
+	TLaunchDlg(const WCHAR *_msg, TWin *_win);
 	virtual ~TLaunchDlg();
 
 	virtual BOOL	EvCreate(LPARAM lParam);
@@ -110,20 +118,24 @@ public:
 };
 
 
-#define FASTCOPY			"FastCopy"
-#define FASTCOPY_EXE		"FastCopy.exe"
-#define INSTALL_EXE			"setup.exe"
-#define README_TXT			"readme.txt"
-#define README_ENG_TXT		"readme_eng.txt"
-#define GPL_TXT				"license-gpl3.txt"
-#define XXHASH_TXT			"xxhash-LICENSE.txt"
-#define HELP_CHM			"FastCopy.chm"
-#define SHELLEXT1_DLL		"FastCopy_shext.dll"
-#define SHELLEXT2_DLL		"FastCopy_shext2.dll"
-#define SHELLEXT3_DLL		"FastCopy_shext3.dll"
-#define SHELLEXT4_DLL		"FastCopy_shext4.dll"
-#define FCSHELLEXT1_DLL		"FastExt1.dll"
-#define FCSHELLEX64_DLL		"FastEx64.dll"
+#define FASTCOPY			L"FastCopy"
+#define FASTCOPY_EXE		L"FastCopy.exe"
+#define INSTALL_EXE			L"setup.exe"
+#define README_TXT			L"readme.txt"
+#define README_ENG_TXT		L"readme_eng.txt"
+#define GPL_TXT				L"license-gpl3.txt"
+#define XXHASH_TXT			L"xxhash-LICENSE.txt"
+#define HELP_CHM			L"FastCopy.chm"
+#define SHELLEXT1_DLL		L"FastCopy_shext.dll"
+#define SHELLEXT2_DLL		L"FastCopy_shext2.dll"
+#define SHELLEXT3_DLL		L"FastCopy_shext3.dll"
+#define SHELLEXT4_DLL		L"FastCopy_shext4.dll"
+#define FCSHELLEXT1_DLL		L"FastExt1.dll"
+#define FCSHELLEX64_DLL		L"FastEx64.dll"
+#define FASTCOPY_INI		L"FastCopy2.ini"
+#define FASTCOPY_LINK		L"to_ExeDir.lnk"
+#define FASTCOPY_LOG		L"FastCopy.log"
+#define FASTCOPY_LOGDIR		L"Log"
 
 #ifdef _WIN64
 #define CURRENT_SHEXTDLL	FCSHELLEX64_DLL
@@ -133,10 +145,11 @@ public:
 #define CURRENT_SHEXTDLL_EX	FCSHELLEX64_DLL
 #endif
 
-#define UNC_PREFIX			"\\\\"
+#define UNC_PREFIX			L"\\\\"
 
-#define UNINSTALL_CMDLINE	"/r"
-#define FASTCOPY_SHORTCUT	"FastCopy.lnk"
+#define UNINSTALL_CMDLINE	L"/r"
+#define FASTCOPY_SHORTCUT	L"FastCopy.lnk"
+#define UNINST_BAT_W		L"fcuninst.bat"
 
 #define REGSTR_SHELLFOLDERS	REGSTR_PATH_EXPLORER "\\Shell Folders"
 #define REGSTR_STARTUP		"Startup"
@@ -145,16 +158,31 @@ public:
 #define REGSTR_PATH			"Path"
 #define REGSTR_PROGRAMFILES	"ProgramFilesDir"
 
-#define INSTALL_STR			"Install"
-#define UNINSTALL_STR		"UnInstall"
+#define INSTALL_STR			L"Install"
+#define UNINSTALL_STR		L"UnInstall"
+#define UPDATE_STR			L"UPDATE"
 
 #define HKCUSW_STR			"\\HKEY_CURRENT_USER\\Software"
 #define HSTOOLS_STR			"HSTools"
 
 // function prototype
-void BrowseDirDlg(TWin *parentWin, UINT editCtl, char *title);
+BOOL BrowseDirDlg(TWin *parentWin, UINT editCtl, const WCHAR *title);
 int CALLBACK BrowseDirDlg_Proc(HWND hWnd, UINT uMsg, LPARAM lParam, LPARAM data);
 
 // inline function
-inline BOOL IsUncFile(const char *path) { return strnicmp(path, UNC_PREFIX, 2) == 0; }
+inline BOOL IsUncFile(const WCHAR *path) { return wcsnicmp(path, UNC_PREFIX, 2) == 0; }
+
+BOOL IsSameFileDict(IPDict *dict, const WCHAR *fname, const WCHAR *dst);
+BOOL IPDictCopy(IPDict *dict, const WCHAR *fname, const WCHAR *dst, BOOL *is_rotate);
+
+BOOL DeflateData(BYTE *buf, DWORD size, DynBuf *dbuf);
+enum CreateStatus { CS_OK, CS_BROKEN, CS_ACCESS };
+BOOL GetIPDictBySelf(IPDict *dict);
+
+#define FDATA_KEY	"fdata"
+#define MTIME_KEY	"mtime"
+#define FSIZE_KEY	"fsize"
+#define VER_KEY		"ver"
+
+#endif
 

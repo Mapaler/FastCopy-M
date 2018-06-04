@@ -1,10 +1,14 @@
 ﻿static char *version_id = 
-	"@(#)Copyright (C) 2004-2017 H.Shirouzu	Version.cpp ver3.32";
+	"@(#)Copyright (C) 2004-2018 H.Shirouzu	Version.cpp ver3.50"
+#ifdef _DEBUG
+	"d"
+#endif
+;
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Module Name				: Version
 	Create					: 2010-06-13(Sun)
-	Update					: 2017-07-31(Mon)
+	Update					: 2018-05-28(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -16,14 +20,16 @@
 #include <string.h>
 #include "version.h"
 
-static char version_str[32];
+static char base_ver[32];
+static char full_ver[32];
 static char copyright_str[128];
 static char libcopyright_str[128];
 static char admin_str[32];
 
 void SetVersionStr(BOOL is_admin, BOOL is_noui)
 {
-	sprintf(version_str, "%.20s", strstr(version_id, "ver"));
+	sprintf(full_ver, "%.20s", strstr(version_id, "ver"));
+	strncpyz(base_ver, full_ver + 3, sizeof(base_ver));
 
 	if (is_admin) {
 		strcpy(admin_str, " (Admin)");
@@ -33,12 +39,12 @@ void SetVersionStr(BOOL is_admin, BOOL is_noui)
 	}
 }
 
-const char *GetVersionStr()
+const char *GetVersionStr(BOOL is_base)
 {
-	if (version_str[0] == 0) {
+	if (full_ver[0] == 0) {
 		SetVersionStr();
 	}
-	return	version_str;
+	return	is_base ? base_ver : full_ver;
 }
 
 const char *GetVerAdminStr()
@@ -64,9 +70,35 @@ const char *GetCopyrightStr(void)
 const char *GetLibCopyrightStr(void)
 {
 	if (libcopyright_str[0] == 0) {
-		strcpy(libcopyright_str, "xxHash Library:\r\nCopyright (c) 2012-2014, Yann Collet");
+		strcpy(libcopyright_str, "xxHash Library:\r\nCopyright (c) 2012-2016, Yann Collet");
 	}
 	return	libcopyright_str;
 }
 
+double VerStrToDouble(const char *s)
+{
+	char *opt = NULL;
+
+	double	ver = strtod(s, &opt);
+	double	sub = 0.0001;
+
+	if (opt && *opt) {
+		switch (tolower(*opt)) {
+		case 'a':
+			sub = strtod(opt+1, NULL) * 0.00000001;
+			break;
+		case 'b':
+			sub = strtod(opt+1, NULL) * 0.000001;
+			break;
+		case 'r':
+			sub = strtod(opt+1, NULL) * 0.0001;
+			break;
+		default:
+			Debug("VerStrToDouble: unknown %s opt=%s\n", s, opt);
+			break;
+		}
+	}
+
+	return	ver + sub;
+}
 
