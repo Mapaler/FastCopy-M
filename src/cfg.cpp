@@ -111,6 +111,7 @@
 #define DIRSEL_KEY				"dirsel"
 #define UPDCHECK_KEY			"updCheck"
 #define LASTUPDCHECK_KEY		"lastUpdCheck"
+#define VERIFY_REMOVE_KEY		"verifyRemove"
 
 #define NONBUFMINSIZENTFS_KEY	"nonbuf_minsize_ntfs2"
 #define NONBUFMINSIZEFAT_KEY	"nonbuf_minsize_fat"
@@ -279,6 +280,7 @@ BOOL ConvertVirtualStoreConf(WCHAR *execDir, WCHAR *userDir, WCHAR *virtualDir)
 	return	TRUE;
 }
 
+//#include <crtdbg.h>
 
 /*=========================================================================
   クラス ： Cfg
@@ -288,6 +290,8 @@ BOOL ConvertVirtualStoreConf(WCHAR *execDir, WCHAR *userDir, WCHAR *virtualDir)
 =========================================================================*/
 Cfg::Cfg()
 {
+//	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF|_CRTDBG_CHECK_ALWAYS_DF|_CRTDBG_CHECK_CRT_DF|_CRTDBG_DELAY_FREE_MEM_DF);
+//	_ASSERTE( _CrtCheckMemory( ) );
 }
 
 Cfg::~Cfg()
@@ -445,10 +449,6 @@ BOOL Cfg::GetFilterStr(const char *key, char *tmpbuf, WCHAR *wbuf)
 	return	TRUE;
 }
 
-//#include <crtdbg.h>
-//_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF|_CRTDBG_CHECK_ALWAYS_DF|_CRTDBG_CHECK_CRT_DF|_CRTDBG_DELAY_FREE_MEM_DF);
-//_ASSERTE( _CrtCheckMemory( ) );
-
 BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 {
 	if (!Init(user_dir, virtual_dir)) return FALSE;
@@ -516,8 +516,9 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 	maxOvlSize		= ini.GetInt(MAXOVLSIZE_KEY, DEFAULT_MAXOVLSIZE);
 	maxOvlSize		= min(max(maxOvlSize, 1), 4095);
 
-	if (bufSize < maxOvlNum * maxOvlSize * BUFIO_SIZERATIO) {
-		bufSize = maxOvlNum * maxOvlSize * BUFIO_SIZERATIO;
+	int	need_mb = FASTCOPY_BUFMB(maxOvlSize, maxOvlNum);
+	if (bufSize < need_mb) {
+		bufSize = need_mb;
 	}
 	maxOpenFiles	= ini.GetInt(MAXOPENFILES_KEY, DEFAULT_MAXOPENFILES);
 
@@ -598,6 +599,8 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 	enableVerify	= ini.GetInt(VERIFY_KEY, FALSE);
 	useOverlapIo	= ini.GetInt(USEOVERLAPIO_KEY, TRUE);
 	hashMode		= (HashMode)ini.GetInt(HASHMODE_KEY, MD5);
+	verifyRemove	= ini.GetInt(VERIFY_REMOVE_KEY, 0);
+
 	enableNSA		= ini.GetInt(NSA_KEY, FALSE);
 	delDirWithFilter= ini.GetInt(DELDIR_KEY, FALSE);
 	enableMoveAttr	= ini.GetInt(MOVEATTR_KEY, FALSE);
@@ -854,6 +857,8 @@ BOOL Cfg::WriteIni(void)
 	ini.SetInt(USEOVERLAPIO_KEY, useOverlapIo);
 //	ini.SetInt(USEMD5_KEY, usingMD5);
 	ini.SetInt(HASHMODE_KEY, hashMode);
+	ini.SetInt(VERIFY_REMOVE_KEY, verifyRemove);
+
 	ini.SetInt(NSA_KEY, enableNSA);
 	ini.SetInt(DELDIR_KEY, delDirWithFilter);
 	ini.SetInt(MOVEATTR_KEY, enableMoveAttr);

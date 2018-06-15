@@ -605,7 +605,8 @@ BOOL FastCopy::RegisterInfo(const PathArray *_srcArray, const PathArray *_dstArr
 	if (info.fromDateFilter != 0  || info.toDateFilter  != 0)  filterMode |= DATE_FILTER;
 	if (info.minSizeFilter  != -1 || info.maxSizeFilter != -1) filterMode |= SIZE_FILTER;
 
-	int64	need_size = (int64)info.maxOvlSize * info.maxOvlNum * BUFIO_SIZERATIO;
+	int64	need_size = FASTCOPY_BUFSIZE(info.maxOvlSize, info.maxOvlNum);
+
 	if (!isListingOnly &&
 		(info.mode != DELETE_MODE || (info.flags & (OVERWRITE_DELETE|OVERWRITE_DELETE_NSA))) &&
 		(info.bufSize < need_size || info.bufSize < MIN_BUF * 2
@@ -3856,14 +3857,31 @@ BOOL FastCopy::VerifyErrPostProc(DigestCalc *calc)
 {
 	int		len = (int)wcslen(calc->path);
 	Wstr	wbuf((len + 20) + 1024); // path + digest_msg + misc_msg
-	Wstr	wname(len + 20);
 
+	MakeVerifyStr(wbuf.Buf(), calc->digest, dstDigest.val, dstDigest.GetDigestSize());
+
+	if (info.verifyFlags & VERIFY_REMOVE) {
+		BOOL	ret = ForceDeleteFileW(dst, FMF_ATTR|info.aclReset);
+
+		if (ret) {
+			swprintf(wbuf.Buf() + wcslen(wbuf.s()),
+				L"in %s and it was deleted.", calc->path + dstPrefixLen);
+			ConfirmErr(wbuf.s(), calc->path + dstPrefixLen, CEF_NOAPI);
+		}
+		else {
+			swprintf(wbuf.Buf() + wcslen(wbuf.s()),
+				L"in %s and it was tried to delete, but it was failed.\r\n Please check later",
+				calc->path + dstPrefixLen);
+			ConfirmErr(wbuf.s(), calc->path + dstPrefixLen);
+		}
+		return	ret;
+	}
+
+	Wstr	wname(len + 20);
 	wcscpy(wname.Buf(), calc->path);
 	wcscpy(wname.Buf() + len, L".fc_verify_err");
 
 	BOOL	ret = ::MoveFileExW(calc->path, wname.s(), MOVEFILE_REPLACE_EXISTING);
-
-	MakeVerifyStr(wbuf.Buf(), calc->digest, dstDigest.val, dstDigest.GetDigestSize());
 
 	if (ret) {
 		swprintf(wbuf.Buf() + wcslen(wbuf.s()),

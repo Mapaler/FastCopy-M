@@ -17,6 +17,7 @@ struct InstallCfg {
 	BOOL		programLink;
 	BOOL		desktopLink;
 	BOOL		runImme;
+	BOOL		isAuto;
 	HWND		hOrgWnd;
 	WCHAR		*setupDir;
 	WCHAR		*appData;

@@ -96,6 +96,7 @@ BOOL TMainDlg::CommandLineExecW(int argc, WCHAR **argv)
 	BOOL	is_openwin			= FALSE;
 	BOOL	is_noexec			= FALSE;
 	BOOL	is_delete			= FALSE;
+	BOOL	is_updated			= FALSE;
 	int		estimate_flg		= -1;
 	DWORD	runas_flg			= 0;
 	int		filter_mode			= 0;
@@ -310,6 +311,11 @@ BOOL TMainDlg::CommandLineExecW(int argc, WCHAR **argv)
 				dlsvtMode = 2;
 			}
 		}
+		else if (wcsicmpEx(*argv, UPDATED_STR, &len) == 0) {
+			is_updated = TRUE;
+			is_noexec = TRUE;
+			SetDlgItemText(STATUS_EDIT, Fmt("Update done. (%s)", GetVersionStr()));
+		}
 		else if (wcsicmpEx(*argv, TO_STR, &len) == 0) {
 			SetDlgItemTextW(DST_COMBO, dst_path = *argv + len);
 		}
@@ -380,9 +386,11 @@ BOOL TMainDlg::CommandLineExecW(int argc, WCHAR **argv)
 
 	if (!isRunAsStart) {
 		if (job_idx == -1) {
-			srcEdit.SetWindowText("");
-			if (!dst_path)
-				SetDlgItemText(DST_COMBO, "");
+			if (!is_updated) {
+				srcEdit.SetWindowText("");
+				if (!dst_path)
+					SetDlgItemText(DST_COMBO, "");
+			}
 		}
 		WCHAR	wBuf[MAX_PATH_EX];
 

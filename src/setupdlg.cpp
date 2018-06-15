@@ -61,11 +61,10 @@ BOOL TSetupSheet::CheckData()
 	}
 	else if (resId == IO_SHEET) {
 		SetDlgItemInt(MAXTRANS_EDIT, GetDlgItemInt(OVLSIZE_EDIT) * GetDlgItemInt(OVLNUM_EDIT));
-
-		if (GetDlgItemInt(BUFSIZE_EDIT) <
-			GetDlgItemInt(OVLSIZE_EDIT) * GetDlgItemInt(OVLNUM_EDIT) * BUFIO_SIZERATIO) {
+		int64	need_mb = FASTCOPY_BUFMB(GetDlgItemInt(OVLSIZE_EDIT), GetDlgItemInt(OVLNUM_EDIT));
+		if (GetDlgItemInt(BUFSIZE_EDIT) < need_mb) {
 			SetDlgItemInt(BUFSIZE_EDIT, cfg->bufSize);
-			MessageBox(LoadStr(IDS_SMALLBUF_SETERR));
+			MessageBoxW(FmtW(LoadStrW(IDS_SMALLBUF_SETERR), need_mb));
 			return	FALSE;
 		}
 
@@ -153,7 +152,7 @@ BOOL TSetupSheet::SetData()
 		CheckDlgButton(OWDEL_CHECK, cfg->enableOwdel);
 
 		if ((cfg->lcid == 0x409 || GetSystemDefaultLCID() == 0x411)) {
-			::ShowWindow(GetDlgItem(LCID_CHECK), SW_SHOW);
+			//::ShowWindow(GetDlgItem(LCID_CHECK), SW_SHOW);
 			::EnableWindow(GetDlgItem(LCID_CHECK), TRUE);
 			CheckDlgButton(LCID_CHECK, cfg->lcid == -1 || cfg->lcid == 0x411 ? FALSE : TRUE);
 		}
@@ -193,19 +192,19 @@ BOOL TSetupSheet::SetData()
 		CheckDlgButton(SERIALMOVE_CHECK, cfg->serialMove);
 		CheckDlgButton(SERIALVERIFYMOVE_CHECK, cfg->serialVerifyMove);
 
+		SendDlgItemMessage(DLSVT_CMB, CB_ADDSTRING, 0, (LPARAM)LoadStr(IDS_DLSVT_NONE));
+		SendDlgItemMessage(DLSVT_CMB, CB_ADDSTRING, 0, (LPARAM)LoadStr(IDS_DLSVT_FAT));
+		SendDlgItemMessage(DLSVT_CMB, CB_ADDSTRING, 0, (LPARAM)LoadStr(IDS_DLSVT_ALWAYS));
+		SendDlgItemMessage(DLSVT_CMB, CB_SETCURSEL, cfg->dlsvtMode, 0);
+		SetDlgItemText(TIMEGRACE_EDIT, Fmt("%lld", cfg->timeDiffGrace));
+
 		SendDlgItemMessage(HASH_COMBO, CB_ADDSTRING, 0, (LPARAM)"MD5");
 		SendDlgItemMessage(HASH_COMBO, CB_ADDSTRING, 0, (LPARAM)"SHA-1");
 		SendDlgItemMessage(HASH_COMBO, CB_ADDSTRING, 0, (LPARAM)"SHA-256");
 		SendDlgItemMessage(HASH_COMBO, CB_ADDSTRING, 0, (LPARAM)"xxHash");
 		SendDlgItemMessage(HASH_COMBO, CB_SETCURSEL,
 			cfg->hashMode <= Cfg::SHA256 ? int(cfg->hashMode) : 3, 0);
-		SetDlgItemText(TIMEGRACE_EDIT, Fmt("%lld", cfg->timeDiffGrace));
-
-		SendDlgItemMessage(DLSVT_CMB, CB_ADDSTRING, 0, (LPARAM)LoadStr(IDS_DLSVT_NONE));
-		SendDlgItemMessage(DLSVT_CMB, CB_ADDSTRING, 0, (LPARAM)LoadStr(IDS_DLSVT_FAT));
-		SendDlgItemMessage(DLSVT_CMB, CB_ADDSTRING, 0, (LPARAM)LoadStr(IDS_DLSVT_ALWAYS));
-		SendDlgItemMessage(DLSVT_CMB, CB_SETCURSEL, cfg->dlsvtMode, 0);
-
+		CheckDlgButton(VERIFYREMOVE_CHK, cfg->verifyRemove);
 	}
 	else if (resId == DEL_SHEET) {
 		CheckDlgButton(NSA_CHECK, cfg->enableNSA);
@@ -351,13 +350,15 @@ BOOL TSetupSheet::GetData()
 		cfg->serialMove       = IsDlgButtonChecked(SERIALMOVE_CHECK);
 		cfg->serialVerifyMove = IsDlgButtonChecked(SERIALVERIFYMOVE_CHECK);
 
-		int val = (int)SendDlgItemMessage(HASH_COMBO, CB_GETCURSEL, 0, 0);
-		cfg->hashMode = (val <= 2) ? (Cfg::HashMode)val : Cfg::XXHASH;
 		char buf[128];
 		if (GetDlgItemText(TIMEGRACE_EDIT, buf, sizeof(buf)) > 0) {
 			cfg->timeDiffGrace = strtoll(buf, 0, 10);
 		}
 		cfg->dlsvtMode = (int)SendDlgItemMessage(DLSVT_CMB, CB_GETCURSEL, 0, 0);
+
+		int val = (int)SendDlgItemMessage(HASH_COMBO, CB_GETCURSEL, 0, 0);
+		cfg->hashMode = (val <= 2) ? (Cfg::HashMode)val : Cfg::XXHASH;
+		cfg->verifyRemove = IsDlgButtonChecked(VERIFYREMOVE_CHK);
 	}
 	else if (resId == DEL_SHEET) {
 		cfg->enableNSA        = IsDlgButtonChecked(NSA_CHECK);
@@ -735,7 +736,6 @@ BOOL ShellExt::ReflectStatus(void)
 {
 	auto	p = parent;
 	BOOL	isRegister = IsRegisterDllProc(isAdmin);
-	int		flags;
 
 	p->CheckDlgButton(SHEXT_CHK, isRegister);
 
@@ -744,17 +744,17 @@ BOOL ShellExt::ReflectStatus(void)
 
 	p->EnableDlgItems(isRegister, { HELP_BUTTON, SHEXT_CHK, ADMIN_STATIC, USER_STATIC, -1 });
 
-	if ((flags = GetMenuFlagsProc(isAdmin)) == -1) {
-		flags = (SHEXT_RIGHT_COPY|SHEXT_RIGHT_DELETE|SHEXT_DD_COPY|SHEXT_DD_MOVE);
+	int	flags = GetMenuFlagsProc(isAdmin);
+	if (flags == -1) {
+		flags = (SHEXT_RIGHT_COPY|SHEXT_RIGHT_DELETE|SHEXT_DD_COPY|SHEXT_DD_MOVE
+				|SHEXT_AUTOCLOSE);
 		// for old shellext
 	}
 
-	if (flags & SHEXT_ISSTOREOPT) {
-		shCfg->noConfirm	= (flags & SHEXT_NOCONFIRM) ? TRUE : FALSE;
-		shCfg->noConfirmDel	= (flags & SHEXT_NOCONFIRMDEL) ? TRUE : FALSE;
-		shCfg->taskTray		= (flags & SHEXT_TASKTRAY) ? TRUE : FALSE;
-		shCfg->autoClose	= (flags & SHEXT_AUTOCLOSE) ? TRUE : FALSE;
-	}
+	shCfg->noConfirm	= (flags & SHEXT_NOCONFIRM) ? TRUE : FALSE;
+	shCfg->noConfirmDel	= (flags & SHEXT_NOCONFIRMDEL) ? TRUE : FALSE;
+	shCfg->taskTray		= (flags & SHEXT_TASKTRAY) ? TRUE : FALSE;
+	shCfg->autoClose	= (flags & SHEXT_AUTOCLOSE) ? TRUE : FALSE;
 
 	p->CheckDlgButton(SHICON_CHECK, flags & SHEXT_MENUICON);
 

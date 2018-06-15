@@ -395,6 +395,11 @@ void TSetDefaultLCID(LCID lcid)
 	TSetThreadLocale(defaultLCID);
 }
 
+LCID TGetDefaultLCID()
+{
+	return	defaultLCID;
+}
+
 HMODULE TLoadLibrary(LPSTR dllname)
 {
 	HMODULE	hModule = ::LoadLibrary(dllname);

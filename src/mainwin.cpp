@@ -42,7 +42,7 @@ TFastCopyApp::TFastCopyApp(HINSTANCE _hI, LPSTR _cmdLine, int _nCmdShow)
 	TLoadLibraryExW(L"riched20.dll", TLT_SYSDIR);
 	TLoadLibraryExW(L"msftedit.dll", TLT_SYSDIR);
 
-	DBG("FileStat=%zd %d\n", offsetof(FileStat, cFileName), _MSC_VER);
+	DBG("MSC_VER=%d FileStat=%zd %d\n", _MSC_VER, offsetof(FileStat, cFileName));
 
 	TInetSetUserAgent(Fmt("FastCopy %s%s", GetVersionStr(),
 #ifdef _WIN64
@@ -671,7 +671,7 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 		if (cfg.updCheck) {	// 最新版確認
 			time_t	now = time(NULL);
 
-			if (cfg.lastUpdCheck + (24 * 3600) < now) {	// 1日以上経過
+			if (cfg.lastUpdCheck + (24 * 3600) < now || cfg.lastUpdCheck > now) {	// 1日以上経過
 				cfg.lastUpdCheck = now;
 				cfg.WriteIni();
 				UpdateCheck(TRUE);
@@ -1289,7 +1289,9 @@ BOOL TMainDlg::EvSize(UINT fwSizeType, WORD nWidth, WORD nHeight)
 		return	FALSE;
 	}
 
-	EnableWindow(TRUE);
+	if (IsWindowVisible()) {
+		EnableWindow(TRUE);
+	}
 	if ((showState & SS_TRAY) && IsWindowVisible()) {
 		TaskTray(NIM_DELETE);
 	}
@@ -1560,7 +1562,7 @@ void TMainDlg::SetSize(void)
 */
 BOOL TMainDlg::EvDropFiles(HDROP hDrop)
 {
-	PathArray	pathArray;
+	PathArray	pathArray(PathArray::DIRFILE_REDUCE);
 	WCHAR	path[MAX_PATH_EX];
 	BOOL	isDstDrop = IsDestDropFiles(hDrop);
 	BOOL	isDeleteMode = GetCopyMode() == FastCopy::DELETE_MODE;
@@ -1896,7 +1898,9 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 	if (!is_test_mode && !is_delete_mode) {
 		if ((!is_listing && IsDlgButtonChecked(VERIFY_CHECK)) ||
 			(is_listing && is_fore && is_ctrkey)) {
-			info.verifyFlags = FastCopy::VERIFY_FILE;
+			info.verifyFlags = FastCopy::VERIFY_FILE
+				| (cfg.verifyRemove ? FastCopy::VERIFY_REMOVE : 0);
+
 			switch (cfg.hashMode) {
 			case Cfg::MD5:
 				info.verifyFlags |= FastCopy::VERIFY_MD5;
@@ -2112,7 +2116,7 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 		}
 	}
 
-	int	pathLogMax = src_len * sizeof(WCHAR) + sizeof(dst);
+	int	pathLogMax = (src_len + wsizeof(dst)) * 4 + 1; // UTF8換算
 
 	if ((ret || is_initerr_logging) && (pathLogBuf = new char [pathLogMax])) {
 		int len = sprintf(pathLogBuf, "<Source>  %s",
@@ -2860,7 +2864,7 @@ BOOL TMainDlg::TaskTray(int nimMode, int idx, LPCSTR tip, BOOL balloon)
 	}
 	DWORD	sv_tout = 0;
 
-	if (balloon && tip) {
+	if (balloon && tip && !isNoUI) {
 		tn.uFlags |= NIF_INFO;
 		strncpyz(tn.szInfo, tip, sizeof(tn.szInfo));
 		strncpyz(tn.szInfoTitle, FASTCOPY, sizeof(tn.szInfoTitle));
@@ -2876,7 +2880,7 @@ BOOL TMainDlg::TaskTray(int nimMode, int idx, LPCSTR tip, BOOL balloon)
 
 	ret = ::Shell_NotifyIcon(nimMode, &tn);
 
-	if (balloon && tip) {
+	if (balloon && tip && !isNoUI) {
 		if (IsWinVista() && !IsWin10() && sv_tout) {
 			::SystemParametersInfo(SPI_SETMESSAGEDURATION, 0, (void *)(INT_PTR)sv_tout, 0);
 		}

@@ -495,6 +495,7 @@ LPSTR LoadStrU8(UINT resId, HINSTANCE hI=NULL);
 LPWSTR LoadStrW(UINT resId, HINSTANCE hI=NULL);
 
 void TSetDefaultLCID(LCID id=0);
+LCID TGetDefaultLCID();
 HMODULE TLoadLibrary(LPSTR dllname);
 HMODULE TLoadLibraryW(WCHAR *dllname);
 int MakePath(char *dest, const char *dir, const char *file, int max_len=INT_MAX);

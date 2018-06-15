@@ -35,10 +35,17 @@ protected:
 		int		upprLen = 0;
 		BOOL	isDir = FALSE;
 		u_int	hashId = 0;
+		BOOL	isDirStrip = FALSE;
 
-		PathObj(const WCHAR *_path) { Set(_path); }
-		PathObj(const PathObj &obj) { *this = obj; }
+		PathObj(const WCHAR *_path, BOOL _isDirStrip=FALSE) {
+			isDirStrip = _isDirStrip;
+			Set(_path);
+		}
+		PathObj(const PathObj &init) {
+			*this = init;
+		}
 		~PathObj() {}
+
 		PathObj& operator=(const PathObj& init);
 
 		BOOL	Set(const WCHAR *_path);
@@ -53,8 +60,8 @@ protected:
 	virtual BOOL IsSameVal(THashObj *obj, const void *val);
 
 public:
-	enum { ALLOW_SAME=1, NO_REMOVE_QUOTE=2 };
-	PathArray(void);
+	enum { ALLOW_SAME=1, DIRFILE_REDUCE=2, NO_REMOVE_QUOTE=4 };
+	PathArray(DWORD _flags=0);
 	PathArray(const PathArray &);
 	virtual ~PathArray();
 	void	Init(void);
@@ -66,6 +73,7 @@ public:
 				const WCHAR *escape_chars=SEMICLN_SPC, BOOL with_endsep=FALSE);
 
 	PathArray& operator=(const PathArray& init);
+	BOOL	IsDirStrip() { return (flags & DIRFILE_REDUCE) ? TRUE : FALSE; }
 
 	WCHAR	*Path(int idx) const { return idx < num ? pathArray[idx]->path.get() : NULL; }
 	int		PathLen(int idx) const { return idx < num ? pathArray[idx]->len : 0; }

@@ -270,7 +270,8 @@
 
 		Action detail: Read(Src) -> MD5(Src) -> Write(Dst) -> Read(Dst) -> MD5(Dst) -> Compare MD5(Src/Dst) (All actions are processed in parallel as much as possible)
 		 <br><br>
-		if verify error occurs, hash values of src/dest are shown, and it is renamed dest-filename with .fc_verify_err.
+		if verify error occurs, hash values of src/dest are shown, and it is renamed dest-filename with .fc_verify_err.<br>
+		(Depending on the setting, it can be removed it instead of renaming)
 		</td></tr>
 		<tr><td nowrap><strong>Estimate</strong></td>
 		<td>Display the estimated complete time. This will make FastCopy investigate files/dirs to be copied, before starting.</td></tr>
@@ -605,11 +606,13 @@
 					This option changes the behavior to "a file has copied, and remove copied source file"</td></tr>
 			<tr><td><strong>Move one by one (verify)</strong></td>
 				<td>It is the same as "Move one by one" except "remove copied source files" -> "remove verified source files"</td></tr>
-			<tr><td><strong>Hash mode (for verify)</strong></td>
-				<td>Select Hash mode (MD5/SHA-1/SHA-256/xxHash) for verifying.</td></tr>
 			<tr><td><strong>Tolerance at the timestamp comparison</strong></td><td>Specify tolerance timestamp difference as same date in Diff(Date/Size) or Diff(Newer).<br>
 			Normally, FastCopy corrects timestamp difference on the different filesystem(NTFS timestamp precision is 100ns, FAT is 2sec or etc.), automatically.<br>
 			However, some NAS timestamp precision is very strange, so manual settings(in msec) are available.</td></tr>
+			<tr><td><strong>Hash mode (for verify)</strong></td>
+				<td>Select Hash mode (MD5/SHA-1/SHA-256/xxHash) for verifying.</td></tr>
+			<tr><td><strong>If a verify error occurs,<br> delete the file instead of renaming to .fc_verify_err</strong></td>
+				<td>(Same as left)</td></tr>
 			</table>
 			<a name="junction_ps">
 			<strong>(*1)</strong>For example, "C:\Users\(user)\AppData\Local\Application Data" points to "C:\Users\(user)\AppData\Local". If you try to copy this with "Copy Junction/Symlink as Junction/Symlink" disabled, it will infinitely recurse. (C:\Users\(user)\AppData\Local\Application Data\Application Data\Application Data\...). Therefore, be careful when you disable "Copy Junction/Symlink as Junction/Symlink".
@@ -888,6 +891,12 @@
 
 <table class="help_table" border="4">
 <tr><th>Version</th><th>Detail</th></tr>
+
+<tr><td>v3.51</td><td>
+Add verify error behavior option (deleting error-file instead renaming to .fc_verify_err).<br>
+Fix include/exclude filter problem. (if same dir and file names was specified in the filter, only last same name entry was enabled).<br>
+Misc refine.
+</td></tr>
 
 <tr><td>v3.50</td><td>
 In the Source selection dialog, it can be selected files and dirs simultaneously.<br>

@@ -83,6 +83,18 @@
 #define FASTCOPY_ERROR_EVENT	0x01
 #define FASTCOPY_STOP_EVENT		0x02
 
+#define KB (1024)
+#define MB (1024 * 1024)
+
+inline int64 FASTCOPY_BUFSIZE(int64 ovl_size, int64 ovl_num) {
+	int64	need_size = (int64)(ovl_size + 16*KB) * ovl_num * BUFIO_SIZERATIO;
+	return	ALIGN_SIZE(need_size, MB);
+}
+
+inline int FASTCOPY_BUFMB(int ovl_mb, int ovl_num) {
+	return	int(FASTCOPY_BUFSIZE(ovl_mb * MB, ovl_num) / MB);
+}
+
 struct TotalTrans {
 	int		readDirs;
 	int		readFiles;
@@ -316,6 +328,7 @@ public:
 		VERIFY_SHA256		=	0x00000004,
 		VERIFY_XXHASH		=	0x00000020,
 		VERIFY_FILE			=	0x00001000,
+		VERIFY_REMOVE		=	0x00002000,
 	};
 	enum FileLogFlags {
 		FILELOG_TIMESTAMP	=	0x00000001,

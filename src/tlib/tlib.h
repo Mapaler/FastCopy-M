@@ -952,6 +952,9 @@ public:
 	const char *Val() { return val; }
 };
 
+#define MIN_INI_ALLOC (64 * 1024)
+#define MAX_INI_ALLOC (10 * 1024 * 1024)
+
 class TIniSection : public TListObj, public TListEx<TIniKey> {
 protected:
 	char	*name;
@@ -976,6 +979,12 @@ public:
 		return	NULL;
 	}
 	BOOL AddKey(const char *key_name, const char *val) {
+		int	key_len = key_name ? (int)strlen(key_name) : 0;
+		int	val_len = val      ? (int)strlen(val) : 0;
+		if (key_len + val_len >= MIN_INI_ALLOC -10) {
+			Debug("Too long entry in TIniSection::AddKey\n");
+			return	FALSE;
+		}
 		TIniKey	*key = key_name ? SearchKey(key_name) : NULL;
 		if (!key) {
 			key = new TIniKey(key_name, val);

@@ -185,6 +185,7 @@ TInstDlg::TInstDlg(char *cmdLine) : TDlg(INSTALL_DIALOG),
 
 	cfg.hOrgWnd   = NULL;
 	cfg.runImme   = FALSE;
+	cfg.isAuto    = strstr(cmdLine, "/UPDATE") ? TRUE : FALSE;
 	cfg.appData   = NULL;
 	cfg.setupDir  = NULL;
 	cfg.startMenu = NULL;
@@ -252,8 +253,7 @@ BOOL TInstDlg::EvCreate(LPARAM lParam)
 
 	::SetClassLong(hWnd, GCL_HICON,
 					(LONG_PTR)::LoadIcon(TApp::GetInstance(), (LPCSTR)SETUP_ICON));
-	MoveWindow((cx - xsize)/2, (cy - ysize)/2, xsize, ysize, TRUE);
-	Show();
+	MoveWindow((cx - xsize)/2, (cy - ysize)/2, xsize, ysize, FALSE);
 
 	TChangeWindowMessageFilter(WM_CLOSE, 1);
 
@@ -322,7 +322,20 @@ BOOL TInstDlg::EvCreate(LPARAM lParam)
 	CheckDlgButton(cfg.mode == SETUP_MODE ? SETUP_RADIO : UNINSTALL_RADIO, 1);
 	ChangeMode();
 
-	if (cfg.runImme) {
+	if (cfg.isAuto) {
+		if (!cfg.setuped || (!IsUserAnAdmin() && IsWinVista() && TIsVirtualizedDirW(setupDir))) {
+			cfg.isAuto = FALSE;
+		}
+	}
+	if (!cfg.isAuto) {
+		Show();
+
+		if (TIsWow64()) {
+			MessageBoxW(LoadStrW(IDS_WOW64), L"FastCopy Installer");
+		}
+	}
+
+	if (cfg.runImme || cfg.isAuto) {
 		PostMessage(WM_COMMAND, MAKEWORD(IDOK, 0), 0);
 	}
 
@@ -596,12 +609,13 @@ BOOL TInstDlg::RunAsAdmin(BOOL is_imme)
 
 BOOL TInstDlg::Install(void)
 {
-	WCHAR	buf[MAX_PATH];
-	WCHAR	setupDir[MAX_PATH];
-	WCHAR	setupPath[MAX_PATH];
+	WCHAR	buf[MAX_PATH] = {};
+	WCHAR	setupDir[MAX_PATH] = {};
+	WCHAR	setupPath[MAX_PATH] = {};
 	BOOL	is_delay_copy = FALSE;
 	BOOL	is_rotate = FALSE;
 	int		len;
+	BOOL	ret = FALSE;
 
 // インストールパス設定
 	len = GetDlgItemTextW(FILE_EDIT, setupDir, wsizeof(setupDir));
@@ -609,7 +623,7 @@ BOOL TInstDlg::Install(void)
 		setupDir[len-1] = 0;
 	}
 
-	if (IsWinVista() && TIsVirtualizedDirW(setupDir)) {
+	if (!cfg.isAuto && IsWinVista() && TIsVirtualizedDirW(setupDir)) {
 		if (!::IsUserAnAdmin()) {
 			return	RunAsAdmin(TRUE);
 		}
@@ -621,11 +635,14 @@ BOOL TInstDlg::Install(void)
 	MakeDirAllW(setupDir);
 	DWORD	attr = ::GetFileAttributesW(setupDir);
 
-	if (attr == 0xffffffff || (attr & FILE_ATTRIBUTE_DIRECTORY) == 0)
-		return	MessageBox(LoadStr(IDS_NOTCREATEDIR)), FALSE;
+	if (attr == 0xffffffff || (attr & FILE_ATTRIBUTE_DIRECTORY) == 0) {
+		if (!cfg.isAuto) MessageBox(LoadStr(IDS_NOTCREATEDIR));
+		return	FALSE;
+	}
 	MakePathW(setupPath, setupDir, FASTCOPY_EXE);
 
-	if (MessageBoxW(LoadStrW(IDS_START), INSTALL_STR, MB_OKCANCEL|MB_ICONINFORMATION) != IDOK)
+	if (!cfg.isAuto &&
+		MessageBoxW(LoadStrW(IDS_START), INSTALL_STR, MB_OKCANCEL|MB_ICONINFORMATION) != IDOK)
 		return	FALSE;
 
 // ファイルコピー
@@ -652,7 +669,14 @@ BOOL TInstDlg::Install(void)
 					continue;
 				}
 			}
-			return	MessageBoxW(installPath, LoadStrW(IDS_NOTCREATEFILE)), FALSE;
+			if (cfg.isAuto) {
+				::ShellExecuteW(NULL, L"open", setupPath, L"", setupDir, SW_SHOW);
+				Exit(0);
+			}
+			else {
+				MessageBoxW(installPath, LoadStrW(IDS_NOTCREATEFILE));
+			}
+			return	FALSE;
 		}
 		TRegistry	reg(HSTOOLS_STR);
 		if (reg.CreateKeyW(FASTCOPY)) {
@@ -662,20 +686,22 @@ BOOL TInstDlg::Install(void)
 	}
 
 // スタートメニュー＆デスクトップに登録
-	WCHAR	*linkPath[]	= { cfg.startMenu, cfg.deskTop, NULL };
-	BOOL	execFlg[]	= { cfg.programLink,  cfg.desktopLink };
+	if (!cfg.isAuto) {
+		WCHAR	*linkPath[]	= { cfg.startMenu, cfg.deskTop, NULL };
+		BOOL	execFlg[]	= { cfg.programLink,  cfg.desktopLink };
 
-	for (int i=0; linkPath[i]; i++) {
-		auto	&fname = linkPath[i];
-		wcscpy(buf, fname);
-		if (i != 0 || RemoveSameLink(fname, buf) == FALSE) {
-			swprintf(buf + wcslen(buf), L"\\%s", FASTCOPY_SHORTCUT);
-		}
-		if (execFlg[i]) {
-			ShellLinkW(setupPath, buf);
-		}
-		else {
-			DeleteLinkW(buf);
+		for (int i=0; linkPath[i]; i++) {
+			auto	&fname = linkPath[i];
+			wcscpy(buf, fname);
+			if (i != 0 || RemoveSameLink(fname, buf) == FALSE) {
+				swprintf(buf + wcslen(buf), L"\\%s", FASTCOPY_SHORTCUT);
+			}
+			if (execFlg[i]) {
+				ShellLinkW(setupPath, buf);
+			}
+			else {
+			//	DeleteLinkW(buf);
+			}
 		}
 	}
 
@@ -705,34 +731,39 @@ BOOL TInstDlg::Install(void)
 		reg.CloseKey();
 	}
 
-	if (IsWinVista() && TIsVirtualizedDirW(setupDir)) {
-		WCHAR	usr_path[MAX_PATH] = L"";
-		WCHAR	tmp[MAX_PATH];
-		WCHAR	*fastcopy_dirname = NULL;
-
-		::GetFullPathNameW(setupDir, MAX_PATH, tmp, &fastcopy_dirname);
-
-		if (cfg.appData) {
-			wcscpy(usr_path, cfg.appData);
-		}
-		else {
-			WCHAR	wbuf[MAX_PATH] = L"";
-			::SHGetSpecialFolderPathW(NULL, wbuf, CSIDL_APPDATA, FALSE);
-			MakePathW(usr_path, wbuf, fastcopy_dirname);
-		}
-
-		ConvertVirtualStoreConf(setupDir, usr_path, cfg.virtualDir);
+	if (cfg.isAuto) {
+		::ShellExecuteW(NULL, L"open", setupPath, L"/UPDATED", setupDir, SW_SHOW);
 	}
+	else {
+		if (IsWinVista() && TIsVirtualizedDirW(setupDir)) {
+			WCHAR	usr_path[MAX_PATH] = L"";
+			WCHAR	tmp[MAX_PATH];
+			WCHAR	*fastcopy_dirname = NULL;
 
-// コピーしたアプリケーションを起動
-	const WCHAR *msg = LoadStrW(is_delay_copy ? IDS_DELAYSETUPCOMPLETE :
-							  is_rotate ? IDS_REPLACECOMPLETE : IDS_SETUPCOMPLETE);
-	int			flg = MB_OKCANCEL|MB_ICONINFORMATION;
+			::GetFullPathNameW(setupDir, MAX_PATH, tmp, &fastcopy_dirname);
 
-	TLaunchDlg	dlg(msg, this);
+			if (cfg.appData) {
+				wcscpy(usr_path, cfg.appData);
+			}
+			else {
+				WCHAR	wbuf[MAX_PATH] = L"";
+				::SHGetSpecialFolderPathW(NULL, wbuf, CSIDL_APPDATA, FALSE);
+				MakePathW(usr_path, wbuf, fastcopy_dirname);
+			}
 
-	if (dlg.Exec() == IDOK) {
-		::ShellExecuteW(NULL, L"open", setupPath, L"" /*L"/INSTALL"*/, setupDir, SW_SHOW);
+			ConvertVirtualStoreConf(setupDir, usr_path, cfg.virtualDir);
+		}
+
+		// コピーしたアプリケーションを起動
+		const WCHAR *msg = LoadStrW(is_delay_copy ? IDS_DELAYSETUPCOMPLETE :
+								  is_rotate ? IDS_REPLACECOMPLETE : IDS_SETUPCOMPLETE);
+		int			flg = MB_OKCANCEL|MB_ICONINFORMATION;
+
+		TLaunchDlg	dlg(msg, this);
+
+		if (dlg.Exec() == IDOK) {
+			::ShellExecuteW(NULL, L"open", setupPath, L"" /*L"/INSTALL"*/, setupDir, SW_SHOW);
+		}
 	}
 
 	Exit(0);

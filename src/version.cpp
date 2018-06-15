@@ -1,5 +1,5 @@
 ﻿static char *version_id = 
-	"@(#)Copyright (C) 2004-2018 H.Shirouzu	Version.cpp ver3.50"
+	"@(#)Copyright (C) 2004-2018 H.Shirouzu	Version.cpp ver3.51"
 #ifdef _DEBUG
 	"d"
 #endif

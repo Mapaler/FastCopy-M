@@ -166,7 +166,7 @@ BOOL BrowseDirDlgW(TWin *parentWin, UINT editCtl, WCHAR *title, int flg)
 	WCHAR		fileBuf[MAX_PATH_EX] = L"";
 	WCHAR		buf[MAX_PATH_EX] = L"";
 	BOOL		ret = FALSE;
-	PathArray	pathArray;
+	PathArray	pathArray(PathArray::DIRFILE_REDUCE);
 	BOOL		with_endsep = (flg & BRDIR_TAILCR) ? TRUE : FALSE;
 
 	parentWin->GetDlgItemTextW(editCtl, fileBuf, MAX_PATH_EX);
@@ -576,7 +576,7 @@ BOOL TOpenFileDlg::Exec(UINT editCtl, WCHAR *title, WCHAR *filter, WCHAR *defaul
 	WCHAR *init_data)
 {
 	int			len = ::GetWindowTextLengthW(parent->GetDlgItem(editCtl)) + 1;
-	PathArray	pathArray;
+	PathArray	pathArray(PathArray::DIRFILE_REDUCE);
 
 	if (parent == NULL) {
 		return FALSE;
@@ -1697,7 +1697,9 @@ BOOL TSrcEdit::AttachWnd(HWND _hWnd)
 	if (!TSubClassCtl::AttachWnd(_hWnd)) {
 		return	FALSE;
 	}
-	SendMessage(EM_SETMARGINS, EC_LEFTMARGIN, 1);
+	if (TGetDefaultLCID() == 0x411) {
+		SendMessage(EM_SETMARGINS, EC_LEFTMARGIN, 1);
+	}
 
 	GetWindowRect(&orgRect);
 

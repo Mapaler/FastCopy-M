@@ -211,6 +211,7 @@ public:
 	BOOL	dirSel;
 	BOOL	updCheck;
 	time_t	lastUpdCheck;
+	BOOL	verifyRemove;
 
 	struct ShExtCfg {
 		BOOL	autoClose;

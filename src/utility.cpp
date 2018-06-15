@@ -128,6 +128,7 @@ PathArray::PathObj& PathArray::PathObj::operator=(const PathArray::PathObj& init
 	len		= init.len;
 	upprLen	= init.upprLen;
 	isDir	= init.isDir;
+	isDirStrip = init.isDirStrip;
 	hashId	= init.hashId;
 
 	return	*this;
@@ -150,7 +151,9 @@ BOOL PathArray::PathObj::Set(const WCHAR *_path)
 		auto ch = _path[len-1];
 		if (ch == '\\' || ch == '/') {
 			isDir = TRUE;
-			upprLen--;
+			if (isDirStrip) {
+				upprLen--;
+			}
 		}
 		uppr = make_unique<WCHAR[]>(upprLen + 1);
 		memcpy(uppr.get(), _path, upprLen * sizeof(WCHAR));
@@ -174,14 +177,14 @@ int PathArray::PathObj::Get(WCHAR *_path)
 /*=========================================================================
 	PathArray
 =========================================================================*/
-PathArray::PathArray(void) : THashTbl(1000)
+PathArray::PathArray(DWORD _flags) : THashTbl(10000)
 {
 	num = 0;
 	pathArray = NULL;
-	flags = 0;
+	flags = _flags;
 }
 
-PathArray::PathArray(const PathArray &src) : THashTbl(1000)
+PathArray::PathArray(const PathArray &src) : THashTbl(10000)
 {
 	num = 0;
 	pathArray = NULL;
@@ -300,7 +303,7 @@ BOOL PathArray::SetPath(int idx, PathObj *obj)
 
 BOOL PathArray::SetPath(int idx, const WCHAR *path)
 {
-	pathArray[idx] = new PathObj(path);
+	pathArray[idx] = new PathObj(path, IsDirStrip());
 	Register(pathArray[idx], pathArray[idx]->hashId);
 	return	TRUE;
 }
@@ -309,7 +312,7 @@ BOOL PathArray::RegisterPath(const WCHAR *path)
 {
 	if (!path || !path[0]) return	FALSE;
 
-	auto	obj = new PathObj(path);
+	auto	obj = new PathObj(path, IsDirStrip());
 
 	if ((flags & ALLOW_SAME) == 0) {
 		if (auto f = (PathObj *)Search(obj, obj->hashId)) {
@@ -357,6 +360,7 @@ PathArray& PathArray::operator=(const PathArray& init)
 	}
 
 	Init();
+	flags = init.flags;
 
 	pathArray = (PathObj **)malloc(((((num = init.num) / MAX_ALLOC) + 1) * MAX_ALLOC)
 				* sizeof(WCHAR *));

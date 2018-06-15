@@ -76,11 +76,11 @@
 <body bgcolor="#eeffff">
 
 <div align="center">
-<h1 class="help_head1">FastCopy ver3.50</h1>
+<h1 class="help_head1">FastCopy ver3.51</h1>
 </div>
 <div class="help_all">
 
-<div align="right">2018/05/29 H.Shirouzu (白水啓章)</div>
+<div align="right">2018/06/11 H.Shirouzu (白水啓章)</div>
 
 <a name="index"/>
 <h2 class="help_head2">Index</h2>
@@ -269,7 +269,8 @@
 		 Read(Src) -> MD5(Src) -> Write(Dst) -> Read(Dst) -> MD5(Dst) -> MD5比較(Src/Dst) <br>
 		 （各ステージが、複数のファイルを跨ったパイプラインのように並列して処理されます）
 		 <br><br>
-		ベリファイエラーが発生した場合、コピー元・先のハッシュ値を表示した上で、コピー先のファイル名に.fc_verify_errを付与したものに変更します。
+		ベリファイエラーが発生した場合、コピー元・先のハッシュ値を表示した上で、コピー先のファイル名に.fc_verify_errを付与したものに変更します。<br>
+		（設定で、削除動作にすることもできます）
 
 		 </td></tr>
 		<tr><td nowrap><strong>完了時間予測</strong></td>
@@ -601,9 +602,10 @@
 			  <td>移動先に日付・サイズが同じファイルがある場合、コピーすることなく移動元から削除します</td></tr>
 			<tr><td><strong>移動を逐次方式に</strong></td><td>通常は移動予定リスト（数千～数万ファイル）が一杯にならない限り、コピー元の削除を始めませんが、これをチェックするとファイルコピー終了毎に終わり次第（なるべく）即座にコピー元を削除します</td></tr>
 			<tr><td  nowrap><strong>移動（ベリファイ時）</strong></td><td>上と同じ動作ですが、ベリファイが終わり次第、となります</td></tr>
-			<tr><td  nowrap><strong>ハッシュ方式（ベリファイ用）</strong></td><td>ベリファイ用ハッシュ方式(MD5/SHA-1/SHA-256)を選択します</td></tr>
 			<tr><td><strong>タイムスタンプ比較時の許容誤差</strong></td><td>差分（日付・サイズ）や差分（最新日付）で、src/dst の更新日付差の許容時間を指定します。<br>
 			通常はファイルシステム種類に基づくタイムスタンプ精度（NTFS=100ns単位、FAT=2秒単位等）の差を自動補正して判定しますが、一部のNAS等で秒未満の更新日付が正確でない環境では手動で同一と見做す更新日付の許容範囲を設定してください。（msec単位）</td></tr>
+			<tr><td  nowrap><strong>ハッシュ方式（ベリファイ用）</strong></td><td>ベリファイ用ハッシュ方式(MD5/SHA-1/SHA-256)を選択します</td></tr>
+			<tr><td  nowrap><strong>ベリファイエラー時、<br>.fc_verify_errにリネームせず、ファイルを削除</strong></td><td>（左に同じ）</td></tr>
 			</table>
 			<a name="junction_ps">
 			<strong>（*1）</strong>例えば "C:\Users\(user)\AppData\Local\Applicatoin Data" は "C:\Users\(user)\AppData\Local" を指しています。これを「実体/配下コピー」すると無限に再帰します。（C:\Users\(user)\AppData\Local\Applicatoin Data\Applicatoin Data\Applicatoin Data\…）。従い、実体/配下コピーを有効にする場合は注意が必要です。
@@ -874,14 +876,20 @@
 <table class="help_table" border="4">
 <tr><th>Version</th><th>説明</th></tr>
 
+<tr><td>v3.51</td><td>
+ベリファイエラー時に、.fc_verify_err へのリネームではなく、削除するオプションを追加。<br>
+include/excludeフィルターで、ディレクトリ指定とファイル指定を同じ名前を指定すると、最後の指定のみが有効になる問題を修正。<br>
+その他リファイン。
+</td></tr>
+
 <tr><td>v3.50</td><td>
 Source選択ダイアログで、ファイルとフォルダを同時に選択できるように。<br>
 I/Oサイズ＆重畳数を適応的に変化させることで、ネットワークドライブのパフォーマンスを向上。<br>
 （レイテンシ大の環境では、Explorerや従来版に比べて2倍以上高速に）<br>
 最小化時、タスク通知領域にアイコンが隠れる場合はタスクバーに表示するように。<br>
-エラー時の終了コードが0（正しくは-1）になっていた問題の修正<br>
+エラー時の終了コードが0（正しくは-1）になっていた問題の修正。<br>
 設定類の改良（最小化時の動作の追加、シェル拡張の移動等）<br>
-インストーラ方式に変更し、インストーラに「ファイル展開（のみ）」を追加<br>
+インストーラ方式に変更し、インストーラに「ファイル展開（のみ）」を追加。<br>
 例外時にダンプも出力するように。<br>
 「アプリと機能」からも、アンインストールできるように。<br>
 完了状態をアイコン上部の色でも表現（緑：完了、赤：エラー）。<br>

@@ -174,7 +174,7 @@ void TInifile::InitCore(WCHAR *_ini_file)
 
 			for (tok=strtok(vbuf, "\r\n"); tok; tok=strtok(NULL, "\r\n")) {
 				BOOL	ret = Parse(tok, &is_section, name, val);
-				if (!ret) {
+				if (!ret) { // AddKey reject over 64KB entry
 					target_sec->AddKey(NULL, tok);
 				}
 				else if (is_section) {
@@ -211,9 +211,6 @@ BOOL TInifile::WriteIni()
 									FILE_ATTRIBUTE_NORMAL, 0);
 
 	if (hFile != INVALID_HANDLE_VALUE) {
-#define MIN_INI_ALLOC (64 * 1024)
-#define MAX_INI_ALLOC (10 * 1024 * 1024)
-#define MIN_LINE_SIZE (2 * 1024)
 		VBuf	vbuf(MIN_INI_ALLOC, MAX_INI_ALLOC);
 		char	*p = (char *)vbuf.Buf();
 
@@ -222,16 +219,22 @@ BOOL TInifile::WriteIni()
 			if (key) {
 				if (sec->Name()) {
 					int len = sprintf(p, "[%s]\r\n", sec->Name());
-					p = NextBuf(&vbuf, len, MIN_LINE_SIZE, MIN_INI_ALLOC);
+					p = NextBuf(&vbuf, len, MIN_INI_ALLOC, MIN_INI_ALLOC);
 				}
 				while (key && p) {
+					int	key_len = key->Key() ? (int)strlen(key->Key()) : 0;
+					int	val_len = (int)strlen(key->Val());
+					if (key_len + val_len >= MIN_INI_ALLOC -10) {
+						Debug("Too long entry in TInifile::WriteIni\n");
+						continue;
+					}
 					if (key->Key())	{
 						int len = sprintf(p, "%s=\"%s\"\r\n", key->Key(), key->Val());
-						p = NextBuf(&vbuf, len, MIN_LINE_SIZE, MIN_INI_ALLOC);
+						p = NextBuf(&vbuf, len, MIN_INI_ALLOC, MIN_INI_ALLOC);
 					}
 					else {
 						int len = sprintf(p, "%s\r\n", key->Val());
-						p = NextBuf(&vbuf, len, MIN_LINE_SIZE, MIN_INI_ALLOC);
+						p = NextBuf(&vbuf, len, MIN_INI_ALLOC, MIN_INI_ALLOC);
 					}
 					key = sec->NextObj(key);
 				}
