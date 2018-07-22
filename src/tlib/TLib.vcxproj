@@ -235,6 +235,7 @@
     <ClCompile Include="tini.cpp" />
     <ClCompile Include="tmisc.cpp" />
     <ClCompile Include="tregist.cpp" />
+    <ClCompile Include="tstr.cpp" />
     <ClCompile Include="twin.cpp" />
   </ItemGroup>
   <ItemGroup>

@@ -72,6 +72,7 @@ typedef unsigned _int64 uint64;
 
 #include <tchar.h>
 #include "tmisc.h"
+#include "tstr.h"
 #include "texcept.h"
 #include "tapi32ex.h"
 //#include "tapi32u8.h"	 /* describe last line */
@@ -850,6 +851,7 @@ public:
 	T	*NextObj(int list_type, T *obj) { return list[list_type].NextObj(obj); }
 	T	*PrevObj(int list_type, T *obj) { return list[list_type].PrevObj(obj); }
 	BOOL IsEmpty(int list_type)         { return list[list_type].IsEmpty();    }
+	int  Num(int list_type)             { return list[list_type].Num();        }
 	TListEx<T> *List(int list_type)     { return &list[list_type];             }
 };
 

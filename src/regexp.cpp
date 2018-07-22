@@ -243,13 +243,15 @@ bool RegExp::RegisterWildCard(const WCHAR *wild_str, RegExp::CaseSense cs)
 	return	true;
 }
 
-bool RegExp::IsMatch(const WCHAR *target)
+bool RegExp::IsMatch(const WCHAR *target, bool *is_mid)
 {
 	if (!epsilon_tbl) return false;
 
 	RegStates	total_states(max_state);
 	RegStates	ep_states(max_state);
 	RegStates	tmp_states(max_state);
+	RegStates	sv_states(max_state);
+	if (is_mid) *is_mid = false;
 
 	tmp_states.AddState(0);
 
@@ -262,6 +264,8 @@ bool RegExp::IsMatch(const WCHAR *target)
 
 		GetEpStates(total_states, &ep_states);
 		total_states.ShiftLeft();
+
+		if (is_mid && !ch) sv_states = total_states;
 
 		if (normal) {
 			total_states &= *normal;
@@ -277,7 +281,15 @@ bool RegExp::IsMatch(const WCHAR *target)
 		total_states |= ep_states;
 
 		if (total_states.HasCommonBits(end_states)) return true;
-		if (!ch) break;
+		if (!ch) {
+			if (is_mid) {
+				auto norm = GetRegStates(NORMAL_TBL, '/');
+				if (norm && sv_states.HasCommonBits(*norm)) {
+					*is_mid = true;
+				}
+			}
+			break;
+		}
 	}
 
 	return	false;

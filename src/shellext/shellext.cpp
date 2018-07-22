@@ -231,7 +231,7 @@ BOOL ShellExt::GetClipBoardInfo(PathArray *pathArray, BOOL *is_cut)
 	return	ret;
 }
 
-BOOL ShellExt::IsDir(WCHAR *path, BOOL is_resolve)
+BOOL ShellExt::IsDir(const WCHAR *path, BOOL is_resolve)
 {
 	WCHAR	wbuf[MAX_PATH_EX];
 
@@ -404,7 +404,7 @@ STDMETHODIMP ShellExt::InvokeCommand(CMINVOKECOMMANDINFO *info)
 		if (is_dd || isClip) {
 			WCHAR	dir[MAX_PATH_EX];
 			WCHAR	path[MAX_PATH_EX];
-			WCHAR	*dstPath = (isClip && ReadLinkW(dst.Path(0), path)) ? path : dst.Path(0);
+			const WCHAR	*dstPath = (isClip && ReadLinkW(dst.Path(0), path)) ? path : dst.Path(0);
 
 			MakePathW(dir, dstPath, L"");	// 末尾に \\ を付与
 			len = swprintf(buf, FMT_TOSTR, dir) + 1;

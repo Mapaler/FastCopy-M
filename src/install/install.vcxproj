@@ -144,7 +144,7 @@
       <Culture>0x0411</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>comctl32.lib;crypt32.lib;winmm.lib;Shlwapi.lib;..\..\lib\tlib_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>comctl32.lib;crypt32.lib;winmm.lib;Shlwapi.lib;..\..\lib\tlib_d.lib;..\..\lib\xxhash.lib;..\..\lib\zlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>Obj\DebugInst\setup.pdb</ProgramDatabaseFile>
@@ -158,6 +158,10 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <OutputFile>Obj\DebugInst\install.bsc</OutputFile>
     </Bscmake>
+    <PostBuildEvent>
+      <Command>
+      </Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Midl>

@@ -498,63 +498,6 @@ void TSetDefaultLCID(LCID id=0);
 LCID TGetDefaultLCID();
 HMODULE TLoadLibrary(LPSTR dllname);
 HMODULE TLoadLibraryW(WCHAR *dllname);
-int MakePath(char *dest, const char *dir, const char *file, int max_len=INT_MAX);
-int MakePathU8(char *dest, const char *dir, const char *file, int max_len=INT_MAX);
-int MakePathW(WCHAR *dest, const WCHAR *dir, const WCHAR *file, int max_len=INT_MAX);
-
-inline int AddPath(char *dest, const char *file, int max_len=INT_MAX) {
-	return MakePath(dest, NULL, file, max_len);
-}
-inline int AddPathU8(char *dest, const char *file, int max_len=INT_MAX) {
-	return MakePathU8(dest, NULL, file, max_len);
-}
-inline int AddPathW(WCHAR *dest, const WCHAR *file, int max_len=INT_MAX) {
-	return MakePathW(dest, NULL, file, max_len);
-}
-
-int64 hex2ll(char *buf);
-int bin2hexstr(const BYTE *bindata, size_t len, char *buf);
-int bin2hexstr_revendian(const BYTE *bin, size_t len, char *buf);
-int bin2hexstrW(const BYTE *bindata, size_t len, WCHAR *buf);
-size_t hexstr2bin(const char *buf, BYTE *bindata, size_t maxlen);
-size_t hexstr2bin_revendian(const char *buf, BYTE *bindata, size_t maxlen);
-size_t hexstr2bin_revendian_ex(const char *buf, BYTE *bindata, size_t maxlen, int slen=-1);
-BYTE hexstr2byte(const char *buf);
-WORD hexstr2word(const char *buf);
-DWORD hexstr2dword(const char *buf);
-int64 hexstr2int64(const char *buf);
-
-int bin2b64str(const BYTE *bindata, size_t len, char *buf);
-int bin2b64str_revendian(const BYTE *bin, size_t len, char *buf);
-size_t b64str2bin(const char *buf, BYTE *bindata, size_t maxlen);
-size_t b64str2bin_ex(const char *buf, int buf_len, BYTE *bindata, size_t maxlen);
-size_t b64str2bin_revendian(const char *buf, BYTE *bindata, size_t maxlen);
-
-void swap_s(BYTE *s, size_t len);
-
-int bin2urlstr(const BYTE *bindata, size_t len, char *str);
-size_t urlstr2bin(const char *str, BYTE *bindata, size_t maxlen);
-
-void rev_order(BYTE *data, size_t size);
-void rev_order(const BYTE *src, BYTE *dst, size_t size);
-
-char *strdupNew(const char *_s, int max_len=-1);
-WCHAR *wcsdupNew(const WCHAR *_s, int max_len=-1);
-int ReplaceCharW(WCHAR *s, WCHAR rep_in, WCHAR rep_out, int max_len);
-
-int snprintfz(char *buf, int size, const char *fmt,...);
-int vsnprintfz(char *buf, int size, const char *fmt, va_list ap);
-int snwprintfz(WCHAR *buf, int wsize, const WCHAR *fmt,...);
-int vsnwprintfz(WCHAR *buf, int wsize, const WCHAR *fmt, va_list ap);
-
-int strcpyz(char *dest, const char *src);
-int wcscpyz(WCHAR *dest, const WCHAR *src);
-int strncpyz(char *dest, const char *src, int num);
-int strncatz(char *dest, const char *src, int num);
-const char *strnchr(const char *srs, char ch, int num);
-int wcsncpyz(WCHAR *dest, const WCHAR *src, int num);
-int wcsncatz(WCHAR *dest, const WCHAR *src, int num);
-const WCHAR *wcsnchr(const WCHAR *src, WCHAR ch, int num);
 
 inline int get_ntz64(uint64 val) {
 #ifdef _WIN64
@@ -702,6 +645,7 @@ template<class T> int UnixNewLineToLocalT(const T *src, T *dst, int max_dstlen, 
 //int UnixNewLineToLocal(const char *src, char *dest, int max_dstlen);
 
 BOOL TIsWow64();
+BOOL TOs64();
 BOOL TRegEnableReflectionKey(HKEY hBase);
 BOOL TRegDisableReflectionKey(HKEY hBase);
 BOOL TWow64DisableWow64FsRedirection(void *oldval);
@@ -851,6 +795,8 @@ inline void UnixTime2FileTime(time_t ut, FILETIME *ft) {
 }
 void time_to_SYSTEMTIME(time_t t, SYSTEMTIME *st, BOOL is_local=TRUE);
 time_t SYSTEMTIME_to_time(const SYSTEMTIME &st, BOOL is_local=TRUE);
+
+void U8Out(const char *fmt,...);
 
 #endif
 

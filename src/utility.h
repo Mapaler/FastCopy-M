@@ -181,8 +181,6 @@ public:
 #define HKEY_DYN_DATA		((HKEY)0x80000006)
 #endif
 
-WCHAR *strtok_pathW(WCHAR *str, const WCHAR *sep, WCHAR **p, BOOL remove_quote=TRUE);
-WCHAR **CommandLineToArgvExW(WCHAR *cmdLine, int *_argc);
 int CALLBACK EditWordBreakProcW(WCHAR *str, int cur, int len, int action);
 BOOL GetRootDirW(const WCHAR *path, WCHAR *root_dir);
 BOOL NetPlaceConvertW(WCHAR *src, WCHAR *dst);

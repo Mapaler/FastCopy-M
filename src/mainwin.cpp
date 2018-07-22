@@ -44,14 +44,6 @@ TFastCopyApp::TFastCopyApp(HINSTANCE _hI, LPSTR _cmdLine, int _nCmdShow)
 
 	DBG("MSC_VER=%d FileStat=%zd %d\n", _MSC_VER, offsetof(FileStat, cFileName));
 
-	TInetSetUserAgent(Fmt("FastCopy %s%s", GetVersionStr(),
-#ifdef _WIN64
-	"(x64)"
-#else
-	""
-#endif
-	));
-
 //	LoadLibrary("SHELL32.DLL");
 //	LoadLibrary("COMCTL32.DLL");
 //	LoadLibrary("COMDLG32.dll");
@@ -62,6 +54,10 @@ TFastCopyApp::TFastCopyApp(HINSTANCE _hI, LPSTR _cmdLine, int _nCmdShow)
 //	cond_test();
 //	extern void makehash_test();
 //	makehash_test();
+//	extern void hash_speed();
+//	hash_speed();
+//	extern void hash_speed_mt2();
+//	hash_speed_mt2();
 }
 
 TFastCopyApp::~TFastCopyApp()
@@ -143,6 +139,7 @@ TMainDlg::TMainDlg() : TDlg(MAIN_DIALOG),
 		TApp::Exit(-1);
 		return;
 	}
+	SetUserAgent();
 
 	if (cfg.lcid > 0) {
 		TSetDefaultLCID(cfg.lcid);
@@ -442,8 +439,7 @@ void TMainDlg::StatusEditSetup(BOOL reset)
 
 	statusFont = ::CreateFontIndirectW(&lf);
 	SendDlgItemMessage(STATUS_EDIT, WM_SETFONT, (WPARAM)statusFont, 0);
-	SendDlgItemMessage(STATUS_EDIT, EM_SETWORDBREAKPROC, 0, (LPARAM)EditWordBreakProcW);
-	SendDlgItemMessage(STATUS_EDIT, EM_SETTARGETDEVICE, 0, 0);		// 折り返し
+
 	InvalidateRect(0, 0);
 }
 
@@ -668,7 +664,7 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 	else {
 		Show();
 
-		if (cfg.updCheck) {	// 最新版確認
+		if (cfg.updCheck & 0x1) {	// 最新版確認
 			time_t	now = time(NULL);
 
 			if (cfg.lastUpdCheck + (24 * 3600) < now || cfg.lastUpdCheck > now) {	// 1日以上経過
@@ -689,6 +685,15 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 		}
 	}
 
+/*
+	OpenDebugConsole();
+						// EN     JP     DE     LUX     PRC      HK      TW      SG
+	LCID	lcids[] = { 0x409, 0x411, 0x407, 0x1007, 0x0804, 0x0C04, 0x0404, 0x1004 };
+	for (auto id: lcids) {
+		TSetDefaultLCID(id);
+		DebugW(L"id(%x): %s\n", id, LoadStrW(IDS_MKDIR));
+	}
+*/
 	return	TRUE;
 }
 
@@ -1077,6 +1082,7 @@ BOOL TMainDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl)
 
 	case SETUP_MENUITEM:
 		setupDlg.Exec();
+		SetUserAgent();
 		return	TRUE;
 
 	case FONT_MENUITEM:
@@ -1120,6 +1126,7 @@ BOOL TMainDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl)
 	case JOB_MENUITEM:
 		jobDlg.Exec();
 		UpdateMenu();
+		SetUserAgent();
 		return	TRUE;
 
 	case SWAPTARGET_MENUITEM:
@@ -1192,10 +1199,28 @@ BOOL TMainDlg::EvSysCommand(WPARAM uCmdType, POINTS pos)
 	return	FALSE;
 }
 
-//BOOL TMainDlg::EvNotify(UINT ctlID, NMHDR *pNmHdr)
-//{
-//	return FALSE;
-//}
+BOOL TMainDlg::EvNotify(UINT ctlID, NMHDR *pNmHdr)
+{
+	switch (pNmHdr->code) {
+	case EN_LINK:
+		{
+			ENLINK	*el = (ENLINK *)pNmHdr;
+			switch (el->msg) {
+			case WM_LBUTTONUP:
+				if (el->chrg.cpMax - el->chrg.cpMin < 1024) {
+					WCHAR	wbuf[1024];
+					pathEdit.SendMessageW(EM_EXSETSEL, 0, (LPARAM)(&(el->chrg)));
+					pathEdit.SendMessageW(EM_GETSELTEXT, 0, (LPARAM)wbuf);
+					::ShellExecuteW(hWnd, NULL, wbuf, NULL, NULL, SW_SHOWNORMAL);
+				}
+				break;
+			}
+		}
+		return	FALSE;
+	}
+
+	return FALSE;
+}
 
 BOOL TMainDlg::EventInitMenu(UINT uMsg, HMENU hMenu, UINT uPos, BOOL fSystemMenu)
 {
@@ -1795,9 +1820,9 @@ int64 TMainDlg::GetDateInfo(WCHAR *buf, BOOL is_end)
 		st.wMonth	= (WORD)((day / 100) % 100);
 		st.wDay		= (WORD) (day % 100);
 
-		FILETIME	lt;
-		if (!::SystemTimeToFileTime(&st, &lt)) return -1;
-		if (!::LocalFileTimeToFileTime(&lt, &ft)) return -1;
+		SYSTEMTIME	sst;
+		TzSpecificLocalTimeToSystemTime(NULL, &st, &sst);
+		if (!::SystemTimeToFileTime(&sst, &ft)) return -1;
 	}
 	else {
 		::GetSystemTime(&st);
@@ -1997,6 +2022,11 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 		}
 		ret = FALSE;
 	}
+
+	SendDlgItemMessage(PATH_EDIT,   EM_AUTOURLDETECT, 0, 0);
+	LRESULT evMask = pathEdit.SendMessage(EM_GETEVENTMASK, 0, 0) & ~ENM_LINK;
+	pathEdit.SendMessage(EM_SETEVENTMASK, 0, evMask); 
+
 	SendDlgItemMessage(PATH_EDIT, WM_SETTEXT, 0, (LPARAM)"");
 	SendDlgItemMessage(STATUS_EDIT, WM_SETTEXT, 0, (LPARAM)"");
 	SendDlgItemMessage(ERRSTATUS_STATIC, WM_SETTEXT, 0, (LPARAM)"");
@@ -2996,6 +3026,25 @@ void TMainDlg::SetIcon(int idx)
 	SendMessage(WM_SETICON, ICON_BIG, (LPARAM)hMainIcon[idx]);
 }
 
+void TMainDlg::SetUserAgent()
+{
+	static auto icld = ::GetUserDefaultLCID();
+
+	TInetSetUserAgent(Fmt("FastCopy %s%s %x/%d%d%d/%x %s", GetVersionStr(),
+#ifdef _WIN64
+		"(x64)",
+#else
+		"",
+#endif
+		icld,
+		cfg.ignoreErr?1:0,
+		cfg.enableVerify?1:0,
+		cfg.estimateMode?1:0,
+		cfg.jobMax,
+		TGetHashedMachineIdStr()
+	));
+}
+
 BOOL TMainDlg::SetTaskTrayInfo(BOOL is_finish, double doneRate, int remain_sec)
 {
 	char	buf[1024];
@@ -3020,7 +3069,7 @@ BOOL TMainDlg::SetTaskTrayInfo(BOOL is_finish, double doneRate, int remain_sec)
 			comma_int64(s2, ti.preTotal.readFiles);
 			ticktime_str(s3, ti.fullTickCount);
 
-			len += sprintf(buf + len, " Estimating (Total %s MB/%s files/%s)", s1, s2, s3);
+			len += sprintf(buf + len, " Estimating (Total %s MiB/%s files/%s)", s1, s2, s3);
 		}
 		else {
 			if ((info.flags & FastCopy::PRE_SEARCH) && !ti.isPreSearch && !is_finish
@@ -3034,8 +3083,8 @@ BOOL TMainDlg::SetTaskTrayInfo(BOOL is_finish, double doneRate, int remain_sec)
 			ticktime_str(s4, ti.fullTickCount);
 
 			len += sprintf(buf + len, IsListing() ?
-				"FastCopy (%s MB %s files %s)" :
-				"FastCopy (%s MB %s files %s MB/s %s)", s1, s2, IsListing() ? s4 : s3, s4);
+				"FastCopy (%s MiB %s files %s)" :
+				"FastCopy (%s MiB %s files %s MiB/s %s)", s1, s2, IsListing() ? s4 : s3, s4);
 		}
 		if (is_finish) {
 			strcpy(buf + len, " Finished");
@@ -3228,7 +3277,7 @@ BOOL TMainDlg::SetInfo(BOOL is_finish)
 
 		len += sprintf(buf + len,
 			"---- Estimating ... ----\r\n"
-			"PreTrans = %s MB\r\nPreFiles = %s (%s)\r\n"
+			"PreTrans = %s MiB\r\nPreFiles = %s (%s)\r\n"
 			"PreTime  = %s\r\nPreRate  = %s files/s", s1, s2, s3, s4, s5);
 	}
 	else if (info.mode == FastCopy::DELETE_MODE) {
@@ -3241,16 +3290,16 @@ BOOL TMainDlg::SetInfo(BOOL is_finish)
 
 		len += sprintf(buf + len,
 			IsListing() ?
-			"TotalDel   = %s MB\r\n"
+			"TotalDel   = %s MiB\r\n"
 			"DelFiles   = %s (%s)\r\n"
 			"TotalTime  = %s\r\n" :
 			(info.flags & (FastCopy::OVERWRITE_DELETE|FastCopy::OVERWRITE_DELETE_NSA)) ?
-			"TotalDel   = %s MB\r\n"
+			"TotalDel   = %s MiB\r\n"
 			"DelFiles   = %s (%s)\r\n"
 			"TotalTime  = %s\r\n"
 			"FileRate   = %s files/s\r\n"
-			"OverWrite  = %s MB/s" :
-			"TotalDel   = %s MB\r\n"
+			"OverWrite  = %s MiB/s" :
+			"TotalDel   = %s MiB\r\n"
 			"DelFiles   = %s (%s)\r\n"
 			"TotalTime  = %s\r\n"
 			"FileRate   = %s files/s", s1, s2, s3, s4, s5, s6);
@@ -3265,9 +3314,9 @@ BOOL TMainDlg::SetInfo(BOOL is_finish)
 
 			len += sprintf(buf + len,
 				(info.flags & FastCopy::RESTORE_HARDLINK) ? 
-				"TotalSize  = %s MB\r\n"
+				"TotalSize  = %s MiB\r\n"
 				"TotalFiles = %s/%s (%s)\r\n" :
-				"TotalSize  = %s MB\r\n"
+				"TotalSize  = %s MiB\r\n"
 				"TotalFiles = %s (%s)\r\n", s1, s2, s3, s4);
 		}
 		else {
@@ -3280,11 +3329,11 @@ BOOL TMainDlg::SetInfo(BOOL is_finish)
 
 			len += sprintf(buf + len,
 				(info.flags & FastCopy::RESTORE_HARDLINK) ? 
-				"TotalRead  = %s MB\r\n"
-				"TotalWrite = %s MB\r\n"
+				"TotalRead  = %s MiB\r\n"
+				"TotalWrite = %s MiB\r\n"
 				"TotalFiles = %s/%s (%s)\r\n" :
-				"TotalRead  = %s MB\r\n"
-				"TotalWrite = %s MB\r\n"
+				"TotalRead  = %s MiB\r\n"
+				"TotalWrite = %s MiB\r\n"
 				"TotalFiles = %s (%s)\r\n", s1, s2, s3, s4, s5);
 		}
 
@@ -3294,7 +3343,7 @@ BOOL TMainDlg::SetInfo(BOOL is_finish)
 			comma_int64(s3, cur.skipDirs);
 
 			len += sprintf(buf + len,
-				"TotalSkip  = %s MB\r\n"
+				"TotalSkip  = %s MiB\r\n"
 				"SkipFiles  = %s (%s)\r\n", s1, s2, s3);
 		}
 		if (cur.deleteFiles || cur.deleteDirs) {
@@ -3303,7 +3352,7 @@ BOOL TMainDlg::SetInfo(BOOL is_finish)
 			comma_int64(s3, cur.deleteDirs);
 
 			len += sprintf(buf + len,
-				"TotalDel   = %s MB\r\n"
+				"TotalDel   = %s MiB\r\n"
 				"DelFiles   = %s (%s)\r\n", s1, s2, s3);
 		}
 		ticktime_str(s1, ti.fullTickCount);
@@ -3313,14 +3362,14 @@ BOOL TMainDlg::SetInfo(BOOL is_finish)
 		len += sprintf(buf + len, IsListing() ?
 			"TotalTime  = %s\r\n" :
 			"TotalTime  = %s\r\n"
-			"TransRate  = %s MB/s\r\n"
+			"TransRate  = %s MiB/s\r\n"
 			"FileRate   = %s files/s", s1, s2, s3);
 
 		if (info.verifyFlags & FastCopy::VERIFY_FILE) {
 			mega_str(s1, cur.verifyTrans);
 			comma_int64(s2, cur.verifyFiles);
 
-			len += sprintf(buf + len, "\r\nVerifyRead = %s MB\r\nVerifyFiles= %s", s1, s2);
+			len += sprintf(buf + len, "\r\nVerifyRead = %s MiB\r\nVerifyFiles= %s", s1, s2);
 		}
 	}
 

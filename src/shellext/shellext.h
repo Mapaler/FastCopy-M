@@ -51,12 +51,12 @@ public:
 	PathArray(void);
 	~PathArray();
 	void	Init(void);
-	WCHAR	*Path(int idx) { return idx < num ? pathArray[idx] : NULL; }
+	const WCHAR	*Path(int idx) const { return idx < num ? pathArray[idx] : NULL; }
 	int		GetMultiPath(WCHAR *multi_path, int max_len);
 	int		GetMultiPathLen();
-	int		Num(void) { return	num; }
+	int		Num(void) const { return	num; }
 	BOOL	RegisterPath(const WCHAR *path);
-	PathArray &operator =(PathArray &src) {
+	PathArray &operator =(const PathArray &src) {
 		Init();
 		for(int i=0; i < src.Num(); i++) {
 			RegisterPath(src.Path(i));
@@ -82,7 +82,7 @@ public:
 
 	BOOL	DeleteMenu(UINT *del_idx);
 	BOOL	GetClipBoardInfo(PathArray *pathArray, BOOL *is_cut);
-	BOOL	IsDir(WCHAR *path, BOOL is_resolve);
+	BOOL	IsDir(const WCHAR *path, BOOL is_resolve);
 
 	STDMETHODIMP Initialize(LPCITEMIDLIST pIDFolder, IDataObject *pDataObj, HKEY hRegKey);
 	STDMETHODIMP QueryInterface(REFIID riid, void **ppv);

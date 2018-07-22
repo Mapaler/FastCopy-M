@@ -1072,14 +1072,26 @@ FilterRes FastCopy::FilterCheck(WCHAR *dir, int dir_len, DWORD attr, const WCHAR
 				}
 			}
 		}
+
 		if (depthIdx < incAbs.size()) {
 			if ((regExp = incAbs[depthIdx])) {
 				if (regExp->IsMatch(dir + depth[0])) return FR_MATCH;
 			}
 		}
-		// 絶対指定incのみでかつ、絶対指定の最大階層以上のアンマッチの場合、探索終了
-		if (is_dir && incRel.size() == 0 && depthNum >= incAbs.size() && incAbs.size() > 0) {
-			return	FR_UNMATCH;
+		// 絶対指定incのみでかつ、現在階層以上での部分一致もない場合は探索終了
+		if (is_dir && incRel.size() == 0 && incAbs.size() > 0) {
+			bool	abs_need_cont = false;
+			for (int i=depthIdx+1; i < incAbs.size(); i++) {
+				if ((regExp = incAbs[i])) {
+					bool	is_mid = false;
+					regExp->IsMatch(dir + depth[0], &is_mid);
+					if (is_mid) {
+						abs_need_cont = true;
+						break;
+					}
+				}
+			}
+			if (!abs_need_cont) return	FR_UNMATCH;
 		}
 		return	is_dir ? FR_CONT : FR_UNMATCH;
 	}
@@ -3867,14 +3879,13 @@ BOOL FastCopy::VerifyErrPostProc(DigestCalc *calc)
 			swprintf(wbuf.Buf() + wcslen(wbuf.s()),
 				L"in %s and it was deleted.", calc->path + dstPrefixLen);
 			ConfirmErr(wbuf.s(), calc->path + dstPrefixLen, CEF_NOAPI);
+			return	ret;
 		}
-		else {
-			swprintf(wbuf.Buf() + wcslen(wbuf.s()),
-				L"in %s and it was tried to delete, but it was failed.\r\n Please check later",
-				calc->path + dstPrefixLen);
-			ConfirmErr(wbuf.s(), calc->path + dstPrefixLen);
-		}
-		return	ret;
+		swprintf(wbuf.Buf() + wcslen(wbuf.s()),
+			L"in %s and it was tried to delete, but it was failed.\r\n So try to rename...",
+			calc->path + dstPrefixLen);
+		ConfirmErr(wbuf.s(), calc->path + dstPrefixLen);
+		// try to rename...
 	}
 
 	Wstr	wname(len + 20);
@@ -4627,7 +4638,7 @@ FastCopy::ReqHead *FastCopy::AllocReqBuf(int req_size, int64 _data_size, int64 f
 		require_size = sector_data_size;
 
 	if (require_size > max_free) {
-		if (max_free < MINREMAIN_BUF + sectorSize) {
+		if (max_free < MINREMAIN_BUF + max(sectorSize, BIG_SECTOR_SIZE)) {
 			align_offset = 0;
 			if (isSameDrv) {
 				if (!ChangeToWriteModeCore()) return NULL; // Read -> Write 切り替え

@@ -76,11 +76,11 @@
 <body bgcolor="#eeffff">
 
 <div align="center">
-<h1 class="help_head1">FastCopy ver3.51</h1>
+<h1 class="help_head1">FastCopy ver3.52</h1>
 </div>
 <div class="help_all">
 
-<div align="right">2018/06/11 H.Shirouzu (白水啓章)</div>
+<div align="right">2018/07/21 H.Shirouzu (白水啓章)</div>
 
 <a name="index"/>
 <h2 class="help_head2">Index</h2>
@@ -116,7 +116,7 @@
 <a name="about"/>
 <h2 class="help_head2">1. 概要</h2>
 <div class="help_section">
-	<strong>Windows系最速(?)</strong> のファイルコピー＆削除ツールです。
+	<strong>Windows系最速</strong> のファイルコピー＆削除ツールです。
 	<br><br>
 	UNICODE でしか表現できないファイル名やMAX_PATH(260文字) を越えた位置のファイルもコピー（＆削除）できます。
 	<br><br>
@@ -150,7 +150,6 @@
 	<br>
 	FastCopy ver3.x は GNU Public License ver3 のオープンソースソフトウェアです。<br>
 	詳細は同梱の <a href="license-gpl3.txt">license-gpl3.txt</a> をご覧ください。<br>
-	（改変版バイナリ配布を、配布先に対してソースコード非公開で行いたい場合や、バンドル版や特別版開発等のご要望がありましたら、作者(shirouzu@ipmsg.org)までお問い合わせください）
 	<br>
 	</div><br>
 	<div class="help_license">
@@ -171,8 +170,9 @@
 <div class="help_section">
 	<h3 class="help_head3">インストール</h3>
 	<div class="help_sub_section">
-		FastCopy3xx_installer[64].exe を実行して、任意のディレクトリにインストールしてください。<br>
-		USB メモリ等に格納して使用する場合は、インストーラの展開を押して、FastCopy.exe等を取り出してください。
+		FastCopy3xx_installer.exe を実行して、任意のディレクトリにインストールしてください。<br>
+		USB メモリ等に格納して使用する場合は、インストーラの展開を押して、FastCopy.exe等を取り出してください。<br>
+		/h オプションを付けると、/silent等のオプションが表示されます。
 	</div>
 
 	<h3 class="help_head3">アンインストール</h3>
@@ -262,11 +262,11 @@
 		<td>Read/Write/Delete等で、エラーが発生しても、中断せず、可能な限り動作を続けます。<br>
 		（ただし、エラー表示欄やエラーログには残ります）</td></tr>
 		<tr><td nowrap><strong>ベリファイ</strong></td>
-		<td><a name="hash_mode"/>MD5 (SHA-1/SHA-256) による書き込みデータのベリファイを行います。<br>
-		（SHA-1/SHA-256/xxHash を利用する場合は、設定の<a href="#setting_copyopt">コピー・移動関連オプション</a>から変更できます。
-		安全性としてはMD5 で十分ですが、ログに記録されるハッシュ値を別用途で利用したい場合にお使いください）<br><br>
+		<td><a name="hash_mode"/>xxHash (MD5/SHA-1/SHA-256) による書き込みデータのベリファイを行います。<br>
+		（MD5/SHA-1/SHA-256 を利用する場合は、設定の<a href="#setting_copyopt">コピー・移動関連オプション</a>から変更できます。
+		安全性としてはxxHash で十分ですが、ログに記録されるハッシュ値を別用途で利用したい場合にお使いください）<br><br>
 		 なお、具体的には、次のような比較を行います。<br>
-		 Read(Src) -> MD5(Src) -> Write(Dst) -> Read(Dst) -> MD5(Dst) -> MD5比較(Src/Dst) <br>
+		 Read(Src) -> xxHash(Src) -> Write(Dst) -> Read(Dst) -> xxHash(Dst) -> xxHash比較(Src/Dst) <br>
 		 （各ステージが、複数のファイルを跨ったパイプラインのように並列して処理されます）
 		 <br><br>
 		ベリファイエラーが発生した場合、コピー元・先のハッシュ値を表示した上で、コピー先のファイル名に.fc_verify_errを付与したものに変更します。<br>
@@ -520,8 +520,8 @@
 				</td></tr>
 			<tr><td nowrap><strong>非同期I/O発行数</strong></td><td>ReadFile/WriteFile API発行毎に完了を待たず、並行してAPIを発行することで（特にネットワークドライブに対する）I/O速度を向上させています。<br>
 			（<strong>なお、この数を1にすると非同期I/Oを使いません</strong>）</td></tr>
-			<tr><td nowrap><strong>最小セクタ長を4096と見なす</strong></td><td>書き込み側ルートディレクトリは512byteセクタでかつ、（ジャンクション等により）配下ディレクトリが4096byteセクタに変化する場合に ON にします。<br>
-			（ONにすると、1byteファイルにも常に4096byteバッファを用意するため、小容量ファイルでのバッファ利用効率が若干下がります。なお、読み込み側ドライブ側セクタサイズ変化は自動追随するため、チェックは不要です）</td></tr>
+			<tr><td nowrap><strong>最小セクタ長を4KBと見なす</strong></td><td>書き込み側ルートディレクトリは512byteセクタでかつ、（ジャンクション等により）配下ディレクトリが4KBセクタに変化する場合に ON にします。<br>
+			（ONにすると、1byteファイルにも常に4KBバッファを用意するため、小容量ファイルでのバッファ利用効率が若干下がります。なお、読み込み側ドライブ側セクタサイズ変化は自動追随するため、チェックは不要です）</td></tr>
 			</table>
 			<br>
 
@@ -604,7 +604,7 @@
 			<tr><td  nowrap><strong>移動（ベリファイ時）</strong></td><td>上と同じ動作ですが、ベリファイが終わり次第、となります</td></tr>
 			<tr><td><strong>タイムスタンプ比較時の許容誤差</strong></td><td>差分（日付・サイズ）や差分（最新日付）で、src/dst の更新日付差の許容時間を指定します。<br>
 			通常はファイルシステム種類に基づくタイムスタンプ精度（NTFS=100ns単位、FAT=2秒単位等）の差を自動補正して判定しますが、一部のNAS等で秒未満の更新日付が正確でない環境では手動で同一と見做す更新日付の許容範囲を設定してください。（msec単位）</td></tr>
-			<tr><td  nowrap><strong>ハッシュ方式（ベリファイ用）</strong></td><td>ベリファイ用ハッシュ方式(MD5/SHA-1/SHA-256)を選択します</td></tr>
+			<tr><td  nowrap><strong>ハッシュ方式（ベリファイ用）</strong></td><td>ベリファイ用ハッシュ方式(xxHash/MD5/SHA-1/SHA-256)を選択します</td></tr>
 			<tr><td  nowrap><strong>ベリファイエラー時、<br>.fc_verify_errにリネームせず、ファイルを削除</strong></td><td>（左に同じ）</td></tr>
 			</table>
 			<a name="junction_ps">
@@ -797,7 +797,7 @@
 	<tr><td nowrap><strong>/bufsize=N(MB)</strong></td><td>バッファサイズを MB 単位で指定します</td></tr>
 	<tr><td nowrap><strong>/log</strong></td><td>ログファイル(fastcopy.log) にログを出力します（/log=FALSE で抑止）</td></tr>
 	<tr><td nowrap><strong>/logfile=ログファイル名</strong></td><td>ログファイル名を指定します</td></tr>
-	<tr><td nowrap><strong>/filelog</strong></td><td>詳細ファイルログを記録します。FastCopy/Log ディレクトリ配下に、日付.log という形式で保存されます。ベリファイ時はハッシュ値（通常 MD5、設定によって SHA-1）も記録されます。（/filelog=filename で指定ファイルに保存可能。ただし、同じファイルを指定して、同時に複数の FastCopy を実行した場合、ログ出力が交互に混じる可能性があります）</td></tr>
+	<tr><td nowrap><strong>/filelog</strong></td><td>詳細ファイルログを記録します。FastCopy/Log ディレクトリ配下に、日付.log という形式で保存されます。ベリファイ時はハッシュ値も記録されます。（/filelog=filename で指定ファイルに保存可能。ただし、同じファイルを指定して、同時に複数の FastCopy を実行した場合、ログ出力が交互に混じる可能性があります）</td></tr>
 	<tr><td nowrap><strong>/utf8</strong></td><td>UTF-8でログを記録します</td></tr>
 	<tr><td nowrap><strong>/skip_empty_dir</strong></td><td>フィルタ指定時、空ディレクトリをコピーしません（/skip_empty_dir=FALSE で抑止）</td></tr>
 	<tr><td nowrap><strong>/job=ジョブ名</strong></td><td>事前に登録してあるジョブを指定します</td></tr>
@@ -816,7 +816,7 @@
 	<tr><td nowrap><strong>/acl</strong></td><td>アクセスコントロールリスト(ACL)、拡張属性(EA)をコピーします（NTFSのみ有効）（/acl=FALSE で抑止）</td></tr>
 	<tr><td nowrap><strong>/stream</strong></td><td>副次ストリームをコピーします（NTFSのみ有効）（/stream=FALSE で抑止）</td></tr>
 	<tr><td nowrap><strong>/reparse</strong></td><td>ジャンクション・マウントポイント・シンボリックリンクを（配下ではなく）それ自体をコピーします（/reparse=FALSE で配下をコピー）（<a href="#reparse">詳細</a> および <a href="#junction_ps">注意</a>）</td></tr>
-	<tr><td nowrap><strong>/verify</strong></td><td><a href="#hash_mode">MD5(or SHA-1, SHA-256, xxHash) </a>による書き込みデータのベリファイを行います（/verify=FALSE で抑止）</td></tr>
+	<tr><td nowrap><strong>/verify</strong></td><td><a href="#hash_mode">xxHash(or MD5, SHA-1, SHA-256) </a>による書き込みデータのベリファイを行います（/verify=FALSE で抑止）</td></tr>
 	<tr><td nowrap><strong>/linkdest</strong></td><td><a name="linkdest"/>ハードリンクを可能な限り再現します。詳細は <a href="#hardlink">こちらを参照</a> ください。</td></tr>
 	<tr><td nowrap><strong>/recreate</strong></td><td><a name="recreate"/>ファイル更新の挙動を、既存ファイルの上書きから、既存ファイル削除＆再生成に変更します。（/linkdest 指定時には、/recreate指定の有無に関わらず、この動作を行います）常時、この動作を有効にしたい場合、fastcopy2.ini [main] recreate=1 にします。</td></tr>
 	<tr><td nowrap><strong>/postproc=終了時処理名</strong></td><td>事前に登録してある終了時処理名を指定します。（/postproc=FALSE で抑止）</td></tr>
@@ -848,7 +848,7 @@
 <div class="help_section">
 	サポート掲示板: <a href="https://groups.google.com/forum/?hl=ja#!forum/fastcopy">https://groups.google.com/forum/?hl=ja#!forum/fastcopy</a><br>
 	最新版: <a href="https://fastcopy.jp">https://fastcopy.jp</a><br>
-	個人ページ: <a href="https://ipmsg.org/private/">https://ipmsg.org/private/</a>
+	個人ページ: <a href="https://shirouzu.jp">https://shirouzu.jp</a>
 </div>
 
 
@@ -875,6 +875,12 @@
 
 <table class="help_table" border="4">
 <tr><th>Version</th><th>説明</th></tr>
+
+<tr><td>v3.52</td><td>
+ハッシュのデフォルトをxxHashに変更。<br>
+xxHashベリファイ計算を3～4倍高速化（1～2GB/s以上の環境でベリファイ処理ネックが解消）。<br>
+インストーラに /SILENT オプション等を追加（/hで確認）。
+</td></tr>
 
 <tr><td>v3.51</td><td>
 ベリファイエラー時に、.fc_verify_err へのリネームではなく、削除するオプションを追加。<br>

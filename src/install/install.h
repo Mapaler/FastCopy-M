@@ -16,8 +16,13 @@ struct InstallCfg {
 	InstMode	mode;
 	BOOL		programLink;
 	BOOL		desktopLink;
+	BOOL		isAppReg;
 	BOOL		runImme;
 	BOOL		isAuto;
+	BOOL		isSilent;
+	BOOL		isExtract;
+	BOOL		isExt64;
+	BOOL		isSubDir;
 	HWND		hOrgWnd;
 	WCHAR		*setupDir;
 	WCHAR		*appData;
@@ -52,6 +57,8 @@ protected:
 	InstallCfg		cfg;
 	IPDict			ipDict;
 	U8str           ver;
+	WCHAR			**orgArgv = NULL;
+	int				orgArgc = 0;
 
 public:
 	TInstDlg(char *cmdLine);
@@ -70,6 +77,9 @@ public:
 	void	Extract(void);
 	void	Exit(DWORD exit_code);
 	BOOL	RemoveSameLink(const WCHAR *dir, WCHAR *remove_path=NULL);
+	void	GetDictName(const WCHAR *fname, WCHAR *dname);
+
+	void	ErrMsg(const WCHAR *body, const WCHAR *title=L"FastCopy");
 };
 
 class TInstApp : public TApp
@@ -86,9 +96,11 @@ class TBrowseDirDlg : public TSubClass
 protected:
 	WCHAR	*fileBuf = NULL;
 	BOOL	dirtyFlg = FALSE;
+	BOOL	*is_x64 = NULL;
 
 public:
-	TBrowseDirDlg(WCHAR *_fileBuf) { fileBuf = _fileBuf; }
+	TBrowseDirDlg(WCHAR *_fileBuf, BOOL *_is_x64) :
+		fileBuf(_fileBuf), is_x64(_is_x64) {}
 	virtual BOOL	AttachWnd(HWND _hWnd);
 	virtual BOOL	EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl);
 	virtual BOOL	SetFileBuf(LPARAM list);
@@ -167,7 +179,7 @@ public:
 #define HSTOOLS_STR			"HSTools"
 
 // function prototype
-BOOL BrowseDirDlg(TWin *parentWin, UINT editCtl, const WCHAR *title);
+BOOL BrowseDirDlg(TWin *parentWin, UINT editCtl, const WCHAR *title, BOOL *is_x64=NULL);
 int CALLBACK BrowseDirDlg_Proc(HWND hWnd, UINT uMsg, LPARAM lParam, LPARAM data);
 
 // inline function

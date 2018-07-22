@@ -76,11 +76,11 @@
 <body bgcolor="#eeffff">
 
 <div align="center">
-<h1 class="help_head1">FastCopy ver3.50</h1>
+<h1 class="help_head1">FastCopy ver3.52</h1>
 </div>
 <div class="help_all">
 
-<div align="right">2018/05/29 H.Shirouzu</div>
+<div align="right">2018/07/21 H.Shirouzu</div>
 
 <a name="index"/>
 <h2 class="help_head2">Index</h2>
@@ -149,8 +149,6 @@
 	This program is free software. You can redistribute it and/or modify it under the GNU General Public License version 3.<br>
 	<a href="license-gpl3.txt">license-gpl3.txt</a><br>
 	<br>
-	If you want to distribute your modified version, but you do not want to distribute the modified source code, or you want to request to develop a bundle/special version, please contact me. (shirouzu@ipmsg.org)
-	<br>
 	</div><br>
 	<div class="help_license">
 	xxHash Library Copyright (c) 2012-2014, Yann Collet All rights reserved.<br>
@@ -170,8 +168,9 @@
 <div class="help_section">
 	<h3 class="help_head3">Installation</h3>
 	<div class="help_sub_section">
-		Please run FastCopy3xx_installer[64].exe, and install it in a new directory. <br>
-		If you want to install in USB memory, please use "Extract" button in installer.
+		Please run FastCopy3xx_installer.exe, and install it in a new directory. <br>
+		If you want to install in USB memory, please use "Extract" button in installer.<br>
+		run with with /h option, it shows the installer options. (/silent or etc)
 	</div>
 
 	<h3 class="help_head3">Uninstallation</h3>
@@ -265,10 +264,10 @@
 		<tr><td nowrap><strong>Verify</strong></td>
 		<td>
 		<a name="verify"/>
-		<a name="hash_mode"/>Verify written files data by MD5 (/SHA-1/SHA-256/xxHash). <br>
-		(If you want to use SHA-1/SHA-256/xxHash, it can be selected in <a href="#setting_copyopt">Copy/Move Options</a> of settings.)<br>
+		<a name="hash_mode"/>Verify written files data by xxHash (MD5/SHA-1/SHA-256). <br>
+		(If you want to use MD5/SHA-1/SHA-256, it can be selected in <a href="#setting_copyopt">Copy/Move Options</a> of settings.)<br>
 
-		Action detail: Read(Src) -> MD5(Src) -> Write(Dst) -> Read(Dst) -> MD5(Dst) -> Compare MD5(Src/Dst) (All actions are processed in parallel as much as possible)
+		Action detail: Read(Src) -> xxHash(Src) -> Write(Dst) -> Read(Dst) -> xxHash(Dst) -> Compare xxHash(Src/Dst) (All actions are processed in parallel as much as possible)
 		 <br><br>
 		if verify error occurs, hash values of src/dest are shown, and it is renamed dest-filename with .fc_verify_err.<br>
 		(Depending on the setting, it can be removed it instead of renaming)
@@ -522,7 +521,7 @@
 			<tr><td nowrap><strong>OverLap I/O Num</strong></td><td>I/O performance(especially network drive) is improved by using overlapped ReadFile/WriteFile I/O.<br>
 			(<strong>If it is specified "1", it will not be used overlapped I/O</strong>)</td></tr>
 
-			<tr><td><strong>MinSectorSize is regarded as 4096byte</strong></td><td>
+			<tr><td><strong>MinSectorSize is regarded as 4KB</strong></td><td>
 			If destination drive are 512B sector HDD that has mounted 4KB sector HDD, please check this.
 			</td></tr>
 			</table>
@@ -610,7 +609,7 @@
 			Normally, FastCopy corrects timestamp difference on the different filesystem(NTFS timestamp precision is 100ns, FAT is 2sec or etc.), automatically.<br>
 			However, some NAS timestamp precision is very strange, so manual settings(in msec) are available.</td></tr>
 			<tr><td><strong>Hash mode (for verify)</strong></td>
-				<td>Select Hash mode (MD5/SHA-1/SHA-256/xxHash) for verifying.</td></tr>
+				<td>Select Hash mode (xxHash/MD5/SHA-1/SHA-256) for verifying.</td></tr>
 			<tr><td><strong>If a verify error occurs,<br> delete the file instead of renaming to .fc_verify_err</strong></td>
 				<td>(Same as left)</td></tr>
 			</table>
@@ -816,7 +815,7 @@
 	<tr><td nowrap><strong>/bufsize=N(MB)</strong></td><td>Specify the size(MB) of the main buffer for Read/Write operation.</td></tr>
 	<tr><td nowrap><strong>/log</strong></td><td>Write the operation/errors information to the logfile(FastCopy.log). (to disable, /log=FALSE)</td></tr>
 	<tr><td nowrap><strong>/logfile=filename</strong></td><td>Specify the filename of logfile.</td></tr>
-	<tr><td nowrap><strong>/filelog</strong></td><td>Write to the filelog(detail of copy/delete files). It is stored TIMESTAMP.log in FastCopy/Log directory. If using verify mode, write digest data(default:md5) as additional data. (To specify filelogname, /filelog=filename)</td></tr>
+	<tr><td nowrap><strong>/filelog</strong></td><td>Write to the filelog(detail of copy/delete files). It is stored TIMESTAMP.log in FastCopy/Log directory. If using verify mode, write digest data as additional data. (To specify filelogname, /filelog=filename)</td></tr>
 	<tr><td nowrap><strong>/utf8</strong></td><td>Write to the logfile using UTF-8 encoding (supports Unicode).</td></tr>
 	<tr><td nowrap><strong>/skip_empty_dir</strong></td><td>Skip to create empty directories when /include or /exclude option is used. (to disable, /skip_empty_dir=FALSE)</td></tr>
 	<tr><td nowrap><strong>/job=job_name</strong></td><td>Specify the job that is already registered.</td></tr>
@@ -835,7 +834,7 @@
 	<tr><td nowrap><strong>/acl</strong></td><td>Copy ACL/EA (only NTFS)(to disable, /acl=FALSE)</td></tr>
 	<tr><td nowrap><strong>/stream</strong></td><td>Copy Alternate Stream (only NTFS) (to disable, /stream=FALSE)</td></tr>
 	<tr><td nowrap><strong>/reparse</strong></td><td>Copy junction/mountpoint/symlink itself(to disable, /reparse=FALSE) (<a href="#reparse">details</a>)</td></tr>
-	<tr><td nowrap><strong>/verify</strong></td><td>Verify written files data by <a href="">MD5(/SHA-1/SHA-256/xxHash)</a> (to disable, /verify=FALSE) (<a href="#verify">details</a>)</td></tr>
+	<tr><td nowrap><strong>/verify</strong></td><td>Verify written files data by <a href="">xxHash(MD5/SHA-1/SHA-256)</a> (to disable, /verify=FALSE) (<a href="#verify">details</a>)</td></tr>
 	<tr><td nowrap><strong>/linkdest</strong></td><td><a name="linkdest"/>Reproduce hardlink as much as possible. (<a href="#hardlink">details</a>)</td></tr>
 	<tr><td nowrap><strong>/recreate</strong></td><td><a name="recreate"/>Change updating behavior "overwrite the target" to "delete and recreate the target". (If /linkdest option is enabled, this option is enabled by default.) If you want always to enable, write [main] recreate=1 in FastCopy2.ini.</td></tr>
 	<tr><td nowrap><strong>/postproc=action_name</strong></td><td>Specify post-process action name (to disable, /postproc=FALSE)</td></tr>
@@ -866,7 +865,7 @@
 <div class="help_section">
 	Support Forum: <a href="https://groups.google.com/forum/#!forum/fastcopy-bb-eng">https://groups.google.com/forum/#!forum/fastcopy-bb-eng</a><br>
 	Latest Version: <a href="https://fastcopy.jp/en/">https://fastcopy.jp/en/</a><br>
-	Personal Page: <a href="https://ipmsg.org/private/">https://ipmsg.org/private/</a>
+	Personal Page: <a href="https://shirouzu.jp/en/">https://shirouzu.jp/en/</a>
 </div>
 
 
@@ -891,6 +890,12 @@
 
 <table class="help_table" border="4">
 <tr><th>Version</th><th>Detail</th></tr>
+
+<tr><td>v3.52</td><td>
+Change hash default to xxHash. <br>
+xxHash 3 to 4 times faster verification calculation speed (Eliminate verification processing neck in 1 ~ 2 GB/s or more environment). <br>
+Add /SILENT options etc to the installer (check with /h option).
+</td></tr>
 
 <tr><td>v3.51</td><td>
 Add verify error behavior option (deleting error-file instead renaming to .fc_verify_err).<br>

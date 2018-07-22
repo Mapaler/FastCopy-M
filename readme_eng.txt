@@ -1,5 +1,5 @@
 ﻿======================================================================
-                   FastCopy  ver3.51                   2018/06/11
+                   FastCopy  ver3.52                   2018/07/21
                                                  SHIROUZU Hiroaki
 ======================================================================
 
@@ -20,9 +20,6 @@ License:
 
 	 This program is free software. You can redistribute it and/or modify
 	 it under the GNU General Public License version 3.
-
-	 If you want to distribute your modified version, but you don't want to
-	 distribute the modified source code, please contact shirouzu@ipmsg.org
 
 	 more details: license-gpl3.txt
 	-------------------------------------------------------------------------

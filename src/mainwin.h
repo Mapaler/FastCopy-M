@@ -91,6 +91,15 @@ struct CopyInfo {
 #define SPEED_AUTO		10
 #define SPEED_SUSPEND	0
 
+// SDK 7.0A用Richedit.h に存在しない。SDK10に完全移行したら削除
+#ifndef AURL_ENABLEURL
+#define AURL_ENABLEURL			1
+#define AURL_ENABLEEMAILADDR	2
+#define AURL_ENABLETELNO		4
+#define AURL_ENABLEEAURLS		8
+#define AURL_ENABLEDRIVELETTERS	16
+#endif
+
 struct UpdateData {
 	U8str	ver;
 	U8str	path;
@@ -279,6 +288,7 @@ protected:
 	BOOL	IsListing() { return (info.flags & FastCopy::LISTING_ONLY) ? TRUE : FALSE; }
 	void	SetPriority(DWORD new_class);
 	DWORD	UpdateSpeedLevel(BOOL is_timer=FALSE);
+	void	SetUserAgent();
 #ifdef USE_LISTVIEW
 	int		ListViewIdx(int idx);
 	BOOL	SetListViewItem(int idx, int subIdx, char *txt);
@@ -328,7 +338,7 @@ public:
 	virtual BOOL	EvDropFiles(HDROP hDrop);
 	virtual BOOL	EvActivateApp(BOOL fActivate, DWORD dwThreadID);
 	virtual BOOL	EventScroll(UINT uMsg, int nCode, int nPos, HWND scrollBar);
-//	virtual BOOL	EvNotify(UINT ctlID, NMHDR *pNmHdr);
+	virtual BOOL	EvNotify(UINT ctlID, NMHDR *pNmHdr);
 
 /*
 	virtual BOOL	EvEndSession(BOOL nSession, BOOL nLogOut);

@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
+#include <process.h>
 #include <assert.h>
 #include <random>
 
@@ -21,6 +22,8 @@
 #define XXH_STATIC_LINKING_ONLY
 #include "../../external/xxhash/xxhash.h"
 #endif
+
+using namespace std;
 
 NTSTATUS (WINAPI *pNtQueryInformationFile)(HANDLE, PIO_STATUS_BLOCK, PVOID, ULONG,
 	FILE_INFORMATION_CLASS);
@@ -107,7 +110,7 @@ BOOL TDigest::Reset()
 	return	TRUE;
 }
 
-BOOL TDigest::Update(void *data, int size)
+BOOL TDigest::Update(void *data, DWORD size)
 {
 	updated = true;
 
@@ -525,6 +528,64 @@ uint64 MakeHash64(const void *data, size_t size, uint64 iv)
 }
 #endif
 
+BOOL TGetMachineId(GUID *ret)
+{
+	static GUID guid;
+	static bool once = [=]() {
+		memset(&guid, 0, sizeof(GUID));
+
+		TRegistry	reg(HKEY_LOCAL_MACHINE);
+
+		if (!reg.OpenKey("SOFTWARE\\Microsoft\\Cryptography")) return false;
+		char	buf[128];
+		if (!reg.GetStr("MachineGuid", buf, sizeof(buf))) return false;
+
+		BYTE	*p = (BYTE *)&guid;
+		BYTE	*mid = p + 8;
+		BYTE	*end = p + sizeof(GUID);
+
+		for (auto t = strtok(buf, "-"); t && p < end; t = strtok(NULL, "-")) {
+			p += ((p < mid) ? hexstr2bin_revendian : hexstr2bin)(t, p, end - p);
+		}
+		return true;
+	}();
+	memcpy(ret, &guid, sizeof(guid));
+	return	TRUE;
+}
+
+uint64 TGetHashedMachineId()
+{
+	static uint64 id = []() {
+		GUID	guid = {};
+		TGetMachineId(&guid);
+
+		uint64	ret = 0;
+		BYTE	md5[16] = {};
+		TDigest	d;
+
+		d.Init(TDigest::MD5);
+		d.Update(&guid, sizeof(guid));
+		d.GetVal(md5);
+
+		byte_xor(md5, md5 + 8, (BYTE *)&ret, 8);
+
+		return	ret;
+	}();
+	return id;
+}
+
+const char *TGetHashedMachineIdStr()
+{
+	static char id[16];
+	static bool once = [&]() {
+		auto v = TGetHashedMachineId();
+		bin2urlstr((BYTE *)&v, sizeof(v), id);
+		return true;
+	}();
+	return id;
+}
+
+
 void TSetPubKeyBlob(BYTE *n, int n_size, int e, DynBuf *keyblob)
 {
 	keyblob->Alloc(20 + n_size);
@@ -757,4 +818,34 @@ void makehash_test()
 	Debug(Fmt("%.3f,  val=%x\n", (float)(GetTickCount() - tick) / 1000, val));
 }
 #endif
+
+#if 0
+
+void hash_speed()
+{
+#define	count	20
+#define	num		1
+#define unit	((DWORD)1 * 1024 * 1024 * 1024)
+
+	TDigest	d;
+	d.Init(TDigest::XXHASH);
+	auto	data = make_unique<BYTE[]>(unit * num);
+	auto	buf = data.get();
+	TGenRandomMT(buf, num * unit);
+	TTick	t;
+
+	for (int i=0; i < count; i++) {
+		d.Reset();
+		for (int j=0; j < num; j++) {
+			d.Update(buf + j * unit, unit);
+		}
+		d.GetVal(buf);
+	}
+	auto e = t.elaps();
+
+	OpenDebugConsole(ODC_PARENT);
+	U8Out("%.2f GiB/s\n", ((double)num * unit * count * 1000.0) / e / 1024 / 1024 / 1024);
+}
+#endif
+
 

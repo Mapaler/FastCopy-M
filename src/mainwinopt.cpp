@@ -314,7 +314,14 @@ BOOL TMainDlg::CommandLineExecW(int argc, WCHAR **argv)
 		else if (wcsicmpEx(*argv, UPDATED_STR, &len) == 0) {
 			is_updated = TRUE;
 			is_noexec = TRUE;
-			SetDlgItemText(STATUS_EDIT, Fmt("Update done. (%s)", GetVersionStr()));
+
+			SendDlgItemMessage(PATH_EDIT,   EM_AUTOURLDETECT, AURL_ENABLEURL, 0);
+			LRESULT evMask = pathEdit.SendMessage(EM_GETEVENTMASK, 0, 0) | ENM_LINK;
+			pathEdit.SendMessage(EM_SETEVENTMASK, 0, evMask); 
+
+			SetDlgItemText(PATH_EDIT,
+				Fmt("Update done. (%s) \r\nFastCopy HomePage: %s",
+				GetVersionStr(), LoadStr(IDS_FASTCOPYURL)));
 		}
 		else if (wcsicmpEx(*argv, TO_STR, &len) == 0) {
 			SetDlgItemTextW(DST_COMBO, dst_path = *argv + len);

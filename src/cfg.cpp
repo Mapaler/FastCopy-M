@@ -86,7 +86,8 @@
 #define STREAM_KEY				"stream"
 #define VERIFY_KEY				"verify"
 #define USEMD5_KEY				"using_md5"
-#define HASHMODE_KEY			"hash_mode"
+#define HASHMODE_KEY			"hash_mode2"
+#define HASHMODEOLD_KEY			"hash_mode"
 #define NSA_KEY					"nsa_del"
 #define DELDIR_KEY				"deldir_with_filter"
 #define MOVEATTR_KEY			"move_attr"
@@ -598,7 +599,14 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 	enableStream	= ini.GetInt(STREAM_KEY, FALSE);
 	enableVerify	= ini.GetInt(VERIFY_KEY, FALSE);
 	useOverlapIo	= ini.GetInt(USEOVERLAPIO_KEY, TRUE);
-	hashMode		= (HashMode)ini.GetInt(HASHMODE_KEY, MD5);
+
+	if ((hashMode = (HashMode)ini.GetInt(HASHMODE_KEY, -1)) == -1) {
+		hashMode = (HashMode)ini.GetInt(HASHMODEOLD_KEY, -1);
+		if (hashMode < SHA1 || hashMode > SHA512) {
+			hashMode = XXHASH;
+		}
+	}
+
 	verifyRemove	= ini.GetInt(VERIFY_REMOVE_KEY, 0);
 
 	enableNSA		= ini.GetInt(NSA_KEY, FALSE);

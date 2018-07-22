@@ -246,7 +246,7 @@ BOOL TSetupSheet::SetData()
 			::ShowWindow(GetDlgItem(DIRSEL_CHK), SW_HIDE);
 		}
 
-		CheckDlgButton(UPDATE_CHK, cfg->updCheck);
+		CheckDlgButton(UPDATE_CHK, cfg->updCheck ? TRUE : FALSE);
 		CheckDlgButton(EXECCONFIRM_CHECK, cfg->execConfirm);
 		CheckDlgButton(DIRSEL_CHK, cfg->dirSel);
 		CheckDlgButton(FINISH_CHECK, (cfg->finishNotify & 1));
@@ -381,7 +381,12 @@ BOOL TSetupSheet::GetData()
 		cfg->taskbarMode = IsDlgButtonChecked(TASKBAR_CHECK);
 	}
 	else if (resId == MISC_SHEET) {
-		cfg->updCheck = IsDlgButtonChecked(UPDATE_CHK);
+		if (IsDlgButtonChecked(UPDATE_CHK)) {
+			cfg->updCheck |= 0x1;
+		} else {
+			cfg->updCheck = 0;
+		}
+
 		cfg->execConfirm = IsDlgButtonChecked(EXECCONFIRM_CHECK);
 		cfg->dirSel = IsDlgButtonChecked(DIRSEL_CHK);
 		if (IsDlgButtonChecked(FINISH_CHECK)) {
@@ -809,11 +814,7 @@ BOOL ShellExt::RegisterShellExt()
 	shCfg->autoClose    = is_register && p->IsDlgButtonChecked(AUTOCLOSE_CHECK);
 //	cfg->WriteIni();
 
-#ifdef _WIN64
-	if (1) {
-#else
-	if (TIsWow64()) {
-#endif
+	if (TOs64()) {
 		WCHAR	arg[1024];
 		Wstr	cur_shell_ex(CURRENT_SHEXTDLL_EX);
 		Wstr	reg_proc(isAdmin ? REGISTER_PROC : REGISTERUSER_PROC);

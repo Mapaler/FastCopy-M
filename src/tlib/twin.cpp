@@ -1066,16 +1066,13 @@ HWND TWin::SetFocus()
 
 BOOL TWin::RestoreRectFromParent()
 {
-	if (pRect.left == CW_USEDEFAULT || !parent || !parent->hWnd) {
+	if (rect.left == CW_USEDEFAULT || pRect.left == CW_USEDEFAULT || !parent || !parent->hWnd) {
 		return FALSE;
 	}
 	TRect	pCurRect;
 	if (!parent->GetWindowRect(&pCurRect)) return FALSE;
 
-	rect.left	= rect.left   + (pCurRect.left   - pRect.left);
-	rect.right	= rect.right  + (pCurRect.right  - pRect.right);
-	rect.top	= rect.top    + (pCurRect.top    - pRect.top);
-	rect.bottom	= rect.bottom + (pCurRect.bottom - pRect.bottom);
+	rect.Slide(pCurRect.left - pRect.left, pCurRect.top - pRect.top);
 
 	return	TRUE;
 }
