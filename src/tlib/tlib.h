@@ -862,6 +862,7 @@ class TRegistry {
 protected:
 	HKEY	topKey;
 	int		openCnt;
+	BOOL	keyForce64;
 	StrMode	strMode;
 	HKEY	hKey[MAX_KEYARRAY];
 
@@ -871,11 +872,16 @@ public:
 	TRegistry(HKEY top_key, StrMode mode=BY_UTF8);
 	~TRegistry();
 
+	void	SetKeyForce64(BOOL on=TRUE) {
+		if (TIsWow64()) {
+			keyForce64 = on;
+		}
+	}
 	void	ChangeTopKey(HKEY topKey);
 	void	SetStrMode(StrMode mode) { strMode = mode; }
 
-	BOOL	ChangeApp(LPCSTR company, LPSTR appName=NULL);
-	BOOL	ChangeAppW(const WCHAR *company, const WCHAR *appName=NULL);
+	BOOL	ChangeApp(LPCSTR company, LPSTR appName=NULL, BOOL openOnly=FALSE);
+	BOOL	ChangeAppW(const WCHAR *company, const WCHAR *appName=NULL, BOOL openOnly=FALSE);
 
 	BOOL	OpenKey(LPCSTR subKey, BOOL createFlg=FALSE);
 	BOOL	OpenKeyW(const WCHAR *subKey, BOOL createFlg=FALSE);

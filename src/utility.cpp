@@ -374,6 +374,30 @@ void DriveMng::ModifyNetRoot(WCHAR *root)
 	// NET_UNC_FULLVAL は何もしない
 }
 
+#include <WinIoCtl.h>
+#include <Ntddscsi.h>
+#include <Setupapi.h>
+
+BOOL IsSSDDrv(const WCHAR *phys_drv) {
+	auto hFile = scope_raii(::CreateFileW(phys_drv, FILE_READ_ATTRIBUTES,
+		FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, 0), [](auto v) {
+		::CloseHandle(v);
+	});
+	if (hFile == INVALID_HANDLE_VALUE) return FALSE;
+
+	STORAGE_PROPERTY_QUERY spq = {
+		StorageDeviceSeekPenaltyProperty,
+		PropertyStandardQuery,
+	};
+	DEVICE_SEEK_PENALTY_DESCRIPTOR	spq_desc = {};
+	DWORD	size = 0;
+
+	if (!::DeviceIoControl(hFile, IOCTL_STORAGE_QUERY_PROPERTY, &spq, sizeof(spq),
+		&spq_desc, sizeof(spq_desc), &size, NULL)) return FALSE;
+
+	return	spq_desc.IncursSeekPenalty ? FALSE : TRUE;
+}
+
 int DriveMng::SetDriveID(const WCHAR *_root)
 {
 	if (!_root || !_root[0]) {
@@ -452,6 +476,10 @@ int DriveMng::SetDriveID(const WCHAR *_root)
 					//	DBGW(L"disk id(%d / %s / %s) = %d\n",
 					//		i, root, vol_name, vde.Extents[i].DiskNumber);
 					//}
+					swprintf(vol_name, L"\\\\.\\PhysicalDrive%d", vde.Extents[0].DiskNumber);
+					if (::IsSSDDrv(vol_name)) {
+						val |= 0x2000;
+					}
 				}
 			}
 			else {
@@ -516,6 +544,18 @@ BOOL DriveMng::IsSameDrive(const WCHAR *_root1, const WCHAR *_root2)
 
 	return	drvID[idx1].len == drvID[idx2].len
 		&&	memcmp(drvID[idx1].data, drvID[idx2].data, drvID[idx1].len) == 0;
+}
+
+BOOL DriveMng::IsSSD(const WCHAR *_root)
+{
+	int		idx = SetDriveID(_root);
+
+	if (drvID[idx].len != sizeof(DWORD)) {
+		return FALSE;
+	}
+	DWORD	val = *(DWORD *)drvID[idx].data;
+
+	return	((val & 0xfffff000) == 0x00003000) ? TRUE : FALSE;
 }
 
 // ワード単位ではなく、文字単位で折り返すための EDIT Control 用 CallBack

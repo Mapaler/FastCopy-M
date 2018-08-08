@@ -403,10 +403,16 @@ BOOL TInstDlg::EvCreate(LPARAM lParam)
 	}
 
 // 既にセットアップされている場合は、セットアップディレクトリを読み出す
-	TRegistry	reg(HSTOOLS_STR);
-	if (reg.OpenKeyW(FASTCOPY)) {
-		if (reg.GetStrW(L"Path", setupDir, sizeof(setupDir))) {
-			cfg.setuped = setupDir;
+	TRegistry	reg(HKEY_CURRENT_USER);
+	if (reg.OpenKey("Software")) {
+		if (reg.OpenKey(HSTOOLS_STR)) {
+			if (reg.OpenKeyW(FASTCOPY)) {
+				if (reg.GetStrW(L"Path", setupDir, sizeof(setupDir))) {
+					cfg.setuped = setupDir;
+				}
+				reg.CloseKey();
+			}
+			reg.CloseKey();
 		}
 		reg.CloseKey();
 	}

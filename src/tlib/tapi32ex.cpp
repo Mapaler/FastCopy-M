@@ -536,6 +536,10 @@ BOOL TGetMachineId(GUID *ret)
 
 		TRegistry	reg(HKEY_LOCAL_MACHINE);
 
+		if (TIsWow64()) {
+			reg.SetKeyForce64();
+		}
+
 		if (!reg.OpenKey("SOFTWARE\\Microsoft\\Cryptography")) return false;
 		char	buf[128];
 		if (!reg.GetStr("MachineGuid", buf, sizeof(buf))) return false;

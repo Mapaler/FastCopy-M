@@ -75,7 +75,7 @@
 #define FORCESTART_KEY			"force_start"
 #define LCID_KEY				"lcid"
 #define LOGFILE_KEY				"logfile"
-#define WAITTICK_KEY			"wait_tick"
+#define WAITLV_KEY				"wait_lv"
 #define ISAUTOSLOWIO_KEY		"is_autoslow_io2"
 #define SPEEDLEVEL_KEY			"speed_level"
 #define PRIORITY_KEY			"priority"
@@ -170,7 +170,7 @@
 #define DEFAULT_NBMINSIZE_FAT	128		// nbMinSize 参照
 #define DEFAULT_LINKHASH		300000
 #define DEFAULT_ALLOWCONTFSIZE	(1024 * 1024 * 1024)
-#define DEFAULT_WAITTICK		10
+#define DEFAULT_WAITLV			5
 #define JOB_MAX					1000
 #define FINACT_MAX				1000
 #define DEFAULT_FASTCOPYLOG		"FastCopy.log"
@@ -590,7 +590,7 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 
 	execConfirm		= ini.GetInt(EXECCONRIM_KEY, FALSE);
 	lcid			= ini.GetInt(LCID_KEY, -1);
-	waitTick		= ini.GetInt(WAITTICK_KEY, DEFAULT_WAITTICK);
+	waitLv			= ini.GetInt(WAITLV_KEY, DEFAULT_WAITLV);
 	isAutoSlowIo	= ini.GetInt(ISAUTOSLOWIO_KEY, TRUE);
 	speedLevel		= ini.GetInt(SPEEDLEVEL_KEY, SPEED_FULL);
 	priority		= ini.GetInt(PRIORITY_KEY, -1);
@@ -854,7 +854,7 @@ BOOL Cfg::WriteIni(void)
 	ini.SetInt(EXECCONRIM_KEY, execConfirm);
 	ini.SetInt(FORCESTART_KEY, forceStart);
 	ini.SetInt(LCID_KEY, lcid);
-//	ini.SetInt(WAITTICK_KEY, waitTick);
+//	ini.SetInt(WAITLV_KEY, waitLv);
 //	ini.SetInt(ISAUTOSLOWIO_KEY, isAutoSlowIo);
 	ini.SetInt(SPEEDLEVEL_KEY, speedLevel);
 //	ini.SetInt(PRIORITY_KEY, priority);

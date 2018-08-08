@@ -1642,11 +1642,15 @@ void TMainDlg::SetPriority(DWORD new_class)
 {
 	if (curPriority != new_class) {
 		if (IsWinVista() && curPriority == IDLE_PRIORITY_CLASS) {
-			::SetPriorityClass(::GetCurrentProcess(), PROCESS_MODE_BACKGROUND_END);
+//			::SetPriorityClass(::GetCurrentProcess(), PROCESS_MODE_BACKGROUND_END);
+//			::SetThreadPriority(GetCurrentThread(), THREAD_MODE_BACKGROUND_END);
 		}
+
 		::SetPriorityClass(::GetCurrentProcess(), new_class);
+
 		if (IsWinVista() && new_class == IDLE_PRIORITY_CLASS) {
-			::SetPriorityClass(::GetCurrentProcess(), PROCESS_MODE_BACKGROUND_BEGIN);
+//			::SetPriorityClass(::GetCurrentProcess(), PROCESS_MODE_BACKGROUND_BEGIN);
+//			::SetThreadPriority(GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN);
 		}
 		curPriority = new_class;
 	}
@@ -2697,11 +2701,11 @@ int TMainDlg::MessageBox(LPCSTR msg, LPCSTR title, UINT style)
 
 DWORD TMainDlg::UpdateSpeedLevel(BOOL is_timer)
 {
-	DWORD	waitCnt = fastCopy.GetWaitTick();
-	DWORD	newWaitCnt = waitCnt;
+	DWORD	waitLv = fastCopy.GetWaitLv();
+	DWORD	newWaitLv = waitLv;
 
 	if (speedLevel == SPEED_FULL) {
-		newWaitCnt = 0;
+		newWaitLv = 0;
 	}
 	else if (speedLevel == SPEED_AUTO) {
 		POINT	pt;
@@ -2709,28 +2713,30 @@ DWORD TMainDlg::UpdateSpeedLevel(BOOL is_timer)
 		HWND	foreWnd = ::GetForegroundWindow();
 
 		if (foreWnd == hWnd) {
-			newWaitCnt = 0;
+			newWaitLv = FastCopy::AUTOSLOW_WAITLV;
 		}
 		else if (pt.x != curPt.x || pt.y != curPt.y || foreWnd != curForeWnd) {
 			curPt = pt;
 			curForeWnd = foreWnd;
-			newWaitCnt = cfg.waitTick;
+			newWaitLv = cfg.waitLv;
 			timerLast = timerCnt;
 		}
-		else if (is_timer && newWaitCnt > 0 && (timerCnt - timerLast) >= 10) {
-			newWaitCnt -= 1;
+		else if (is_timer
+				 && newWaitLv > FastCopy::AUTOSLOW_WAITLV
+				 && (timerCnt - timerLast) >= 10) {
+			newWaitLv -= 1;
 			timerLast = timerCnt;
 		}
 	}
 	else if (speedLevel == SPEED_SUSPEND) {
-		newWaitCnt = FastCopy::SUSPEND_WAITTICK;
+		newWaitLv = FastCopy::SUSPEND_WAITLV;
 	}
 	else {
-		static DWORD	waitArray[]    = { 2560, 1280, 640, 320, 160, 80, 40, 20, 10 };
-		newWaitCnt = waitArray[speedLevel - 1];
+		static DWORD	waitArray[]    = { 95, 90, 80, 70, 55, 40, 30, 20, 10 };
+		newWaitLv = waitArray[speedLevel - 1];
 	}
 
-	fastCopy.SetWaitTick(newWaitCnt);
+	fastCopy.SetWaitLv(newWaitLv);
 
 	if (!is_timer && fastCopy.IsStarting()) {
 		if (cfg.priority <= 0) {
@@ -2745,7 +2751,7 @@ DWORD TMainDlg::UpdateSpeedLevel(BOOL is_timer)
 		}
 	}
 
-	return	newWaitCnt;
+	return	newWaitLv;
 }
 
 #ifdef USE_LISTVIEW

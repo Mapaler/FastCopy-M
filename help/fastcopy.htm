@@ -76,11 +76,11 @@
 <body bgcolor="#eeffff">
 
 <div align="center">
-<h1 class="help_head1">FastCopy ver3.52</h1>
+<h1 class="help_head1">FastCopy ver3.53</h1>
 </div>
 <div class="help_all">
 
-<div align="right">2018/07/21 H.Shirouzu (白水啓章)</div>
+<div align="right">2018/08/08 H.Shirouzu (白水啓章)</div>
 
 <a name="index"/>
 <h2 class="help_head2">Index</h2>
@@ -171,14 +171,15 @@
 	<h3 class="help_head3">インストール</h3>
 	<div class="help_sub_section">
 		FastCopy3xx_installer.exe を実行して、任意のディレクトリにインストールしてください。<br>
-		USB メモリ等に格納して使用する場合は、インストーラの展開を押して、FastCopy.exe等を取り出してください。<br>
-		/h オプションを付けると、/silent等のオプションが表示されます。
+		USB メモリ等に格納して使用する場合は、インストーラの「展開のみ」ボタンを押して、FastCopy.exe等を取り出してください。<br>
+		/h オプションを付けると、/silent や /extract 等のオプションが表示されます。
 	</div>
 
 	<h3 class="help_head3">アンインストール</h3>
 	<div class="help_sub_section">
 		インストールディレクトリの setup.exe を使ってアンインストールすることができます。<br>
-		Win7以降ではOSの設定/コントロールパネル等にある「プログラムと機能」から、アンインストール可能です。
+		Win7以降ではOSの設定/コントロールパネル等にある「プログラムと機能」から、アンインストール可能です。<br>
+		/r /silent とすると、サイレントインストールになります。
 	</div>
 </div>
 
@@ -875,6 +876,11 @@
 
 <table class="help_table" border="4">
 <tr><th>Version</th><th>説明</th></tr>
+
+<tr><td>v3.53</td><td>
+速度コントロール指定をより正確に。<br>
+同一HDDモードの性能をわずかに改善。
+</td></tr>
 
 <tr><td>v3.52</td><td>
 ハッシュのデフォルトをxxHashに変更。<br>

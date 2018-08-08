@@ -81,11 +81,13 @@ FastCopy::FastCopy()
 	preTick = 0;
 	suspendTick = 0;
 	endTick = 0;
-	waitTick = 0;
+	waitLv = 0;
 	hardLinkDst = NULL;
 	findInfoLv = IsWin7() ? FindExInfoBasic : FindExInfoStandard;
 	findFlags  = IsWin7() ? FIND_FIRST_EX_LARGE_FETCH : 0;
 	frdFlags = FMF_EMPTY_RETRY;
+
+	wcIdx = ::TlsAlloc();
 
 	InitDumpExceptArea();
 	mainBuf.EnableDumpExcept();
@@ -129,11 +131,17 @@ FastCopy::~FastCopy()
 
 	::DeleteCriticalSection(&listCs);
 	::DeleteCriticalSection(&errCs);
+
+	::TlsFree(wcIdx);
 }
 
 FastCopy::FsType FastCopy::GetFsType(const WCHAR *root_dir)
 {
 	FsType	fstype = FSTYPE_NONE;
+
+	if (driveMng.IsSSD(root_dir)) {
+		fstype = FsType(fstype | FSTYPE_SSD);
+	}
 
 	if (::GetDriveTypeW(root_dir) == DRIVE_REMOTE) {
 		fstype = FsType(fstype | FSTYPE_NETWORK);
@@ -865,6 +873,11 @@ unsigned WINAPI FastCopy::ReadThread(void *fastCopyObj)
 
 BOOL FastCopy::ReadThreadCore(void)
 {
+	WaitCalc	wc;
+
+	::TlsSetValue(wcIdx, &wc);
+	wc.fsType = srcFsType;
+
 	BOOL	isSameDrvOld;
 
 //	if (info.flags & PRE_SEARCH)
@@ -900,7 +913,7 @@ BOOL FastCopy::ReadThreadCore(void)
 						!writeReqList.IsEmpty() || !writeWaitList.IsEmpty() ||
 						writeReq || runMode == RUN_DIGESTREQ;
 			if (is_wait) {
-				cv.Wait(CV_WAIT_TICK);
+				CvWait(&cv, CV_WAIT_TICK);
 			}
 		}
 		cv.UnLock();
@@ -1143,60 +1156,6 @@ BOOL ModifyRealFdat(const WCHAR *path, WIN32_FIND_DATAW *fdat, BOOL backup_flg)
 	return	TRUE;
 }
 
-//BOOL FastCopy::PreSearchProc(WCHAR *path, int prefix_len, int dir_len, FilterRes fr)
-//{
-//	HANDLE		hDir;
-//	BOOL		ret = TRUE;
-//	WIN32_FIND_DATAW fdat;
-//
-//	if (waitTick) Wait(1);
-//
-//	if ((hDir = ::FindFirstFileExW(path, findInfoLv, &fdat, FindExSearchNameMatch,
-//		NULL, findFlags)) == INVALID_HANDLE_VALUE) {
-//		return	ConfirmErr(L"FindFirstFileEx(pre)", path + prefix_len), FALSE;
-//	}
-//
-//	do {
-//		if (IsParentOrSelfDirs(fdat.cFileName))
-//			continue;
-//
-//		ClearNonSurrogateReparse(&fdat);
-//
-//		FilterRes	cur_fr = FilterCheck(path, dir_len, &fdat, fr);
-//		if (cur_fr == FR_UNMATCH) continue;
-//
-//		if (IsDir(fdat.dwFileAttributes)) {
-//			if (cur_fr == FR_MATCH) curTotal->preDirs++;
-//			if (!IsReparseEx(fdat.dwFileAttributes)) {
-//				int new_len = dir_len + wcscpy_with_aster(path + dir_len, fdat.cFileName) -1;
-//				PushDepth(path, new_len);
-//				ret = PreSearchProc(path, prefix_len, new_len, cur_fr);
-//				PopDepth(path);
-//			}
-//		}
-//		else {
-//			curTotal->preFiles++;
-//			if (NeedSymlinkDeref(&fdat)) { // del/moveでは REPARSE_AS_NORMAL は存在しない
-//				wcscpyz(path + dir_len, fdat.cFileName);
-//				ModifyRealFdat(path, &fdat, enableBackupPriv);
-//			}
-//			if (!IsReparseEx(fdat.dwFileAttributes)) {
-//				curTotal->preTrans += FileSize(fdat);
-//			}
-//		}
-//	}
-//	while (!isAbort && ::FindNextFileW(hDir, &fdat));
-//
-//	if (!isAbort && ret && ::GetLastError() != ERROR_NO_MORE_FILES) {
-//		ret = FALSE;
-//		ConfirmErr(L"FindNextFile(pre)", path + prefix_len);
-//	}
-//
-//	::FindClose(hDir);
-//
-//	return	ret && !isAbort;
-//}
-
 BOOL FastCopy::PutList(WCHAR *path, DWORD opt, DWORD lastErr, int64 wtime, int64 fsize,
 	BYTE *digest)
 {
@@ -1238,14 +1197,12 @@ BOOL FastCopy::PutList(WCHAR *path, DWORD opt, DWORD lastErr, int64 wtime, int64
 				WCHAR	*p = start;
 
 				if (wtime >= 0) {
-					__time64_t t = FileTime2UnixTime((FILETIME *)&wtime);
-					struct tm tm;
-					if (_localtime64_s(&tm, &t) == 0) {
-						p += swprintf(p, L"%04d%02d%02d-%02d%02d%02d", tm.tm_year+1900,
-							tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
-					} else {
-						p += swprintf(p, L"raw-%llx", wtime);
-					}
+					SYSTEMTIME	sst={};
+					SYSTEMTIME	lst={};
+					FileTimeToSystemTime((FILETIME *)&wtime, &sst);
+					SystemTimeToTzSpecificLocalTime (NULL, &sst, &lst);
+					p += swprintf(p, L"%04d%02d%02d-%02d%02d%02d",
+						lst.wYear, lst.wMonth, lst.wDay, lst.wHour, lst.wMinute, lst.wSecond);
 				}
 				if (fsize >= 0) {
 					if (p != start) *p++ = ' ';
@@ -1385,7 +1342,7 @@ BOOL FastCopy::MakeDigest(WCHAR *path, DigestBuf *dbuf, FileStat *stat)
 			}
 			ret = dbuf->Update(ovl_tmp->buf, ovl_tmp->transSize);
 			verifyTrans += ovl_tmp->transSize; 
-			if (!is_flush || !ret || isAbort) break;
+			if ((!is_flush && !waitLv) || !ret || isAbort) break;
 		}
 		if (!ret || isAbort) break;
 	}
@@ -1520,7 +1477,7 @@ BOOL FastCopy::ReadProc(int dir_len, BOOL confirm_dir, FilterRes fr)
 	BOOL	confirm_local = confirm_dir || isRename;
 	int		confirm_len = dir_len + (dstBaseLen - srcBaseLen);
 
-	if (waitTick) Wait(1);
+	WaitCheck();
 
 	if (confirm_local && !isSameDrv) DstRequest(DSTREQ_READSTAT, (void *)(LONG_PTR)confirm_len);
 	// ディレクトリエントリを先にすべて読み取る
@@ -1610,7 +1567,7 @@ BOOL FastCopy::ReadProcFileEntry(int dir_len, BOOL confirm_local)
 		if (!OpenFileProc(srcStat, dir_len)
 			|| IsNetFs(srcFsType)
 			|| info.mode == MOVE_MODE && openFilesCnt >= MOVE_OPEN_MAX
-			|| waitTick && openFilesCnt >= WAIT_OPEN_MAX || openFilesCnt >= info.maxOpenFiles) {
+			|| waitLv && openFilesCnt >= WAIT_OPEN_MAX || openFilesCnt >= info.maxOpenFiles) {
 			ReadMultiFilesProc(dir_len);
 			CloseMultiFilesProc();
 		}
@@ -1853,7 +1810,7 @@ BOOL FastCopy::FlushMoveList(BOOL is_finish)
 		DataList::Head	*head;
 
 		moveList.Lock();
-		if (require_sleep) moveList.Wait(CV_WAIT_TICK);
+		if (require_sleep) CvWait(moveList.GetCv(), CV_WAIT_TICK);
 
 		while ((head = moveList.Peek()) && !isAbort) {
 			MoveObj	*data = (MoveObj *)head->data;
@@ -1863,7 +1820,7 @@ BOOL FastCopy::FlushMoveList(BOOL is_finish)
 				moveList.UnLock();
 				FlushMoveListCore(data);
 				done_cnt++;
-				if (waitTick) Wait((waitTick + 9) / 10);
+				WaitCheck();
 				moveList.Lock();
 			}
 			if (head == moveFinPtr) {
@@ -2221,7 +2178,7 @@ BOOL FastCopy::OpenFileProc(FileStat *stat, int dir_len)
 
 	openFiles[openFilesCnt++] = stat;
 
-	if (waitTick) Wait((waitTick + 9) / 10);
+	WaitCheck();
 
 	if (!isExec) {
 		return	TRUE;
@@ -2740,19 +2697,22 @@ BOOL FastCopy::ReadFileProcCore(int cur_idx, int dir_len, Command cmd, FileStat 
 	// ::SetFilePointer(hIoFile, 0, NULL, FILE_BEGIN);
 
 	while (total_size < file_size && !isAbort) {
-		OverLap	*ovl   = rOvl.GetObj(FREE_LIST);
+		int64	buf_remain = 0;
+		OverLap	*ovl = rOvl.GetObj(FREE_LIST);
 		ovl->req = NULL;
 		rOvl.PutObj(USED_LIST, ovl);
 
 		while (1) {
 			if (!(ovl->req = PrepareReqBuf(offsetof(ReqHead, stat) + stat->minSize,
-					file_size - total_size, stat->fileID, file_size))) {
+					file_size - total_size, stat->fileID, file_size, &buf_remain))) {
 				cmd = REQ_NONE;
 				ret = FALSE;
 				break;
 			}
 			ovl->SetOvlOffset(total_size + order_total);
 			ret = ReadFileWithReduce(hIoFile, ovl->req->buf, ovl->req->bufSize, ovl);
+
+			WaitCheck();
 			if (ret) break;
 
 			// reparse point で別 volume に移動した場合用
@@ -2768,9 +2728,11 @@ BOOL FastCopy::ReadFileProcCore(int cur_idx, int dir_len, Command cmd, FileStat 
 		if (!ret || !ovl->req || isAbort) break;
 		order_total += ovl->orderSize;
 
+		BOOL need_dispatch = (isSameDrv && buf_remain < ovl->req->bufSize+MIN_BUF) ? TRUE : FALSE;
 		BOOL is_empty_ovl = rOvl.IsEmpty(FREE_LIST);
-		BOOL is_flush = (total_size + order_total >= file_size) || readInterrupt || !ovl->waiting;
-		if (!is_empty_ovl && !is_flush) continue;
+		BOOL is_flush = (total_size + order_total >= file_size) || readInterrupt
+						|| !ovl->waiting || need_dispatch;
+		if (!is_empty_ovl && !is_flush && !waitLv) continue;
 
 		while (OverLap	*ovl_tmp = rOvl.GetObj(USED_LIST)) {
 			rOvl.PutObj(FREE_LIST, ovl_tmp);
@@ -2790,16 +2752,22 @@ BOOL FastCopy::ReadFileProcCore(int cur_idx, int dir_len, Command cmd, FileStat 
 				ret = FALSE;
 				break;
 			}
+			if (need_dispatch && rOvl.IsEmpty(USED_LIST)) {
+				ovl_tmp->req->isFlush = true;
+			}
 			SendRequest(cmd, ovl_tmp->req, stat); // WRITE_FILE_CONT && !digest時stat不要…
 			cmd = WRITE_FILE_CONT;	// 2回目以降のSendReqはCONT
 
 			if (!isSameDrv && info.mode == MOVE_MODE && total_size < file_size) {
 				FlushMoveList(FALSE);
 			}
-			if (waitTick && total_size < file_size) Wait();
-			if (!is_flush || isAbort) break;
+			if (total_size < file_size) WaitCheck();
+			if ((!is_flush && !waitLv) || isAbort) break;
 		}
 		if (!ret || isAbort) break;
+		if (need_dispatch) {
+			ChangeToWriteMode();
+		}
 	}
 	if (!ret || isAbort) {
 		ReadAbortFile(cur_idx, cmd, dir_len, is_stream, is_modifyerr);
@@ -2922,8 +2890,10 @@ void FastCopy::DstRequest(DstReqKind kind, void *info)
 BOOL FastCopy::WaitDstRequest(void)
 {
 	cv.Lock();
-	while (dstAsyncRequest != DSTREQ_NONE && !isAbort)
-		cv.Wait(CV_WAIT_TICK);
+	while (dstAsyncRequest != DSTREQ_NONE && !isAbort) {
+		CvWait(&cv, CV_WAIT_TICK);
+	}
+
 	cv.UnLock();
 	return	dstRequestResult;
 }
@@ -3070,6 +3040,11 @@ unsigned WINAPI FastCopy::DeleteThread(void *fastCopyObj)
 
 BOOL FastCopy::DeleteThreadCore(void)
 {
+	WaitCalc	wc;
+
+	::TlsSetValue(wcIdx, &wc);
+	wc.fsType = srcFsType;
+
 //	if ((info.flags & PRE_SEARCH) && info.mode == DELETE_MODE)
 //		PreSearch();
 
@@ -3080,6 +3055,7 @@ BOOL FastCopy::DeleteThreadCore(void)
 		}
 	}
 	FinishNotify();
+
 	return	TRUE;
 }
 
@@ -3105,7 +3081,7 @@ BOOL FastCopy::DeleteProc(WCHAR *path, int dir_len, FilterRes fr)
 
 		ClearNonSurrogateReparse(&fdat);
 
-		if (waitTick) Wait((waitTick + 9) / 10);
+		WaitCheck();
 
 		FilterRes	cur_fr = FilterCheck(path, dir_len, &fdat, fr);
 		if (cur_fr == FR_UNMATCH) {
@@ -3254,7 +3230,6 @@ BOOL FastCopy::DeleteFileProc(WCHAR *path, int dir_len, WCHAR *fname, FileStat *
 =========================================================================*/
 unsigned WINAPI FastCopy::RDigestThread(void *fastCopyObj)
 {
-	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_LOWEST);
 	return	((FastCopy *)fastCopyObj)->RDigestThreadCore();
 }
 
@@ -3267,7 +3242,7 @@ BOOL FastCopy::RDigestThreadCore(void)
 
 	while (!isAbort) {
 		while (rDigestReqList.IsEmpty() && !isAbort) {
-			cv.Wait(CV_WAIT_TICK);
+			CvWait(&cv, CV_WAIT_TICK);
 		}
 		ReqHead *req = rDigestReqList.TopObj();
 		if (!req || isAbort) break;
@@ -3279,7 +3254,6 @@ BOOL FastCopy::RDigestThreadCore(void)
 				|| (cmd == WRITE_FILE_CONT && fileID == stat->fileID))
 			&& stat->FileSize() > 0 && !IsReparseEx(stat->dwFileAttributes)) {
 			cv.UnLock();
-//			Sleep(0);
 			if (fileID != stat->fileID) {
 				fileID = stat->fileID;
 				remain_size = stat->FileSize();
@@ -3407,7 +3381,7 @@ BOOL FastCopy::WriteRandomData(WCHAR *path, FileStat *stat, BOOL skip_hardlink)
 	if (hFile == INVALID_HANDLE_VALUE) {
 		return	ConfirmErr(L"Write by Random Data(open)", path + dstPrefixLen), FALSE;
 	}
-	if (waitTick) Wait((waitTick + 9) / 10);
+	WaitCheck();
 
 	BY_HANDLE_FILE_INFORMATION	bhi;
 	if (skip_hardlink && ::GetFileInformationByHandle(hFile, &bhi) && bhi.nNumberOfLinks > 1)
@@ -3423,8 +3397,7 @@ BOOL FastCopy::WriteRandomData(WCHAR *path, FileStat *stat, BOOL skip_hardlink)
 		int64	total_trans = 0;
 
 		for (int64 total_trans=0; total_trans < file_size; total_trans += ovl->transSize) {
-			int	max_trans = waitTick && (info.flags & AUTOSLOW_IOLIMIT) ?
-							MIN_BUF : (int)maxWriteSize;
+			int64	max_trans = TransSize(maxWriteSize);
 			max_trans = min(max_trans, data->buf_size);
 			int64	io_size = file_size - total_trans;
 			io_size = (io_size > max_trans) ? max_trans : ALIGN_SIZE(io_size, dstSectorSize);
@@ -3433,7 +3406,7 @@ BOOL FastCopy::WriteRandomData(WCHAR *path, FileStat *stat, BOOL skip_hardlink)
 			if (!(ret = WriteFileWithReduce(hFile, data->buf[i], (DWORD)io_size, ovl))) break;
 
 			curTotal->writeTrans += ovl->transSize;
-			if (waitTick) Wait();
+			WaitCheck();
 		}
 		curTotal->writeTrans -= file_size - stat->FileSize();
 		::FlushFileBuffers(hFile);
@@ -3460,6 +3433,11 @@ unsigned WINAPI FastCopy::WriteThread(void *fastCopyObj)
 
 BOOL FastCopy::WriteThreadCore(void)
 {
+	WaitCalc	wc;
+
+	::TlsSetValue(wcIdx, &wc);
+	wc.fsType = dstFsType;
+
 	BOOL	ret = WriteProc(dstBaseLen);
 
 	cv.Lock();
@@ -3762,7 +3740,6 @@ END:
 =========================================================================*/
 unsigned WINAPI FastCopy::WDigestThread(void *fastCopyObj)
 {
-	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_LOWEST);
 	return	((FastCopy *)fastCopyObj)->WDigestThreadCore();
 }
 
@@ -3777,7 +3754,7 @@ BOOL FastCopy::WDigestThreadCore(void)
 		DataList::Head	*head;
 		while ((!(head = wDigestList.Peek())
 		|| (calc = (DigestCalc *)head->data)->status == DigestCalc::INIT) && !isAbort) {
-			wDigestList.Wait(CV_WAIT_TICK);
+			CvWait(wDigestList.GetCv(), CV_WAIT_TICK);
 		}
 		if (isAbort) {
 			break;
@@ -3791,7 +3768,6 @@ BOOL FastCopy::WDigestThreadCore(void)
 		if (calc->status == DigestCalc::CONT || calc->status == DigestCalc::DONE) {
 			if (calc->dataSize) {
 				wDigestList.UnLock();
-//				Sleep(0);
 				if (fileID != calc->fileID) {
 					dstDigest.Reset();
 				}
@@ -3935,7 +3911,7 @@ FastCopy::DigestCalc *FastCopy::GetDigestCalc(DigestObj *obj, DWORD io_size)
 	wDigestList.Lock();
 
 	while (wDigestList.RemainSize() <= require_size && !isAbort) {
-		wDigestList.Wait(CV_WAIT_TICK);
+		CvWait(wDigestList.GetCv(), CV_WAIT_TICK);
 	}
 	if (!isAbort && (head = wDigestList.Alloc(NULL, 0, require_size))) {
 		calc = (DigestCalc *)head->data;
@@ -3990,7 +3966,7 @@ BOOL FastCopy::MakeDigestAsync(DigestObj *obj)
 		ConfirmErr(L"Not clear wOvl in MakeDigestAsync", NULL, CEF_STOP);
 		return FALSE;
 	}
-	if (waitTick) Wait((waitTick + 9) / 10);
+	WaitCheck();
 
 	if (obj->status == DigestObj::NG) goto ERR;
 
@@ -4017,8 +3993,7 @@ BOOL FastCopy::MakeDigestAsync(DigestObj *obj)
 	int64	order_total = 0;
 
 	while (total_size < file_size && !isAbort) {
-		DWORD	max_trans = (waitTick && (info.flags & AUTOSLOW_IOLIMIT)) ?
-					MIN_BUF : maxDigestReadSize;
+		DWORD	max_trans = TransSize(maxDigestReadSize);
 		if (useOvl && !info.IsNormalOvl(file_size)) {
 			max_trans = info.GenOvlSize(file_size);
 		}
@@ -4052,8 +4027,8 @@ BOOL FastCopy::MakeDigestAsync(DigestObj *obj)
 			curTotal->verifyTrans += ovl_tmp->transSize;
 			PutDigestCalc(ovl_tmp->calc, total_size >= file_size ? DigestCalc::DONE
 				: DigestCalc::CONT);
-			if (waitTick) Wait();
-			if (!ret || !is_flush || isAbort) break;
+			WaitCheck();
+			if (!ret || (!is_flush && !waitLv) || isAbort) break;
 		}
 		if (!ret || isAbort) break;
 	}
@@ -4107,7 +4082,7 @@ BOOL FastCopy::CheckDigests(CheckDigestMode mode)
 	if (mode == CD_WAIT || mode == CD_FINISH) {
 		wDigestList.Lock();
 		while (wDigestList.Num() > 0 && !isAbort) {
-			wDigestList.Wait(CV_WAIT_TICK);
+			CvWait(wDigestList.GetCv(), CV_WAIT_TICK);
 		}
 		wDigestList.UnLock();
 	}
@@ -4327,7 +4302,7 @@ BOOL FastCopy::WriteFileProc(int dst_len)
 	if (wi.cmd == WRITE_BACKUP_FILE || wi.file_size > writeReq->bufSize) {
 		memcpy((stat = &sv_stat), &writeReq->stat, offsetof(FileStat, cFileName));
 	}
-	if (waitTick) Wait((waitTick + 9) / 10);
+	WaitCheck();
 
 	if (is_require_del) {
 		//DebugW(L"DeleteFileW(WriteFileProc) %d %s\n", isExec, dst);
@@ -4443,6 +4418,7 @@ BOOL FastCopy::WriteFileCore(HANDLE fh, FileStat *stat, WInfo *_wi, DWORD mode, 
 
 		if (wi.is_nonbuf) write_size = ALIGN_SIZE(write_size, dstSectorSize);
 		ret = WriteFileWithReduce(fh, writeReq->buf, write_size, ovl);
+		WaitCheck();
 
 		if (!ret || (!ovl->waiting && ovl->transSize == 0)) {
 			ret = FALSE;
@@ -4456,9 +4432,9 @@ BOOL FastCopy::WriteFileCore(HANDLE fh, FileStat *stat, WInfo *_wi, DWORD mode, 
 		order_total += ovl->orderSize;
 
 		BOOL is_empty_ovl = wOvl.IsEmpty(FREE_LIST);
-		BOOL is_flush = (total_size + order_total >= file_size) || writeInterrupt || !ovl->waiting;
-
-		if (is_empty_ovl || is_flush) {
+		BOOL is_flush = (total_size + order_total >= file_size) || writeInterrupt
+						|| !ovl->waiting || writeReq->isFlush;
+		if (is_empty_ovl || is_flush || waitLv) {
 			while (OverLap	*ovl_tmp = wOvl.GetObj(USED_LIST)) {
 				wOvl.PutObj(FREE_LIST, ovl_tmp);
 				if (!(ret = WaitOvlIo(fh, ovl_tmp, &total_size, &order_total))) {
@@ -4469,8 +4445,8 @@ BOOL FastCopy::WriteFileCore(HANDLE fh, FileStat *stat, WInfo *_wi, DWORD mode, 
 					break;
 				}
 				curTotal->writeTrans += ovl_tmp->transSize;
-				if (waitTick) Wait();
-				if (!is_flush || isAbort) break;
+				WaitCheck();
+				if ((!is_flush && !waitLv) || isAbort) break;
 			}
 		}
 		if (!ret || isAbort) break;
@@ -4592,7 +4568,7 @@ BOOL FastCopy::ChangeToWriteModeCore(BOOL is_finish)
 				runMode = RUN_DIGESTREQ;
 			}
 		}
-		cv.Wait(CV_WAIT_TICK);
+		CvWait(&cv, CV_WAIT_TICK);
 
 		if (isResetRunMode && readReqList.IsEmpty() && rDigestReqList.IsEmpty()
 				&& writeReqList.IsEmpty() && writeReq) {
@@ -4615,10 +4591,11 @@ BOOL FastCopy::ChangeToWriteMode(BOOL is_finish)
 	return	ret;
 }
 
-FastCopy::ReqHead *FastCopy::AllocReqBuf(int req_size, int64 _data_size, int64 fsize)
+FastCopy::ReqHead *FastCopy::AllocReqBuf(int req_size, int64 _data_size, int64 fsize,
+	int64 *buf_remain)
 {
 	ReqHead	*req = NULL;
-	DWORD	max_trans  = (waitTick && (info.flags & AUTOSLOW_IOLIMIT)) ? MIN_BUF : maxReadSize;
+	DWORD	max_trans  = TransSize(maxReadSize);
 	if (flagOvl && info.IsMinOvl(fsize) && !info.IsNormalOvl(fsize)) {
 		auto ovl_size = info.GenOvlSize(fsize);
 		max_trans = min(max_trans, ovl_size);
@@ -4634,14 +4611,17 @@ FastCopy::ReqHead *FastCopy::AllocReqBuf(int req_size, int64 _data_size, int64 f
 	ssize_t	require_size     = sector_data_size + align_req_size;
 	ssize_t	align_offset     = used_size;
 
-	if (data_size && require_size < sector_data_size)
+	if (data_size && require_size < sector_data_size) {
 		require_size = sector_data_size;
-
+	}
 	if (require_size > max_free) {
 		if (max_free < MINREMAIN_BUF + max(sectorSize, BIG_SECTOR_SIZE)) {
 			align_offset = 0;
 			if (isSameDrv) {
-				if (!ChangeToWriteModeCore()) return NULL; // Read -> Write 切り替え
+				Debug("ChangeToWriteModeCore in AllocReqBuf\n");
+				if (!ChangeToWriteModeCore()){ // Read -> Write 切り替え
+					 return NULL;
+				}
 			}
 		}
 		else {
@@ -4651,6 +4631,7 @@ FastCopy::ReqHead *FastCopy::AllocReqBuf(int req_size, int64 _data_size, int64 f
 		}
 	}
 	// isSameDrv == TRUE の場合、必ず Empty
+
 	while ((!writeReqList.IsEmpty() || !writeWaitList.IsEmpty() || !rDigestReqList.IsEmpty())
 	&& !isAbort) {
 		if (align_offset == 0) {
@@ -4663,10 +4644,11 @@ FastCopy::ReqHead *FastCopy::AllocReqBuf(int req_size, int64 _data_size, int64 f
 				break;
 			}
 		}
-		cv.Wait(CV_WAIT_TICK);
+		CvWait(&cv, CV_WAIT_TICK);
 	}
 	req           = (ReqHead *)(mainBuf.Buf() + align_offset + sector_data_size);
 	req->reqId    = 0;
+	req->isFlush  = false;
 	req->buf      = mainBuf.Buf() + align_offset;
 	req->bufSize  = (DWORD)sector_data_size;
 	req->readSize = 0;
@@ -4676,11 +4658,20 @@ FastCopy::ReqHead *FastCopy::AllocReqBuf(int req_size, int64 _data_size, int64 f
 
 	usedOffset = req->buf + require_size;
 	//Debug("off=%.1f size=%.1f\n", (double)align_offset / 1024, (double)sector_data_size / 1024);
+
+	if (buf_remain) {
+		if (usedOffset < freeOffset) {
+			*buf_remain = freeOffset - usedOffset;
+		} else {
+			*buf_remain = mainBuf.Size() - (usedOffset - freeOffset);
+		}
+	}
+
 	return	req;
 }
 
 FastCopy::ReqHead *FastCopy::PrepareReqBuf(int req_size, int64 data_size, int64 file_id,
-	int64 file_size)
+	int64 file_size, int64 *buf_remain)
 {
 	int		err_cnt = 0;
 	ReqHead	*req = NULL;
@@ -4700,7 +4691,7 @@ FastCopy::ReqHead *FastCopy::PrepareReqBuf(int req_size, int64 data_size, int64 
 		}
 	}
 	if (err_cnt == 0) {
-		req = AllocReqBuf(req_size, data_size, file_size);
+		req = AllocReqBuf(req_size, data_size, file_size, buf_remain);
 	}
 
 	cv.UnLock();
@@ -4803,7 +4794,7 @@ BOOL FastCopy::RecvRequest(BOOL keepCur, BOOL freeLast)
 				continue;
 			}
 		}
-		cv.Wait(CV_WAIT_TICK);
+		CvWait(&cv, CV_WAIT_TICK);
 		CheckDstRequest();
 	}
 	writeReq = writeReqList.TopObj();
@@ -4819,6 +4810,11 @@ BOOL FastCopy::RecvRequest(BOOL keepCur, BOOL freeLast)
 void FastCopy::WriteReqDone(ReqHead *req)
 {
 	freeOffset = (BYTE *)req + req->reqSize;
+	if (freeOffset == usedOffset) {
+//		Debug("reached\n");
+		usedOffset = freeOffset = mainBuf.Buf();
+	}
+
 	if (!isSameDrv || (writeReqList.IsEmpty() && writeWaitList.IsEmpty())) {
 		cv.Notify();
 	}
@@ -4851,7 +4847,7 @@ BOOL FastCopy::SetFinishFileID(int64 _file_id, MoveObj::Status status)
 			}
 		}
 		if (moveFinPtr == NULL) {
-			moveList.Wait(CV_WAIT_TICK);
+			CvWait(moveList.GetCv(), CV_WAIT_TICK);
 		}
 	} while (!isAbort && !moveFinPtr);
 
@@ -5038,7 +5034,7 @@ BOOL FastCopy::GetTransInfo(TransInfo *ti, BOOL fullInfo)
 	ti->errCs = &errCs;
 	ti->isSameDrv = isSameDrv;
 	ti->ignoreEvent = info.ignoreEvent;
-	ti->waitTick = waitTick;
+	ti->waitLv = waitLv;
 	DWORD	last_tick = isSuspend ? suspendTick : endTick ? endTick : startTick ? ::GetTick() : 0;
 	ti->fullTickCount = last_tick - startTick;
 	ti->execTickCount = last_tick - max(preTick, startTick);
@@ -5233,22 +5229,99 @@ void FastCopy::Aborting(BOOL is_auto)
 	}
 }
 
-BOOL FastCopy::Wait(DWORD tick)
-{
-#define SLEEP_UNIT	200
-	int	svWaitTick = (int)waitTick;
-	int	remain = (int)(tick ? tick : waitTick);
 
-	while (remain > 0 && !isAbort) {
-		int	unit = remain > SLEEP_UNIT ? SLEEP_UNIT : remain;
-		::Sleep(unit);
-		int	curWaitTick = waitTick;
-		if (curWaitTick != SUSPEND_WAITTICK) {
-			remain -= unit + (svWaitTick - curWaitTick);
-			svWaitTick = curWaitTick;
+
+void FastCopy::CvWait(Condition *targ_cv, DWORD tick)
+{
+	WaitCalc	*wc = NULL;
+	DWORD64		t1 = NULL;
+
+	if (waitLv) {
+		if (wc = (WaitCalc *)::TlsGetValue(wcIdx)) {
+			t1 = ::GetTick64();
 		}
 	}
-	return	!isAbort;
+
+	targ_cv->Wait(tick);
+
+	if (wc && wc->lastTick) {
+		auto	t2 = ::GetTick64();
+		wc->lastTick += t2 - t1;
+		// if (t1 != t2) Debug("Add %lld\n", t2 - t1);
+	}
+}
+
+void FastCopy::WaitCheck()
+{
+	WaitCalc	*wc = (WaitCalc *)::TlsGetValue(wcIdx);
+
+	if (!wc) {
+//		Debug("not set wc\n");
+		return;
+	}
+
+	if ((waitLv && !wc->lowPriority) || (!waitLv && wc->lowPriority)) {
+		::SetThreadPriority(GetCurrentThread(),
+			waitLv ? THREAD_MODE_BACKGROUND_BEGIN : THREAD_MODE_BACKGROUND_END);
+		wc->lowPriority = (waitLv ? true : false);
+//		Debug("SetThreadPriority(%x) = %d\n", GetCurrentThreadId(), wc->lowPriority);
+	}
+
+	if (waitLv <= AUTOSLOW_WAITLV) {
+		return;
+	}
+	int64	cur = (int64)GetTick64();
+	auto	mainTick = cur - wc->lastTick;
+
+	if (wc->lastTick == 0 || mainTick == 0) {
+		wc->lastTick = cur;
+		return;
+	}
+	wc->lastTick = cur;
+
+	if (mainTick >= 1000) {
+		mainTick = 1000;
+	}
+
+	auto	ratio = (100 - waitLv) / 100.0;
+	if (IsNetFs(wc->fsType)) {
+		ratio /= 1.4;
+	}
+	else if (!IsSSD(wc->fsType)) {	// HDDの場合、HDD cacheが効きすぎる
+		ratio /= 2;
+	}
+	auto	remain = int(mainTick * (1-ratio) / ratio);
+
+	remain += wc->lastRemain;
+
+	remain = min(remain, 700);
+
+	if (remain > 0) {
+//		Debug("remain(%x)=%ld\n", GetCurrentThreadId(), remain);
+
+		auto	lastCur = cur;
+		while (remain > 0 && !isAbort) {
+#define SLEEP_UNIT	200
+			DWORD64	unit = remain > SLEEP_UNIT ? SLEEP_UNIT : 1;
+			::Sleep((DWORD)unit);
+			cur = (int64)GetTick64();
+			if (waitLv != SUSPEND_WAITLV) {
+				remain -= int(cur - lastCur);
+				if (remain < -500) {	// suspend?
+					remain = 0;
+				}
+			}
+			lastCur = cur;
+		}
+		wc->lastTick  = cur;
+		if (remain < 0) {
+//			Debug("pool(%x)=%ld\n", GetCurrentThreadId(), remain);
+		}
+	}
+	else {
+//		Debug("skip(%x) %d\n", GetCurrentThreadId(), remain);
+	}
+	wc->lastRemain = remain;
 }
 
 unsigned WINAPI FastCopy::TestThread(void *fastCopyObj)
@@ -5286,6 +5359,11 @@ int64 CalcFsize(const WCHAR *fsize_str)
 
 BOOL FastCopy::TestWrite()
 {
+	WaitCalc	wc;
+
+	::TlsSetValue(wcIdx, &wc);
+	wc.fsType = dstFsType;
+
 	int64	fsize = 0;
 	int		dnum  = 0;
 	int		fnum  = 0;

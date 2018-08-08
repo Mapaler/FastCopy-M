@@ -73,19 +73,23 @@
     <OutDir>..\..\lib\</OutDir>
     <IntDir>..\..\obj\DebugTlib\</IntDir>
     <TargetName>$(ProjectName)_d</TargetName>
+    <CodeAnalysisRuleSet>NativeRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>..\..\x64\lib\</OutDir>
     <IntDir>..\..\x64\obj\DebugTlib\</IntDir>
     <TargetName>$(ProjectName)_d</TargetName>
+    <CodeAnalysisRuleSet>NativeRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>..\..\lib\</OutDir>
     <IntDir>Obj\ReleaseTlib\</IntDir>
+    <CodeAnalysisRuleSet>NativeRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>..\..\x64\lib\</OutDir>
     <IntDir>x64\Obj\ReleaseTlib\</IntDir>
+    <CodeAnalysisRuleSet>NativeRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

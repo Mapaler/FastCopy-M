@@ -166,7 +166,7 @@ public:
 	int		netDrvMode;
 	int		aclReset;
 	int		lcid;
-	int		waitTick;
+	int		waitLv;
 	int		speedLevel;
 	BOOL	isAutoSlowIo;
 	int		priority;

@@ -118,6 +118,7 @@ public:
 	void	Init(NetDrvMode mode=NET_UNC_FULLVAL);
 	int		SetDriveID(const WCHAR *root);
 	BOOL	IsSameDrive(const WCHAR *root1, const WCHAR *root2);
+	BOOL	IsSSD(const WCHAR *_root);
 	void	SetDriveMap(char *map);
 	uint64	OccupancyDrives(uint64 use_drives);
 };
@@ -164,6 +165,7 @@ public:
 	ssize_t Size() { return buf.Size(); }
 	ssize_t Grow(ssize_t grow_size) { return buf.Grow(grow_size); }
 	ssize_t MinMargin() { return min_margin; }
+	Condition *GetCv() { return &cv; }
 
 	void	EnableDumpExcept(BOOL on=TRUE) { buf.EnableDumpExcept(on); }
 };
