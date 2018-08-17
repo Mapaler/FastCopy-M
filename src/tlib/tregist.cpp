@@ -14,15 +14,12 @@
 
 TRegistry::TRegistry(LPCSTR company, LPSTR appName, StrMode mode)
 {
-	openCnt = 0;
 	strMode = mode;
-	keyForce64 = FALSE;
 	ChangeApp(company, appName);
 }
 
 TRegistry::TRegistry(LPCWSTR company, LPCWSTR appName, StrMode mode)
 {
-	openCnt = 0;
 	strMode = mode;
 	ChangeAppW(company, appName);
 }
@@ -31,7 +28,6 @@ TRegistry::TRegistry(HKEY top_key, StrMode mode)
 {
 	topKey = top_key;
 	strMode = mode;
-	openCnt = 0;
 }
 
 TRegistry::~TRegistry(void)

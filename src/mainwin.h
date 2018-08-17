@@ -252,6 +252,7 @@ protected:
 	TEditSub		pathEdit;
 	TEditSub		errEdit;
 	TSubClassCtl	bufEdit;
+	TSubClassCtl	statEdit;
 	TSubClassCtl	speedSlider;
 	TSubClassCtl	speedStatic;
 	TSubClassCtl	listBtn;
@@ -318,6 +319,7 @@ protected:
 	void	ShowHistMenu();
 	void	SetHistPath(int idx);
 	void	ResizeForSrcEdit(int diff_y);
+	void	SetStatMargin();
 
 public:
 	TMainDlg();

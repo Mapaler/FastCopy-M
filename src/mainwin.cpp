@@ -101,7 +101,7 @@ int WINAPI WinMain(HINSTANCE _hI, HINSTANCE, LPSTR arg, int show)
 =========================================================================*/
 TMainDlg::TMainDlg() : TDlg(MAIN_DIALOG),
 	aboutDlg(this), setupDlg(&cfg, this), jobDlg(&cfg, this), finActDlg(&cfg, this),
-	srcEdit(MAX_SRCEDITCR, this), pathEdit(this), errEdit(this), bufEdit(this),
+	srcEdit(MAX_SRCEDITCR, this), pathEdit(this), errEdit(this), bufEdit(this), statEdit(this),
 	speedSlider(this), speedStatic(this), listBtn(this), pauseOkBtn(this), pauseListBtn(this)
 #ifdef USE_LISTVIEW
 	, listHead(this), listView(this)
@@ -330,31 +330,31 @@ BOOL TMainDlg::MoveCenter()
 		sz.cx = orgRect.cx() + cfg.winsize.cx;
 		sz.cy = cfg.winsize.cy + (isErrEditHide ? miniHeight : normalHeight);
 	}
-
-	TRect	screen_rect(0, 0,
-				::GetSystemMetrics(SM_CXFULLSCREEN), ::GetSystemMetrics(SM_CYFULLSCREEN));
-
-	HMONITOR	hMon;
-
-	if (isFixPos && !(hMon = ::MonitorFromPoint(cfg.winpos, MONITOR_DEFAULTTONEAREST))) {
-		isFixPos = FALSE;
-	}
-	if (!isFixPos && (hMon = ::MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST)) != NULL) {
-		MONITORINFO	minfo;
-		minfo.cbSize = sizeof(minfo);
-
-		if (::GetMonitorInfoW(hMon, &minfo) && (minfo.rcMonitor.right - minfo.rcMonitor.left)
-				> 0 && (minfo.rcMonitor.bottom - minfo.rcMonitor.top) > 0) {
-			screen_rect = minfo.rcMonitor;
-		}
-	}
+	TRect	src(0, 0, ::GetSystemMetrics(SM_CXFULLSCREEN), ::GetSystemMetrics(SM_CYFULLSCREEN));
 
 	if (isFixPos) {
-		pt = cfg.winpos;
+		isFixPos = FALSE;
+		if (HMONITOR hMon = ::MonitorFromPoint(cfg.winpos, MONITOR_DEFAULTTONEAREST)) {
+			MONITORINFO	mi = { sizeof(mi) };
+
+			if (::GetMonitorInfoW(hMon, &mi)) {
+				if (PtInRect(&mi.rcMonitor, cfg.winpos)) {
+					pt = cfg.winpos;
+					isFixPos = TRUE;
+				}
+			}
+		}
 	}
-	else {
-		pt.x = screen_rect.x() + (screen_rect.cx() - rect.cx()) / 2;
-		pt.y = screen_rect.y() + (screen_rect.cy() - rect.cy()) / 2;
+	if (!isFixPos) {
+		if (HMONITOR hMon = ::MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST)) {
+			MONITORINFO	mi = { sizeof(mi) };
+
+			if (::GetMonitorInfoW(hMon, &mi)) {
+				src = mi.rcMonitor;
+			}
+		}
+		pt.x = src.x() + (src.cx() - rect.cx()) / 2;
+		pt.y = src.y() + (src.cy() - rect.cy()) / 2;
 	}
 
 	return	SetWindowPos(NULL, pt.x, pt.y, sz.cx, sz.cy,
@@ -438,7 +438,9 @@ void TMainDlg::StatusEditSetup(BOOL reset)
 	::ReleaseDC(hWnd, hDc);
 
 	statusFont = ::CreateFontIndirectW(&lf);
-	SendDlgItemMessage(STATUS_EDIT, WM_SETFONT, (WPARAM)statusFont, 0);
+	statEdit.SendMessage(WM_SETFONT, (WPARAM)statusFont, 0);
+
+	SetStatMargin();
 
 	InvalidateRect(0, 0);
 }
@@ -472,6 +474,7 @@ void TMainDlg::ChooseFont()
 		SetInfo(TRUE);
 		cfg.WriteIni();
 	}
+	SetStatMargin();
 
 	::ReleaseDC(hWnd, hDc);
 }
@@ -528,6 +531,7 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 	}
 
 	srcEdit.AttachWnd(GetDlgItem(SRC_EDIT));
+	statEdit.AttachWnd(GetDlgItem(STATUS_EDIT));
 	pathEdit.AttachWnd(GetDlgItem(PATH_EDIT));
 	errEdit.AttachWnd(GetDlgItem(ERR_EDIT));
 	bufEdit.AttachWnd(GetDlgItem(BUFSIZE_EDIT));
@@ -643,6 +647,7 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 	if (*cfg.statusFont) {
 		StatusEditSetup();
 	}
+	SetStatMargin();
 
 	// command line mode
 	if (orgArgc > 1) {
@@ -694,6 +699,7 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 		DebugW(L"id(%x): %s\n", id, LoadStrW(IDS_MKDIR));
 	}
 */
+
 	return	TRUE;
 }
 
@@ -1307,6 +1313,18 @@ void TMainDlg::SetHistPath(int idx)
 	}
 }
 
+void TMainDlg::SetStatMargin()
+{
+	static auto lcid = ::GetUserDefaultLCID();
+
+	if (lcid == 0x411) return;
+
+#define STAT_MARGIN	(2)
+	TRect	rc;
+	statEdit.GetClientRect(&rc);
+	rc.left = rc.top = STAT_MARGIN;
+	statEdit.SendMessage(EM_SETRECT, 0, (LPARAM)&rc);
+}
 
 BOOL TMainDlg::EvSize(UINT fwSizeType, WORD nWidth, WORD nHeight)
 {
@@ -1323,6 +1341,7 @@ BOOL TMainDlg::EvSize(UINT fwSizeType, WORD nWidth, WORD nHeight)
 
 	RefreshWindow();
 	SetTimer(FASTCOPY_PAINT_TIMER, 100);
+	SetStatMargin();
 
 	return	TRUE;
 }

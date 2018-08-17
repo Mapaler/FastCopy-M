@@ -354,6 +354,8 @@ struct TRect : public RECT {
 	}
 };
 
+BOOL TFitRectToMonitor(RECT *_rc);
+
 struct TSize : public SIZE {
 	TSize(long _cx=0, long _cy=0) {
 		cx = _cx;
@@ -551,7 +553,7 @@ public:
 	virtual int		GetWindowTextLengthU8(void);
 	virtual BOOL	InvalidateRect(const RECT *rc, BOOL fErase);
 	virtual HWND	SetFocus();
-	virtual BOOL	RestoreRectFromParent();
+	virtual BOOL	RestoreRectFromParent(BOOL fit_screen=TRUE);
 
 	virtual LONG_PTR SetWindowLong(int index, LONG_PTR val);
 	virtual LONG_PTR GetWindowLong(int index);
@@ -860,10 +862,10 @@ public:
 
 class TRegistry {
 protected:
-	HKEY	topKey;
-	int		openCnt;
-	BOOL	keyForce64;
-	StrMode	strMode;
+	HKEY	topKey = NULL;
+	int		openCnt = 0;
+	BOOL	keyForce64 = FALSE;
+	StrMode	strMode = BY_UTF8;
 	HKEY	hKey[MAX_KEYARRAY];
 
 public:

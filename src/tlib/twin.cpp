@@ -916,9 +916,7 @@ BOOL TWin::MoveWindow(int x, int y, int cx, int cy, int bRepaint)
 
 BOOL TWin::MoveCenter(BOOL use_cursor_screen)
 {
-	TRect	screen_rect(0, 0,
-		::GetSystemMetrics(SM_CXFULLSCREEN),
-		::GetSystemMetrics(SM_CYFULLSCREEN));
+	TRect	src(0, 0, ::GetSystemMetrics(SM_CXFULLSCREEN), ::GetSystemMetrics(SM_CYFULLSCREEN));
 
 	if (use_cursor_screen) {
 		POINT		pt = {0, 0};
@@ -926,21 +924,18 @@ BOOL TWin::MoveCenter(BOOL use_cursor_screen)
 		HMONITOR	hMon = ::MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST);
 
 		if (hMon) {
-			MONITORINFO	minfo;
-			minfo.cbSize = sizeof(minfo);
+			MONITORINFO	mi = { sizeof(mi) };
 
-			if (::GetMonitorInfoW(hMon, &minfo) &&
-				(minfo.rcMonitor.right - minfo.rcMonitor.left) > 0 &&
-				(minfo.rcMonitor.bottom - minfo.rcMonitor.top) > 0) {
-				screen_rect = minfo.rcMonitor;
+			if (::GetMonitorInfoW(hMon, &mi)) {
+				src = mi.rcMonitor;
 			}
 		}
 	}
 
 	TRect	rc;
 	GetWindowRect(&rc);
-	long x = screen_rect.left + (screen_rect.cx() - rc.cx()) / 2;
-	long y = screen_rect.top  + (screen_rect.cy() - rc.cy()) / 2;
+	long x = src.left + (src.cx() - rc.cx()) / 2;
+	long y = src.top  + (src.cy() - rc.cy()) / 2;
 
 	return	SetWindowPos(NULL, x, y, 0, 0, SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE);
 }
@@ -1064,15 +1059,19 @@ HWND TWin::SetFocus()
 	return	::SetFocus(hWnd);
 }
 
-BOOL TWin::RestoreRectFromParent()
+BOOL TWin::RestoreRectFromParent(BOOL fit_screen)
 {
 	if (rect.left == CW_USEDEFAULT || pRect.left == CW_USEDEFAULT || !parent || !parent->hWnd) {
 		return FALSE;
 	}
-	TRect	pCurRect;
-	if (!parent->GetWindowRect(&pCurRect)) return FALSE;
+	TRect	prc;
+	if (!parent->GetWindowRect(&prc)) return FALSE;
 
-	rect.Slide(pCurRect.left - pRect.left, pCurRect.top - pRect.top);
+	rect.Slide(prc.left - pRect.left, prc.top - pRect.top);
+
+	if (fit_screen) {
+		TFitRectToMonitor(&rect);
+	}
 
 	return	TRUE;
 }
@@ -1203,5 +1202,27 @@ BOOL TCtl::PreProcMsg(MSG *msg)
 	}
 
 	return	FALSE;
+}
+
+BOOL TFitRectToMonitor(RECT *_rc)
+{
+	TRect		&rc = *(TRect *)_rc;
+	TPoint		pt = { rc.x(), rc.y() };
+	HMONITOR	hMon = ::MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST);
+
+	if (!hMon) return FALSE;
+
+	MONITORINFO	mi;
+	mi.cbSize = sizeof(mi);
+
+	if (::GetMonitorInfoW(hMon, &mi)) {
+		TRect	mrc(mi.rcWork);
+
+		if (rc.right  > mrc.right)  rc.Slide(mrc.right  - rc.right, 0);
+		if (rc.left   < mrc.left)   rc.Slide(mrc.left   - rc.left, 0);
+		if (rc.bottom > mrc.bottom) rc.Slide(0, mrc.bottom - rc.bottom);
+		if (rc.top    < mrc.top)    rc.Slide(0, mrc.top    - rc.top);
+	}
+	return	TRUE;
 }
 
