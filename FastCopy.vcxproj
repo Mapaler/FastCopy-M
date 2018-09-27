@@ -293,7 +293,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\cfg.cpp" />
-    <ClCompile Include="src\FastCopy.cpp" />
+    <ClCompile Include="src\fastcopy.cpp" />
     <ClCompile Include="src\mainwin.cpp" />
     <ClCompile Include="src\mainwinlog.cpp" />
     <ClCompile Include="src\mainwinopt.cpp" />
@@ -306,7 +306,7 @@
     <ClCompile Include="src\version.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="src\FastCopy.rc">
+    <ResourceCompile Include="src\fastcopy.rc">
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
