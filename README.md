@@ -55,16 +55,6 @@ You can modify this software, because all source code has been opened to the pub
 
 FastCopy Chinesization and modify to support other language more overall, add language only need add new resources
 
-* Vista以后支持新版文件/文件夹选择框（可多选）<br />
-New file selecting dialog.(Vista+)<br />
-![Folder select](http://ww3.sinaimg.cn/large/6c84b2d6gw1ewei65dy7bj20li0g8tdj.jpg)
-![File select](http://ww3.sinaimg.cn/large/6c84b2d6gw1ewei561xzhj20kv0fu0wz.jpg)
-
-* 主界面复制时图标也显示动画，并允许修改动画总帧数。<br />
-The main window icon displayed animation when runing copy process. And allows to modify the total number of animation frames.<br />
-图标来自(Icon from)：[(C75)[迷走ポタージュ]東方籠奴抄 - オプティカル セロファン](http://mesopota.net/roadshow/crossfade.html)<br />
-![Main window icon animation](http://ww3.sinaimg.cn/large/6c84b2d6gw1ewbcz4bxdbj20b00hnwhb.jpg)
-
 * 支持调用网络URL作为帮助文件，资源文件内“IDS_FASTCOPYHELP”修改为网页url即可。<br />
 Support use http url to replace "chm" help files, change "IDS_FASTCOPYHELP" in resource to your URL.<br />
 ![URL help](http://ww4.sinaimg.cn/large/6c84b2d6gw1ewbd1y0bygj20rw0le4bq.jpg)
@@ -72,50 +62,6 @@ Support use http url to replace "chm" help files, change "IDS_FASTCOPYHELP" in r
 ### Build | 编译
 FastCopy-M采用[VS2017](https://www.visualstudio.com/zh-cn/downloads/download-visual-studio-vs.aspx) v141工具集。<br />
 FastCopy-M used [VS2017](https://www.visualstudio.com/en-us/downloads/download-visual-studio-vs.aspx) with v141 tools.
-
-## Auto Change Icon | 自动更换图标 
-
-* 下载工具并解压/Download Tools and unzip<br />
-[FastCopy-M Resources Rebuild & Replace Tools.zip](https://github.com/Mapaler/FastCopy-M-Resources-Rebuild-Replace-Tools/archive/master.zip)
-* 请先执行“Update resources source file.vbs”更新源代码。<br />
-Please run "Update resources source file.vbs" update source at first.
-* 在“My New Icon”文件夹内按照1、2、3……的顺序命名图标，最后一个图标是等待图标。<br />
-Put your customize icon animate group, and rename to "1.ico","2.ico","3.ico"... Attention: The last icon file as wait icon.<br />
-![Rename Icon](http://ww2.sinaimg.cn/large/6c84b2d6jw1ewbqj5xriyj20oa0cugoj.jpg)
-* 然后将“FastCopy.exe”拖到“Change Icon.vbs”上即可。<br />
-Then drag original "FastCopy.exe" and put on "Change Icon.vbs" . <br />
-![Drag](http://ww4.sinaimg.cn/large/6c84b2d6jw1ewbqkhud8aj20hx0b6ace.jpg)
-* 会自动编译和替换资源，并保存到“output\FastCopy.exe”。<br />
-Then will auto begin rebuild and replace resources.  And generate to "output\FastCopy.exe".<br />
-![New Icon](http://ww2.sinaimg.cn/large/6c84b2d6jw1ewbqkq4qh9j20f4089wfa.jpg)
-
-## How to translate
-You can edit the source and rebuild executable.<br />
-Or more simple:
-* Unzip "FastCopy-M Resources Rebuild & Replace Tools.zip".
-* Use "Update resources source file.vbs" to update the newest source. Attention: Backup your edited file before use update.
-* Use "Visual Studio" for IDE (VS2010 or later),or any Notepad to to edit "fastcopy.rc" directly.
-* ResEdit is not recommended (The rc file saved by the ResEdit can't open in VS, and can't rebuild by my tools.To use it requies some processing), If you use Notepad edit manually. For example, open "fastcopy.rc" find and copy English part and past at the end.
-
-```C
-/////////////////////////////////////////////////////////////////////////////
-// English (United States) [or 英語 (米国)] resources [about line 2391]
-
-#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
-LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
-
-...
-
-#endif    // English (United States) [or 英語 (米国)] resources [about line 3137]
-/////////////////////////////////////////////////////////////////////////////
-```
-
-* Change "LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US" to your language and sub-language id. You can find them at "include\winnt.rh". You needn't edit "defined(AFX_TARG_ENU)" (I don't know where can find it.)
-* Edit this part to your language.
-* Drag original "FastCopy.exe" and put on "rebuild.bat".
-* Then it will replace resources and rebuild the executable automatically.  And generate to "output\FastCopy.exe".
-* Change "lcid" value in "FastCopy2.ini" to other decimal LCID, you can test other language on your OS. [LCID list](https://msdn.microsoft.com/en-us/goglobal/bb964664.aspx) 
-If you want add your translate to FastCopy-M, please send your "fastcopy.rc" source to mapaler@163.com.
 
 ## Website
 ### FastCopy-M website | FastCopy-M网站
@@ -127,13 +73,10 @@ http://mapaler.github.io/FastCopy-M/
 http://ipmsg.org/tools/fastcopy.html
  
 ## Official License | FastCopy官方许可
-> FastCopy ver3.x Copyright(C) 2004-2017 by SHIROUZU Hiroaki
+> FastCopy ver3.x Copyright(C) 2004-2018 by SHIROUZU Hiroaki
 > 
 > This program is free software. You can redistribute it and/or modify it under the GNU General Public License version 3(GPLv3).<br />
 > [license-gpl3.txt](http://ipmsg.org/tools/license-gpl3.txt)
-> 
-> If you want to distribute your modified version, but you don't want to distribute the modified source code, or you want to request to develop bundle/special versoin, please contact me. (shirouzu@ipmsg.org)
 
-
-> xxHash Library Copyright (c) 2012-2014, Yann Collet All rights reserved.<br>
+> xxHash Library Copyright (c) 2012-2016, Yann Collet All rights reserved.<br>
 > [License details](https://ipmsg.org/tools/xxhash-LICENSE.txt).
