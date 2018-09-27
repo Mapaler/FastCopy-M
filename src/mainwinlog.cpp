@@ -211,8 +211,9 @@ void TMainDlg::WriteLogHeader(HANDLE hFile, BOOL add_filelog)
 
 	::SetFilePointer(hFile, 0, 0, FILE_END);
 
-	DWORD len = sprintf(buf, "%s\r\nFastCopy(%s%s) %s %d/%02d/%02d %02d:%02d:%02d\r\n\r\n"
+	DWORD len = sprintf(buf, "%s\r\n%s(%s%s) %s %d/%02d/%02d %02d:%02d:%02d\r\n\r\n"
 		, head_start
+		, FASTCOPY
 		, GetVersionStr()
 		, GetVerAdminStr()
 		, cfg.isUtf8Log ? AtoU8s(LoadStr(IDS_Log_StartAt)) : LoadStr(IDS_Log_StartAt) //start at
