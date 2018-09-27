@@ -2115,7 +2115,7 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 	// 確認用ファイル一覧
 	if (!ret
 	|| !(ret = fastCopy.RegisterInfo(&srcArray, &dstArray, &info, &incArray, &excArray))) {
-		SetDlgItemText(STATUS_EDIT, "Error");
+		SetDlgItemText(STATUS_EDIT, LoadStr(IDS_Info_Error)); //Error
 	}
 
 	int		src_list_len = srcArray.GetMultiPathLen(CRLF, NULW);
