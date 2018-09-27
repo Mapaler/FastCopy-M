@@ -14,12 +14,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
+#include <process.h>
 #include <assert.h>
 #include <random>
 
 #ifdef USE_XXHASH
+#define XXH_STATIC_LINKING_ONLY
 #include "../../external/xxhash/xxhash.h"
 #endif
+
+using namespace std;
 
 NTSTATUS (WINAPI *pNtQueryInformationFile)(HANDLE, PIO_STATUS_BLOCK, PVOID, ULONG,
 	FILE_INFORMATION_CLASS);
@@ -106,7 +110,7 @@ BOOL TDigest::Reset()
 	return	TRUE;
 }
 
-BOOL TDigest::Update(void *data, int size)
+BOOL TDigest::Update(void *data, DWORD size)
 {
 	updated = true;
 
@@ -231,6 +235,29 @@ BOOL TGenRandom(void *buf, size_t len)
 }
 
 
+//#ifdef USE_XXHASH
+#if 0	// 手抜きハッシュの方が10倍高速だったため、MakeHash用としてはxxHashは使わない
+u_int MakeHash(const void *data, size_t size, u_int iv)
+{
+	XXH32_state_s	xh;
+
+	XXH32_reset(&xh, iv);
+	XXH32_update(&xh, data, size);
+
+	return	XXH32_digest(&xh);
+}
+
+uint64 MakeHash64(const void *data, size_t size, uint64 iv)
+{
+	XXH64_state_s	xh;
+
+	XXH64_reset(&xh, iv);
+	XXH64_update(&xh, data, size);
+
+	return	XXH64_digest(&xh);
+}
+
+#else
 #define THASH_RAND64_NUM1  757 /* prime number */
 #define THASH_RAND_NUM1   1511  /* prime number */
 
@@ -499,6 +526,69 @@ uint64 MakeHash64(const void *data, size_t size, uint64 iv)
 
 	return	MAKE_HASH_CORE64(val, mod_val, offset + mod);
 }
+#endif
+
+BOOL TGetMachineId(GUID *ret)
+{
+	static GUID guid;
+	static bool once = [=]() {
+		memset(&guid, 0, sizeof(GUID));
+
+		TRegistry	reg(HKEY_LOCAL_MACHINE);
+
+		if (TIsWow64()) {
+			reg.SetKeyForce64();
+		}
+
+		if (!reg.OpenKey("SOFTWARE\\Microsoft\\Cryptography")) return false;
+		char	buf[128];
+		if (!reg.GetStr("MachineGuid", buf, sizeof(buf))) return false;
+
+		BYTE	*p = (BYTE *)&guid;
+		BYTE	*mid = p + 8;
+		BYTE	*end = p + sizeof(GUID);
+
+		for (auto t = strtok(buf, "-"); t && p < end; t = strtok(NULL, "-")) {
+			p += ((p < mid) ? hexstr2bin_revendian : hexstr2bin)(t, p, end - p);
+		}
+		return true;
+	}();
+	memcpy(ret, &guid, sizeof(guid));
+	return	TRUE;
+}
+
+uint64 TGetHashedMachineId()
+{
+	static uint64 id = []() {
+		GUID	guid = {};
+		TGetMachineId(&guid);
+
+		uint64	ret = 0;
+		BYTE	md5[16] = {};
+		TDigest	d;
+
+		d.Init(TDigest::MD5);
+		d.Update(&guid, sizeof(guid));
+		d.GetVal(md5);
+
+		byte_xor(md5, md5 + 8, (BYTE *)&ret, 8);
+
+		return	ret;
+	}();
+	return id;
+}
+
+const char *TGetHashedMachineIdStr()
+{
+	static char id[16];
+	static bool once = [&]() {
+		auto v = TGetHashedMachineId();
+		bin2urlstr((BYTE *)&v, sizeof(v), id);
+		return true;
+	}();
+	return id;
+}
+
 
 void TSetPubKeyBlob(BYTE *n, int n_size, int e, DynBuf *keyblob)
 {
@@ -531,7 +621,7 @@ extern void CheckHashQuality64();
 
 void tapi32_test()
 {
-//	CheckHashQuality();
+	CheckHashQuality();
 	CheckHashQuality64();
 }
 
@@ -574,7 +664,7 @@ void CheckHashQuality()
 	Debug("Start %s mode=%s num=%d\n", hash_name, mode, MAX_HASH);
 
 	char	buf[500];
-	memset(buf, 0, sizeof(buf));
+	memset(buf, 0xcc, sizeof(buf));
 	int		len = 500;
 	DWORD	&val = *(DWORD *)buf;
 	DWORD	t = GetTick();
@@ -621,7 +711,7 @@ void CheckHashQuality64()
 
 	THashObj64	*obj = NULL;
 	char	buf[500];
-	memset(buf, 0, sizeof(buf));
+	memset(buf, 0xcc, sizeof(buf));
 	int		len = 500;
 	uint64	&val = *(uint64 *)buf;
 	uint64	hash_sum = 0;
@@ -643,11 +733,11 @@ void CheckHashQuality64()
 	Debug("Start %s mode=%s num=%d\n", hash_name, mode, MAX_HASH64);
 
 	for (uint64 i=0; i < MAX_HASH64; i++) {
-#if 1
+#if 0
 		len = sprintf(buf, "%08lld", (int64)i);
 	//	swap_s(buf, len);
 		len += sprintf(buf+len, "___________________________str");
-#elif 0
+#elif 1
 		val = i;
 #else
 		val = (rand64_data1[i % THASH_RAND_NUM1]);
@@ -717,4 +807,49 @@ void makerand() {
 }
 
 #endif
+
+#if 0
+void makehash_test()
+{
+	u_int	val = 0;
+	DWORD	targ[16] {};
+	auto	&i = targ[0];
+
+	DWORD	tick = GetTickCount();
+	for ( ; i < 100000000; i++) {
+		val += MakeHash(targ, sizeof(targ));
+	}
+	Debug(Fmt("%.3f,  val=%x\n", (float)(GetTickCount() - tick) / 1000, val));
+}
+#endif
+
+#if 0
+
+void hash_speed()
+{
+#define	count	20
+#define	num		1
+#define unit	((DWORD)1 * 1024 * 1024 * 1024)
+
+	TDigest	d;
+	d.Init(TDigest::XXHASH);
+	auto	data = make_unique<BYTE[]>(unit * num);
+	auto	buf = data.get();
+	TGenRandomMT(buf, num * unit);
+	TTick	t;
+
+	for (int i=0; i < count; i++) {
+		d.Reset();
+		for (int j=0; j < num; j++) {
+			d.Update(buf + j * unit, unit);
+		}
+		d.GetVal(buf);
+	}
+	auto e = t.elaps();
+
+	OpenDebugConsole(ODC_PARENT);
+	U8Out("%.2f GiB/s\n", ((double)num * unit * count * 1000.0) / e / 1024 / 1024 / 1024);
+}
+#endif
+
 

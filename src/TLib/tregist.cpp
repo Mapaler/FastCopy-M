@@ -14,14 +14,12 @@
 
 TRegistry::TRegistry(LPCSTR company, LPSTR appName, StrMode mode)
 {
-	openCnt = 0;
 	strMode = mode;
 	ChangeApp(company, appName);
 }
 
 TRegistry::TRegistry(LPCWSTR company, LPCWSTR appName, StrMode mode)
 {
-	openCnt = 0;
 	strMode = mode;
 	ChangeAppW(company, appName);
 }
@@ -30,7 +28,6 @@ TRegistry::TRegistry(HKEY top_key, StrMode mode)
 {
 	topKey = top_key;
 	strMode = mode;
-	openCnt = 0;
 }
 
 TRegistry::~TRegistry(void)
@@ -40,15 +37,15 @@ TRegistry::~TRegistry(void)
 	}
 }
 
-BOOL TRegistry::ChangeApp(LPCSTR company, LPSTR appName)
+BOOL TRegistry::ChangeApp(LPCSTR company, LPSTR appName, BOOL openOnly)
 {
 	Wstr	company_w(company, strMode);
 	Wstr	appName_w(appName, strMode);
 
-	return	ChangeAppW(company_w.s(), appName_w.s());
+	return	ChangeAppW(company_w.s(), appName_w.s(), openOnly);
 }
 
-BOOL TRegistry::ChangeAppW(const WCHAR *company, const WCHAR *appName)
+BOOL TRegistry::ChangeAppW(const WCHAR *company, const WCHAR *appName, BOOL openOnly)
 {
 	while (openCnt > 0) {
 		CloseKey();
@@ -63,7 +60,7 @@ BOOL TRegistry::ChangeAppW(const WCHAR *company, const WCHAR *appName)
 		swprintf(wbuf + wcslen(wbuf), L"\\%s", appName);
 	}
 
-	return	CreateKeyW(wbuf);
+	return	openOnly ? OpenKeyW(wbuf) : CreateKeyW(wbuf);
 }
 
 void TRegistry::ChangeTopKey(HKEY top_key)
@@ -92,12 +89,13 @@ BOOL TRegistry::OpenKeyW(const WCHAR *subKey, BOOL createFlg)
 
 	if (createFlg) {
 		status = ::RegCreateKeyExW(parentKey, subKey, 0, NULL, REG_OPTION_NON_VOLATILE,
-					KEY_ALL_ACCESS, NULL, &hKey[openCnt], &tmp);
+				KEY_ALL_ACCESS|(keyForce64 ? KEY_WOW64_64KEY : 0), NULL, &hKey[openCnt], &tmp);
 	}
 	else {
-		if ((status = ::RegOpenKeyExW(parentKey, subKey, 0, KEY_ALL_ACCESS, &hKey[openCnt]))
-				!= ERROR_SUCCESS)
-			status = ::RegOpenKeyExW(parentKey, subKey, 0, KEY_READ, &hKey[openCnt]);
+		if ((status = ::RegOpenKeyExW(parentKey, subKey, 0,
+			KEY_ALL_ACCESS|(keyForce64 ? KEY_WOW64_64KEY : 0), &hKey[openCnt])) != ERROR_SUCCESS)
+			status = ::RegOpenKeyExW(parentKey, subKey, 0,
+				KEY_READ|(keyForce64 ? KEY_WOW64_64KEY : 0), &hKey[openCnt]);
 	}
 
 	if (status == ERROR_SUCCESS)

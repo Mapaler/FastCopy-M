@@ -29,11 +29,11 @@
     <PlatformToolset>v141_xp</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
-    <WholeProgramOptimization>false</WholeProgramOptimization>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
-    <PlatformToolset>v141_xp</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
@@ -42,7 +42,7 @@
     <PlatformToolset>v141</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
-    <WholeProgramOptimization>false</WholeProgramOptimization>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
@@ -73,19 +73,23 @@
     <OutDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\lib\</OutDir>
     <IntDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj\</IntDir>
     <TargetName>$(ProjectName)_d</TargetName>
+    <CodeAnalysisRuleSet>NativeRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\lib\</OutDir>
     <IntDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj\</IntDir>
     <TargetName>$(ProjectName)_d</TargetName>
+    <CodeAnalysisRuleSet>NativeRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\lib\</OutDir>
     <IntDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj\</IntDir>
+    <CodeAnalysisRuleSet>NativeRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\lib\</OutDir>
     <IntDir>$(ProjectDir)..\..\Output\$(Configuration)\$(PlatformShortName)\$(ProjectName)_Obj\</IntDir>
+    <CodeAnalysisRuleSet>NativeRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -167,6 +171,7 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <EnableEnhancedInstructionSet>StreamingSIMDExtensions</EnableEnhancedInstructionSet>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -220,17 +225,21 @@
     <ClCompile Include="tapi32ex.cpp" />
     <ClCompile Include="tapi32u8.cpp" />
     <ClCompile Include="tapp.cpp" />
+    <ClCompile Include="tcmndlg.cpp" />
     <ClCompile Include="tdlg.cpp" />
     <ClCompile Include="texcept.cpp" />
+    <ClCompile Include="tgdiplus.cpp" />
     <ClCompile Include="tinet.cpp" />
     <ClCompile Include="tini.cpp" />
     <ClCompile Include="tmisc.cpp" />
     <ClCompile Include="tregist.cpp" />
+    <ClCompile Include="tstr.cpp" />
     <ClCompile Include="twin.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="tapi32ex.h" />
     <ClInclude Include="tapi32u8.h" />
+    <ClInclude Include="tcmndlg.h" />
     <ClInclude Include="tlib.h" />
     <ClInclude Include="tmisc.h" />
   </ItemGroup>

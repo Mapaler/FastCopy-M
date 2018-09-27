@@ -14,37 +14,6 @@
 
 #pragma comment (lib, "wininet.lib")
 
-static const char *TInetUserAgent;
-
-const char *TInetGetUserAgent()
-{
-	if (!TInetUserAgent) {
-		TInetSetUserAgent("IPMsg");
-	}
-	return	TInetUserAgent;
-}
-
-void TInetSetUserAgentRaw(const char *agent)
-{
-	if (TInetUserAgent) {
-		free((void *)TInetUserAgent);
-	}
-	TInetUserAgent = strdup(agent);
-}
-
-void TInetSetUserAgent(const char *key)
-{
-	TInetSetUserAgentRaw(Fmt("%s (Windows NT %d.%d.%d%s)", key,
-			TOSVerInfo.dwMajorVersion, TOSVerInfo.dwMinorVersion,
-			TOSVerInfo.dwBuildNumber,
-#ifdef _WIN64
-			"; Win64"
-#else
-			TIsWow64() ? "; WOW64" : ""
-#endif
-		));
-}
-
 DWORD TInetRequest(LPCSTR _host, LPCSTR _path, BYTE *data, int data_len, DynBuf *reply,
 	U8str *errMsg, DWORD flags)
 {
@@ -97,6 +66,11 @@ DWORD TInetRequest(LPCSTR _host, LPCSTR _path, BYTE *data, int data_len, DynBuf 
 		goto END;
 	}
 	Debug("host=%s path=%s data_len=%d\n", host.s(), path.s(), data_len);
+
+	if (*TGetAddHeadStr()) {
+		::HttpAddRequestHeaders(hReq, TGetAddHeadStr(), -1,
+			HTTP_ADDREQ_FLAG_REPLACE|HTTP_ADDREQ_FLAG_ADD);
+	}
 
 	if (!HttpSendRequest(hReq, head, (int)strlen(head), (void *)data, data_len)) {
 		errMsg->Init(Fmt("HttpSendRequest err %d\n", GetLastError()));
@@ -207,5 +181,41 @@ BOOL TInetCrackUrl(LPCSTR url, U8str *host, U8str *path, int *port, BOOL *is_sec
 	if (port) *port = uc.nPort;
 
 	return TRUE;
+}
+
+static U8str TUserAgentStr  = "";
+static U8str TAddHeadStr = "";
+
+const char *TInetGetUserAgent()
+{
+	return	TUserAgentStr.s();
+}
+
+void TInetSetUserAgentRaw(const char *agent)
+{
+	TUserAgentStr = agent;
+}
+
+const char *TGetAddHeadStr()
+{
+	return	TAddHeadStr.s();
+}
+
+void TSetAddHeadStr(const char *head)
+{
+	TAddHeadStr = head;
+}
+
+void TInetSetUserAgent(const char *key)
+{
+	TInetSetUserAgentRaw(Fmt("%s (Windows NT %d.%d.%d%s)", key,
+			TOSVerInfo.dwMajorVersion, TOSVerInfo.dwMinorVersion,
+			TOSVerInfo.dwBuildNumber,
+#ifdef _WIN64
+			"; Win64"
+#else
+			TIsWow64() ? "; WOW64" : ""
+#endif
+		));
 }
 

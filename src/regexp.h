@@ -166,7 +166,7 @@ public:
 	void	Init();
 	bool	RegisterWildCard(const WCHAR *wild_str, CaseSense cs=CASE_SENSE);
 //	bool	RegisterRegStr(const WCHAR *reg_str, CaseSense cs=CASE_SENSE);
-	bool	IsMatch(const WCHAR *target);
+	bool	IsMatch(const WCHAR *target, bool *is_mid=NULL);
 	bool	IsRegistered(void) { return	max_state ? true : false; }
 
 protected:

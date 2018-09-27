@@ -144,7 +144,7 @@ public:
 	~TDigest();
 	BOOL Init(Type _type=SHA1);
 	BOOL Reset();
-	BOOL Update(void *data, int size);
+	BOOL Update(void *data, DWORD size);
 	BOOL GetVal(void *data);
 	BOOL GetRevVal(void *data);
 	int  GetDigestSize() { return	type == MD5    ? MD5_SIZE    :
@@ -213,6 +213,10 @@ typedef struct _REPARSE_DATA_BUFFER {
 BOOL TLibInit_Ntdll();
 BOOL TGenRandom(void *buf, size_t len);
 BOOL TGenRandomMT(void *buf, size_t len);
+
+BOOL TGetMachineId(GUID *guid);
+uint64 TGetHashedMachineId();
+const char *TGetHashedMachineIdStr();
 
 void TSetPubKeyBlob(BYTE *n, int n_size, int e, DynBuf *keyblob);
 

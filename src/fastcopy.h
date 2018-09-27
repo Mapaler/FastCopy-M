@@ -1,9 +1,9 @@
 ﻿/* static char *fastcopy_id = 
-	"@(#)Copyright (C) 2004-2018 H.Shirouzu		fastcopy.h	Ver3.41"; */
+	"@(#)Copyright (C) 2004-2018 H.Shirouzu		fastcopy.h	Ver3.50"; */
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2018-01-27(Sat)
+	Update					: 2018-05-28(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-09
@@ -23,10 +23,13 @@
 #define MIN_SECTOR_SIZE		(512)
 #define BIG_SECTOR_SIZE		(4096)
 #define MAX_BUF				(1024 * 1024 * 1024)
-#define MIN_BUF				(1024 * 1024)
-#define BIGTRANS_ALIGN		(1024 * 1024)
+#define MINREMAIN_BUF		(1024 * 1024)
+#define MIN_BUF				(256 * 1024)
+#define WAITMIN_BUF			(256 * 1024)
+#define WAITMID_BUF			(1024 * 1024)
+#define BIGTRANS_ALIGN		(256 * 1024)
 #define APP_MEMSIZE			(6 * 1024 * 1024)
-#define NETDIRECT_SIZE		(64 * 1024 * 1024)
+//#define NETDIRECT_SIZE	(64 * 1024 * 1024)
 #define PATH_LOCAL_PREFIX	L"\\\\?\\"
 #define PATH_UNC_PREFIX		L"\\\\?\\UNC"
 #define PATH_LOCAL_PREFIX_LEN	4
@@ -83,6 +86,18 @@
 #define FASTCOPY_ERROR_EVENT	0x01
 #define FASTCOPY_STOP_EVENT		0x02
 
+#define KB (1024)
+#define MB (1024 * 1024)
+
+inline int64 FASTCOPY_BUFSIZE(int64 ovl_size, int64 ovl_num) {
+	int64	need_size = (int64)(ovl_size + 16*KB) * ovl_num * BUFIO_SIZERATIO;
+	return	ALIGN_SIZE(need_size, MB);
+}
+
+inline int FASTCOPY_BUFMB(int ovl_mb, int ovl_num) {
+	return	int(FASTCOPY_BUFSIZE(ovl_mb * MB, ovl_num) / MB);
+}
+
 struct TotalTrans {
 	int		readDirs;
 	int		readFiles;
@@ -133,7 +148,7 @@ struct TotalTrans {
 	int		wErrAclStream;
 
 	int		openRetry;
-	BOOL	abortCnt;
+	int		abortCnt;
 };
 
 struct TransInfo {
@@ -144,7 +159,7 @@ struct TransInfo {
 	DWORD				execTickCount;
 	BOOL				isSameDrv;
 	DWORD				ignoreEvent;
-	DWORD				waitTick;
+	DWORD				waitLv;
 
 	VBuf				*errBuf;
 	CRITICAL_SECTION	*errCs;
@@ -271,7 +286,8 @@ class FastCopy {
 public:
 	enum Mode { DIFFCP_MODE, SYNCCP_MODE, MOVE_MODE, MUTUAL_MODE, DELETE_MODE, TEST_MODE };
 	enum OverWrite { BY_NAME, BY_ATTR, BY_LASTEST, BY_CONTENTS, BY_ALWAYS };
-	enum FsType { FSTYPE_NONE=0, FSTYPE_NTFS=0x1, FSTYPE_FAT=0x2, FSTYPE_NETWORK=0x10 };
+	enum FsType { FSTYPE_NONE=0, FSTYPE_NTFS=0x1, FSTYPE_FAT=0x2, FSTYPE_NETWORK=0x10,
+					FSTYPE_SSD=0x20 };
 	enum Flags {
 		CREATE_OPENERR_FILE	=	0x00000001,
 		USE_OSCACHE_READ	=	0x00000002,
@@ -316,6 +332,7 @@ public:
 		VERIFY_SHA256		=	0x00000004,
 		VERIFY_XXHASH		=	0x00000020,
 		VERIFY_FILE			=	0x00001000,
+		VERIFY_REMOVE		=	0x00002000,
 	};
 	enum FileLogFlags {
 		FILELOG_TIMESTAMP	=	0x00000001,
@@ -339,7 +356,21 @@ public:
 		size_t	bufSize;		// (I/ )
 		int		maxOpenFiles;	// (I/ )
 		size_t	maxOvlSize;		// (I/ )
+		BOOL	IsNormalOvl(int64 fsize) { return fsize >= maxOvlSize * min(maxOvlNum, 20); }
+		BOOL	IsMinOvl(int64 fsize) { return fsize >= MIN_BUF * 2; }
 		DWORD	maxOvlNum;		// (I/ )
+		DWORD	GenOvlSize(int64 fsize) {
+			int64 size = fsize / min(maxOvlNum, 20);
+			if (size > MIN_BUF) {
+				auto i = get_nlz64(size);
+				DWORD unit = 1 << i;
+				if (unit > maxOvlSize) {
+					unit = (DWORD)maxOvlSize;
+				}
+				return	unit;
+			}
+			return MIN_BUF;
+		}
 		size_t	maxAttrSize;	// (I/ )
 		size_t	maxDirSize;		// (I/ )
 		size_t	maxMoveSize;	// (I/ )
@@ -372,7 +403,16 @@ public:
 		DWORD		err_code;		// (I/ )
 		Result		result;			// ( /O)
 	};
-	enum	{ SUSPEND_WAITTICK=0x7ffffff };
+
+
+	struct WaitCalc {
+		int64	lastTick = 0;
+		int		lastRemain = 0;
+		bool	lowPriority = false;
+		FsType	fsType = FSTYPE_NONE;
+	};
+	enum	{ AUTOSLOW_WAITLV=0x1, SUSPEND_WAITLV=0x7ffffff };
+	DWORD	wcIdx;
 
 public:
 	FastCopy(void);
@@ -397,8 +437,8 @@ public:
 	void Aborting(BOOL is_auto=FALSE);
 	BOOL WriteErrLog(const WCHAR *message, int len=-1);
 	BOOL IsAborting(void) { return isAbort; }
-	void SetWaitTick(DWORD wait) { waitTick = wait; }
-	DWORD GetWaitTick() { return waitTick; }
+	void SetWaitLv(DWORD lv) { waitLv = lv; }
+	DWORD GetWaitLv() { return waitLv; }
 	BOOL GetTransInfo(TransInfo *ti, BOOL fullInfo=TRUE);
 	VBuf *GetErrBuf() { return &errBuf; }
 
@@ -437,6 +477,7 @@ protected:
 	struct ReqHead : public TListObj {	// request header
 		int64		reqId;
 		Command		cmd;
+		bool		isFlush;
 		DWORD		bufSize;
 		DWORD		readSize;	// 普通ファイルのみ有効
 		BYTE		*buf;
@@ -634,7 +675,7 @@ protected:
 	DWORD	preTick;
 	DWORD	endTick;
 	DWORD	suspendTick;
-	DWORD	waitTick;
+	DWORD	waitLv;
 
 	// モード・フラグ類
 	BOOL	isAbort;
@@ -684,6 +725,13 @@ protected:
 	}
 	enum		CheckDigestMode { CD_NOWAIT, CD_WAIT, CD_FINISH };
 	DataList	wDigestList; // ダイジェスト算出用（Read用バッファ含む）
+
+	DWORD		TransSize(DWORD trans_size) {
+		if (waitLv && (info.flags & AUTOSLOW_IOLIMIT)) {
+			return	(waitLv > 10) ? WAITMIN_BUF : WAITMID_BUF;
+		}
+		return	trans_size;
+	}
 
 	// 移動関連
 	DataList		moveList;		// 移動
@@ -796,8 +844,9 @@ protected:
 	BOOL WriteFileBackupProc(HANDLE fh, int dst_len);
 	BOOL ChangeToWriteModeCore(BOOL is_finish=FALSE);
 	BOOL ChangeToWriteMode(BOOL is_finish=FALSE);
-	ReqHead *AllocReqBuf(int req_size, int64 _data_size);
-	ReqHead *PrepareReqBuf(int req_size, int64 data_size, int64 file_id);
+	ReqHead *AllocReqBuf(int req_size, int64 _data_size, int64 fsize, int64 *buf_remain=NULL);
+	ReqHead *PrepareReqBuf(int req_size, int64 data_size, int64 file_id, int64 fsize=0,
+							int64 *buf_remain=NULL);
 	BOOL CancelReqBuf(ReqHead *req);
 	BOOL SendRequest(Command cmd, ReqHead *buf=NULL, FileStat *stat=NULL);
 	BOOL SendRequestCore(Command cmd, ReqHead *buf, FileStat *stat);
@@ -820,6 +869,7 @@ protected:
 	BOOL	IsNTFS(FsType fstype) { return (fstype & FSTYPE_NTFS) ? TRUE : FALSE; }
 	BOOL	IsNetFs(FsType fstype) { return (fstype & FSTYPE_NETWORK) ? TRUE : FALSE; }
 	BOOL	IsLocalFs(FsType fstype) { return !IsNetFs(fstype); }
+	BOOL	IsSSD(FsType fstype) { return (fstype & FSTYPE_SSD) ? TRUE : FALSE; }
 	int GetSectorSize(const WCHAR *root_dir, BOOL use_cluster=FALSE);
 	int MakeUnlimitedPath(WCHAR *buf);
 	BOOL PutList(WCHAR *path, DWORD opt, DWORD lastErr=0, int64 wtime=-1, int64 size=-1,
@@ -842,7 +892,8 @@ protected:
 	int FdatToFileStat(WIN32_FIND_DATAW *fdat, FileStat *st, BOOL usehash, FilterRes fr=FR_NONE);
 	Confirm::Result ConfirmErr(const WCHAR *msg, const WCHAR *path=NULL, DWORD flags=0);
 	BOOL ConvertExternalPath(const WCHAR *path, WCHAR *buf, int buf_len);
-	BOOL Wait(DWORD tick=0);
+	void WaitCheck();
+	void CvWait(Condition *targ_cv, DWORD tick);
 
 	BOOL TestWrite();
 	void TestWriteEnd();

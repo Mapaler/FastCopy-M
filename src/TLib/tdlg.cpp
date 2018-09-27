@@ -67,7 +67,7 @@ LRESULT TDlg::WinProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 	case WM_INITDIALOG:
 		if (rect.left != CW_USEDEFAULT && !(GetWindowLong(GWL_STYLE) & WS_CHILD)) {
-			MoveWindow(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,FALSE);
+			MoveWindow(rect.left, rect.top, rect.cx(), rect.cy(), FALSE);
 		}
 		if (rect.left == CW_USEDEFAULT) {
 			GetWindowRect(&orgRect);
@@ -97,6 +97,9 @@ LRESULT TDlg::WinProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_NCDESTROY:
 		if (!::IsIconic(hWnd)) {
 			GetWindowRect(&rect);
+		}
+		if (parent && parent->hWnd) {
+			parent->GetWindowRect(&pRect);
 		}
 		EvNcDestroy();
 		TApp::GetApp()->DelWin(this);

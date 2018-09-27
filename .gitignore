@@ -32,6 +32,7 @@
 *.ncb
 *.suo
 *.aps
+/.vs
 /Output
 /web
 /*.sdf

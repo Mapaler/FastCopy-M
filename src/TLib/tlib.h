@@ -72,6 +72,7 @@ typedef unsigned _int64 uint64;
 
 #include <tchar.h>
 #include "tmisc.h"
+#include "tstr.h"
 #include "texcept.h"
 #include "tapi32ex.h"
 //#include "tapi32u8.h"	 /* describe last line */
@@ -297,6 +298,9 @@ struct TRect : public RECT {
 		right  = x + cx;
 		bottom = y + cy;
 	}
+	void	InitDefault() {
+		Init(CW_USEDEFAULT, CW_USEDEFAULT, 0, 0);
+	}
 	long&	x() { return left; }
 	long&	y() { return top; }
 	long	cx() const { return right - left; }
@@ -349,6 +353,8 @@ struct TRect : public RECT {
 		::ClientToScreen(hWnd, (POINT *)&right);
 	}
 };
+
+BOOL TFitRectToMonitor(RECT *_rc);
 
 struct TSize : public SIZE {
 	TSize(long _cx=0, long _cy=0) {
@@ -423,6 +429,7 @@ class TWin : public THashObj {
 protected:
 	TRect			rect;
 	TRect			orgRect;
+	TRect			pRect; // parent
 	HACCEL			hAccel;
 	TWin			*parent;
 	BOOL			sleepBusy;	// for TWin::Sleep() only
@@ -546,6 +553,7 @@ public:
 	virtual int		GetWindowTextLengthU8(void);
 	virtual BOOL	InvalidateRect(const RECT *rc, BOOL fErase);
 	virtual HWND	SetFocus();
+	virtual BOOL	RestoreRectFromParent(BOOL fit_screen=TRUE);
 
 	virtual LONG_PTR SetWindowLong(int index, LONG_PTR val);
 	virtual LONG_PTR GetWindowLong(int index);
@@ -845,6 +853,7 @@ public:
 	T	*NextObj(int list_type, T *obj) { return list[list_type].NextObj(obj); }
 	T	*PrevObj(int list_type, T *obj) { return list[list_type].PrevObj(obj); }
 	BOOL IsEmpty(int list_type)         { return list[list_type].IsEmpty();    }
+	int  Num(int list_type)             { return list[list_type].Num();        }
 	TListEx<T> *List(int list_type)     { return &list[list_type];             }
 };
 
@@ -853,9 +862,10 @@ public:
 
 class TRegistry {
 protected:
-	HKEY	topKey;
-	int		openCnt;
-	StrMode	strMode;
+	HKEY	topKey = NULL;
+	int		openCnt = 0;
+	BOOL	keyForce64 = FALSE;
+	StrMode	strMode = BY_UTF8;
 	HKEY	hKey[MAX_KEYARRAY];
 
 public:
@@ -864,11 +874,16 @@ public:
 	TRegistry(HKEY top_key, StrMode mode=BY_UTF8);
 	~TRegistry();
 
+	void	SetKeyForce64(BOOL on=TRUE) {
+		if (TIsWow64()) {
+			keyForce64 = on;
+		}
+	}
 	void	ChangeTopKey(HKEY topKey);
 	void	SetStrMode(StrMode mode) { strMode = mode; }
 
-	BOOL	ChangeApp(LPCSTR company, LPSTR appName=NULL);
-	BOOL	ChangeAppW(const WCHAR *company, const WCHAR *appName=NULL);
+	BOOL	ChangeApp(LPCSTR company, LPSTR appName=NULL, BOOL openOnly=FALSE);
+	BOOL	ChangeAppW(const WCHAR *company, const WCHAR *appName=NULL, BOOL openOnly=FALSE);
 
 	BOOL	OpenKey(LPCSTR subKey, BOOL createFlg=FALSE);
 	BOOL	OpenKeyW(const WCHAR *subKey, BOOL createFlg=FALSE);
@@ -947,6 +962,9 @@ public:
 	const char *Val() { return val; }
 };
 
+#define MIN_INI_ALLOC (64 * 1024)
+#define MAX_INI_ALLOC (10 * 1024 * 1024)
+
 class TIniSection : public TListObj, public TListEx<TIniKey> {
 protected:
 	char	*name;
@@ -971,6 +989,12 @@ public:
 		return	NULL;
 	}
 	BOOL AddKey(const char *key_name, const char *val) {
+		int	key_len = key_name ? (int)strlen(key_name) : 0;
+		int	val_len = val      ? (int)strlen(val) : 0;
+		if (key_len + val_len >= MIN_INI_ALLOC -10) {
+			Debug("Too long entry in TIniSection::AddKey\n");
+			return	FALSE;
+		}
 		TIniKey	*key = key_name ? SearchKey(key_name) : NULL;
 		if (!key) {
 			key = new TIniKey(key_name, val);
@@ -1066,7 +1090,11 @@ public:
 #include "tapi32u8.h"
 #include "tinet.h"
 #include "ipdict.h"
+#include "scopeexit.h"
+#include "tcmndlg.h"
 
 void TGsFailureHack();
+void TLibInit();
 
 #endif
+

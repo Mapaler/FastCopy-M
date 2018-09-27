@@ -89,6 +89,7 @@
 #define SRCFILE_STR			L"/srcfile="
 #define FINACT_STR			L"/postproc="
 #define DLSVT_STR			L"/dlsvt="
+#define UPDATED_STR			L"/updated"
 #define TO_STR				L"/to="
 
 #define CMD_COPY_NAME_STR		L"noexist_only"

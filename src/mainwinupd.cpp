@@ -1,5 +1,5 @@
 ﻿static char *mainwinupd_id = 
-	"@(#)Copyright (C) 2017-2018 H.Shirouzu		mainwinupd.cpp	ver3.41";
+	"@(#)Copyright (C) 2017-2018 H.Shirouzu		mainwinupd.cpp	ver3.51";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2004-09-15(Wed)
@@ -15,10 +15,16 @@ using namespace std;
 
 static BOOL IsSilent = FALSE;
 
+//#define UPDATE_DBG
+#ifdef UPDATE_DBG
+#undef  FASTCOPY_UPDATEINFO
+#define FASTCOPY_UPDATEINFO	"fastcopy-update-tmp.dat"
+#endif
+
 void TMainDlg::UpdateCheck(BOOL is_silent)
 {
 	IsSilent = is_silent;
-	TInetAsync(IPMSG_SITE, FASTCOPY_UPDATEINFO, hWnd, WM_FASTCOPY_UPDINFORES);
+	TInetAsync(FASTCOPY_SITE, FASTCOPY_UPDATEINFO, hWnd, WM_FASTCOPY_UPDINFORES);
 }
 
 void TMainDlg::UpdateCheckRes(TInetReqReply *_irr)
@@ -27,7 +33,8 @@ void TMainDlg::UpdateCheckRes(TInetReqReply *_irr)
 
 	if (irr->reply.UsedSize() == 0 || irr->code != HTTP_STATUS_OK) {
 		if (!IsSilent) {
-			SetDlgItemText(STATUS_EDIT, Fmt("Can't access(%d) https://%s", irr->code, IPMSG_SITE));
+			SetDlgItemText(PATH_EDIT,
+				Fmt("Can't access(%d) %s", irr->code, LoadStr(IDS_FASTCOPYURL)));
 		}
 		return;
 	}
@@ -36,7 +43,7 @@ void TMainDlg::UpdateCheckRes(TInetReqReply *_irr)
 
 	if (!ipdict_verify(&dict, &cfg.officialPub)) {
 		if (!IsSilent) {
-			SetDlgItemText(STATUS_EDIT, "Verify error");
+			SetDlgItemText(PATH_EDIT, "Verify error");
 		}
 		return;
 	}
@@ -55,7 +62,7 @@ void TMainDlg::UpdateCheckRes(TInetReqReply *_irr)
 
 	if (!dict.get_dict(key, &data)) {
 		if (!IsSilent) {
-			SetDlgItemText(STATUS_EDIT, Fmt("%s: key not found(%s)", FASTCOPY_UPDATEINFO, key));
+			SetDlgItemText(PATH_EDIT, Fmt("%s: key not found(%s)", FASTCOPY_UPDATEINFO, key));
 		}
 		return;
 	}
@@ -63,27 +70,27 @@ void TMainDlg::UpdateCheckRes(TInetReqReply *_irr)
 	updData.DataInit();
 	if (!data.get_str("ver", &updData.ver)) {
 		if (!IsSilent) {
-			SetDlgItemText(STATUS_EDIT, Fmt("%s: ver not found", FASTCOPY_UPDATEINFO));
+			SetDlgItemText(PATH_EDIT, Fmt("%s: ver not found", FASTCOPY_UPDATEINFO));
 		}
 		return;
 	}
 
 	if (!data.get_str("path", &updData.path)) {
 		if (!IsSilent) {
-			SetDlgItemText(STATUS_EDIT, Fmt("%s: ver not found", FASTCOPY_UPDATEINFO));
+			SetDlgItemText(PATH_EDIT, Fmt("%s: ver not found", FASTCOPY_UPDATEINFO));
 		}
 		return;
 	}
 	if (!data.get_bytes("hash", &updData.hash) || updData.hash.UsedSize() != SHA256_SIZE) {
 		if (!IsSilent) {
-			SetDlgItemText(STATUS_EDIT, Fmt("%s: hash not found or size(%zd) err",
+			SetDlgItemText(PATH_EDIT, Fmt("%s: hash not found or size(%zd) err",
 				FASTCOPY_UPDATEINFO, updData.hash.UsedSize()));
 		}
 		return;
 	}
 	if (!data.get_int("size", &updData.size)) {
 		if (!IsSilent) {
-			SetDlgItemText(STATUS_EDIT, Fmt("%s: size not found err", FASTCOPY_UPDATEINFO));
+			SetDlgItemText(PATH_EDIT, Fmt("%s: size not found err", FASTCOPY_UPDATEINFO));
 		}
 		return;
 	}
@@ -97,7 +104,7 @@ void TMainDlg::UpdateCheckRes(TInetReqReply *_irr)
 
 	if (self_ver >= new_ver) {
 		if (!IsSilent) {
-			SetDlgItemText(STATUS_EDIT, Fmt(LoadStr(IDS_UPDFMT_NOTNEED), GetVersionStr(TRUE),
+			SetDlgItemText(PATH_EDIT, Fmt(LoadStr(IDS_UPDFMT_NOTNEED), GetVersionStr(TRUE),
 				updData.ver.s()));
 		}
 		return;
@@ -105,15 +112,25 @@ void TMainDlg::UpdateCheckRes(TInetReqReply *_irr)
 
 	if (fastCopy.IsStarting() || isDelay) {
 		if (!IsSilent) {
-			SetDlgItemText(STATUS_EDIT, Fmt(LoadStr(IDS_UPDFMT_UPDBUSY), updData.ver.s()));
+			SetDlgItemText(PATH_EDIT, Fmt(LoadStr(IDS_UPDFMT_UPDBUSY), updData.ver.s()));
 		}
 		return;
 	}
 
-	if (MessageBox(Fmt(LoadStr(IDS_UPDFMT_UPDMSG), updData.ver.s()), FASTCOPY,
-		MB_OKCANCEL) == IDOK) {
-		TInetAsync("ipmsg.org", updData.path.s(), hWnd, WM_FASTCOPY_UPDDLRES);
+	bool is_auto_upd = (cfg.updCheck & 0x2) ? true : false;
+
+	if (!IsSilent || !is_auto_upd || (TIsVirtualizedDirW(cfg.execDir) && !::IsUserAnAdmin())) {
+		if (MessageBox(Fmt(LoadStr(IDS_UPDFMT_UPDMSG), updData.ver.s()), FASTCOPY, MB_OKCANCEL)
+			== IDCANCEL) {
+			return;
+		}
+		if (IsSilent && !is_auto_upd && cfg.updCheck) {
+			cfg.updCheck |= 0x2;
+			cfg.WriteIni();
+		}
 	}
+
+	TInetAsync(FASTCOPY_SITE, updData.path.s(), hWnd, WM_FASTCOPY_UPDDLRES);
 }
 
 void TMainDlg::UpdateDlRes(TInetReqReply *_irr)
@@ -121,49 +138,48 @@ void TMainDlg::UpdateDlRes(TInetReqReply *_irr)
 	shared_ptr<TInetReqReply>	irr(_irr);
 	BYTE	hash[SHA256_SIZE] = {};
 	TDigest	d;
-	BOOL	ret = FALSE;
 
 	if (irr->reply.UsedSize() <= 0) {
-		SetDlgItemText(STATUS_EDIT, Fmt("Update download err %zd", irr->reply.UsedSize()));
+		SetDlgItemText(PATH_EDIT, Fmt("Update download err %zd", irr->reply.UsedSize()));
 		return;
 	}
 
 	if (!d.Init(TDigest::SHA256)) {
-		SetDlgItemText(STATUS_EDIT, Fmt("Update digest init err"));
+		SetDlgItemText(PATH_EDIT, Fmt("Update digest init err"));
 		return;
 	}
 
 	Debug("UpdateDlRes: reply size=%zd, code=%d\n", irr->reply.UsedSize(), irr->code);
 
 	if (irr->code != HTTP_STATUS_OK) {
-		SetDlgItemText(STATUS_EDIT, Fmt("Download error status=%d len=%lld",
+		SetDlgItemText(PATH_EDIT, Fmt("Download error status=%d len=%lld",
 			irr->code, irr->reply.UsedSize()));
 		return;
 	}
 
 	if ((int64)irr->reply.UsedSize() != updData.size) {
-		SetDlgItemText(STATUS_EDIT, Fmt("Update size not correct %lld / %lld",
+		SetDlgItemText(PATH_EDIT, Fmt("Update size not correct %lld / %lld",
 			irr->reply.UsedSize(), updData.size));
 		return;
 	}
 
 	if ((int64)irr->reply.UsedSize() != updData.size) {
-		SetDlgItemText(STATUS_EDIT, Fmt("Update size not correct %lld / %lld",
+		SetDlgItemText(PATH_EDIT, Fmt("Update size not correct %lld / %lld",
 			irr->reply.UsedSize(), updData.size));
 		return;
 	}
 
 	if (!d.Update(irr->reply.Buf(), (int)irr->reply.UsedSize())) {
-		SetDlgItemText(STATUS_EDIT, Fmt("Update digest update err"));
+		SetDlgItemText(PATH_EDIT, Fmt("Update digest update err"));
 		return;
 	}
 	if (!d.GetVal(hash)) {
-		SetDlgItemText(STATUS_EDIT, Fmt("Update get digest err"));
+		SetDlgItemText(PATH_EDIT, Fmt("Update get digest err"));
 		return;
 	}
 
 	if (memcmp(hash, updData.hash.Buf(), SHA256_SIZE)) {
-		SetDlgItemText(STATUS_EDIT, Fmt("Update verify error"));
+		SetDlgItemText(PATH_EDIT, Fmt("Update verify error"));
 		for (int i=0; i < SHA256_SIZE; i++) {
 			Debug("%02d: %02x %02x\n", i, hash[i], updData.hash.Buf()[i]);
 		}
@@ -207,27 +223,27 @@ void TMainDlg::UpdateExec()
 		FILE_ATTRIBUTE_NORMAL, 0);
 
 	if (hFile == INVALID_HANDLE_VALUE) {
-		SetDlgItemTextU8(STATUS_EDIT, Fmt("Update CreateFile err(%s) %d", path, GetLastError()));
+		SetDlgItemTextU8(PATH_EDIT, Fmt("Update CreateFile err(%s) %d", path, GetLastError()));
 		return;
 	}
 	DWORD	size = 0;
 	if (!::WriteFile(hFile, updData.dlData.Buf(), (DWORD)updData.dlData.UsedSize(),
 		&size, 0)) {
 		::CloseHandle(hFile);
-		SetDlgItemTextU8(STATUS_EDIT, Fmt("Update WriteFile err(%s) %d", path, GetLastError()));
+		SetDlgItemTextU8(PATH_EDIT, Fmt("Update WriteFile err(%s) %d", path, GetLastError()));
 		return;
 	}
 	::CloseHandle(hFile);
 
 	WCHAR	opt[MAX_PATH * 2];
-	snwprintfz(opt, wsizeof(opt), L"%s %s", U8toWs(path), L"/UPDATE");
+	snwprintfz(opt, wsizeof(opt), L"%s /UPDATE /DIR=\"%s\"", U8toWs(path), TGetExeDirW());
 
 	STARTUPINFOW		sui = { sizeof(sui) };
 	PROCESS_INFORMATION pi = {};
 
 #if 1
 	if (!::CreateProcessW(NULL, opt, 0, 0, 0, CREATE_NO_WINDOW, 0, TGetExeDirW(), &sui, &pi)) {
-		SetDlgItemTextU8(STATUS_EDIT, Fmt("Update WriteFile err(%s) %d", path, GetLastError()));
+		SetDlgItemTextU8(PATH_EDIT, Fmt("Update WriteFile err(%s) %d", path, GetLastError()));
 		return;
 	}
 	::CloseHandle(pi.hThread);

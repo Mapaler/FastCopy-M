@@ -34,6 +34,10 @@
 	border-color: #aaaaaa;
 	font-size: 95%;
 }
+.help_table_mini {
+	font-size: 90%;
+	margin: 10px;
+}
 .tr_default {
 	background-color: #aaffaa;
 }
@@ -72,11 +76,11 @@
 <body bgcolor="#eeffff">
 
 <div align="center">
-<h1 class="help_head1">FastCopy ver3.41</h1>
+<h1 class="help_head1">FastCopy ver3.54</h1>
 </div>
 <div class="help_all">
 
-<div align="right">2018/01/27 H.Shirouzu (”’…Œ[Í)</div>
+<div align="right">2018/08/09 H.Shirouzu (”’…Œ[Í)</div>
 
 <a name="index"/>
 <h2 class="help_head2">Index</h2>
@@ -88,6 +92,7 @@
 	<a href="#usage">5. Žg—p–@•‰æ–Êà–¾</a><br>
 		<div class="help_sub_section">
 		<a href="#source_dst">1) Source/DestDir</a><br>
+		@<a href="#backslash_behavior">DestDir––”ö‚Ì'\'‚ÌˆÓ–¡</a><br>
 		<a href="#mode">2) “®ìƒ‚[ƒh</a><br>
 		<a href="#buttons">3) ƒ{ƒ^ƒ“•ƒIƒvƒVƒ‡ƒ“Žw’è</a><br>
 		<a href="#filter">4) ƒtƒBƒ‹ƒ^Žw’è</a><br>
@@ -97,7 +102,7 @@
 	<a href="#settings">6. Ý’è</a><br>
 		<div class="help_sub_section">
 		<a href="#gen_settings">1) ˆê”ÊÝ’è</a><br>
-		<a href="#shell">2) Šg’£Ý’èiƒVƒFƒ‹Šg’£EƒtƒHƒ“ƒg“™j</a><br>
+		<a href="#font">2) ƒtƒHƒ“ƒgÝ’è</a><br>
 		<a href="#finact">3) I—¹Žžˆ—</a><br>
 		<a href="#job">4) ƒWƒ‡ƒuŠÇ—</a>
 		</div>
@@ -105,14 +110,13 @@
 	<a href="#warning">8. ’ˆÓiŠëŒ¯‚È‚Æ‚±‚ëj</a><br>
 	<a href="#contact">9. ƒTƒ|[ƒgŒfŽ¦”Â•ÅV”Å</a><br>
 	<a href="#misc">10. ‚»‚Ì‘¼</a><br>
-	<a href="#todo">11. ToDo</a><br>
-	<a href="#history">12. —š—ð</a><br>
+	<a href="#history">11. —š—ð</a><br>
 </div>
 
 <a name="about"/>
 <h2 class="help_head2">1. ŠT—v</h2>
 <div class="help_section">
-	<strong>WindowsŒnÅ‘¬(?)</strong> ‚Ìƒtƒ@ƒCƒ‹ƒRƒs[•íœƒc[ƒ‹‚Å‚·B
+	<strong>WindowsŒnÅ‘¬</strong> ‚Ìƒtƒ@ƒCƒ‹ƒRƒs[•íœƒc[ƒ‹‚Å‚·B
 	<br><br>
 	UNICODE ‚Å‚µ‚©•\Œ»‚Å‚«‚È‚¢ƒtƒ@ƒCƒ‹–¼‚âMAX_PATH(260•¶Žš) ‚ð‰z‚¦‚½ˆÊ’u‚Ìƒtƒ@ƒCƒ‹‚àƒRƒs[i•íœj‚Å‚«‚Ü‚·B
 	<br><br>
@@ -146,7 +150,6 @@
 	<br>
 	FastCopy ver3.x ‚Í GNU Public License ver3 ‚ÌƒI[ƒvƒ“ƒ\[ƒXƒ\ƒtƒgƒEƒFƒA‚Å‚·B<br>
 	Ú×‚Í“¯«‚Ì <a href="license-gpl3.txt">license-gpl3.txt</a> ‚ð‚²——‚­‚¾‚³‚¢B<br>
-	i‰ü•Ï”ÅƒoƒCƒiƒŠ”z•z‚ðA”z•zæ‚É‘Î‚µ‚Äƒ\[ƒXƒR[ƒh”ñŒöŠJ‚Ås‚¢‚½‚¢ê‡‚âAƒoƒ“ƒhƒ‹”Å‚â“Á•Ê”ÅŠJ”­“™‚Ì‚²—v–]‚ª‚ ‚è‚Ü‚µ‚½‚çAìŽÒ(shirouzu@ipmsg.org)‚Ü‚Å‚¨–â‚¢‡‚í‚¹‚­‚¾‚³‚¢j
 	<br>
 	</div><br>
 	<div class="help_license">
@@ -167,21 +170,23 @@
 <div class="help_section">
 	<h3 class="help_head3">ƒCƒ“ƒXƒg[ƒ‹</h3>
 	<div class="help_sub_section">
-		setup.exe ‚ðŽÀs‚µ‚ÄA”CˆÓ‚ÌƒfƒBƒŒƒNƒgƒŠ‚ÉƒCƒ“ƒXƒg[ƒ‹‚µ‚Ä‚­‚¾‚³‚¢B<br>
-		iƒCƒ“ƒXƒg[ƒ‹ƒfƒBƒŒƒNƒgƒŠ‚Ö‚ÌƒRƒs[‚ÆAƒVƒ‡[ƒgƒJƒbƒg‚Ìì¬‚ðs‚¢‚Ü‚·j<br>
-		USB ƒƒ‚ƒŠ“™‚ÉŠi”[‚µ‚ÄŽg—p‚·‚éê‡‚ÍAfastcopy.exe, fastcopy.chm ‚Ì‚Ý‚ðƒRƒs[‚µ‚Ä‚¨Žg‚¢‚­‚¾‚³‚¢Bi‚±‚Ìê‡AƒVƒFƒ‹Šg’£‚ÍŽg‚¦‚Ü‚¹‚ñj
+		FastCopy3xx_installer.exe ‚ðŽÀs‚µ‚ÄA”CˆÓ‚ÌƒfƒBƒŒƒNƒgƒŠ‚ÉƒCƒ“ƒXƒg[ƒ‹‚µ‚Ä‚­‚¾‚³‚¢B<br>
+		USB ƒƒ‚ƒŠ“™‚ÉŠi”[‚µ‚ÄŽg—p‚·‚éê‡‚ÍAƒCƒ“ƒXƒg[ƒ‰‚Ìu“WŠJ‚Ì‚Ývƒ{ƒ^ƒ“‚ð‰Ÿ‚µ‚ÄAFastCopy.exe“™‚ðŽæ‚èo‚µ‚Ä‚­‚¾‚³‚¢B<br>
+		/h ƒIƒvƒVƒ‡ƒ“‚ð•t‚¯‚é‚ÆA/silent ‚â /extract “™‚ÌƒIƒvƒVƒ‡ƒ“‚ª•\Ž¦‚³‚ê‚Ü‚·B
 	</div>
 
 	<h3 class="help_head3">ƒAƒ“ƒCƒ“ƒXƒg[ƒ‹</h3>
 	<div class="help_sub_section">
-		ƒCƒ“ƒXƒg[ƒ‹ƒfƒBƒŒƒNƒgƒŠ‚Ì setup.exe ‚ðŽg‚Á‚ÄƒAƒ“ƒCƒ“ƒXƒg[ƒ‹‚·‚é‚±‚Æ‚ª‚Å‚«‚Ü‚·B
+		ƒCƒ“ƒXƒg[ƒ‹ƒfƒBƒŒƒNƒgƒŠ‚Ì setup.exe ‚ðŽg‚Á‚ÄƒAƒ“ƒCƒ“ƒXƒg[ƒ‹‚·‚é‚±‚Æ‚ª‚Å‚«‚Ü‚·B<br>
+		Win7ˆÈ~‚Å‚ÍOS‚ÌÝ’è/ƒRƒ“ƒgƒ[ƒ‹ƒpƒlƒ‹“™‚É‚ ‚éuƒvƒƒOƒ‰ƒ€‚Æ‹@”\v‚©‚çAƒAƒ“ƒCƒ“ƒXƒg[ƒ‹‰Â”\‚Å‚·B<br>
+		/r /silent ‚Æ‚·‚é‚ÆAƒTƒCƒŒƒ“ƒgƒCƒ“ƒXƒg[ƒ‹‚É‚È‚è‚Ü‚·B
 	</div>
 </div>
 
 <a name="usage"/>
 <h2 class="help_head2">5. Žg—p–@•‰æ–Êà–¾</h2>
 <div class="help_section">
-	ƒEƒBƒ“ƒhƒE‚ÌÅ¬‰»‚ÅAƒ^ƒXƒNƒgƒŒƒC‚ÉŠi”[‚µ‚Ü‚·B<br>
+	ƒEƒBƒ“ƒhƒE‚ÌÅ¬‰»‚ÅAƒ^ƒXƒN’Ê’m—Ìˆæ‚ÉŠi”[‚µ‚Ü‚·B<br>
 	“®ì’†‚ÍAŠeŽíƒXƒe[ƒ^ƒX‚ª•\Ž¦‚³‚ê‚Ü‚·B<br>
 	iƒtƒ@ƒCƒ‹”‚ÌŠ‡ŒÊ“à‚ÍƒfƒBƒŒƒNƒgƒŠ”‚ð•\‚µ‚Ü‚·j<br>
 	<a name="source_dst"/>
@@ -195,7 +200,7 @@
 		‚Ü‚½ADestDir “ü—Í—“‚Ö‚ÌiƒfƒBƒŒƒNƒgƒŠ‚Ìjƒhƒƒbƒv‚à‰Â”\‚Å‚·B
 
 		<a name="backslash_behavior"/>
-		<h4 class="help_head4">DestDir Žw’è‚Ì––”ö‚É '\' ‚ª‚ ‚é‚©‚Ç‚¤‚©‚É‚æ‚é‹““®‚Ìˆá‚¢</h4>
+		<h4 class="help_head4">DestDir––”ö‚Ì '\' ‚Ì—L–³‚É‚æ‚é‹““®‚Ìˆá‚¢</h4>
 		<table class="help_table" border="4">
 			<tr><td nowrap><strong>––”ö‚É'\'‚ª‚ ‚é</strong></td><td>
 			Source ƒfƒBƒŒƒNƒgƒŠŽ©‘Ì‚ðŠÜ‚ß‚ÄADestDir ”z‰º‚ÉƒRƒs[‚µ‚Ü‚·B<br>
@@ -251,33 +256,31 @@
 		E<strong>SHIFTƒL[‚ð‰Ÿ‚µ‚È‚ª‚çƒŠƒXƒgƒAƒbƒv‚ð‰Ÿ‚·</strong>‚ÆiƒƒOÝ’è‚Åƒtƒ@ƒCƒ‹ƒƒO‚ð—LŒø‚É‚µ‚Ä‚¢‚éê‡jƒŠƒXƒgƒAƒbƒv“à—e‚ªƒtƒ@ƒCƒ‹ƒƒO‚É‹L˜^‚³‚ê‚Ü‚·BiƒƒOÝ’è‚Åƒtƒ@ƒCƒ‹“ú•tEƒTƒCƒY‹L˜^ƒIƒvƒVƒ‡ƒ“‚ðÝ’è‚µ‚Ä‚¢‚éê‡A‚»‚ê‚ç‚à•\Ž¦E‹L˜^‚³‚ê‚Ü‚·j
 		</td></tr>
 		<tr><td nowrap><strong>Buffer Žw’è</strong></td>
-		<td>Read/Write ‚ÉŽg‚¤Aƒoƒbƒtƒ@ƒTƒCƒY‚ð MB ’PˆÊ‚ÅŽw’è‚µ‚Ü‚·B<br>
-			v3.0ˆÈ~A64bit”Å‚Å‚Í<strong>4096MBˆÈã</strong>‚ðŽw’è‰Â”\‚É‚È‚è‚Ü‚µ‚½BiˆÓ–¡‚ª‚ ‚é‚©‚ÍH‚Å‚·‚ªj<br>
-			i<a href="#setting_io">Å‘åI/O’PˆÊ</a>‚Ì2”{ˆÈã‚Ì’l‚ª•K—v‚Å‚·j</td></tr>
+		<td>Read/Write ‚ÉŽg‚¤Aƒoƒbƒtƒ@ƒTƒCƒY‚ð•\Ž¦‚µ‚Ü‚·BƒNƒŠƒbƒN‚·‚é‚ÆÝ’è‚ª•\Ž¦‚³‚ê‚Ü‚·</td></tr>
 		<tr><td nowrap><strong>‘¬“xƒRƒ“ƒgƒ[ƒ‹</strong></td>
 		<td>Å‘å(Full Speed)AŽ©“®‘¬“x§ŒÀ(Auto Slow)(*1)A‘¬“xŽw’è(90%`10%)A’âŽ~(Suspend) ‚ðŽw’è‚·‚é‚±‚Æ‚ª‚Å‚«‚Ü‚·Bd‚¢‚ÆŠ´‚¶‚éê‡‚ÍuŽ©“®‘¬“x§ŒÀv‚ðŽŽ‚·‚Æ—Ç‚¢‚Å‚µ‚å‚¤iƒ}ƒEƒX‚âÅ‘O–ÊƒEƒBƒ“ƒhƒE‚Ì•Ï‰»‚ðŒŸ’m‚·‚é‚ÆAˆê’èŽžŠÔA’x‚­‚µ‚Ü‚·jB‚Ü‚½uÅ‘åvˆÈŠO‚Ìê‡‚ÍAƒvƒƒZƒX—Dæ“xƒNƒ‰ƒX‚ðu’áv‚É—Ž‚Æ‚µ‚Ü‚·Bi<a href="#job">ƒWƒ‡ƒuŠÇ—</a>‚Å‚Ì•Û‘¶€–Ú‘ÎÛ‚É‚Í‚È‚è‚Ü‚¹‚ñj</td></tr>
 		<tr><td nowrap><strong>ƒGƒ‰[ŽžŒp‘±</strong></td>
 		<td>Read/Write/Delete“™‚ÅAƒGƒ‰[‚ª”­¶‚µ‚Ä‚àA’†’f‚¹‚¸A‰Â”\‚ÈŒÀ‚è“®ì‚ð‘±‚¯‚Ü‚·B<br>
 		i‚½‚¾‚µAƒGƒ‰[•\Ž¦—“‚âƒGƒ‰[ƒƒO‚É‚ÍŽc‚è‚Ü‚·j</td></tr>
 		<tr><td nowrap><strong>ƒxƒŠƒtƒ@ƒC</strong></td>
-		<td><a name="hash_mode"/>MD5 (SHA-1/SHA-256) ‚É‚æ‚é‘‚«ž‚Ýƒf[ƒ^‚ÌƒxƒŠƒtƒ@ƒC‚ðs‚¢‚Ü‚·B<br>
-		iSHA-1/SHA-256/xxHash ‚ð—˜—p‚·‚éê‡‚ÍAÝ’è‚Ì<a href="#setting_copyopt">ƒRƒs[EˆÚ“®ŠÖ˜AƒIƒvƒVƒ‡ƒ“</a>‚©‚ç•ÏX‚Å‚«‚Ü‚·B
-		ˆÀ‘S«‚Æ‚µ‚Ä‚ÍMD5 ‚Å\•ª‚Å‚·‚ªAƒƒO‚É‹L˜^‚³‚ê‚éƒnƒbƒVƒ…’l‚ð•Ê—p“r‚Å—˜—p‚µ‚½‚¢ê‡‚É‚¨Žg‚¢‚­‚¾‚³‚¢j<br><br>
+		<td><a name="hash_mode"/>xxHash (MD5/SHA-1/SHA-256) ‚É‚æ‚é‘‚«ž‚Ýƒf[ƒ^‚ÌƒxƒŠƒtƒ@ƒC‚ðs‚¢‚Ü‚·B<br>
+		iMD5/SHA-1/SHA-256 ‚ð—˜—p‚·‚éê‡‚ÍAÝ’è‚Ì<a href="#setting_copyopt">ƒRƒs[EˆÚ“®ŠÖ˜AƒIƒvƒVƒ‡ƒ“</a>‚©‚ç•ÏX‚Å‚«‚Ü‚·B
+		ˆÀ‘S«‚Æ‚µ‚Ä‚ÍxxHash ‚Å\•ª‚Å‚·‚ªAƒƒO‚É‹L˜^‚³‚ê‚éƒnƒbƒVƒ…’l‚ð•Ê—p“r‚Å—˜—p‚µ‚½‚¢ê‡‚É‚¨Žg‚¢‚­‚¾‚³‚¢j<br><br>
 		 ‚È‚¨A‹ï‘Ì“I‚É‚ÍAŽŸ‚Ì‚æ‚¤‚È”äŠr‚ðs‚¢‚Ü‚·B<br>
-		 Read(Src) -> MD5(Src) -> Write(Dst) -> Read(Dst) -> MD5(Dst) -> MD5”äŠr(Src/Dst) <br>
+		 Read(Src) -> xxHash(Src) -> Write(Dst) -> Read(Dst) -> xxHash(Dst) -> xxHash”äŠr(Src/Dst) <br>
 		 iŠeƒXƒe[ƒW‚ªA•¡”‚Ìƒtƒ@ƒCƒ‹‚ðŒ×‚Á‚½ƒpƒCƒvƒ‰ƒCƒ“‚Ì‚æ‚¤‚É•À—ñ‚µ‚Äˆ—‚³‚ê‚Ü‚·j
+		 <br><br>
+		ƒxƒŠƒtƒ@ƒCƒGƒ‰[‚ª”­¶‚µ‚½ê‡AƒRƒs[Œ³Eæ‚ÌƒnƒbƒVƒ…’l‚ð•\Ž¦‚µ‚½ã‚ÅAƒRƒs[æ‚Ìƒtƒ@ƒCƒ‹–¼‚É.fc_verify_err‚ð•t—^‚µ‚½‚à‚Ì‚É•ÏX‚µ‚Ü‚·B<br>
+		iÝ’è‚ÅAíœ“®ì‚É‚·‚é‚±‚Æ‚à‚Å‚«‚Ü‚·j
+
 		 </td></tr>
 		<tr><td nowrap><strong>Š®—¹ŽžŠÔ—\‘ª</strong></td>
 		<td>ƒRƒs[ŠJŽn‘O‚ÉA‘ƒtƒ@ƒCƒ‹”E‘ƒtƒ@ƒCƒ‹ƒTƒCƒY‚ð’²‚×‚é‚±‚Æ‚ÅAŠ®—¹ŽžŠÔ‚ð—\‘ª‚µ‚Ü‚·B
 i‚È‚¨Aíœƒ‚[ƒh‚Å‚Ì—\‘ª‚Í‚Å‚«‚Ü‚¹‚ñB‚Ü‚½AˆÚ“®ƒ‚[ƒh‚Ìê‡AíœŽžŠÔ‚Í—\‘ª‚ÉŠÜ‚ñ‚Å‚¢‚Ü‚¹‚ñj</td></tr>
-		<tr><td nowrap><strong>Top</strong></td>
-		<td>í‚ÉÅ‘O–Ê‚É•\Ž¦‚µ‚Ü‚·B</td></tr>
 		<tr><td nowrap><strong>’¼‚¿‚ÉŠJŽn</strong></td>
 		<td>‘¼‚Ì FastCopy ‚ªŽÀs’†‚Ìê‡‚ÉA‚»‚ÌŠ®—¹‚ð‘Ò‚Â‚±‚Æ‚È‚­A’¼‚¿‚ÉŽÀs‚ðŠJŽn‚µ‚Ü‚·Bi‚È‚¨A‘¼‚Ì FastCopy ‚ªƒRƒs[EˆÚ“®’†‚Å‚È‚¢ê‡A‚±‚Ìƒ{ƒ^ƒ“‚ÍŒ»‚ê‚Ü‚¹‚ñji<a href="#setting_parallel">“¯ŽžŽÀs</a>j</strong></td></tr>
-		<tr><td nowrap><strong>u?v</strong></td>
-		<td>ƒwƒ‹ƒv‚ð•\Ž¦‚µ‚Ü‚·B</td></tr>
 		</table>
-		i*1)FastCopy ‚ªƒAƒNƒeƒBƒu‚Å‚È‚¢ó‘Ô‚Åƒ}ƒEƒXˆÚ“®‚ðŒŸo‚·‚é‚Æ‘¬“x§ŒÀ‚µ‚Ü‚·B‹ï‘Ì“I‚É‚ÍAI/O “®ì‚Ì‡ŠÔ‚ÉƒEƒFƒCƒg‚ð“ü‚ê‚éAƒvƒƒZƒX—Dæ“x‚ð‰º‚°‚éAI/O—Dæ“x‚ð‰º‚°‚é(VistaˆÈ~)AÅ‘åI/OƒTƒCƒY‚ð1MB‚É’á‰º‚³‚¹‚éA“™‚É‚æ‚è“®ì‘¬“x‚ð§ŒÀ‚µ‚Ü‚·B‚È‚¨A“®ì“à—e‚ÍA«—ˆA•ÏX‚³‚ê‚é‰Â”\«‚ª‚ ‚è‚Ü‚·<br>
+		i*1)FastCopy ‚ªƒAƒNƒeƒBƒu‚Å‚È‚¢ó‘Ô‚Åƒ}ƒEƒXˆÚ“®‚ðŒŸo‚·‚é‚Æ‘¬“x§ŒÀ‚µ‚Ü‚·B‹ï‘Ì“I‚É‚ÍAI/O “®ì‚Ì‡ŠÔ‚ÉƒEƒFƒCƒg‚ð“ü‚ê‚éAƒvƒƒZƒX—Dæ“x‚ð‰º‚°‚éAI/O—Dæ“x‚ð‰º‚°‚éAÅ‘åI/OƒTƒCƒY‚ð1MB‚É’á‰º‚³‚¹‚éA“™‚É‚æ‚è“®ì‘¬“x‚ð§ŒÀ‚µ‚Ü‚·B‚È‚¨A“®ì“à—e‚ÍA«—ˆA•ÏX‚³‚ê‚é‰Â”\«‚ª‚ ‚è‚Ü‚·<br>
 
 		<br>
 		<a name="options"/>
@@ -320,8 +323,7 @@
 		</table>
 		<br>
 		<a name="filter_ps"/>
-		”õl‚Pjíœƒ‚[ƒh‚ÅAinclude ‚Éuƒtƒ@ƒCƒ‹Žw’è‚ ‚è•ƒfƒBƒŒƒNƒgƒŠŽw’è‚È‚µv‚Ìê‡‚ÉƒfƒBƒŒƒNƒgƒŠíœ‚µ‚Ü‚¹‚ñB<br>
-		@iver2.11 ‚Ü‚Å‚ÌuƒtƒBƒ‹ƒ^Žw’èŽží‚ÉƒfƒBƒŒƒNƒgƒŠíœ‚µ‚È‚¢v‚©‚ç‹““®‚ð•Ï‚¦‚Ä‚¢‚Ü‚·j<br>
+		”õl‚Pjíœƒ‚[ƒh‚ÅAInclude ‚Éuƒtƒ@ƒCƒ‹Žw’è‚ ‚è•ƒfƒBƒŒƒNƒgƒŠŽw’è‚È‚µv‚Ìê‡‚ÉƒfƒBƒŒƒNƒgƒŠíœ‚µ‚Ü‚¹‚ñB<br>
 		”õl‚Qjƒtƒ@ƒCƒ‹‚ð1‚ÂˆÈãŽw’è‚µ‚½ê‡Aƒ}ƒbƒ`‚µ‚È‚¢ƒtƒ@ƒCƒ‹‚ÍƒRƒs[‚³‚ê‚Ü‚¹‚ñB<br>
 		”õl‚RjƒfƒBƒŒƒNƒgƒŠ‚ð1‚ÂˆÈãŽw’è‚µ‚½ê‡Aƒ}ƒbƒ`‚µ‚È‚¢ƒfƒBƒŒƒNƒgƒŠ”z‰ºˆÈŠO‚ÍƒRƒs[‚³‚ê‚Ü‚¹‚ñB<br>
 		<br>
@@ -329,18 +331,70 @@
 		<a name="long_filter"/>
 		<table class="help_table" border="4">
 		<tr><td><strong>‘Š‘ÎƒpƒXŽw’è</strong></td><td>
-			include/exclude ‚Ìæ“ª•¶Žš‚ª \ ‚Å‚È‚¢ê‡A‘Š‘ÎƒpƒXŽw’è‚Æ‚È‚èAƒpƒX‚Ì––”ö•ûŒü‚©‚ç‚Ìˆê’v‚ðŒŸõ‚µ‚Ü‚·B<br>
-			SourceŽw’è‚ª C:\dir\ ‚ÌŽžAincludeŽw’è‚É subdir[1-9]\xxx\ ‚Æ‚·‚é‚ÆAC:\dir\subdir2\xxx\ ‚â C:\dir\dir\subdir3\xxx\ ‚È‚Ç‚Ìƒ}ƒbƒ`‚·‚éƒfƒBƒŒƒNƒgƒŠ‚Æ‚È‚èA‚»‚Ì”z‰º‚Ìƒtƒ@ƒCƒ‹‚Ì‚Ý‚ªƒRƒs[‚³‚ê‚Ü‚·B<br>
-			subdir[1-9]\file.* ‚Æƒtƒ@ƒCƒ‹‚ðincludeŽw’è‚µ‚½ê‡AC:\dir\zzz\subdir9\file.txt ‚È‚Ç‚ªƒ}ƒbƒ`‚µAƒRƒs[‘ÎÛ‚É‚È‚è‚Ü‚·B
+			Include/Exclude ‚Ìæ“ª•¶Žš‚ª \ ‚Å‚È‚¢ê‡A‘Š‘ÎƒpƒXŽw’è‚Æ‚È‚èAƒpƒX‚Ì––”ö•ûŒü‚©‚ç‚Ìˆê’v‚ðŒŸõ‚µ‚Ü‚·B<br>
+
+			<table class="help_table_mini" border="1">
+			<tr class="tr_default"><td colspan="2"><strong>ƒfƒBƒŒƒNƒgƒŠ‚Ì IncludeŽw’è‚Ì—á</strong></td></tr>
+			<tr><td>SourceŽw’è</td><td>C:\dir\</td></tr>
+			<tr><td>IncludeŽw’è</td><td>subdir[1-9]\xxx\</td></tr>
+			<tr><td>ƒ}ƒbƒ`—á</td><td>
+				C:\dir\subdir2\xxx\ ‚â <br>
+				C:\dir\aaa\subdir3\xxx\ ‚È‚Ç
+			</td></tr>
+			<tr><td>Œø‰Ê</td><td>ƒ}ƒbƒ`‚µ‚½ƒfƒBƒŒƒNƒgƒŠ‚Æ‚»‚Ì”z‰º‘S‚Ä‚ªƒRƒs[‚³‚ê‚Ü‚·B</td></tr>
+			</table>
+
+			<table class="help_table_mini" border="1">
+			<tr class="tr_default"><td colspan="2"><strong>ƒtƒ@ƒCƒ‹‚Ì IncludeŽw’è‚Ì—á</strong></td></tr>
+			<tr><td>SourceŽw’è</td><td>C:\dir\</td></tr>
+			<tr><td>IncludeŽw’è</td><td>subdir[1-9]\file.*</td></tr>
+			<tr><td>ƒ}ƒbƒ`—á</td><td>
+				C:\dir\aaa\subdir9\file.txt ‚â<br>
+				C:\dir\bbb\ccc\subdir9\file.doc ‚È‚Ç
+			</td></tr>
+			<tr><td>Œø‰Ê</td><td>ƒ}ƒbƒ`‚µ‚½ƒtƒ@ƒCƒ‹‚ªƒRƒs[‚³‚ê‚Ü‚·B</td></tr>
+			</table>
+
 		</td></tr>
-		<tr><td><strong>ŠJŽnƒpƒXŽw’è</strong></td><td>
-			include/exclude ‚Ìæ“ª•¶Žš‚ª \ ‚Å‚Í‚¶‚Ü‚éê‡AŠJŽnƒpƒXŽw’è‚Æ‚È‚èAƒpƒX‚Ìæ“ª•ûŒüi‰º‹LAƒtƒBƒ‹ƒ^ŒŸ¸‚ÌŠJŽn“_‚ðŽQÆj‚©‚ç‚Ìˆê’v‚ðŒŸõ‚µ‚Ü‚·B<br>
-			SourceŽw’è‚ª C:\dir\ ‚ÌŽžAincludeŽw’è‚É \subdir[1-9]\xxx\ ‚Æ‚·‚é‚ÆAC:\dir\subdir2\xxx\ ‚â C:\dir\subdir3\xxx\ ‚È‚Ç‚Ìƒ}ƒbƒ`‚·‚éƒfƒBƒŒƒNƒgƒŠ”z‰º‚Ìƒtƒ@ƒCƒ‹‚Ì‚Ý‚ªƒRƒs[‘ÎÛ‚É‚È‚è‚Ü‚·B<br>
-			include ‚É \subdir[1-9]\file.* ‚Æƒtƒ@ƒCƒ‹‚ðŽw’è‚µ‚½ê‡‚àAC:\dir\subdir9\file.txt ‚È‚Ç‚ªƒRƒs[‘ÎÛ‚É‚È‚èA‚»‚ê‚æ‚è[‚¢ƒfƒBƒŒƒNƒgƒŠ‚Ìƒtƒ@ƒCƒ‹‚É‚Íƒ}ƒbƒ`‚µ‚Ü‚¹‚ñB
+		<tr><td><strong>‘O•ûˆê’vŽw’è</strong></td><td>
+			Include/Exclude ‚Ìæ“ª•¶Žš‚ª \ ‚Å‚Í‚¶‚Ü‚éê‡A‘O•ûˆê’vŽw’è‚Æ‚È‚èAƒpƒX‚Ìæ“ª•ûŒüi‰º‹LAƒtƒBƒ‹ƒ^ŒŸ¸‚ÌŠJŽn“_‚ðŽQÆj‚©‚ç‚Ìˆê’v‚ðŒŸõ‚µ‚Ü‚·B<br>
+
+			<table class="help_table_mini" border="1">
+			<tr class="tr_default"><td colspan="2"><strong>ƒfƒBƒŒƒNƒgƒŠ‚Ì IncludeŽw’è‚Ì—á</strong></td></tr>
+			<tr><td>SourceŽw’è</td><td>C:\dir\</td></tr>
+			<tr><td>IncludeŽw’è</td><td><strong>\</strong>subdir[1-9]\xxx\</td></tr>
+			<tr><td>ƒ}ƒbƒ`—á</td><td>
+				C:\dir\subdir2\xxx\ ‚â <br>
+				C:\dir\subdir3\xxx\ ‚È‚ÇB
+			</td></tr>
+			<tr><td>Œø‰Ê</td><td>ƒ}ƒbƒ`‚µ‚½ƒfƒBƒŒƒNƒgƒŠ‚Æ‚»‚Ì”z‰º‘S‚Ä‚ªƒRƒs[‚³‚ê‚Ü‚·B</td></tr>
+			<tr><td>”õliƒ}ƒbƒ`‚µ‚È‚¢—áj</td><td>
+				C:\dir\aaa\subdir2\xxx\ ‚È‚ÇAŠK‘w‚ªˆá‚¤‚à‚ÌB
+			</td></tr>
+			</table>
+
+			<table class="help_table_mini" border="1">
+			<tr class="tr_default"><td colspan="2"><strong>ƒtƒ@ƒCƒ‹‚Ì IncludeŽw’è‚Ì—á</strong></td></tr>
+			<tr><td>SourceŽw’è</td><td>C:\dir\</td></tr>
+			<tr><td>IncludeŽw’è</td><td><strong>\</strong>subdir[1-9]\file.*</td></tr>
+			<tr><td>ƒ}ƒbƒ`—á</td><td>
+				C:\dir\subdir2\file.txt ‚â<br>
+				C:\dir\subdir9\file.doc ‚È‚Ç
+			</td></tr>
+			<tr><td>Œø‰Ê</td><td>ƒ}ƒbƒ`‚µ‚½ƒtƒ@ƒCƒ‹‚ªƒRƒs[‚³‚ê‚Ü‚·B</td></tr>
+			<tr><td>”õliƒ}ƒbƒ`‚µ‚È‚¢—áj</td><td>
+				C:\dir\aaa\subdir9\file.txt ‚È‚ÇAŠK‘w‚ªˆá‚¤‚à‚ÌB
+			</td></tr>
+			</table>
+
 		</td></tr>
-		<tr><td><strong>ƒtƒBƒ‹ƒ^ŒŸ¸‚ÌŠJŽn“_</strong></td><td>
-			SourceŽw’è‚ª C:\src\; C:\src\file.txt; C:\src\dir* ‚Ì‚¢‚¸‚ê‚©‚Ìê‡A
-			ƒtƒBƒ‹ƒ^ŒŸ¸‚ÌŠJŽn“_iæ“ªj‚Í C:\src\ ‚É‚È‚è‚Ü‚·B<br>
+		<tr><td><strong>ƒtƒBƒ‹ƒ^ŒŸ¸‚ÌŠJŽnˆÊ’u</strong></td><td>
+			SourceŽw’è‚ª<br>
+			C:\src\;<br>
+			C:\src\file.txt;<br>
+			C:\src\dir*<br>
+			‚Ì‚¢‚¸‚ê‚©‚Ìê‡AƒtƒBƒ‹ƒ^ŒŸ¸‚ÌŠJŽnˆÊ’uiæ“ªj‚Í<br>
+			C:\src\ ‚ÌŽŸ‚Ì•¶Žš‚©‚ç‚É‚È‚è‚Ü‚·BiC:\src\ ‚Ü‚Å‚ÍƒtƒBƒ‹ƒ^ŒŸ¸”ÍˆÍ‚É“ü‚è‚Ü‚¹‚ñj
 		</td></tr>
 		</table>
 		<br>
@@ -353,7 +407,7 @@
 		<tr><td>[abc]</td><td>abc ‚Ì‚Ç‚ê‚© 1•¶Žš</td>
 		<tr><td>[!abc]</td><td>abc ‚Ì‚Ç‚ê‚© 1•¶ŽšˆÈŠOB'!' ‚Ì‘ã‚í‚è‚É '^' ‚Å‚à‰Â</td>
 		<tr><td>[a-z]</td><td>a-z ‚Ü‚Å‚Ì”CˆÓ‚Ì1•¶Žš</td>
-		<tr><td>\</td><td>æ“ª‚Ì\‚ÍŠJŽnƒpƒXŽw’è‚ðˆÓ–¡‚µ‚Ü‚·BƒpƒX“r’†‚Ì\‚ÍƒfƒBƒŒƒNƒgƒŠ‹æØ‚è‚ðˆÓ–¡‚µ‚Ü‚·B––”ö‚Ì\‚ÍƒfƒBƒŒƒNƒgƒŠŽw’è‚ð•\‚µ‚Ü‚·B<br>
+		<tr><td>\</td><td>æ“ª‚Ì\‚Í‘O•ûˆê’vŽw’è‚ðˆÓ–¡‚µ‚Ü‚·BƒpƒX“r’†‚Ì\‚ÍƒfƒBƒŒƒNƒgƒŠ‹æØ‚è‚ðˆÓ–¡‚µ‚Ü‚·B––”ö‚Ì\‚ÍƒfƒBƒŒƒNƒgƒŠŽw’è‚ð•\‚µ‚Ü‚·B<br>
 			[] ‚Ì’†‚Å\‚ÍƒGƒXƒP[ƒv•¶Žš‚É‚È‚è‚Ü‚·B—á‚¦‚Î "["‚â"]"‚ðƒtƒ@ƒCƒ‹–¼•¶Žš‚Ìˆê•”‚Æ‚µ‚ÄŽw’è‚µ‚½‚¢ê‡‚ÍA[\[] ‚È‚Ç‚Æ‚µ‚Ü‚·</td>
 		</table>
 		<br>
@@ -407,6 +461,7 @@
 			<tr><td nowrap><strong>FastCopyDir</strong></td><td>fastcopy.log ‚â fastcopy2.ini ‚ª’u‚©‚ê‚Ä‚¢‚éƒfƒBƒŒƒNƒgƒŠ‚ðŠJ‚«‚Ü‚·</td></tr>
 			<tr><td nowrap><strong>‹N“®ŽžˆÊ’u‚É‚·‚é</strong></td><td>‹N“®Žž‚ÉAí‚ÉŒ»Ý‚ÌˆÊ’u‚ÅŠJ‚­‚æ‚¤‚É‚µ‚Ü‚·</td></tr>
 			<tr><td nowrap><strong>‹N“®ŽžƒTƒCƒY‚É‚·‚é</strong></td><td>‹N“®Žž‚ÉAí‚ÉŒ»Ý‚ÌƒTƒCƒY‚ÅŠJ‚­‚æ‚¤‚É‚µ‚Ü‚·</td></tr>
+			<tr><td nowrap><strong>í‚ÉÅ‘O–Ê‚É•\Ž¦</strong></td><td>í‚ÉÅ‘O–Ê‚É•\Ž¦‚µ‚Ü‚·B</td></tr>
 			<tr><td nowrap><strong>•Â‚¶‚é</strong></td><td>FastCopy‚ðI—¹‚µ‚Ü‚·</td></tr>
 			</table>
 		</div>
@@ -415,7 +470,7 @@
 			<table class="help_table" border="3">
 			<tr><td nowrap><strong>ƒwƒ‹ƒv</strong></td><td>‚±‚Ìƒwƒ‹ƒv‚ðŠJ‚«‚Ü‚·</td></tr>
 			<tr><td nowrap><strong>ƒAƒbƒvƒf[ƒgŠm”F</strong></td>
-				<td><a href="https://ipmsg.org/fastcopy-update.dat">https://ipmsg.org/fastcopy-update.dat</a> ‚ÉƒAƒNƒZƒX‚µ‚ÄAƒAƒbƒvƒf[ƒg‚ª‘¶Ý‚·‚é‚©–â‚¢‡‚í‚¹‚Ü‚·B</td></tr>
+				<td><a href="https://fastcopy.jp/fastcopy-update.dat">https://fastcopy.jp/fastcopy-update.dat</a> ‚ÉƒAƒNƒZƒX‚µ‚ÄAƒAƒbƒvƒf[ƒg‚ª‘¶Ý‚·‚é‚©–â‚¢‡‚í‚¹‚Ü‚·B</td></tr>
 			<tr><td nowrap><strong>ƒTƒ|[ƒgŒfŽ¦”Â</strong></td><td>FastCopyŠÖ˜A‚ÌŽ¿–â‚â’ñˆÄ‚ð‚·‚éŒfŽ¦”Â‚Å‚·</td></tr>
 			<tr><td nowrap><strong>ÅV”ÅURL</strong></td><td>FastCopy‚Ìƒz[ƒ€ƒy[ƒW‚ðŠJ‚«‚Ü‚·</td></tr>
 			<tr><td nowrap><strong>FastCopy‚É‚Â‚¢‚Ä</strong></td><td>ƒo[ƒWƒ‡ƒ“•’˜ìŒ ‚ð•\Ž¦‚µ‚Ü‚·</td></tr>
@@ -444,7 +499,11 @@
 		<h4 class="help_head4">ƒfƒtƒHƒ‹ƒgÝ’è</h4>
 		<div class="help_sub_section">
 		‹N“®‰æ–Ê‚ÌƒfƒtƒHƒ‹ƒg’l‚ðŽw’è‚µ‚Ü‚·B<br>
-		€–Úà–¾‚Í <a href="#mainwin">‚±‚¿‚ç</a>‚ð‚²——‚­‚¾‚³‚¢B
+
+		<table class="help_table" border="4">
+		<tr><td nowrap><strong>ƒƒCƒ“‰æ–Ê‚ÌƒfƒtƒHƒ‹ƒg’l</strong></td><td>€–Úà–¾‚Í <a href="#mainwin">‚±‚¿‚ç</a>‚ð‚²——‚­‚¾‚³‚¢B</td></tr>
+		<tr><td nowrap><strong>Language</strong></td><td>•\Ž¦Œ¾Œê‚ð•ÏX‚µ‚Ü‚·iÄ‹N“®Œã‚É—LŒø‚É‚È‚è‚Ü‚·j</td></tr>
+		</table>
 		</div>
 
 		<a name="setting_io"/>
@@ -453,16 +512,17 @@
 			I/O—p‚ÌŠî–{ƒpƒ‰ƒ[ƒ^Ý’è‚ðs‚¢‚Ü‚·B
 
 			<table class="help_table" border="4">
+			<tr><td nowrap><strong>ƒƒCƒ“ƒoƒbƒtƒ@ƒTƒCƒY(MB)</strong></td><td>Read/Write‚ÅŽg‚¤ƒƒCƒ“ƒoƒbƒtƒ@‚ðŽw’è‚µ‚Ü‚·B
+				</td></tr>
 			<tr><td nowrap><strong>I/O’PˆÊ(MB)</strong></td><td>1‰ñ‚ÉOS‚ÉƒŠƒNƒGƒXƒg‚·‚éReadFile/WriteFile‚ÌƒTƒCƒY‚ðŽw’è‚µ‚Ü‚·<br>
 				uI/O’PˆÊ * ”ñ“¯ŠúI/O”­s”v‚ªAOS“à‚Å“¯Žž‚ÉŽÀs‚³‚ê‚éuÅ‘åI/OƒTƒCƒYv‚É‚È‚è‚Ü‚·B<br>
 				‚È‚¨AŽèŒ³‚Å‚ÌŽÀŒ±‚Å‚Í I/O’PˆÊ‚ð2`4MBˆÈã‚É‘å‚«‚­‚·‚é‚Æƒlƒbƒgƒ[ƒNƒhƒ‰ƒCƒu‚Å‚Ì“]‘—‘¬“x‚ª­‚µ’á‰º‚·‚é‚½‚ßA1MB‚ð„§’l‚Æ‚µ‚Ä‚¢‚Ü‚·B<br>
-				i<a href="#mainwin">Buffer Žw’è</a>‚ÍAÅ‘åI/O’PˆÊ‚Ì2”{ˆÈã‚ª•K—v‚Å‚·j<br><br>
 				‚±‚Ì’li‚Æ‰º‹L‚Ì”ñ“¯ŠúI/O”­s”j‚ð‹É’[‚É‘å‚«‚­‚·‚é‚ÆAƒJ[ƒlƒ‹“àƒŠƒ\[ƒX•s‘«‚Å I/OƒGƒ‰[‚É‚È‚é‚±‚Æ‚ª‚ ‚è‚Ü‚·B
 				</td></tr>
-			<tr><td nowrap><strong>”ñ“¯ŠúI/O”­s”</strong></td><td><strong>iv3.0ˆÈ~j</strong>ReadFile/WriteFile API”­s–ˆ‚ÉŠ®—¹‚ð‘Ò‚½‚¸A•Às‚µ‚ÄAPI‚ð”­s‚·‚é‚±‚Æ‚Åi“Á‚Éƒlƒbƒgƒ[ƒNƒhƒ‰ƒCƒu‚É‘Î‚·‚éjI/O‘¬“x‚ðŒüã‚³‚¹‚Ä‚¢‚Ü‚·B<br>
-			i<strong>‚È‚¨A‚±‚Ì”‚ð1‚É‚·‚é‚Æ”ñ“¯ŠúI/O‚ðŽg‚í‚¸Av2.x‚Ü‚Å‚Æ“¯‚¶“®ì‚É‚È‚è‚Ü‚·</strong>j</td></tr>
-			<tr><td nowrap><strong>Å¬ƒZƒNƒ^’·‚ð4096‚ÆŒ©‚È‚·</strong></td><td><strong>iv3.2ˆÈ~j</strong>‘‚«ž‚Ý‘¤ƒ‹[ƒgƒfƒBƒŒƒNƒgƒŠ‚Í512byteƒZƒNƒ^‚Å‚©‚ÂAiƒWƒƒƒ“ƒNƒVƒ‡ƒ““™‚É‚æ‚èj”z‰ºƒfƒBƒŒƒNƒgƒŠ‚ª4096byteƒZƒNƒ^‚É•Ï‰»‚·‚éê‡‚É ON ‚É‚µ‚Ü‚·B<br>
-			iON‚É‚·‚é‚ÆA1byteƒtƒ@ƒCƒ‹‚É‚àí‚É4096byteƒoƒbƒtƒ@‚ð—pˆÓ‚·‚é‚½‚ßA¬—e—Êƒtƒ@ƒCƒ‹‚Å‚Ìƒoƒbƒtƒ@—˜—pŒø—¦‚ªŽáŠ±‰º‚ª‚è‚Ü‚·B‚È‚¨A“Ç‚Ýž‚Ý‘¤ƒhƒ‰ƒCƒu‘¤ƒZƒNƒ^ƒTƒCƒY•Ï‰»‚ÍŽ©“®’Ç‚·‚é‚½‚ßAƒ`ƒFƒbƒN‚Í•s—v‚Å‚·j</td></tr>
+			<tr><td nowrap><strong>”ñ“¯ŠúI/O”­s”</strong></td><td>ReadFile/WriteFile API”­s–ˆ‚ÉŠ®—¹‚ð‘Ò‚½‚¸A•Às‚µ‚ÄAPI‚ð”­s‚·‚é‚±‚Æ‚Åi“Á‚Éƒlƒbƒgƒ[ƒNƒhƒ‰ƒCƒu‚É‘Î‚·‚éjI/O‘¬“x‚ðŒüã‚³‚¹‚Ä‚¢‚Ü‚·B<br>
+			i<strong>‚È‚¨A‚±‚Ì”‚ð1‚É‚·‚é‚Æ”ñ“¯ŠúI/O‚ðŽg‚¢‚Ü‚¹‚ñ</strong>j</td></tr>
+			<tr><td nowrap><strong>Å¬ƒZƒNƒ^’·‚ð4KB‚ÆŒ©‚È‚·</strong></td><td>‘‚«ž‚Ý‘¤ƒ‹[ƒgƒfƒBƒŒƒNƒgƒŠ‚Í512byteƒZƒNƒ^‚Å‚©‚ÂAiƒWƒƒƒ“ƒNƒVƒ‡ƒ““™‚É‚æ‚èj”z‰ºƒfƒBƒŒƒNƒgƒŠ‚ª4KBƒZƒNƒ^‚É•Ï‰»‚·‚éê‡‚É ON ‚É‚µ‚Ü‚·B<br>
+			iON‚É‚·‚é‚ÆA1byteƒtƒ@ƒCƒ‹‚É‚àí‚É4KBƒoƒbƒtƒ@‚ð—pˆÓ‚·‚é‚½‚ßA¬—e—Êƒtƒ@ƒCƒ‹‚Å‚Ìƒoƒbƒtƒ@—˜—pŒø—¦‚ªŽáŠ±‰º‚ª‚è‚Ü‚·B‚È‚¨A“Ç‚Ýž‚Ý‘¤ƒhƒ‰ƒCƒu‘¤ƒZƒNƒ^ƒTƒCƒY•Ï‰»‚ÍŽ©“®’Ç‚·‚é‚½‚ßAƒ`ƒFƒbƒN‚Í•s—v‚Å‚·j</td></tr>
 			</table>
 			<br>
 
@@ -540,15 +600,16 @@
 					iˆÚ“®Eíœ“®ì‚Å‚ÍÝ’è‚ÉŠÖ‚í‚ç‚¸í‚ÉON‚Æ‚È‚è‚Ü‚·j<br>
 					‚È‚¨AƒVƒ“ƒ{ƒŠƒbƒNƒŠƒ“ƒN‚Ìì¬‚É‚Í“ÁŒ iŠÇ—ŽÒŒ ŒÀj‚ª•K—v‚Æ‚È‚è‚Ü‚·B</td></tr>
 			<tr><td><strong>uˆÚ“®i‘Sã‘‚«jv‚ðuˆÚ“®i“ú•tEƒTƒCƒYjv ‚É•ÏX</strong></td>
-			  <td>ˆÚ“®æ‚É“ú•tEƒTƒCƒY‚ª“¯‚¶ƒtƒ@ƒCƒ‹‚ª‚ ‚ê‚Î“¯ˆê‚ÆŒ©˜ô‚µ‚ÄAƒRƒs[‚·‚é‚±‚Æ‚È‚­ˆÚ“®Œ³‚©‚çíœ‚µ‚Ü‚·</td></tr>
+			  <td>ˆÚ“®æ‚É“ú•tEƒTƒCƒY‚ª“¯‚¶ƒtƒ@ƒCƒ‹‚ª‚ ‚éê‡AƒRƒs[‚·‚é‚±‚Æ‚È‚­ˆÚ“®Œ³‚©‚çíœ‚µ‚Ü‚·</td></tr>
 			<tr><td><strong>ˆÚ“®‚ð’€ŽŸ•ûŽ®‚É</strong></td><td>’Êí‚ÍˆÚ“®—\’èƒŠƒXƒgi”ç`”–œƒtƒ@ƒCƒ‹j‚ªˆê”t‚É‚È‚ç‚È‚¢ŒÀ‚èAƒRƒs[Œ³‚Ìíœ‚ðŽn‚ß‚Ü‚¹‚ñ‚ªA‚±‚ê‚ðƒ`ƒFƒbƒN‚·‚é‚Æƒtƒ@ƒCƒ‹ƒRƒs[I—¹–ˆ‚ÉI‚í‚èŽŸ‘æi‚È‚é‚×‚­j‘¦À‚ÉƒRƒs[Œ³‚ðíœ‚µ‚Ü‚·</td></tr>
 			<tr><td  nowrap><strong>ˆÚ“®iƒxƒŠƒtƒ@ƒCŽžj</strong></td><td>ã‚Æ“¯‚¶“®ì‚Å‚·‚ªAƒxƒŠƒtƒ@ƒC‚ªI‚í‚èŽŸ‘æA‚Æ‚È‚è‚Ü‚·</td></tr>
-			<tr><td  nowrap><strong>ƒnƒbƒVƒ…•ûŽ®iƒxƒŠƒtƒ@ƒC—pj</strong></td><td>ƒxƒŠƒtƒ@ƒC—pƒnƒbƒVƒ…•ûŽ®(MD5/SHA-1/SHA-256)‚ð‘I‘ð‚µ‚Ü‚·</td></tr>
 			<tr><td><strong>ƒ^ƒCƒ€ƒXƒ^ƒ“ƒv”äŠrŽž‚Ì‹–—eŒë·</strong></td><td>·•ªi“ú•tEƒTƒCƒYj‚â·•ªiÅV“ú•tj‚ÅAsrc/dst ‚ÌXV“ú•t·‚Ì‹–—eŽžŠÔ‚ðŽw’è‚µ‚Ü‚·B<br>
 			’Êí‚Íƒtƒ@ƒCƒ‹ƒVƒXƒeƒ€Ží—Þ‚ÉŠî‚Ã‚­ƒ^ƒCƒ€ƒXƒ^ƒ“ƒv¸“xiNTFS=100ns’PˆÊAFAT=2•b’PˆÊ“™j‚Ì·‚ðŽ©“®•â³‚µ‚Ä”»’è‚µ‚Ü‚·‚ªAˆê•”‚ÌNAS“™‚Å•b–¢–ž‚ÌXV“ú•t‚ª³Šm‚Å‚È‚¢ŠÂ‹«‚Å‚ÍŽè“®‚Å“¯ˆê‚ÆŒ©˜ô‚·XV“ú•t‚Ì‹–—e”ÍˆÍ‚ðÝ’è‚µ‚Ä‚­‚¾‚³‚¢Bimsec’PˆÊj</td></tr>
+			<tr><td  nowrap><strong>ƒnƒbƒVƒ…•ûŽ®iƒxƒŠƒtƒ@ƒC—pj</strong></td><td>ƒxƒŠƒtƒ@ƒC—pƒnƒbƒVƒ…•ûŽ®(xxHash/MD5/SHA-1/SHA-256)‚ð‘I‘ð‚µ‚Ü‚·</td></tr>
+			<tr><td  nowrap><strong>ƒxƒŠƒtƒ@ƒCƒGƒ‰[ŽžA<br>.fc_verify_err‚ÉƒŠƒl[ƒ€‚¹‚¸Aƒtƒ@ƒCƒ‹‚ðíœ</strong></td><td>i¶‚É“¯‚¶j</td></tr>
 			</table>
 			<a name="junction_ps">
-			<strong>i*1j</strong>—á‚¦‚Î C:\Users\(user)\AppData\Local\Applicatoin Data ‚Í C:\Users\(user)\AppData\Local ‚ðŽw‚µ‚Ä‚¨‚èAŽÀ‘Ì/”z‰ºƒRƒs[‚·‚é‚Æ–³ŒÀ‚ÉÄ‹A‚µ‚Ü‚·iC:\Users\(user)\AppData\Local\Applicatoin Data\Applicatoin Data\Applicatoin Data\cjB]‚¢AŽÀ‘Ì/”z‰ºƒRƒs[‚ð—LŒø‚É‚·‚éê‡‚Í’ˆÓ‚ª•K—v‚Å‚·B
+			<strong>i*1j</strong>—á‚¦‚Î "C:\Users\(user)\AppData\Local\Applicatoin Data" ‚Í "C:\Users\(user)\AppData\Local" ‚ðŽw‚µ‚Ä‚¢‚Ü‚·B‚±‚ê‚ðuŽÀ‘Ì/”z‰ºƒRƒs[v‚·‚é‚Æ–³ŒÀ‚ÉÄ‹A‚µ‚Ü‚·BiC:\Users\(user)\AppData\Local\Applicatoin Data\Applicatoin Data\Applicatoin Data\cjB]‚¢AŽÀ‘Ì/”z‰ºƒRƒs[‚ð—LŒø‚É‚·‚éê‡‚Í’ˆÓ‚ª•K—v‚Å‚·B
 		</div>
 
 		<a name="setting_del"/>
@@ -557,7 +618,7 @@
 			íœŠÖ˜AƒIƒvƒVƒ‡ƒ“‚Å‚·B
 			<table class="help_table" border="4">
 			<tr><td><strong>ƒtƒBƒ‹ƒ^Žw’è‚Å‚ÌíœŽž‚É‚àƒfƒBƒŒƒNƒgƒŠíœ‚·‚é</strong></td>
-			  <td>ƒfƒtƒHƒ‹ƒg‚Å‚Í includeŽw’è‚Éƒtƒ@ƒCƒ‹‚Ì‚Ý‚ªŽw’è‚³‚êƒfƒBƒŒƒNƒgƒŠŽw’è‚ª‚È‚¢ê‡AƒfƒBƒŒƒNƒgƒŠ‚ðíœ‚µ‚Ü‚¹‚ñB<br>
+			  <td>ƒfƒtƒHƒ‹ƒg‚Å‚Í IncludeŽw’è‚Éƒtƒ@ƒCƒ‹‚Ì‚Ý‚ªŽw’è‚³‚êƒfƒBƒŒƒNƒgƒŠŽw’è‚ª‚È‚¢ê‡AƒfƒBƒŒƒNƒgƒŠ‚ðíœ‚µ‚Ü‚¹‚ñB<br>
 				‚±‚ê‚ðƒ`ƒFƒbƒN‚·‚é‚ÆAí‚ÉƒfƒBƒŒƒNƒgƒŠ‚àíœ‚µ‚Ü‚·Bi<a href="#filter_ps">’ˆÓ</a>j</tr>
 			<tr><td><strong>•œŒ³–³Œø‰»‚ÉNSA•ûŽ®‚ðŽg‚¤ i‚R‰ñã‘‚«‚Ì‚½‚ß‚Æ‚Ä‚à’x‚¢j</strong></td>
 			  <td>•œŒ³–³Œø‰»‚ðONiíœ‚·‚é‘O‚Éƒ‰ƒ“ƒ_ƒ€ƒf[ƒ^‚Å‚P‰ñã‘‚«•ƒtƒ@ƒCƒ‹–¼‚ðƒŠƒl[ƒ€Œã‚Éíœj‚É‚µ‚½ÛA‚P‰ñ‚Å‚Í‚È‚­A‚R‰ñã‘‚«‚µ‚Ü‚·i‚Q‰ñƒ‰ƒ“ƒ_ƒ€‚Èƒf[ƒ^‚Åã‘‚«‚µ‚½ŒãAÅŒã‚É 0 ‚Å‚P‰ñã‘‚«jB</td></tr>
@@ -581,6 +642,29 @@
 			<tr><td nowrap><strong>ACLƒGƒ‰[‚ðƒƒO‚É‹L˜^‚·‚é</strong></td><td>”ñNTFSŠÂ‹«iSamba“™j‚â”ñ“ÁŒ ó‘Ô‚Å‚Í‘å—Ê‚ÉƒGƒ‰[ƒƒO‚ªo‚é‚±‚Æ‚ª‚ ‚è‚Ü‚·</td></tr>
 			<tr><td><strong>•›ŽŸStreamƒGƒ‰[‚ðƒƒO‚É‹L˜^‚·‚é</strong></td><td>SambaŠÂ‹«iSamba“™j‚Å‚Í‘å—Ê‚ÉƒGƒ‰[ƒƒO‚ªo‚é‚±‚Æ‚ª‚ ‚è‚Ü‚·</td></tr>
 			</table>
+			<br>
+			ƒƒO“à‚Éo‚Ä‚­‚é‹L†‚ÌˆÓ–¡‚É‚Â‚¢‚ÄB
+			<table class="help_table" border="4">
+			<tr><td nowrap>+</td><td>ƒtƒ@ƒCƒ‹/ƒfƒBƒŒƒNƒgƒŠ‚Ìì¬</td></tr>
+			<tr><td nowrap>-</td><td>ƒtƒ@ƒCƒ‹/ƒfƒBƒŒƒNƒgƒŠ‚Ìíœ</td></tr>
+			<tr><td nowrap>-&gt;</td><td>ƒVƒ“ƒ{ƒŠƒbƒNƒŠƒ“ƒN/ƒWƒƒƒ“ƒNƒVƒ‡ƒ“‚Ìì¬</td></tr>
+			<tr><td nowrap>=&gt;</td><td>ƒn[ƒhƒŠƒ“ƒN‚Ìì¬</td></tr>
+			<tr><td nowrap>!!</td><td>ƒxƒŠƒtƒ@ƒCƒGƒ‰[iƒnƒbƒVƒ…’l‚Ì•sˆê’vj</td></tr>
+			</table>
+
+		</div>
+
+		<a name="setting_shell"/>
+		<h4 class="help_head4">ƒVƒFƒ‹Šg’£</h4>
+		<div class="help_sub_section">
+			ƒVƒFƒ‹Šg’£‚ðs‚¢‚Ü‚·B<br>
+			’Êí‹N“®‚·‚é‚ÆŒÂl—pŠg’£‚Æ‚È‚èAŠÇ—ŽÒŒ ŒÀ‚Å‹N“®‚·‚é‚Æ‘Sƒ†[ƒUŒü‚¯Šg’£‚É‚È‚è‚Ü‚·B
+		</div>
+
+		<a name="setting_tray"/>
+		<h4 class="help_head4">Å¬‰»Žž‚ÌÝ’è</h4>
+		<div class="help_sub_section">
+			Å¬‰»Žž‚ÉAƒ^ƒXƒNƒgƒŒƒC‚ðŽg‚¤‚©Aƒ^ƒXƒNƒo[‚ðŽg‚¤‚©‚ð‘I‘ð‚µ‚Ü‚·B<br>
 		</div>
 
 		<a name="setting_misc"/>
@@ -590,23 +674,15 @@
 			<table class="help_table" border="4">
 			<tr><td nowrap><strong>‹N“®Žž‚ÉƒAƒbƒvƒf[ƒgŠm”F</strong></td><td>ˆø”‚È‚µ‚Å‹N“®‚µ‚½Žž‚ÉAÅV”Å‚ª‘¶Ý‚·‚é‚©Šm”F‚µ‚Ü‚·i‘O‰ñ‚ÌŠm”F‚©‚ç1“úˆÈãŒo‰ß‚µ‚Ä‚¢‚éŽž‚Ì‚Ýj</td></tr>
 			<tr><td nowrap><strong>ŽÀs‘O‚ÉŠm”Fƒ_ƒCƒAƒƒO</strong></td><td>ŽÀs‘O‚ÉŠm”F‚µ‚Ü‚·</td></tr>
-			<tr><td><strong>Å¬‰»ŽžAƒ^ƒXƒNƒgƒŒƒC‚Å‚Í‚È‚­Aƒ^ƒXƒNƒo[‚ðŽg—p</strong></td><td>ƒ^ƒXƒNƒo[‚ðŽg—p‚µ‚Ü‚·</td></tr>
 			<tr><td nowrap><strong>•\Ž¦XVŠÔŠu</strong></td><td>ŽÀsŽž‚Ì•\Ž¦XVŽžŠÔ‚ðŽw’è‚µ‚Ü‚·BƒAƒCƒRƒ“‚Ì‰ñ“]‘¬“x‚É‚à“¯Šú‚µ‚Ü‚·</td></tr>
-			<tr><td><strong>I—¹Žž‚Éƒoƒ‹[ƒ“’Ê’m</td><td>ƒ^ƒXƒNƒgƒŒƒCŠi”[Žž‚ÉI—¹‚ðƒoƒ‹[ƒ“’Ê’m‚Å’m‚ç‚¹‚Ü‚·</td></tr>
+			<tr><td><strong>I—¹Žž‚Éƒoƒ‹[ƒ“’Ê’m</td><td>ƒ^ƒXƒN’Ê’m—ÌˆæŠi”[Žž‚ÉI—¹‚ðƒoƒ‹[ƒ“’Ê’m‚Å’m‚ç‚¹‚Ü‚·</td></tr>
 			<tr><td><strong>ƒRƒs[’†‚ÍAŽ©“®ƒXƒŠ[ƒv‚ð–hŽ~‚·‚é</td><td>OSÝ’è‚ÅŽ©“®ƒXƒŠ[ƒv‚ªÝ’è‚³‚ê‚Ä‚¢‚Ä‚àAƒRƒs[’†‚ÍƒXƒŠ[ƒv‚µ‚Ü‚¹‚ñB<br>i‚½‚¾‚µƒGƒ‰[ƒ_ƒCƒAƒƒO•\Ž¦’†‚ÍˆÚs‚ð–hŽ~‚µ‚Ü‚¹‚ñj</td></tr>
-			<tr><td nowrap><strong>English UI</strong></td><td>‰pŒêUIƒ‚[ƒh‚É‚È‚è‚Ü‚·BÄ‹N“®Œã‚É—LŒø‚Å‚·</td></tr>
 			</table>
 		</div>
 	</div>
 
-	<a name="shell"/>
-	<h3 class="help_head3">Ý’è ¨ Šg’£Ý’è ¨ ƒVƒFƒ‹Šg’£Ý’èiŒÂl—p/‘S‘Ì—pj</h3>
-	<div class="help_sub_section">
-		Explorer ‚Ì‰EƒNƒŠƒbƒNƒƒjƒ…[‚ÉAFastCopy ‚ÌƒRƒs[Eíœƒƒjƒ…[‚ð“o˜^/‰ðœ‚µ‚Ü‚·B<br>
-		iƒVƒXƒeƒ€‘S‘Ì‚É”½‰f‰Â”\‚Èu‘S‘Ì—pv‚ÍŠÇ—ŽÒŒ ŒÀ‚ª•K—v‚Å‚·Bƒƒjƒ…[‰E’[‚Ìu“ÁŒ v‚Å¸Ši‚µ‚Ä‚­‚¾‚³‚¢j
-	</div>
-
-	<h3 class="help_head3">Ý’è ¨ Šg’£Ý’è ¨ ƒƒCƒ“ƒtƒHƒ“ƒg•ÏX•ƒŠƒZƒbƒg</h3>
+	<a name="font"/>
+	<h3 class="help_head3">Ý’è ¨ ƒtƒHƒ“ƒgÝ’è ¨ ƒƒCƒ“ƒtƒHƒ“ƒg•ÏX•ƒŠƒZƒbƒg</h3>
 	<div class="help_sub_section">
 		ƒƒCƒ“ƒEƒBƒ“ƒhƒE’†‰›‚Ìî•ñ˜g‚ÌƒtƒHƒ“ƒg‚ð•ÏX‚µ‚Ü‚·B<br>
 		ŠeŒ…‚ð‘µ‚¦‚Ä•\Ž¦‚µ‚½‚¢ê‡‚ÍAŒÅ’èƒsƒbƒ`ƒtƒHƒ“ƒg‚Ì—˜—p‚ð‚¨Š©‚ß‚µ‚Ü‚·B
@@ -678,7 +754,7 @@
 	<tr><td>GUI ƒ‚[ƒh‚Æˆá‚¢A‹æØ‚è•¶Žš‚Í‹ó”’•¶Žš‚É‚È‚è‚Ü‚·B<br>
 			‹ó”’•¶Žš‚ðŠÜ‚ÞƒpƒX–¼‚ÍA"" ‚ÅŠ‡‚Á‚ÄŽw’è‚µ‚Ä‚­‚¾‚³‚¢</td></tr>
 	<tr><td>/to= ‚Í•K‚¸––”ö‚ÅŽw’è‚µ‚Ü‚·</td></tr>
-	<tr><td>ŽÀsI—¹‚Ü‚Å‘Ò‚¿‚½‚¢ê‡‚ÍAstart /wait fastcopy.exe [/ƒIƒvƒVƒ‡ƒ“—Þ] ... ‚Æ‚µ‚Ü‚·</td></tr>
+	<tr><td>ŽÀsI—¹‚Ü‚Å‘Ò‚¿‚½‚¢ê‡‚ÍAstart "" /wait fastcopy.exe [/ƒIƒvƒVƒ‡ƒ“—Þ] ... ‚Æ‚µ‚Ü‚·</td></tr>
 	</table><br>
 	Žw’è‰Â”\‚ÈƒIƒvƒVƒ‡ƒ“‚ÍAˆÈ‰º‚Ì’Ê‚è‚Å‚·Bi‚È‚¨A'=' ‚Ì‘OŒã‚É‚Í‹ó”’‚ð“ü‚ê‚È‚¢‚Å‰º‚³‚¢j<br><br>
 
@@ -711,7 +787,7 @@
 	-->
 	<tr><td nowrap><strong>/auto_close</strong></td><td>ƒRƒs[I—¹ŒãAŽ©“®“I‚ÉI—¹‚µ‚Ü‚·</td></tr>
 	<tr><td nowrap><strong>/force_close</strong></td><td>ƒRƒs[I—¹ŒãAƒGƒ‰[‚ª”­¶‚µ‚Ä‚¢‚½ê‡‚àA‹­§“I‚ÉI—¹‚µ‚Ü‚·</td></tr>
-	<tr><td nowrap><strong>/open_window</strong></td><td>ƒ^ƒXƒNƒgƒŒƒC‚ÉŠi”[‚µ‚Ü‚¹‚ñi’¼‚¿‚ÉŽÀsŠJŽn‚µ‚È‚¢ê‡‚ÍŽw’è•s—vj</td></tr>
+	<tr><td nowrap><strong>/open_window</strong></td><td>ƒ^ƒXƒN’Ê’m—Ìˆæ‚ÉŠi”[‚µ‚Ü‚¹‚ñi’¼‚¿‚ÉŽÀsŠJŽn‚µ‚È‚¢ê‡‚ÍŽw’è•s—vj</td></tr>
 	<tr><td nowrap><strong>/estimate</strong></td><td>ƒRƒs[Š®—¹ŽžŠÔ—\‘ª‚ðs‚¢‚Ü‚·i/estimate=FALSE ‚Å—}Ž~j</td></tr>
 	<tr><td nowrap><strong>/balloon(=FALSE)</strong></td><td>Š®—¹Žž‚Éƒoƒ‹[ƒ“•\Ž¦‚ðs‚¢‚Ü‚·i/balloon=FALSE ‚Å—}Ž~j</td></tr>
 	<tr><td nowrap><strong>/no_ui</strong></td><td><a name="no_ui"/>Œ´‘¥‚Æ‚µ‚Ä–â‚¢‡‚í‚¹ƒ_ƒCƒAƒƒO‚ðo‚µ‚Ü‚¹‚ñBiƒoƒbƒNƒOƒ‰ƒEƒ“ƒh“®ì—pB“à•”“I‚É /no_confirm_del ‚Æ /no_confirm_stop ‚Æ /force_close ‚àƒZƒbƒg‚³‚ê‚Ü‚·BƒZƒbƒVƒ‡ƒ“‚O•ª—£iŽå‚Éƒ^ƒXƒNƒXƒPƒWƒ…[ƒ‰‹N“®j‚Å‚ÍŽ©“®“I‚É/no_ui‚ªƒZƒbƒg‚³‚ê‚Ü‚·B‚½‚¾‚µI—¹ŽžƒAƒNƒVƒ‡ƒ“‚Å‚ÌƒJƒEƒ“ƒgƒ_ƒEƒ“‚ÍŽÀƒXƒNƒŠ[ƒ“‚Ì—L–³‚ÉŠÖ‚í‚ç‚¸s‚í‚ê‚Ü‚·j</td></tr>
@@ -722,14 +798,14 @@
 	<tr><td nowrap><strong>/bufsize=N(MB)</strong></td><td>ƒoƒbƒtƒ@ƒTƒCƒY‚ð MB ’PˆÊ‚ÅŽw’è‚µ‚Ü‚·</td></tr>
 	<tr><td nowrap><strong>/log</strong></td><td>ƒƒOƒtƒ@ƒCƒ‹(fastcopy.log) ‚ÉƒƒO‚ðo—Í‚µ‚Ü‚·i/log=FALSE ‚Å—}Ž~j</td></tr>
 	<tr><td nowrap><strong>/logfile=ƒƒOƒtƒ@ƒCƒ‹–¼</strong></td><td>ƒƒOƒtƒ@ƒCƒ‹–¼‚ðŽw’è‚µ‚Ü‚·</td></tr>
-	<tr><td nowrap><strong>/filelog</strong></td><td>Ú×ƒtƒ@ƒCƒ‹ƒƒO‚ð‹L˜^‚µ‚Ü‚·BFastCopy/Log ƒfƒBƒŒƒNƒgƒŠ”z‰º‚ÉA“ú•t.log ‚Æ‚¢‚¤Œ`Ž®‚Å•Û‘¶‚³‚ê‚Ü‚·BƒxƒŠƒtƒ@ƒCŽž‚ÍƒnƒbƒVƒ…’li’Êí MD5AÝ’è‚É‚æ‚Á‚Ä SHA-1j‚à‹L˜^‚³‚ê‚Ü‚·Bi/filelog=filename ‚ÅŽw’èƒtƒ@ƒCƒ‹‚É•Û‘¶‰Â”\B‚½‚¾‚µA“¯‚¶ƒtƒ@ƒCƒ‹‚ðŽw’è‚µ‚ÄA“¯Žž‚É•¡”‚Ì FastCopy ‚ðŽÀs‚µ‚½ê‡AƒƒOo—Í‚ªŒðŒÝ‚É¬‚¶‚é‰Â”\«‚ª‚ ‚è‚Ü‚·j</td></tr>
+	<tr><td nowrap><strong>/filelog</strong></td><td>Ú×ƒtƒ@ƒCƒ‹ƒƒO‚ð‹L˜^‚µ‚Ü‚·BFastCopy/Log ƒfƒBƒŒƒNƒgƒŠ”z‰º‚ÉA“ú•t.log ‚Æ‚¢‚¤Œ`Ž®‚Å•Û‘¶‚³‚ê‚Ü‚·BƒxƒŠƒtƒ@ƒCŽž‚ÍƒnƒbƒVƒ…’l‚à‹L˜^‚³‚ê‚Ü‚·Bi/filelog=filename ‚ÅŽw’èƒtƒ@ƒCƒ‹‚É•Û‘¶‰Â”\B‚½‚¾‚µA“¯‚¶ƒtƒ@ƒCƒ‹‚ðŽw’è‚µ‚ÄA“¯Žž‚É•¡”‚Ì FastCopy ‚ðŽÀs‚µ‚½ê‡AƒƒOo—Í‚ªŒðŒÝ‚É¬‚¶‚é‰Â”\«‚ª‚ ‚è‚Ü‚·j</td></tr>
 	<tr><td nowrap><strong>/utf8</strong></td><td>UTF-8‚ÅƒƒO‚ð‹L˜^‚µ‚Ü‚·</td></tr>
 	<tr><td nowrap><strong>/skip_empty_dir</strong></td><td>ƒtƒBƒ‹ƒ^Žw’èŽžA‹óƒfƒBƒŒƒNƒgƒŠ‚ðƒRƒs[‚µ‚Ü‚¹‚ñi/skip_empty_dir=FALSE ‚Å—}Ž~j</td></tr>
 	<tr><td nowrap><strong>/job=ƒWƒ‡ƒu–¼</strong></td><td>Ž–‘O‚É“o˜^‚µ‚Ä‚ ‚éƒWƒ‡ƒu‚ðŽw’è‚µ‚Ü‚·</td></tr>
 	<tr><td nowrap><strong>/force_start(=N)</strong></td><td>‘¼‚Ì FastCopy ‚ªƒRƒs[ŽÀs’†‚Ìê‡‚à’¼‚¿‚ÉŽÀs‚µ‚Ü‚·B<br>i/force_start=2`N ‚Å“¯ŽžŽÀsãŒÀ”Žw’èj</td></tr>
 	<tr><td nowrap><strong>/disk_mode=<br>&nbsp;&nbsp;(auto|same|diff)</strong></td><td><a href="#disk_mode">Ž©“®/“¯ˆê/•ÊHDDƒ‚[ƒh</a>‚ðŽw’è‚µ‚Ü‚·BiƒfƒtƒHƒ‹ƒg: autoj</td></tr>
 	<tr><td nowrap><strong>/speed=(full|autoslow|<br>&nbsp;&nbsp;9-1(90%-10%)|suspend)</strong></td><td>‘¬“xƒRƒ“ƒgƒ[ƒ‹‚ðs‚¢‚Ü‚·</td></tr>
-	<tr><td nowrap><strong>/srcfile="files.txt</strong></td><td>Source“à—e‚ðƒtƒ@ƒCƒ‹‚ÅŽw’è‚µ‚Ü‚·B‚Ps‚É‚Pƒtƒ@ƒCƒ‹‚ð‹Lq‚µ‚Ü‚·Bi‚È‚¨A‘å—Ê‚Ìƒtƒ@ƒCƒ‹‚ðŽw’è‚·‚é‚ÆASourceƒRƒ“ƒ{ƒ{ƒbƒNƒX‚Ì•\Ž¦/Ä•`‰æ‚É”ñí‚ÉŽžŠÔ‚ªŠ|‚©‚è‚Ü‚·j</td></tr>
+	<tr><td nowrap><strong>/srcfile="files.txt</strong></td><td>Source“à—e‚ðƒtƒ@ƒCƒ‹‚ÅŽw’è‚µ‚Ü‚·B‚Ps‚É‚Pƒtƒ@ƒCƒ‹‚ð‹Lq‚µ‚Ü‚·Bi‚È‚¨A‘å—Êƒtƒ@ƒCƒ‹‚ÌŽw’è‚Í‚¨Š©‚ß‚µ‚Ü‚¹‚ñj</td></tr>
 	<tr><td nowrap><strong>/srcfile_w="files.txt"</strong></td><td>/srcfile= ‚Æ“¯—l‚Å‚·‚ªAUNICODE ‚Å‹Lq‚µ‚Ü‚·</td></tr>
 	<tr><td nowrap><strong>/include="..."</strong></td><td>Include ƒtƒBƒ‹ƒ^‚ðŽw’è‚µ‚Ü‚·i<a href="#filter">Ú×</a>j</td></tr>
 	<tr><td nowrap><strong>/exclude="..."</strong></td><td>Exclude ƒtƒBƒ‹ƒ^‚ðŽw’è‚µ‚Ü‚·i<a href="#filter">Ú×</a>j</td></tr>
@@ -741,14 +817,17 @@
 	<tr><td nowrap><strong>/acl</strong></td><td>ƒAƒNƒZƒXƒRƒ“ƒgƒ[ƒ‹ƒŠƒXƒg(ACL)AŠg’£‘®«(EA)‚ðƒRƒs[‚µ‚Ü‚·iNTFS‚Ì‚Ý—LŒøji/acl=FALSE ‚Å—}Ž~j</td></tr>
 	<tr><td nowrap><strong>/stream</strong></td><td>•›ŽŸƒXƒgƒŠ[ƒ€‚ðƒRƒs[‚µ‚Ü‚·iNTFS‚Ì‚Ý—LŒøji/stream=FALSE ‚Å—}Ž~j</td></tr>
 	<tr><td nowrap><strong>/reparse</strong></td><td>ƒWƒƒƒ“ƒNƒVƒ‡ƒ“Eƒ}ƒEƒ“ƒgƒ|ƒCƒ“ƒgEƒVƒ“ƒ{ƒŠƒbƒNƒŠƒ“ƒN‚ði”z‰º‚Å‚Í‚È‚­j‚»‚êŽ©‘Ì‚ðƒRƒs[‚µ‚Ü‚·i/reparse=FALSE ‚Å”z‰º‚ðƒRƒs[ji<a href="#reparse">Ú×</a> ‚¨‚æ‚Ñ <a href="#junction_ps">’ˆÓ</a>j</td></tr>
-	<tr><td nowrap><strong>/verify</strong></td><td><a href="#hash_mode">MD5(or SHA-1, SHA-256, xxHash) </a>‚É‚æ‚é‘‚«ž‚Ýƒf[ƒ^‚ÌƒxƒŠƒtƒ@ƒC‚ðs‚¢‚Ü‚·i/verify=FALSE ‚Å—}Ž~j</td></tr>
+	<tr><td nowrap><strong>/verify</strong></td><td><a href="#hash_mode">xxHash(or MD5, SHA-1, SHA-256) </a>‚É‚æ‚é‘‚«ž‚Ýƒf[ƒ^‚ÌƒxƒŠƒtƒ@ƒC‚ðs‚¢‚Ü‚·i/verify=FALSE ‚Å—}Ž~j</td></tr>
 	<tr><td nowrap><strong>/linkdest</strong></td><td><a name="linkdest"/>ƒn[ƒhƒŠƒ“ƒN‚ð‰Â”\‚ÈŒÀ‚èÄŒ»‚µ‚Ü‚·BÚ×‚Í <a href="#hardlink">‚±‚¿‚ç‚ðŽQÆ</a> ‚­‚¾‚³‚¢B</td></tr>
 	<tr><td nowrap><strong>/recreate</strong></td><td><a name="recreate"/>ƒtƒ@ƒCƒ‹XV‚Ì‹““®‚ðAŠù‘¶ƒtƒ@ƒCƒ‹‚Ìã‘‚«‚©‚çAŠù‘¶ƒtƒ@ƒCƒ‹íœ•Ä¶¬‚É•ÏX‚µ‚Ü‚·Bi/linkdest Žw’èŽž‚É‚ÍA/recreateŽw’è‚Ì—L–³‚ÉŠÖ‚í‚ç‚¸A‚±‚Ì“®ì‚ðs‚¢‚Ü‚·jíŽžA‚±‚Ì“®ì‚ð—LŒø‚É‚µ‚½‚¢ê‡Afastcopy2.ini [main] recreate=1 ‚É‚µ‚Ü‚·B</td></tr>
 	<tr><td nowrap><strong>/postproc=I—¹Žžˆ—–¼</strong></td><td>Ž–‘O‚É“o˜^‚µ‚Ä‚ ‚éI—¹Žžˆ—–¼‚ðŽw’è‚µ‚Ü‚·Bi/postproc=FALSE ‚Å—}Ž~j</td></tr>
 	</table>
 	<br>
 	<strong>—áj</strong> C:\test ”z‰º‚ð D:\Backup Folder ‚É·•ªƒRƒs[‚·‚éê‡<br>
-		@fastcopy.exe /cmd=diff C:\test /to="D:\Backup Folder\"
+		@fastcopy.exe /cmd=diff C:\test /to="D:\Backup Folder\"<br>
+	<br>
+	<strong>I—¹ƒXƒe[ƒ^ƒX‚É‚Â‚¢‚Äj</strong> ƒRƒ}ƒ“ƒh‚ª¬Œ÷‚µ‚½ê‡‚Í 0AŽ¸”s‚µ‚½ê‡‚Í -1 ‚ð•Ô‚µ‚Ü‚·B
+
 </div>
 
 
@@ -769,18 +848,18 @@
 <h2 class="help_head2">9. ƒTƒ|[ƒgŒfŽ¦”Â•ÅV”Å</h2>
 <div class="help_section">
 	ƒTƒ|[ƒgŒfŽ¦”Â: <a href="https://groups.google.com/forum/?hl=ja#!forum/fastcopy">https://groups.google.com/forum/?hl=ja#!forum/fastcopy</a><br>
-	ÅV”Å: <a href="http://ipmsg.org/tools/fastcopy.html">http://ipmsg.org/tools/fastcopy.html</a><br>
-	ŒÂlƒy[ƒW: <a href="http://ipmsg.org/private/">http://ipmsg.org/private/</a>
+	ÅV”Å: <a href="https://fastcopy.jp">https://fastcopy.jp</a><br>
+	ŒÂlƒy[ƒW: <a href="https://shirouzu.jp">https://shirouzu.jp</a>
 </div>
 
 
 <a name="misc"/>
 <h2 class="help_head2">10. ‚»‚Ì‘¼iÝ’è•Û‘¶æ“™j</h2>
 <div class="help_section">
-	<li>Ý’èƒtƒ@ƒCƒ‹(<strong>FastCopy2.ini</strong>)‚¨‚æ‚ÑƒƒOƒtƒ@ƒCƒ‹‚ÍA<br>
+	<li>Ý’èƒtƒ@ƒCƒ‹(<strong>FastCopy2.ini</strong>)‚¨‚æ‚ÑƒƒOƒtƒ@ƒCƒ‹‚Í‰º‹L‚Éì‚ç‚ê‚Ü‚·B<br>
 	<div class="help_sub_section">
-	<strong>VistaˆÈ~‚©‚Â \Program Files ”z‰º‚ÉƒCƒ“ƒXƒg[ƒ‹‚µ‚½ê‡</strong>A\Users\(USER)\AppData\roaming\FastCopy\ ”z‰º‚Éiƒƒjƒ…[‚Ìƒtƒ@ƒCƒ‹(F) ¨ UserDir(U)j•Û‘¶‚µ‚Ü‚·B<br>
-	<strong>‚»‚êˆÈŠO‚Ìê‡</strong>AFastCopy.exe ‚Ì‘¶Ý‚·‚éƒfƒBƒŒƒNƒgƒŠ‚É•Û‘¶‚³‚ê‚Ü‚·B<br>
+	<strong>Program Files ”z‰º‚ÉƒCƒ“ƒXƒg[ƒ‹‚µ‚½ê‡</strong>A\Users\(USER)\AppData\roaming\FastCopy\iƒƒjƒ…[‚Ìƒtƒ@ƒCƒ‹(F) ¨ UserDir(U)jB<br>
+	<strong>‚»‚êˆÈŠO‚Ìê‡</strong>AFastCopy.exe ‚Ì‘¶Ý‚·‚éƒfƒBƒŒƒNƒgƒŠB<br>
 	</div>
 	<li><strong>‘¼‚ÌƒAƒvƒŠƒP[ƒVƒ‡ƒ““™‚Ö‚Ì‘g‚Ýž‚Ý‚É‚Â‚¢‚Ä</strong><br>
 	<div class="help_sub_section">
@@ -791,20 +870,48 @@
 	iìŽÒ‚É‘—‚é‚ÆA•iŽ¿Œüã‚Ì‚½‚ß‚ÌŽè‚ª‚©‚è‚É‚È‚è‚Ü‚·j
 </div>
  
-<a name="todo"/>
-<h2 class="help_head2">11. ToDo</h2>
-<div class="help_section">
-	<li>ƒlƒbƒgƒ[ƒN‘Î‰ži‚Q‚Â‚ÌPC‚É“ü‚ê‚½ fastcopy “¯Žm‚Å‚‘¬“]‘—j
-	<li>ŠÈˆÕ”äŠr‚Ì‚‘¬‰»
-</div>
-
-
 <a name="history"/>
-<h2 class="help_head2">12. —š—ð</h2>
+<h2 class="help_head2">11. —š—ð</h2>
 <div class="help_section">
 
 <table class="help_table" border="4">
 <tr><th>Version</th><th>à–¾</th></tr>
+
+<tr><td>v3.54</td><td>
+ƒVƒFƒ‹Šg’£‚ª—LŒø‚É‚È‚ç‚È‚¢–â‘è‚ÌC³Biv3.53‚Ì‚Ýj<br>
+</td></tr>
+
+<tr><td>v3.53</td><td>
+‘¬“xƒRƒ“ƒgƒ[ƒ‹Žw’è‚ð‚æ‚è³Šm‚ÉB<br>
+“¯ˆêHDDƒ‚[ƒh‚Ì«”\‚ð‚í‚¸‚©‚É‰ü‘PB
+</td></tr>
+
+<tr><td>v3.52</td><td>
+ƒnƒbƒVƒ…‚ÌƒfƒtƒHƒ‹ƒg‚ðxxHash‚É•ÏXB<br>
+xxHashƒxƒŠƒtƒ@ƒCŒvŽZ‚ð3`4”{‚‘¬‰»i1`2GB/sˆÈã‚ÌŠÂ‹«‚ÅƒxƒŠƒtƒ@ƒCˆ—ƒlƒbƒN‚ª‰ðÁjB<br>
+ƒCƒ“ƒXƒg[ƒ‰‚É /SILENT ƒIƒvƒVƒ‡ƒ““™‚ð’Ç‰Ái/h‚ÅŠm”FjB
+</td></tr>
+
+<tr><td>v3.51</td><td>
+ƒxƒŠƒtƒ@ƒCƒGƒ‰[Žž‚ÉA.fc_verify_err ‚Ö‚ÌƒŠƒl[ƒ€‚Å‚Í‚È‚­Aíœ‚·‚éƒIƒvƒVƒ‡ƒ“‚ð’Ç‰ÁB<br>
+include/excludeƒtƒBƒ‹ƒ^[‚ÅAƒfƒBƒŒƒNƒgƒŠŽw’è‚Æƒtƒ@ƒCƒ‹Žw’è‚ð“¯‚¶–¼‘O‚ðŽw’è‚·‚é‚ÆAÅŒã‚ÌŽw’è‚Ì‚Ý‚ª—LŒø‚É‚È‚é–â‘è‚ðC³B<br>
+‚»‚Ì‘¼ƒŠƒtƒ@ƒCƒ“B
+</td></tr>
+
+<tr><td>v3.50</td><td>
+Source‘I‘ðƒ_ƒCƒAƒƒO‚ÅAƒtƒ@ƒCƒ‹‚ÆƒtƒHƒ‹ƒ_‚ð“¯Žž‚É‘I‘ð‚Å‚«‚é‚æ‚¤‚ÉB<br>
+I/OƒTƒCƒY•dô”‚ð“K‰ž“I‚É•Ï‰»‚³‚¹‚é‚±‚Æ‚ÅAƒlƒbƒgƒ[ƒNƒhƒ‰ƒCƒu‚ÌƒpƒtƒH[ƒ}ƒ“ƒX‚ðŒüãB<br>
+iƒŒƒCƒeƒ“ƒV‘å‚ÌŠÂ‹«‚Å‚ÍAExplorer‚â]—ˆ”Å‚É”ä‚×‚Ä2”{ˆÈã‚‘¬‚Éj<br>
+Å¬‰»ŽžAƒ^ƒXƒN’Ê’m—Ìˆæ‚ÉƒAƒCƒRƒ“‚ª‰B‚ê‚éê‡‚Íƒ^ƒXƒNƒo[‚É•\Ž¦‚·‚é‚æ‚¤‚ÉB<br>
+ƒGƒ‰[Žž‚ÌI—¹ƒR[ƒh‚ª0i³‚µ‚­‚Í-1j‚É‚È‚Á‚Ä‚¢‚½–â‘è‚ÌC³B<br>
+Ý’è—Þ‚Ì‰ü—ÇiÅ¬‰»Žž‚Ì“®ì‚Ì’Ç‰ÁAƒVƒFƒ‹Šg’£‚ÌˆÚ“®“™j<br>
+ƒCƒ“ƒXƒg[ƒ‰•ûŽ®‚É•ÏX‚µAƒCƒ“ƒXƒg[ƒ‰‚Éuƒtƒ@ƒCƒ‹“WŠJi‚Ì‚Ýjv‚ð’Ç‰ÁB<br>
+—áŠOŽž‚Éƒ_ƒ“ƒv‚ào—Í‚·‚é‚æ‚¤‚ÉB<br>
+uƒAƒvƒŠ‚Æ‹@”\v‚©‚ç‚àAƒAƒ“ƒCƒ“ƒXƒg[ƒ‹‚Å‚«‚é‚æ‚¤‚ÉB<br>
+Š®—¹ó‘Ô‚ðƒAƒCƒRƒ“ã•”‚ÌF‚Å‚à•\Œ»i—ÎFŠ®—¹AÔFƒGƒ‰[jB<br>
+ŒöŽ®ƒz[ƒ€ƒy[ƒW‚ð <a href="https://fastcopy.jp">https://fastcopy.jp</a> ‚É•ÏXB
+</td></tr>
+
 <tr><td>v3.41</td><td>
 I/OŠÖ˜Aƒpƒ‰ƒ[ƒ^‚ÆÝ’è•û–@‚ð•ÏX‚µA“Á‚Éƒlƒbƒgƒ[ƒNƒhƒ‰ƒCƒu‚Å‚ÌƒpƒtƒH[ƒ}ƒ“ƒX‚ðŒüãB<br>
 ‹N“®Žž‚ÌŽ©“®ƒAƒbƒvƒf[ƒgƒ`ƒFƒbƒN‚Ì’Ç‰ÁiÝ’è¨‚»‚Ì‘¼A‚©‚ç•ÏX‰Â”\jB<br>
@@ -813,6 +920,7 @@ I/OŠÖ˜Aƒpƒ‰ƒ[ƒ^‚ÆÝ’è•û–@‚ð•ÏX‚µA“Á‚Éƒlƒbƒgƒ[ƒNƒhƒ‰ƒCƒu‚Å‚ÌƒpƒtƒH[ƒ}ƒ“ƒX‚
 2‚ÂˆÈã‚Ì•¨—HDD‚ðŽg‚Á‚½ƒ{ƒŠƒ…[ƒ€‚ÌA“¯ˆê/•Êƒhƒ‰ƒCƒu”»’è‚ª•s³Šm‚¾‚Á‚½‚Ì‚ðC³B<br>
 ‚»‚Ì‘¼ƒŠƒtƒ@ƒCƒ“B
 </td></tr>
+
 <tr><td>v3.40</td><td>
 ƒAƒbƒvƒf[ƒg‹@”\iƒƒjƒ…[ ¨ ƒwƒ‹ƒv ¨ ƒAƒbƒvƒf[ƒgŠm”Fj‚Ì’Ç‰ÁB<br>
 Source“ü—Í—“‚ð•¡”s•\Ž¦‰Â”\‚É‚µiƒZƒ~ƒRƒƒ“‚Å‚Í‚È‚­j‰üs‚Å•¡”ƒtƒ@ƒCƒ‹‚ð•\Œ»‚·‚éŒ`‚ÉB<br>
@@ -820,10 +928,12 @@ Source“ü—Í—“‚ð•¡”s•\Ž¦‰Â”\‚É‚µiƒZƒ~ƒRƒƒ“‚Å‚Í‚È‚­j‰üs‚Å•¡”ƒtƒ@ƒCƒ‹‚ð•\Œ»‚·
 Sourceƒ{ƒ^ƒ“‚Ì‰Šú“®ì‚ðƒtƒ@ƒCƒ‹‘I‘ð‰æ–Ê‚É•ÏXiÝ’è¨‚»‚Ì‘¼A‚©‚ç•ÏX‰Â”\jB<br>
 LargeFetch‹@”\‚Ì–³Œø‰»‚ð‘I‘ð‰Â”\‚ÉiÝ’è¨I/OÝ’èjB
 </td></tr>
+
 <tr><td>v3.32</td><td>
 ”ñ“ú–{ŒêŠÂ‹«‚ÅAAboutƒ_ƒCƒAƒƒO‚ðŠJ‚­‚Æ—áŠO‚ª”­¶‚µ‚Ä‚¢‚½‚Ì‚ðC³B<br>
 /srcfile_w= ‚ÅŽw’è‚µ‚½ƒtƒ@ƒCƒ‹‚ÌBOM‚ð³‚µ‚­”FŽ¯‚Å‚«‚Ä‚¢‚È‚©‚Á‚½‚Ì‚ðC³B
 </td></tr>
+
 <tr><td>v3.31</td><td>
 ƒƒCƒ“ƒoƒbƒtƒ@‰ŠúƒTƒCƒY‚ðŠg‘åix64:128MB¨256MBAx86:64MB¨128MBjB<br>
 Å‘å‘®«ƒoƒbƒtƒ@‚ðŠg‘åix64:1GB¨8GBjB<br>
@@ -834,217 +944,33 @@ LargeFetch‹@”\‚Ì–³Œø‰»‚ð‘I‘ð‰Â”\‚ÉiÝ’è¨I/OÝ’èjB
 “]‘—ƒoƒbƒtƒ@•ªŠ„‚Ì‰ü‘PB<br>
 ƒCƒ“ƒXƒg[ƒ‰‚É‚¨‚¯‚éADLLƒvƒŠƒ[ƒhUŒ‚‘ÎôB
 </td></tr>
+
 <tr><td>v3.30</td><td>
-ƒxƒŠƒtƒ@ƒCƒ‚[ƒh‘I‘ð‚ÉxxHash‚ð’Ç‰ÁB<br>
+<a href="#hash_mode">ƒxƒŠƒtƒ@ƒCƒ‚[ƒh‘I‘ð</a>‚ÉxxHash‚ð’Ç‰ÁB<br>
 ƒeƒXƒg—pƒtƒ@ƒCƒ‹ì¬ƒ‚[ƒhÝ’è‚ð’Ç‰Ái[“Ç‚Ýž‚Ý‚È‚µ‚Å‚Ì]”ñ“¯ŠúI/O‚ðŽg‚Á‚½‘‚«ž‚Ý‘¬“xƒeƒXƒg•ƒ_ƒ~[ƒtƒ@ƒCƒ‹ì¬jB<br>
-ŠJŽnƒpƒXƒtƒBƒ‹ƒ^‚ÅAŠK‘w‚Ìˆá‚¤ƒpƒXŽw’è‚ð•¡”s‚¤‚ÆÅ‚à[‚¢Žw’è‚Ì‚Ý—˜—p‚³‚ê‚é–â‘è‚ðC³B<br>
+<a href="#filter">‘O•ûˆê’vƒtƒBƒ‹ƒ^</a>‚ÅA[‚³‚Ìˆá‚¤ƒtƒBƒ‹ƒ^Žw’è‚ð•¡”s‚¤‚ÆÅ‚à[‚¢Žw’è‚Ì‚Ý—˜—p‚³‚ê‚é–â‘è‚ðC³B<br>
 ƒlƒbƒgƒ[ƒNƒhƒ‰ƒCƒu‚Ì“¯ˆê”»’è‚ðŠÔˆá‚¦‚é‚±‚Æ‚ª‚ ‚Á‚½‚Ì‚ðC³B<br>
 ƒWƒ‡ƒu“o˜^‚Å‚ÍAƒoƒbƒtƒ@Ý’è‚ðŒÂ•Ê•Û‘¶‚µ‚È‚¢ƒ|ƒŠƒV[‚É•ÏXB<br>
 ‚»‚Ì‘¼ƒŠƒtƒ@ƒCƒ“
 </td></tr>
-<tr><td>v3.27</td><td>
-No UIƒ‚[ƒh‹N“®iƒXƒPƒWƒ…[ƒ‰‹N“®“™j‚ÅAƒRƒs[“®ì‘Oƒ`ƒFƒbƒNiƒpƒXŒŸ¸“™j‚ÅƒGƒ‰[‚ª”­¶‚µ‚½ê‡‚ÉAÚ×“à—e‚ªƒƒO‚É‹L˜^‚³‚ê‚é‚æ‚¤‚ÉB<br>
-‚»‚Ì‘¼ƒŠƒtƒ@ƒCƒ“B
-</td></tr>
-<tr><td>v3.26</td><td>
-ACL/•›ŽŸStream—LŒøŽž‚Ì‘¬“x‚ð‰ü‘PB<br>
-ƒVƒFƒ‹Šg’£‚ÉƒAƒCƒRƒ“‚ð•\Ž¦‚·‚é‚æ‚¤‚ÉB<br>
-ƒWƒ‡ƒuŠÇ—‰æ–Ê‚ÌƒWƒ‡ƒuƒŠƒXƒg‡‚ðƒƒjƒ…[‚ÌƒWƒ‡ƒu‡‚Æ‡‚í‚¹‚é‚æ‚¤‚ÉB<br>
-Žè“®ior noui‚É‚æ‚éŽ©“®j’†’f‚Ìê‡Aabort‚ðƒƒO‚É‹L˜^‚·‚é‚æ‚¤‚ÉB<br>
-“®ìŠÂ‹«‚É Windows Server 2016‚ð’Ç‰ÁB<br>
-ƒCƒ“ƒXƒg[ƒ‰‰ü—ÇB
-</td></tr>
-<tr><td>v3.25</td><td>
-ƒxƒŠƒtƒ@ƒC—pƒnƒbƒVƒ…iMD5/SHA-1/SHA-256j‚ðÝ’è‚©‚ç‘I‘ð‰Â”\‚ÉB<br>
-32bit”Å‚ÅAƒxƒŠƒtƒ@ƒC’†‚ÉƒGƒ‰[I—¹‚·‚é‚±‚Æ‚ª‚ ‚Á‚½‚Ì‚ðC³B
-</td></tr>
-<tr><td>v3.24</td><td>
-‚²‚­ˆê•”‚ÌŠÂ‹«‚ÅAI—¹Žž‚É—áŠO‚ª”­¶‚·‚é‚±‚Æ‚ª‚ ‚Á‚½‚Ì‚ðC³B
-</td></tr>
-<tr><td>v3.23</td><td>
-64bit”Å‚ÅAI/Oƒoƒbƒtƒ@‚ðAPIãŒÀ‚Ì4095MB‚Ü‚ÅÝ’è‰Â”\‚ÉB<br>
-•¡”ƒvƒƒZƒX‚ð“®ì‚³‚¹‚½ê‡‚ÉA‹H‚É‘¼‚ÌFastCopy‚ÌI—¹‘Ò‚¿‚ª”­¶‚·‚é‚±‚Æ‚ª‚ ‚Á‚½‚Ì‚ðC³B<br>
-ŠeŽíƒŠƒtƒ@ƒCƒ“B
-</td></tr>
-<tr><td>v3.22</td><td>
-512eHDD ‚Å‚ÌŽáŠ±‚Ì‚‘¬‰»i512byteƒZƒNƒ^‚Å‚à4KBƒZƒNƒ^HDD‚Æ‚µ‚ÄDirectI/O‚ðs‚¤jB<br>
-Šg’£ƒtƒBƒ‹ƒ^‚Å‚Ì‘Š‘Î“ú•t‚Åƒ}ƒCƒiƒXŽw’è‚ª–³Œø‚¾‚Á‚½‚Ì‚ðC³B<br>
-‚Ý‚È‚µÅ¬ƒZƒNƒ^Ý’è‚ª•Û‘¶‚³‚ê‚È‚¢–â‘è‚ðC³B
-</td></tr>
-<tr><td>v3.21</td><td>
-ƒRƒ}ƒ“ƒhƒ‰ƒCƒ“‚Å /cmd=(sync|move) ‚ðŽó‚¯•t‚¯‚È‚­‚È‚Á‚Ä‚¢‚½‚Ì‚ðC³B
-</td></tr>
-<tr><td>v3.20</td><td>
+</table>
+<br>
+
+‰ß‹Ž‚Ìƒo[ƒWƒ‡ƒ“‚ÌƒTƒ}ƒŠiÚ×‚Èî•ñ‚Í<a href="https://fastcopy.jp/help/fc_history.html" target="_blank">‚±‚¿‚ç</a>j
+
+<table class="help_table" border="4">
+<tr><th>Version</th><th>à–¾</th></tr>
+<tr><td>v3.00<br> - v3.27</td><td>
+<a href="#setting_io">”ñ“¯ŠúI/O</a>ƒTƒ|[ƒgA<a href="#filter">ƒtƒBƒ‹ƒ^‘Š‘ÎƒpƒX</a>A<a href="#setting_parallel">“¯ŽžŽÀs“®ì‚ÌÅ“K‰»</a>A<a href="#license">GPLv3 ‚É•ÏX</a><br>
+
 ƒ†[ƒUƒŒƒxƒ‹i”ñŠÇ—ŽÒj‚Å‚ÌƒVƒFƒ‹Šg’£‚ð‰Â”\‚ÉB<br>
-ƒRƒs[“®ì’†‚ÌŽ©“®ƒXƒŠ[ƒv‚ð—}Ž~‚·‚éƒIƒvƒVƒ‡ƒ“‚Ì’Ç‰ÁB<br>
 ƒfƒBƒŒƒNƒgƒŠ’Tõ‚Ì‚‘¬‰»i‚ƒŒƒCƒeƒ“ƒVŠÂ‹«or‘å‹K–ÍƒGƒ“ƒgƒŠ—pBFIND_FIRST_EX_LARGE_FETCH—˜—pjB<br>
-‚Ý‚È‚µÅ¬ƒZƒNƒ^ƒTƒCƒYÝ’è‚ð’Ç‰ÁiƒWƒƒƒ“ƒNƒVƒ‡ƒ““™‚É‚æ‚èA‘‚«ž‚Ý‘¤‚Ì“r’†ƒfƒBƒŒƒNƒgƒŠ‚ÅƒZƒNƒ^ƒTƒCƒY‚ª4096byte‚É‚È‚éê‡—pjB<br>
-/NoUIŽž‚Í—\‘ª‹@”\‚ðOFF‚ÉBi/estimate=TRUE ‚Å•ÏX‰Â”\jB<br>
-ƒnƒbƒVƒ…ƒ‚[ƒh‚É SHA-256‚ð’Ç‰ÁBifastcopy2.ini [main] hash_mode=2 ‚ðÝ’èBhash_mode=1 ‚Å SHA-1j<br>
-/balloonƒIƒvƒVƒ‡ƒ“‚ð’Ç‰ÁBi/balloon=FALSE ‚Åballoon•\Ž¦‚ð—}Ž~‚µ‚Ü‚·j<br>
-/force_start‚Å“¯ŽžŽÀsãŒÀ”‚ðŽw’è‰Â”\‚ÉBi/force_start=2`Nj<br>
-Šg’£ƒtƒBƒ‹ƒ^—p“ú•tŽw’è‚ÅAŽž•ª•b‚Ü‚ÅÝ’è‰Â”\‚Éi/from_date(to_date)="YYYYMMDD[hhmmss]" or "YYYY/MM/DD [hh:mm:ss]"j<br>
-ƒwƒ‹ƒv“à‚Å Ctrl +F ‚É‚æ‚éŒŸõ‚ð‰Â”\‚ÉB
+<a href="#hash_mode">ƒxƒŠƒtƒ@ƒCƒ‚[ƒh‘I‘ð</a>‚ÉSHA-256‚ð’Ç‰ÁB<br>
+ƒeƒXƒg—pƒtƒ@ƒCƒ‹ì¬ƒ‚[ƒhÝ’è‚ð’Ç‰Ái[“Ç‚Ýž‚Ý‚È‚µ‚Å‚Ì]”ñ“¯ŠúI/O‚ðŽg‚Á‚½‘‚«ž‚Ý‘¬“xƒeƒXƒg•ƒ_ƒ~[ƒtƒ@ƒCƒ‹ì¬jB
 </td></tr>
-<tr><td>v3.13-v3.14</td><td>
-ˆê•”ŠÂ‹«‚ÅA‹N“®Žž‚É—áŠO‚ª”­¶‚·‚é‚±‚Æ‚ª‚ ‚Á‚½‚Ì‚ðC³B
-</td></tr>
-<tr><td>v3.12</td><td>
-’Êí•\Ž¦i”ñƒAƒCƒRƒ“j{—\‘ªONŽž‚Éƒ^ƒXƒNƒo[‚ÉƒvƒƒOƒŒƒX•\Ž¦B<br>
-ƒƒO‹L˜^‚ÅuUTF-8‚Å‹L˜^vOFF‚Å‚àUTF-8‹L˜^‚³‚ê‚Ä‚¢‚½–â‘è‚ðC³B<br>
-ŒöŽ®ƒTƒ|[ƒgŒfŽ¦”Â‚Ö‚ÌƒŠƒ“ƒN’Ç‰ÁB
-</td></tr>
-<tr><td>v3.11</td><td>
-ƒ^ƒXƒNƒgƒŒƒC‚Å“®ìŠ®—¹‚µ‚½Žž‚Éƒoƒ‹[ƒ“’Ê’m‚Å‚«‚é‚æ‚¤‚ÉB<br>
-ƒWƒ‡ƒuÝ’è‚©‚ç Windowsƒ^ƒXƒNƒXƒPƒWƒ…[ƒ‰‚ð‹N“®‚Å‚«‚é‚æ‚¤‚ÉB<br>
-ƒxƒŠƒtƒ@ƒCŽžA‘Šˆá‚ª‚ ‚Á‚½ê‡‚Íƒtƒ@ƒCƒ‹–¼––”ö‚É .fc_verify_err ‚ð•t—^‚µ‚ÄƒŠƒl[ƒ€B
-</td></tr>
-<tr><td>v3.10</td><td>
-ƒƒCƒ“î•ñ˜g‚ÌƒtƒHƒ“ƒg‚ð•ÏX‰Â”\‚ÉB<br>
-ACLƒGƒ“ƒgƒŠ‚ª‘½‚­•ŠK‘w‚ª[‚¢ê‡‚ÉA‹H‚É—áŠO‚ª”­¶ior ACLƒRƒs[‚ÉŽ¸”sj‚·‚é‚±‚Æ‚ª‚ ‚Á‚½‚Ì‚ðC³B
-</td></tr>
-<tr><td>v3.09</td><td>
-Win10(x64)ƒAƒbƒvƒf[ƒg”Å‚ÅAƒ^ƒXƒNƒgƒŒƒCŠi”[Žž‚É—áŠO‚ª”­¶‚·‚é‚±‚Æ‚ª‚ ‚Á‚½‚Ì‚ðC³B<br>
-</td></tr>
-<tr><td>v3.08</td><td>
-Win10(x86)ƒAƒbƒvƒf[ƒg”Å‚ÅAƒ^ƒXƒNƒgƒŒƒCŠi”[Žž‚É—áŠO‚ª”­¶‚·‚é‚±‚Æ‚ª‚ ‚Á‚½‚Ì‚ðC³B<br>
-‚»‚Ì‘¼ƒŠƒtƒ@ƒCƒ“
-</td></tr>
-<tr><td>v3.07</td><td>
-ƒtƒ@ƒCƒ‹ƒƒO‹L˜^‚ª—LŒø‚Èê‡‚Éƒƒ‚ƒŠƒŠ[ƒN‚µ‚Ä‚¢‚½–â‘è‚ðC³i1–œƒtƒ@ƒCƒ‹‚É‚Â‚«1MB‘OŒãj
-</td></tr>
-<tr><td>v3.06</td><td>
-ƒŠƒXƒgƒAƒbƒvŽž‚ÉƒŠƒp[ƒXƒ|ƒCƒ“ƒgŽí•Ê•\Ž¦(->)‚ªo‚È‚©‚Á‚½‚Ì‚ðC³B<br>
-NoUIƒ‚[ƒh‚Å‚àŠm”Fƒ_ƒCƒAƒƒO‚ªo‚é‚±‚Æ‚ª‚ ‚Á‚½‚Ì‚ðC³B<br>
-ACL/•›ŽŸStream—LŒøŽž{ƒlƒbƒgƒ[ƒNƒhƒ‰ƒCƒu‚Ö‚Ì‘‚«ž‚ÝŽž‚É‹H‚É—áŠO‚ªo‚é‚±‚Æ‚ª‚ ‚Á‚½‚Ì‚ðC³B<br>
-‚»‚Ì‘¼ƒŠƒtƒ@ƒCƒ“B
-</td></tr>
-<tr><td>v3.05</td><td>
-OS‚ÌƒeƒLƒXƒg•\Ž¦Šg‘åŠÂ‹«‚Å‚àA‚È‚é‚×‚­•¶Žš‚ð“Ç‚Ý‚â‚·‚­B<br>
-•œŒ³–hŽ~íœ‚ÅA4GBˆÈã‚ð’´‚¦‚éƒtƒ@ƒCƒ‹‚Åˆ—‚ª’âŽ~‚·‚é–â‘è‚ðC³B<br>
-ƒCƒ“ƒXƒg[ƒ‰‚ÅƒVƒ‡[ƒgƒJƒbƒg‚ªì¬‚³‚ê‚È‚¢–â‘è‚ðC³B<br>
-‚»‚Ì‘¼ƒŠƒtƒ@ƒCƒ“B
-</td></tr>
-<tr><td>v3.04</td><td>
-/linkdest‚ðŽw’è‚·‚é‚ÆƒGƒ‰[‚É‚È‚é–â‘è‚ðC³B<br>
-ƒtƒBƒ‹ƒ^Žw’è‚ÅƒLƒƒƒ‰ƒNƒ^ƒNƒ‰ƒX“à‚ÉƒGƒXƒP[ƒv•¶Žš‚ª‚ ‚é‚Æƒ}ƒbƒ`‚µ‚È‚­‚È‚é–â‘è‚ðC³B<br>
-</td></tr>
-<tr><td>v3.03</td><td>
-32bit”Å‚ÍAthlonXP“™‚ÌŒÃ‚¢ŠÂ‹«‚Å‚à“®ì‚·‚é‚æ‚¤‚ÉB<br>
-ƒŠƒp[ƒXƒtƒ@ƒCƒ‹‚ÌƒxƒŠƒtƒ@ƒC•tˆÚ“®‚ªŠ®—¹‚µ‚È‚¢–â‘è‚ðC³B<br>
-V‹KƒCƒ“ƒXƒg[ƒ‹Žž‚ÌuˆÚ“®vÝ’è‰Šú’l‚ðu’€ŽŸˆÚ“®ONv‚É•ÏXB<br>
-‚»‚Ì‘¼ƒŠƒtƒ@ƒCƒ“iuŽÀsvƒ{ƒ^ƒ“‚ð‰ŠúƒtƒH[ƒJƒX‚ÉB‰pŒê”ÅUIƒtƒHƒ“ƒg•ÏXB‰pŒêƒwƒ‹ƒv‰ü—ÇjB
-</td></tr>
-<tr><td>v3.02</td><td>
-DeDuplication‹@”\iWindows Server 2008ˆÈ~j‚ÅƒŠƒp[ƒX‰»‚³‚ê‚½ƒtƒ@ƒCƒ‹‚É‘Î‰ži/reparse ‚ÉŠÖ‚í‚ç‚¸í‚ÉŽÀ‘ÌŽQÆ‚·‚é‚æ‚¤‚ÉjB
-</td></tr>
-<tr><td>v3.01</td><td>
-‚P‚Â‚ÌƒfƒBƒŒƒNƒgƒŠu’¼‰ºv‚É‘½”‚Ìƒtƒ@ƒCƒ‹i65,537ƒtƒ@ƒCƒ‹(64bit”Å)/131,072ƒtƒ@ƒCƒ‹(32bit”Å)ˆÈãj‚ª‚ ‚Á‚½ê‡‚ÉAƒƒ‚ƒŠŠm•ÛƒGƒ‰[‚Åˆ—‚ª’†’f‚·‚é‚±‚Æ‚ª‚ ‚Á‚½‚Ì‚ðC³
-</td></tr>
-<tr><td>v3.00</td><td>
-Read/Write ‚É<a href="#setting_io">”ñ“¯ŠúI/O‚ð—p‚¢‚é</a>‚±‚Æ‚Åi“Á‚Éƒlƒbƒgƒ[ƒNƒhƒ‰ƒCƒuŠÔ‚Ìj“]‘—‘¬“x‚ðŒüãB<br>
-Include/ExcludeƒtƒBƒ‹ƒ^Žw’è‚ÅÅIƒpƒX—v‘fˆÈŠO‚ÉA<a href="#filter">‘Š‘ÎƒpƒX•ŠJŽnƒpƒX‚ðŽw’è‰Â”\</a>‚ÉB<br>
-•¡”‚ÌFastCopy‹N“®Žž‚Ì<a href="#setting_parallel">“¯ŽžŽÀs“®ì‚ÌÅ“K‰»</a>Bi•ÊX‚Ì•¨—ƒhƒ‰ƒCƒu‚Ö‚Ìˆ—‚Í•À—ñŽÀsA“¯‚¶•¨—ƒhƒ‰ƒCƒu‚Ö‚Ìˆ—‚ÍŽÀs‡‚ðŽç‚Á‚Ä‡ŽŸŽÀsAƒVƒƒƒbƒgƒ_ƒEƒ“ˆ—‚Í‘¼‚ÌFastCopyˆ—I—¹‚ð‘Ò‚Á‚Ä‚©‚çŽÀŽ{j<br>
-<a href="#no_ui">/no_uiƒIƒvƒVƒ‡ƒ“</a>i–â‚¢‡‚í‚¹ƒ_ƒCƒAƒƒO‚ðo‚³‚È‚¢j‚ð’Ç‰Ái•ƒ^ƒXƒNƒXƒPƒWƒ…[ƒ‰‹N“®‚ÅŽ©“®—LŒøjB<br>
-4096MB ‚ð’´‚¦‚½ƒoƒbƒtƒ@Žw’è‚ð‰Â”\‚Éi64bit”Å‚Ì‚ÝjB<br>
-ƒtƒ@ƒCƒ‹ƒƒO‚É<a href="#setting_log">ƒ^ƒCƒ€ƒXƒ^ƒ“ƒvEƒtƒ@ƒCƒ‹ƒTƒCƒY‚ð•t‰Á</a>‰Â”\‚ÉB<br>
-XV“ú•t‚É<a href="#setting_copyopt">‹–—eŒë·Ý’è</a>‚ð’Ç‰ÁB<br>
-“¯ˆê•¨—HDDƒOƒ‹[ƒv”»’è‚Ì¸“x‚ðŒüãB<br>
-ƒwƒ‹ƒvƒtƒ@ƒCƒ‹‚ð[ŽÀ•ŠeŽíƒ_ƒCƒAƒƒO‚©‚ç“–ŠY€–Úƒwƒ‹ƒv‚ðŒÄ‚Ño‚¹‚é‚æ‚¤‚ÉB<br>
-ŠeŠ‚Ì”’l•\Ž¦‚ðŒ©‚â‚·‚­iƒtƒHƒ“ƒg•ÏXAƒJƒ“ƒ}‹æØ‚èA¬”“_¸“x’²®jB<br>
-Ý’èƒtƒ@ƒCƒ‹‚ð FastCopy.ini ¨ <strong><font color="red">FastCopy2.ini</font></strong> ‚É•ÏX•ini“àƒGƒ“ƒR[ƒh‚ÌUTF-8‰»•ˆê•”‘Ž®•ÏXB<br>
-ƒ‰ƒCƒZƒ“ƒX‚ð 2ð€BSD ‚©‚ç <a href="#license">GPLv3 ‚É•ÏX</a>B<br>
-‚»‚Ì‘¼ƒŠƒtƒ@ƒCƒ“B
-</td></tr>
-<tr><td>v2.11</td><td>‰pŒêUIƒ‚[ƒh‚ÅAƒRƒ}ƒ“ƒhƒ‰ƒCƒ“EƒVƒFƒ‹Šg’£‚Ìˆø”‚ª–³Ž‹‚³‚ê‚Ä‚¢‚½‚Ì‚ðC³</td></tr>
-<tr><td>v2.10</td><td>
-VistaˆÈ~ ‚Ì 120DPI ƒ‚[ƒh‚Å‚àãY—í‚É•\Ž¦‚³‚ê‚é‚æ‚¤‚ÉB
-ACL/Stream—LŒø‚É‚µ‚½ó‘Ô‚Åã‘‚«ƒRƒs[‚ÉŽ¸”s‚·‚é‚±‚Æ‚ª‚ ‚Á‚½‚Ì‚ðC³B
-•\Ž¦•p“x‚ð 250ms/500ms/1000ms ‚©‚ç‘I‘ð‚Å‚«‚é‚æ‚¤‚ÉB
-ƒWƒ‡ƒu–¼‚ðƒEƒBƒ“ƒhƒEƒ^ƒCƒgƒ‹‚É“ü‚ê‚é‚æ‚¤‚ÉB
-iƒ^ƒXƒNƒgƒŒƒC‚Å‚Í‚È‚­jƒ^ƒXƒNƒo[‚ÅÅ¬‰»‚·‚éÝ’è‚ð’Ç‰ÁB
-I—¹Žžˆ—‚Å‚ÌƒRƒ}ƒ“ƒhŽÀsðŒ‚ð_“î‚ÉB
-‚»‚Ì‘¼AƒŠƒtƒ@ƒCƒ“
-</td></tr>
-<tr><td>v2.08</td><td>SourceƒfƒBƒŒƒNƒgƒŠ‘I‘ð‚ÅACTLƒL[‚ð‰Ÿ‚µ‚È‚ª‚ç‚ÌOK‰Ÿ‰º‚ÅƒpƒX–¼’Ç‰Á“®ì‚ÉBƒpƒX—š—ð‚ª•Û‘¶‚³‚ê‚È‚¢–â‘è‚ÌC³(v2.07‚Ì‚Ý)B</td></tr>
-<tr><td>v2.07</td><td>ƒƒCƒ“ƒEƒBƒ“ƒhƒEƒŠƒTƒCƒYŽž‚ÌƒRƒ“ƒ{ƒ{ƒbƒNƒX‚ÌŽ©“®•âŠ®/‘I‘ð‚ð—}Ž~B‚»‚Ì‘¼ƒŠƒtƒ@ƒCƒ“</td></tr>
-<tr><td>v2.06</td><td>ƒxƒŠƒtƒ@ƒCŽž‚ÉƒGƒ‰[‚Æ‚È‚é‚±‚Æ‚ª‚ ‚Á‚½‚Ì‚ðC³(v2.05‚Ì‚Ý)B</td></tr>
-<tr><td>v2.05</td><td>Win98‚ÅÝ’è‚ª•Û‘¶‚Å‚«‚È‚¢–â‘è‚ðC³BACL/•›ŽŸStreamƒGƒ‰[‚Ì‹L˜^‚ð‘I‘ð‰Â”\‚ÉB</td></tr>
-<tr><td>v2.04</td><td>“ÁŒ ¸ŠiŒã‚É‚àƒhƒ‰ƒbƒO•ƒhƒƒbƒv‚Å‚«‚é‚æ‚¤‚ÉBFastCopyƒVƒFƒ‹Šg’£DLL‚ð“ú–{ŒêƒfƒBƒŒƒNƒgƒŠ“à‚É‚¨‚¢‚½ê‡‚ÉƒVƒFƒ‹Šg’£‚ª—˜—p‚Å‚«‚È‚©‚Á‚½–â‘è‚ðC³BÝ’èƒ_ƒCƒAƒƒO•‚»‚Ì‘¼ƒŠƒtƒ@ƒCƒ“</td></tr>
-<tr><td>v2.03</td><td>‰pŒêUIŽž‚Éu“ÁŒ vƒƒjƒ…[€–Ú‚ªŒø‚©‚È‚¢–â‘è‚ðC³B‚»‚Ì‘¼ƒŠƒtƒ@ƒCƒ“</td></tr>
-<tr><td>v2.02</td><td>x64 ƒlƒCƒeƒBƒu”Å‚ðƒŠƒŠ[ƒXBVistaˆÈ~‚Å \Program Files ”z‰º‚ÉƒCƒ“ƒXƒg[ƒ‹‚µ‚½ê‡AUACŠÂ‹«‚Å‚È‚­‚Ä‚à fastcopy.ini ‚âƒƒOƒtƒ@ƒCƒ‹‚ð \Users\(USER)\AppData\roaming\FastCopy ”z‰º‚É•Û‘¶‚·‚é‚æ‚¤‚É•ÏXBƒZƒ~ƒRƒƒ“‚ðŠÜ‚Þƒtƒ@ƒCƒ‹–¼‚ðŽw’è‚·‚é‚ÆƒGƒ‰[‚ªo‚éê‡‚ª‚ ‚Á‚½‚Ì‚ðC³B‚»‚Ì‘¼AC³•ƒŠƒtƒ@ƒCƒ“B</td></tr>
-<tr><td>v2.01</td><td>“¯ˆêHDD“à‚Å‚Ì‘å—ÊˆÚ“®‚ªŠ®—¹‚µ‚È‚¢‚±‚Æ‚ª‚ ‚Á‚½‚Ì‚ðC³BSource/DestDirŽw’è‚Éâ‘ÎƒpƒX‚ð•K—v‚Æ‚µ‚È‚¢Œ`‚É–ß‚µ‚½B</td></tr>
-<tr><td>v2.00</td><td>ŠÈˆÕ”äŠr‹@”\‚Ì’Ç‰ÁiCTLƒL[‚ð‰Ÿ‚µ‚È‚ª‚çuƒŠƒXƒgƒAƒbƒvvjBUAC—LŒø‚ÈŠÂ‹«‚Å \Program Files ”z‰º‚ÉƒCƒ“ƒXƒg[ƒ‹‚µ‚½ê‡Afastcopy.ini ‚âƒƒOƒtƒ@ƒCƒ‹‚ð \Users\(USER)\AppData\roaming\FastCopy ”z‰º‚É•Û‘¶‚·‚é‚æ‚¤‚É•ÏXB•¨—HDDƒOƒ‹[ƒv‚ðŽè“®Ý’è‚ð‰Â”\‚ÉBDestDirŽw’è‚Ì’†ŠÔƒfƒBƒŒƒNƒgƒŠ‚ª‘¶Ý‚µ‚È‚¢ê‡‚Íì¬‚·‚é‚æ‚¤‚ÉB64bitOS‚Å‚Ì32bitƒVƒFƒ‹Šg’£‚É‘Î‰žBƒWƒ‡ƒuŠÇ—íœŽž‚Ì—áŠO”­¶‚ðC³B</td></tr>
-<tr><td>v1.99r4</td><td>ƒRƒs[æ‚ÉA‘å•¶Žš¬•¶Žš‚Ìˆá‚¤ƒtƒ@ƒCƒ‹–¼‚ª‘¶Ý‚·‚éê‡‚ÉAƒRƒs[Œ³‚É‡‚í‚¹‚é‚æ‚¤‚É•ÏXi‘Sã‘‚«ˆÈŠOjBÚ×ƒGƒ‰[‚ª•\Ž¦‚³‚ê‚È‚¢‚±‚Æ‚ª‚ ‚Á‚½‚Ì‚ðC³</td></tr>
-<tr><td>v1.99r3</td><td>“¯ˆêHDD“à‚Ì•Êƒp[ƒeƒBƒVƒ‡ƒ“ŠÔƒRƒs[‚ªA•ÊHDDƒ‚[ƒh‚ÉŒë”»’è‚³‚ê‚é–â‘è‚ÌC³(v.199r2‚Ì‚Ý)BŽžŠÔ—\‘ª‚Ì¸“x‚ð­‚µŒüãB</td></tr>
-<tr><td>v1.99r2</td><td>Ú×ƒtƒ@ƒCƒ‹ƒƒO‹@”\(/filelog)‚ð’Ç‰ÁiƒxƒŠƒtƒ@ƒCŽž‚ÍƒnƒbƒVƒ…’l(Default:MD5)‚ào—ÍjBˆÚ“®ƒ‚[ƒh‚Å‚ÌƒtƒBƒ‹ƒ^‹@”\‚ð—˜—p‰Â”\‚ÉB‹N“®‚ð‚‘¬‰»iiniƒtƒ@ƒCƒ‹‚ð“ÆŽ©ƒ‰ƒCƒuƒ‰ƒŠŒo—R‚ÌƒAƒNƒZƒX‚É•ÏXjBSource‚Å’¼ÚŽw’è‚µ‚½ƒtƒ@ƒCƒ‹‚É‘Î‚µ‚Ä‚àAƒtƒBƒ‹ƒ^‚ªŒø‚­‚æ‚¤‚É•ÏXB/srcfile ‚Å MBCS•¶Žš‚ðŽg‚¦‚È‚©‚Á‚½–â‘è‚ðC³B‚»‚Ì‘¼ƒŠƒtƒ@ƒCƒ“B</td></tr>
-<tr><td>v1.98</td><td>Šg’£iƒTƒCƒY•XV“ú•tjƒtƒBƒ‹ƒ^‚ð’Ç‰ÁiÝ’è¨Šg’£ƒtƒBƒ‹ƒ^•\Ž¦j</td></tr>
-<tr><td>v1.97</td><td>I—¹Žžˆ—Ý’èŽž‚ÌƒTƒEƒ“ƒhÄ¶‚ªs‚í‚ê‚È‚¢‚±‚Æ‚ª‚ ‚Á‚½‚Ì‚ðC³B‚»‚Ì‘¼ƒŠƒtƒ@ƒCƒ“</td></tr>
-<tr><td>v1.96</td><td>ƒn[ƒhƒŠƒ“ƒNÄŒ»ƒIƒvƒVƒ‡ƒ“Žw’èŽž(/linkdest)Aƒtƒ@ƒCƒ‹XV‚Ì“®ì‚ðAŠù‘¶ƒtƒ@ƒCƒ‹‚ðã‘‚«¨íœ•Äì¬‚É•ÏX‚µ‚½B‚Ü‚½Aƒn[ƒhƒŠƒ“ƒNÄŒ»ƒIƒvƒVƒ‡ƒ“Žw’è‚ÉŠÖ‚í‚ç‚¸Aƒtƒ@ƒCƒ‹XV“®ì‚ðíœ•Äì¬‚É‚·‚éƒIƒvƒVƒ‡ƒ“(/recreate)‚ð’Ç‰Á</td></tr>
-<tr><td>v1.95</td><td>ƒn[ƒhƒŠƒ“ƒN‚ðÄŒ»‚·‚éƒIƒvƒVƒ‡ƒ“(/linkdest)‚Ì’Ç‰ÁBI—¹Žžˆ—’Ê’mƒ_ƒCƒAƒƒO‚ªÅ‘O–Ê•\Ž¦‚³‚ê‚é‚æ‚¤‚É•ÏXBƒRƒs[I—¹Žž‚É•s³‚Èƒƒ‚ƒŠŠJ•ú‚ð‚·‚é‚±‚Æ‚ª‚ ‚Á‚½‚Ì‚ðC³(v1.93-v1.94)BACL/Stream‚ÌƒRƒs[‚ÉŽ¸”s‚·‚é‚±‚Æ‚ª‚ ‚Á‚½‚Ì‚ðC³B</td></tr>
-<tr><td>v1.94</td><td>ƒwƒ‹ƒvƒtƒ@ƒCƒ‹‚ªŠJ‚©‚È‚©‚Á‚½‚Ì‚ðC³(v1.93‚Ì‚Ý)</td></tr>
-<tr><td>v1.93</td><td>I—¹Žžˆ—Ý’èiShutdownAƒRƒ}ƒ“ƒhŽÀs“™‚ð‰Â”\‚Éj‚ð’Ç‰ÁBuƒƒO‚ðŠJ‚­vƒƒjƒ…[‚ð’Ç‰ÁBƒtƒ@ƒCƒ‹‚É‚æ‚éSourceŽw’èƒIƒvƒVƒ‡ƒ“i/srcfile=j‚ð’Ç‰ÁBƒWƒ‡ƒuŠÇ—‚Åuíœƒ‚[ƒhv‚ðuˆÚ“®ƒ‚[ƒhv‚Æ‚µ‚Ä•Û‘¶‚µ‚Ä‚¢‚½‚Ì‚ðC³iv1.80-v1.92jBƒCƒ“ƒXƒg[ƒ‰‚ÌƒVƒ‡[ƒgƒJƒbƒgì¬ƒIƒvƒVƒ‡ƒ“‚ªŒø‚¢‚Ä‚¢‚È‚©‚Á‚½‚Ì‚ðC³iv1.92‚Ì‚Ýj</td></tr>
-<tr><td>v1.92</td><td>ƒVƒFƒ‹Šg’£‚Éuƒ^ƒXƒNƒgƒŒƒC‚ÅŽÀsvƒIƒvƒVƒ‡ƒ“‚ð’Ç‰ÁBƒGƒ‰[”­¶Žž‚ÉAƒRƒs[æ‚É•sŠ®‘S‚Èƒtƒ@ƒCƒ‹‚ªŽc‚é‚±‚Æ‚ª‚ ‚Á‚½‚Ì‚ðC³B‰pŒêƒ‚[ƒh‚Ì•\‹L‚ð­‚µ‰ü‘P</td></tr>
-<tr><td>v1.91</td><td>‰pŒêUIƒ‚[ƒh‚Ì’Ç‰ÁB•œŒ³–³Œø‰»•t‚«íœ‚ÉŽ¸”s‚·‚é‚±‚Æ‚ª‚ ‚Á‚½‚Ì‚ðC³BƒxƒŠƒtƒ@ƒC•t‚«ˆÚ“®Žž‚ÉA‹H‚Éˆ—‚ªi‚Ü‚È‚­‚È‚é‰Â”\«‚ª‚ ‚Á‚½‚Ì‚ðC³BƒfƒBƒŒƒNƒgƒŠ‘I‘ðƒ_ƒCƒAƒƒO‚Åƒlƒbƒgƒ[ƒNƒhƒ‰ƒCƒu‚ªŒ©‚¦‚È‚­‚È‚Á‚Ä‚¢‚½‚Ì‚ðC³B</td></tr>
-<tr><td>v1.90</td><td>ƒxƒŠƒtƒ@ƒC“®ì‚Ì‚‘¬‰»iI/O ‚ÆƒnƒbƒVƒ…ŒvŽZ‚ð•ÊƒXƒŒƒbƒh‰»‚µ‚Ä•À—ñˆ—jBƒxƒŠƒtƒ@ƒC—pƒnƒbƒVƒ…ƒAƒ‹ƒSƒŠƒYƒ€‚É MD5 ‚ð’Ç‰Á‚µAMD5‚ðƒfƒtƒHƒ‹ƒg‚É•ÏXifastcopy.ini ‚Å <strike>[main] using_MD5 = 0 ‚Æ‚·‚ê‚Î SHA-1 ‚ð—˜—p</strike>B<a href="#hash_mode">Ý’è•û–@‚ª•Ï‚í‚è‚Ü‚µ‚½</a>jBƒEƒBƒ“ƒhƒE‚ÌˆÊ’u•ƒTƒCƒYŒÅ’è‹@”\A‚¨‚æ‚ÑASource Ì DestDir ŒðŠ·‹@”\‚ð’Ç‰ÁB</td></tr>
-<tr><td>v1.84</td><td>ƒtƒBƒ‹ƒ^•¶Žš—ñ“o˜^‚ÅAiŽí—Þ‚²‚Æ‚Ìj“o˜^•¶Žš”‡Œv‚ª62*n•¶Žšiƒƒ^•¶Žš‚ðœ‚­j‚Ì‹«ŠE‚ÅI‚í‚é•¶Žš—ñ‚ª“o˜^‚³‚ê‚È‚©‚Á‚½‚Ì‚ðC³B</td></tr>
-<tr><td>v1.83</td><td>“Ç‚Ýž‚Ý‘¤OSƒLƒƒƒbƒVƒ…—˜—pON‚Ìê‡‚àAƒxƒŠƒtƒ@ƒC—p“Ç‚Ýž‚ÝŽž‚Í–³Œø‰»‚·‚é‚æ‚¤‚É‚µ‚½</td></tr>
-<tr><td>v1.82</td><td>“Ç‚Ýž‚Ý‘¤OSƒLƒƒƒbƒVƒ…‚ð—˜—p‚·‚éƒIƒvƒVƒ‡ƒ“’Ç‰ÁiOSƒLƒƒƒbƒVƒ…‚ÉÚ‚Á‚Ä‚¢‚éƒtƒ@ƒCƒ‹‚Í‚‘¬“Ç‚Ýž‚Ý‚³‚ê‚é‚ªA‚»‚¤‚Å‚È‚¢ê‡A–³‘Ê‚ÉOSƒLƒƒƒbƒVƒ…‚ð—˜—p‚µ‚Ä‘¼‚Ì‰¼‘zƒƒ‚ƒŠ‚ðƒXƒƒbƒvƒAƒEƒg‚³‚¹‚éŒ´ˆö‚É‚È‚é‚Ì‚ÅA•W€‚Å‚Í”ñ„§j</td></tr>
-<tr><td>v1.81</td><td>ƒxƒŠƒtƒ@ƒC•t‚«ˆÚ“®‚ÅƒxƒŠƒtƒ@ƒCƒGƒ‰[‚ª”­¶‚·‚é‚ÆI—¹‚µ‚È‚¢ê‡‚ª‚ ‚Á‚½‚Ì‚ðC³</td></tr>
-<tr><td>v1.80</td><td>‘‚«ž‚Ýƒf[ƒ^‚ÌƒxƒŠƒtƒ@ƒC(SHA-1)ƒIƒvƒVƒ‡ƒ“‚ð’Ç‰ÁBƒVƒFƒ‹Šg’£‚Å‚Ìu“\‚è•t‚¯v‚ðƒTƒ|[ƒgBˆÚ“®i‘Sã‘‚«j‚ðiƒTƒCƒYE“ú•tj‚É•ÏX‚·‚éƒIƒvƒVƒ‡ƒ“‚Ì’Ç‰ÁB’€ŽŸˆÚ“®ƒIƒvƒVƒ‡ƒ“‚Ì’Ç‰ÁBˆÚ“®ƒ‚[ƒhŽž‚Éˆê•”‚ÅƒGƒ‰[‚ª”­¶‚µ‚½ê‡‚É‚àA³í‚ÉƒRƒs[‚Å‚«‚½ƒtƒ@ƒCƒ‹‚É‚Â‚¢‚Ä‚Ííœ‚ðŒp‘±‚·‚é“®ì‚É•ÏXBÅ‘åIOƒTƒCƒYÝ’è‚ª‘å‚«‚·‚¬‚éê‡i=ERROR_NO_SYSTEM_RESOURCES”­¶Žžj‚ÉAŽ©“®“I‚ÉIOƒTƒCƒY‚ð—Ž‚Æ‚µ‚ÄŒp‘±‰Â”\‚É‚µ‚½BI—¹—\‘ª‚ðŽáŠ±‰ü‘PBŒp‘±•s”\Žž‚àŠm”Fƒ_ƒCƒAƒƒO‚ðo‚³‚È‚¢ƒIƒvƒVƒ‡ƒ“(/no_confirm_stop)‚ð’Ç‰ÁBƒvƒƒZƒX‚Ì–ß‚è’l‚É‚Â‚¢‚ÄAƒGƒ‰[”­¶Žž‚É‚Í -1 ‚ð•Ô‚·‚æ‚¤‚É‚µ‚½</td></tr>
-<tr><td>v1.71</td><td>Win2000/Me/98 ‚ÅƒVƒFƒ‹Šg’£“o˜^Žž‚ÉˆÙíI—¹‚·‚é‚±‚Æ‚ª‚ ‚Á‚½‚Ì‚ðC³</td></tr>
-<tr><td>v1.70</td><td>ƒWƒƒƒ“ƒNƒVƒ‡ƒ“•ƒVƒ“ƒ{ƒŠƒbƒNƒŠƒ“ƒN‚É‘Î‰žiƒfƒtƒHƒ‹ƒg‚Å‚Í”z‰º‚Å‚Í‚È‚­AƒŠƒ“ƒNŽ©‘Ì‚ðƒRƒs[Bíœ‚Å‚Íí‚ÉƒŠƒ“ƒN‚¾‚¯‚ðíœjBVista UACi“ÁŒ ¸Šij‘Î‰žB64bit”ÅƒVƒFƒ‹Šg’£DLL“¯«BƒGƒ‰[ƒƒO‚ÌUTF-8o—ÍƒIƒvƒVƒ‡ƒ“’Ç‰ÁB•œŒ³–³Œø‰»íœ‚Å‚àƒn[ƒhƒŠƒ“ƒN‚³‚ê‚Ä‚¢‚éƒtƒ@ƒCƒ‹ê‡‚Íã‘‚«‚È‚µ‚Ìíœ‚ÉBƒƒOƒtƒ@ƒCƒ‹–¼Žw’èƒIƒvƒVƒ‡ƒ“(/logfile=)’Ç‰ÁBƒGƒ‰[ƒƒO—Ìˆæ‚ª¬‚³‚­‚È‚Á‚Ä‚¢‚½‚Ì‚ðC³B‚»‚Ì‘¼ƒŠƒtƒ@ƒCƒ“B</td></tr>
-<tr><td>v1.63</td><td>include/excludeƒtƒBƒ‹ƒ^‚ÌãŒÀ•¶Žš”‚ð62->2048•¶Žš‚É•ÏXB‚»‚Ì‘¼AƒŠƒtƒ@ƒCƒ“</td></tr>
-<tr><td>v1.62</td><td>v1.60,v1.61‚ÅAƒRƒs[æƒtƒ@ƒCƒ‹ì¬ƒGƒ‰[‚ª”­¶‚·‚éê‡‚ª‚ ‚Á‚½‚Ì‚ðC³</td></tr>
-<tr><td>v1.61</td><td>v1.60‚ÅAsrc ƒtƒB[ƒ‹ƒh‚Ì“ü—Í‚ª8192•¶Žš‚ð’´‚¦‚Ä‚¢‚½ê‡‚ÉAŽÀsŽž‚É 8192•¶Žš‚ÉØ‚è‹l‚ß‚ç‚ê‚Ä‚µ‚Ü‚¤–â‘è‚ðC³</td></tr>
-<tr><td>v1.60</td><td>NTFS ƒAƒNƒZƒXƒRƒ“ƒgƒ[ƒ‹ƒŠƒXƒg(ACL)A•›ŽŸƒXƒgƒŠ[ƒ€‚ÌƒTƒ|[ƒgBíœŽž‚Ì•œŒ³–³Œø‰»ƒIƒvƒVƒ‡ƒ“i’Pƒã‘‚«•NSA•ûŽ®j’Ç‰ÁBŽ©“®‘¬“x§ŒÀ‚ðƒXƒ‰ƒCƒ_ƒRƒ“ƒgƒ[ƒ‹‚É•ÏXiƒtƒ‹ƒXƒs[ƒh‚©‚çŠ®‘S’âŽ~‚Ü‚ÅA12’iŠK‚ÌƒRƒ“ƒgƒ[ƒ‹jBŽ©“®‘¬“x§ŒÀŽž‚ÉƒvƒƒZƒX—Dæ“xƒNƒ‰ƒX‚ð’²®B</td></tr>
-<tr><td>v1.55</td><td>ƒ^ƒXƒNƒgƒŒƒCŽÀsŽž‚Ì–â‚¢‡‚í‚¹ƒ_ƒCƒAƒƒO‚ª¶ã‚Éo‚Ä‚¢‚½‚Ì‚ðC³(v1.53ˆÈ~)</td></tr>
-<tr><td>v1.54</td><td>NT4.0‚Å“®ì‚·‚é‚æ‚¤‚ÉC³</td></tr>
-<tr><td>v1.53</td><td>ƒRƒ}ƒ“ƒhƒ‰ƒCƒ“‚Åƒ^ƒXƒNƒgƒŒƒCŽÀs‚·‚éê‡‚ÍAƒtƒH[ƒJƒX‚ð’D‚í‚È‚¢‚æ‚¤‚ÉC³Bƒ}ƒ‹ƒ`ƒ‚ƒjƒ^Žg—pŽž‚ÉAƒ}ƒEƒX‚Ì‘¶Ý‚·‚éƒ‚ƒjƒ^‘¤‚ÉƒEƒBƒ“ƒhƒE‚ðo‚·‚æ‚¤‚É•ÏXB/error_stop‚ªŒø‚¢‚Ä‚¢‚È‚©‚Á‚½‚Ì‚ðC³(v1.52‚Ì‚Ý)B</td></tr>
-<tr><td>v1.52</td><td>Ž©“®‘¬“x§ŒÀ‹@”\‚Ì’Ç‰ÁBˆê•”‚Ì UDFƒtƒ@ƒCƒ‹ƒVƒXƒeƒ€‚ÅA“¯ˆêƒ^ƒCƒ€ƒXƒ^ƒ“ƒv”»’è‚ª•K—vˆÈã‚ÉŒµ‚µ‚­‚È‚Á‚Ä‚¢‚½‚Ì‚ðC³BƒRƒ}ƒ“ƒhƒ‰ƒCƒ“ƒIƒvƒVƒ‡ƒ“‚Ì—}Ž~Žw’èi=FALSEj‚ª—LŒø‚É“­‚¢‚Ä‚¢‚È‚©‚Á‚½‚Ì‚ðC³</td></tr>
-<tr><td>v1.51</td><td>Š®—¹ŽžŠÔ—\‘ª‹@”\—˜—pŽž‚ÉAˆÙ‚È‚é•¡”‚ÌƒfƒBƒŒƒNƒgƒŠ‚ðsrc‚ÉŽw’è‚·‚é‚Æ—Ž‚¿‚é‚±‚Æ‚ª‚ ‚Á‚½‚Ì‚ðC³</td></tr>
-<tr><td>v1.50</td><td>“¯Šúƒ‚[ƒh‚Å‚ÌƒtƒBƒ‹ƒ^Žw’è‚ð‰Â”\‚ÉB‚»‚Ì‘¼AƒŠƒtƒ@ƒCƒ“</td></tr>
-<tr><td>v1.40</td><td>ƒWƒ‡ƒuŠÇ—‹@”\‚Ì’Ç‰ÁBˆ—“à—e‚ÌŽ–‘OƒŠƒXƒgƒAƒbƒv‹@”\‚Ì’Ç‰ÁB‘½dŽÀs§ŒäƒIƒvƒVƒ‡ƒ“‚Ì’Ç‰ÁBƒtƒBƒ‹ƒ^Žw’èŽž‚ÉA‹óƒfƒBƒŒƒNƒgƒŠ‚ðì¬‚µ‚È‚¢ƒIƒvƒVƒ‡ƒ“‚ð’Ç‰ÁBŽ©“®/“¯ˆê/•ÊHDDƒ‚[ƒhŽw’è‚Ì’Ç‰ÁBƒƒCƒ“ƒEƒBƒ“ƒhƒE‚ÌƒŠƒTƒCƒY‚ð‰Â”\‚ÉBAPIƒGƒ‰[‚Ìà–¾•\Ž¦B‚»‚Ì‘¼AƒŠƒtƒ@ƒCƒ“</td></tr>
-<tr><td>v1.32</td><td>ƒRƒ}ƒ“ƒhƒ‰ƒCƒ“Žž‚É Include/ExcludeƒtƒBƒ‹ƒ^‚ª–³Œø‚É‚È‚Á‚Ä‚¢‚½‚Ì‚ðC³B‚»‚Ì‘¼AƒŠƒtƒ@ƒCƒ“</td></tr>
-<tr><td>v1.31</td><td>Include/ExcludeƒtƒBƒ‹ƒ^‚ÅA‘½”‚ÌŽw’è‚ð‚µ‚½ê‡‚ÉAŽÀs’¼Œã‚É—Ž‚¿‚é‚±‚Æ‚ª‚ ‚Á‚½‚Ì‚ðC³</td></tr>
-<tr><td>v1.30</td><td>Include/ExcludeƒtƒBƒ‹ƒ^‹@”\’Ç‰ÁB“¯ˆêƒfƒBƒŒƒNƒgƒŠ“à‚Åƒhƒ‰ƒbƒO•ƒhƒƒbƒv‚µ‚½ê‡A•¡»‚ðì¬‰Â”\‚ÉBSource‘I‘ð‚Åƒtƒ@ƒCƒ‹‘I‘ðƒ_ƒCƒAƒƒO’Ç‰ÁB‚³‚ç‚ÉŽáŠ±‚Ì‚‘¬‰»BƒVƒFƒ‹Œo—R‹N“®{ƒLƒƒƒ“ƒZƒ‹‚µ‚½ê‡Aíœƒ‚[ƒhˆÈŠO‚ÍŽ©“®I—¹‚µ‚È‚¢‚æ‚¤‚ÉB‚»‚Ì‘¼ƒŠƒtƒ@ƒCƒ“B</td></tr>
-<tr><td>v1.21</td><td>ˆê•”ŠÂ‹«‚ÅƒVƒFƒ‹Šg’£ƒƒjƒ…[‚ªo‚È‚¢Œ»Ûiv1.20‚ÅƒGƒ“ƒoƒOj‚ðC³</td></tr>
-<tr><td>v1.20</td><td>ƒRƒs[Š®—¹ŽžŠÔ—\‘ª‹@”\’Ç‰ÁBƒVƒFƒ‹Šg’£‚ÅA•¡”ƒtƒ@ƒCƒ‹‘I‘ð{ŠJ‚­‚ª‹@”\‚µ‚È‚¢‚±‚Æ‚ª‚ ‚Á‚½‚Ì‚ðC³B‚»‚Ì‘¼ƒŠƒtƒ@ƒCƒ“</td></tr>
-<tr><td>v1.12</td><td>ƒVƒFƒ‹Šg’£‚ÌƒTƒuƒƒjƒ…[‰»ƒIƒvƒVƒ‡ƒ“’Ç‰ÁBƒVƒFƒ‹Œo—R‚Å‘å—Ê‚Ìƒtƒ@ƒCƒ‹‚ð‘I‘ð‚µ‚½ê‡‚ÉŒÅ‚Ü‚é‚±‚Æ‚ª‚ ‚Á‚½‚Ì‚ðC³(v1.10-1.11 ‚Ì‚Ý)Bƒlƒbƒgƒ[ƒNƒvƒŒ[ƒX‚Å‚ÌƒVƒFƒ‹Šg’£‚Ì‹““®‚ð•ÏXB‚»‚Ì‘¼ƒŠƒtƒ@ƒCƒ“</td></tr>
-<tr><td>v1.11</td><td>ˆê•”ŠÂ‹«‚ÅAŽÀs‚ªŠJŽn‚Å‚«‚È‚¢–â‘è‚ðC³</td></tr>
-<tr><td>v1.10</td><td>ƒƒCƒ“ƒEƒBƒ“ƒhƒE‚ÌUNICODE‰»iUNICODEƒtƒ@ƒCƒ‹–¼‚Ìƒhƒ‰ƒbƒO•ƒhƒƒbƒv“™‚É‘Î‰žjBƒZƒ~ƒRƒƒ“‚ðŠÜ‚ÞƒpƒX–¼‚Ìƒtƒ@ƒCƒ‹‚ðƒhƒ‰ƒbƒO•ƒhƒƒbƒv‚µ‚½ê‡AƒpƒX–¼‚ð""‚ÅˆÍ‚Þ‚æ‚¤‚É•ÏXBƒVƒFƒ‹‹N“®ŽÀsŽž‚ÌŠm”Fƒ_ƒCƒAƒƒO‚ðo‚³‚È‚¢ƒ‚[ƒh’Ç‰ÁBƒVƒFƒ‹Šg’£—LŒøŽž‚ÉAƒXƒ^[ƒgƒƒjƒ…[”z‰º‚ÌƒfƒBƒŒƒNƒgƒŠ‚ªŠJ‚¯‚È‚­‚È‚é‚±‚Æ‚ª‚ ‚Á‚½‚Ì‚ðC³B‚»‚Ì‘¼ƒŠƒtƒ@ƒCƒ“B</td></tr>
-<tr><td>v1.00</td><td>ˆÚ“®ƒ‚[ƒh‚ÌƒTƒ|[ƒgBƒVƒFƒ‹Šg’£‹@”\’Ç‰ÁBÅ‘O–ÊƒIƒvƒVƒ‡ƒ“’Ç‰ÁBƒGƒ‰[ƒƒOÚ×‰»B/force_close ƒIƒvƒVƒ‡ƒ“’Ç‰ÁBƒƒCƒ“ƒƒjƒ…[•Ý’èƒ_ƒCƒAƒƒO’Ç‰ÁB‰pŒêOS‘Î‰žB‚»‚Ì‘¼ƒŠƒtƒ@ƒCƒ“B</td></tr>
-<tr><td>v0.99</td><td>“¯ˆêHDD“à‚Ì•Êƒhƒ‰ƒCƒuƒŒƒ^[‚ð•ÊHDDƒ‚[ƒh‚ÆŒ©‚È‚·‚±‚Æ‚ª‚ ‚Á‚½iv0.90ˆÈ~‚ÅƒGƒ“ƒoƒOj‚Ì‚ðC³BDestDir ‚Ö‚Ìƒhƒ‰ƒbƒO•ƒhƒƒbƒv‚ð‰Â”\‚ÉB•\Ž¦ŠÖŒW‚ÌC³A‚»‚Ì‘¼ƒŠƒtƒ@ƒCƒ“B</td></tr>
-<tr><td>v0.98</td><td>íœ’†‚ÌƒLƒƒƒ“ƒZƒ‹‚ªŒø‚©‚È‚¢‚±‚Æ‚ª‚ ‚Á‚½‚Ì‚ðC³</td></tr>
-<tr><td>v0.97</td><td>ƒGƒ‰[ƒƒO•\Ž¦’Ç‰ÁBƒƒOƒtƒ@ƒCƒ‹ƒIƒvƒVƒ‡ƒ“’Ç‰ÁBƒhƒ‰ƒbƒO•ƒhƒƒbƒvŽž‚Ì‹““®‚ð•ÏX</td></tr>
-<tr><td>v0.96</td><td>‚‘¬íœƒ‚[ƒh’Ç‰ÁBƒRƒ}ƒ“ƒhƒ‰ƒCƒ“ƒ‚[ƒh‚Å‚Ìƒ^ƒXƒNƒgƒŒƒCŠi”[ðŒ‚ð•ÏX</td></tr>
-<tr><td>v0.95</td><td>ƒwƒ‹ƒv‚ªŠJ‚©‚È‚¢‚±‚Æ‚ª‚ ‚Á‚½‚Ì‚ðC³</td></tr>
-<tr><td>v0.94</td><td>Ý’è•Û‘¶æ‚ðƒŒƒWƒXƒgƒŠ‚©‚ç ini ƒtƒ@ƒCƒ‹‚É•ÏXBDestDir ‚Éƒ‹[ƒg‚ðŽw’è‚·‚é‚Æ—Ž‚¿‚é‚±‚Æ‚ª‚ ‚Á‚½‚Ì‚ðC³</td></tr>
-<tr><td>v0.93</td><td>ƒfƒoƒbƒO—pƒ‹[ƒ`ƒ“‚ªŽc‚Á‚Ä‚¢‚½‚Ì‚ðíœ</td></tr>
-<tr><td>v0.92</td><td>ƒIƒvƒVƒ‡ƒ“Ý’è‚ð•Û‘¶‚·‚é‚æ‚¤‚É‚µ‚½BƒRƒs[æƒfƒBƒŒƒNƒgƒŠ‚ª‹ó‚Ìê‡‚É—Ž‚¿‚é‚±‚Æ‚ª‚ ‚Á‚½‚Ì‚ðC³</td></tr>
-<tr><td>v0.91</td><td>“à•”ƒŠƒtƒ@ƒCƒ“B</td></tr>
-<tr><td>v0.90</td><td>ƒRƒs[Œ³‚Ì•¡”Žw’è‚¨‚æ‚Ñƒhƒ‰ƒbƒO•ƒhƒƒbƒvŽw’è‚ð‰Â”\‚ÉB
-      ƒRƒ}ƒ“ƒhƒ‰ƒCƒ“ŽžAƒ^ƒXƒNƒgƒŒƒCƒ‚[ƒh‚ðƒfƒtƒHƒ‹ƒg‚ÉB
-      ‚Ü‚ê‚É—]•ª‚ÉXV‚ª”­¶‚·‚éê‡‚ª‚ ‚Á‚½‚Ì‚ðC³B</td></tr>
-<tr><td>v0.88</td><td>ƒRƒ}ƒ“ƒhƒ‰ƒCƒ“ƒ‚[ƒhAƒ^ƒXƒNƒgƒŒƒCŠi”[A
-      ƒgƒŒƒC“àƒAƒCƒRƒ“ƒAƒNƒVƒ‡ƒ“(?)AŽè”²‚«ƒwƒ‹ƒv‚Ì’Ç‰ÁB</td></tr>
-<tr><td>v0.87</td><td>—š—ð‚Ì•Û‘¶•ŠeŽíÝ’è•Û‘¶B</td></tr>
-<tr><td>v0.86</td><td>“¯Šúƒ‚[ƒh‚Ì’Ç‰ÁB</td></tr>
-<tr><td>v0.85</td><td>ƒtƒ@ƒCƒ‹–¼”äŠr‚Å‘å•¶Žš¬•¶Žš‚Ì‹æ•Ê‚ð‚µ‚È‚¢‚æ‚¤C³B</td></tr>
-<tr><td>v0.84</td><td>FAT/Samba‚Å‚Ì“¯ˆê“ú•t”»’è‚ÌC³B‚»‚Ì‘¼C³B</td></tr>
-<tr><td>v0.83</td><td>Updateiã‘‚«‚ÍA“ú•t‚ªV‚µ‚¢ƒtƒ@ƒCƒ‹‚Ì‚Ýjƒ‚[ƒh’Ç‰ÁB</td></tr>
-<tr><td>v0.82</td><td>src ‚ÉƒƒCƒ‹ƒhƒJ[ƒhŽw’è‚ªŽg‚¦‚È‚­‚È‚Á‚Ä‚¢‚½‚Ì‚ðC³B</td></tr>
-<tr><td>v0.81</td><td>src/dstƒfƒBƒŒƒNƒgƒŠƒGƒ“ƒgƒŠŽæ“¾‚ð•À—ñ“®ìi•ÊHDDƒ‚[ƒhjB</td></tr>
-<tr><td>v0.80</td><td>·•ªƒRƒs[ƒ‚[ƒh’Ç‰ÁB</td></tr>
-<tr><td>v0.70</td><td>“¯ˆêHDDA•ÊHDD ƒ‚[ƒh‚ÌŽ©“®”»’èB</td></tr>
-<tr><td>v0.66</td><td>ˆê•”ƒoƒOƒtƒBƒNƒXB</td></tr>
-<tr><td>v0.65</td><td>ƒhƒ‰ƒCƒuƒ^ƒCƒv‚Å“®ì‚ð•Ï‰»BƒGƒ‰[ˆ—’Ç‰ÁB</td></tr>
-<tr><td>v0.64</td><td>‹H‚ÉƒfƒbƒhƒƒbƒN‚ð‹N‚±‚·‰Â”\«‚ð”­Œ©‚µ‚½‚Ì‚ÅC³B</td></tr>
-<tr><td>v0.63</td><td>Cancel ƒ{ƒ^ƒ“‚Ì“®ì‚ðuR/W Thread ‚ð Suspend ‚µ‚½ã
-      ‚ÅŠm”Fv‚É•ÏXBƒtƒ@ƒCƒ‹–¼•\Ž¦‚Íƒ[ƒhƒ‰ƒbƒv‚È‚µ‚ÉB</td></tr>
-<tr><td>v0.62</td><td>NTŒn‚Å•¨—ƒƒ‚ƒŠƒƒbƒN‚ðƒfƒtƒHƒ‹ƒg‚É‚·‚é‚Ì‚ð‚â‚ß‚éB</td></tr>
-<tr><td>v0.61</td><td>ƒXƒe[ƒ^ƒX—Ìˆæ‚ð EDIT_BOX ‚É•ÏXiƒRƒs[‰Â”\‚ÉjB</td></tr>
-<tr><td>v0.60</td><td>98Œn‚Å“®ì‚·‚é‚æ‚¤‚ÉC³BƒGƒ‰[–³Ž‹ƒ`ƒFƒbƒN’Ç‰ÁB</td></tr>
+
+<tr><td>v2.00</td><td><a href="#job">ƒWƒ‡ƒuŠÇ—</a>A<a href="#setting_copyopt">Symlink‘Î‰ž</a>A<a href="#buttons">ŠÈˆÕ”äŠr</a>A<a href="#options">ACL/AltStremƒTƒ|[ƒg</a>A<a href="#buttons">‘¬“xƒRƒ“ƒgƒ[ƒ‹</a>’Ç‰Á“™</td></tr>
+<tr><td>v1.00</td><td>ˆÚ“®ƒ‚[ƒhA<a href="#shell">ƒVƒFƒ‹Šg’£</a>’Ç‰ÁA‰pŒêOS‘Î‰ž“™</td></tr>
 <tr><td>v0.50</td><td>ƒ¿”Åƒtƒ@[ƒXƒgƒŠƒŠ[ƒXB (2004/09/27)</td></tr>
 </table>
 </div>

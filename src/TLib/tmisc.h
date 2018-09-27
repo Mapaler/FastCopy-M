@@ -22,14 +22,12 @@ template<class T> class THashTblT;
 template<class T>
 class THashObjT {
 public:
-	THashObjT	*prevHash;
-	THashObjT	*nextHash;
-	T			hashId;
+	THashObjT	*prevHash = NULL;
+	THashObjT	*nextHash = NULL;
+	T			hashId    = 0;
 
 public:
 	THashObjT() {
-		prevHash = nextHash = NULL;
-		hashId = 0;
 	}
 	virtual ~THashObjT() {
 		if (prevHash && prevHash != this) {
@@ -117,6 +115,10 @@ public:
 		if (obj->UnlinkHash()) {
 			registerNum--;
 		}
+	}
+	virtual void Reset() {
+		UnInit();
+		Init(hashNum);
 	}
 	virtual THashObjT<T> *Search(const void *data, T hash_id) {
 		auto top = hashTbl + (hash_id % hashNum);
@@ -209,16 +211,16 @@ public:
 class VBuf {
 protected:
 	BYTE	*buf;
-	VBuf	*borrowBuf;
 	size_t	size;
 	size_t	usedSize;
 	size_t	maxSize;
+	BOOL	dumpExcept;
 	void	Init();
 
 public:
-	VBuf(size_t _size=0, size_t _max_size=0, VBuf *_borrowBuf=NULL);
+	VBuf(size_t _size=0, size_t _max_size=0);
 	~VBuf();
-	BOOL	AllocBuf(size_t _size, size_t _max_size=0, VBuf *_borrowBuf=NULL);
+	BOOL	AllocBuf(size_t _size, size_t _max_size=0);
 	BOOL	LockBuf();
 	void	FreeBuf();
 	BOOL	Grow(size_t grow_size);
@@ -236,6 +238,7 @@ public:
 	size_t	AddUsedSize(size_t _used_size) { return usedSize += _used_size; }
 	size_t	RemainSize(void) const { return size - usedSize; }
 	VBuf& operator =(const VBuf&); // prohibit
+	void	EnableDumpExcept(BOOL on=TRUE) { dumpExcept = on; }
 };
 
 template <class T>
@@ -335,10 +338,10 @@ public:
 
 class GBuf {
 protected:
-	HGLOBAL	hGlobal;
-	BYTE	*buf;
-	size_t	size;
-	UINT	flags;
+	HGLOBAL	hGlobal = NULL;
+	BYTE	*buf = NULL;
+	size_t	size = 0;
+	UINT	flags = 0;
 
 public:
 	GBuf(size_t _size=0, BOOL with_lock=TRUE, UINT _flags=GMEM_MOVEABLE) {
@@ -354,8 +357,7 @@ public:
 		UnInit();
 	}
 	BOOL Init(size_t _size=0, BOOL with_lock=TRUE, UINT _flags=GMEM_MOVEABLE) {
-		hGlobal	= NULL;
-		buf		= NULL;
+		UnInit();
 		flags	= _flags;
 
 		if ((size = _size) == 0) {
@@ -378,6 +380,7 @@ public:
 		}
 		buf		= NULL;
 		hGlobal	= NULL;
+		size	= 0;
 	}
 	HGLOBAL	Handle() {
 		return hGlobal;
@@ -492,65 +495,9 @@ LPSTR LoadStrU8(UINT resId, HINSTANCE hI=NULL);
 LPWSTR LoadStrW(UINT resId, HINSTANCE hI=NULL);
 
 void TSetDefaultLCID(LCID id=0);
+LCID TGetDefaultLCID();
 HMODULE TLoadLibrary(LPSTR dllname);
 HMODULE TLoadLibraryW(WCHAR *dllname);
-int MakePath(char *dest, const char *dir, const char *file, int max_len=INT_MAX);
-int MakePathU8(char *dest, const char *dir, const char *file, int max_len=INT_MAX);
-int MakePathW(WCHAR *dest, const WCHAR *dir, const WCHAR *file, int max_len=INT_MAX);
-
-inline int AddPath(char *dest, const char *file, int max_len=INT_MAX) {
-	return MakePath(dest, NULL, file, max_len);
-}
-inline int AddPathU8(char *dest, const char *file, int max_len=INT_MAX) {
-	return MakePathU8(dest, NULL, file, max_len);
-}
-inline int AddPathW(WCHAR *dest, const WCHAR *file, int max_len=INT_MAX) {
-	return MakePathW(dest, NULL, file, max_len);
-}
-
-int64 hex2ll(char *buf);
-int bin2hexstr(const BYTE *bindata, size_t len, char *buf);
-int bin2hexstr_revendian(const BYTE *bin, size_t len, char *buf);
-int bin2hexstrW(const BYTE *bindata, size_t len, WCHAR *buf);
-size_t hexstr2bin(const char *buf, BYTE *bindata, size_t maxlen);
-size_t hexstr2bin_revendian(const char *buf, BYTE *bindata, size_t maxlen);
-size_t hexstr2bin_revendian_ex(const char *buf, BYTE *bindata, size_t maxlen, int slen=-1);
-BYTE hexstr2byte(const char *buf);
-WORD hexstr2word(const char *buf);
-DWORD hexstr2dword(const char *buf);
-int64 hexstr2int64(const char *buf);
-
-int bin2b64str(const BYTE *bindata, size_t len, char *buf);
-int bin2b64str_revendian(const BYTE *bin, size_t len, char *buf);
-size_t b64str2bin(const char *buf, BYTE *bindata, size_t maxlen);
-size_t b64str2bin_ex(const char *buf, int buf_len, BYTE *bindata, size_t maxlen);
-size_t b64str2bin_revendian(const char *buf, BYTE *bindata, size_t maxlen);
-
-void swap_s(BYTE *s, size_t len);
-
-int bin2urlstr(const BYTE *bindata, size_t len, char *str);
-size_t urlstr2bin(const char *str, BYTE *bindata, size_t maxlen);
-
-void rev_order(BYTE *data, size_t size);
-void rev_order(const BYTE *src, BYTE *dst, size_t size);
-
-char *strdupNew(const char *_s, int max_len=-1);
-WCHAR *wcsdupNew(const WCHAR *_s, int max_len=-1);
-int ReplaceCharW(WCHAR *s, WCHAR rep_in, WCHAR rep_out, int max_len);
-
-int snprintfz(char *buf, int size, const char *fmt,...);
-int vsnprintfz(char *buf, int size, const char *fmt, va_list ap);
-int snwprintfz(WCHAR *buf, int wsize, const WCHAR *fmt,...);
-int vsnwprintfz(WCHAR *buf, int wsize, const WCHAR *fmt, va_list ap);
-
-int strcpyz(char *dest, const char *src);
-int wcscpyz(WCHAR *dest, const WCHAR *src);
-int strncpyz(char *dest, const char *src, int num);
-int strncatz(char *dest, const char *src, int num);
-const char *strnchr(const char *srs, char ch, int num);
-int wcsncpyz(WCHAR *dest, const WCHAR *src, int num);
-int wcsncatz(WCHAR *dest, const WCHAR *src, int num);
-const WCHAR *wcsnchr(const WCHAR *src, WCHAR ch, int num);
 
 inline int get_ntz64(uint64 val) {
 #ifdef _WIN64
@@ -698,6 +645,7 @@ template<class T> int UnixNewLineToLocalT(const T *src, T *dst, int max_dstlen, 
 //int UnixNewLineToLocal(const char *src, char *dest, int max_dstlen);
 
 BOOL TIsWow64();
+BOOL TOs64();
 BOOL TRegEnableReflectionKey(HKEY hBase);
 BOOL TRegDisableReflectionKey(HKEY hBase);
 BOOL TWow64DisableWow64FsRedirection(void *oldval);
@@ -721,6 +669,9 @@ const WCHAR *TGetExeDirW(WCHAR *buf=NULL);
 
 enum TLoadType { TLT_SYSDIR, TLT_EXEDIR };
 HMODULE TLoadLibraryExW(const WCHAR *dll, TLoadType t);
+
+BOOL TGetIntegrityLevel(DWORD *ilv);
+BOOL TIsLowIntegrity();
 
 class TWin;
 class OpenFileDlg {
@@ -757,6 +708,12 @@ BOOL DeleteLinkW(const WCHAR *link);
 BOOL DeleteLinkU8(const char *link);
 BOOL GetParentDirW(const WCHAR *srcfile, WCHAR *dir);
 BOOL GetParentDirU8(const char *srcfile, char *dir);
+
+BOOL MakeDirU8(char *dir);
+BOOL MakeDirW(WCHAR *dir);
+BOOL MakeDirAllU8(char *dir);
+BOOL MakeDirAllW(WCHAR *dir);
+
 HWND ShowHelpW(HWND hOwner, WCHAR *help_dir, WCHAR *help_file, WCHAR *section=NULL);
 HWND ShowHelpU8(HWND hOwner, const char *help_dir, const char *help_file, const char *section=NULL);void UnInitShowHelp();
 
@@ -767,7 +724,10 @@ BOOL TSetClipBoardTextW(HWND hWnd, const WCHAR *s, int len=-1);
 
 HBITMAP TIconToBmp(HICON hIcon, int cx, int cy);
 
+enum TrayMode { TIS_NONE, TIS_HIDE, TIS_SHOW, TIS_ALL };
 BOOL ForceSetTrayIcon(HWND hWnd, UINT id, DWORD pref=2);
+TrayMode GetTrayIconState();
+
 BOOL SetWinAppId(HWND hWnd, const WCHAR *app_id);
 BOOL IsWineEnvironment();
 
@@ -835,6 +795,8 @@ inline void UnixTime2FileTime(time_t ut, FILETIME *ft) {
 }
 void time_to_SYSTEMTIME(time_t t, SYSTEMTIME *st, BOOL is_local=TRUE);
 time_t SYSTEMTIME_to_time(const SYSTEMTIME &st, BOOL is_local=TRUE);
+
+void U8Out(const char *fmt,...);
 
 #endif
 

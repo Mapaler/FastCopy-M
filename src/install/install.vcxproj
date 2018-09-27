@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\version.cpp" />
     <ClCompile Include="install.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -31,6 +32,10 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="setup.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="instrc.h" />
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{81F0F7E1-E0A4-4907-9BBD-B13B5B19474A}</ProjectGuid>
@@ -47,7 +52,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
-    <PlatformToolset>v141_xp</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
@@ -243,7 +248,7 @@
       <AdditionalLibraryDirectories>
       </AdditionalLibraryDirectories>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
-      <DelayLoadDLLs>comctl32.dll;crypt32.dll;winmm.dll;Shlwapi.dll;psapi.dll;</DelayLoadDLLs>
+      <DelayLoadDLLs>comctl32.dll;crypt32.dll;winmm.dll;mpr.dll;Shlwapi.dll;psapi.dll;gdiplus.dll;Shell32.dll</DelayLoadDLLs>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -291,7 +296,7 @@
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <OptimizeReferences>true</OptimizeReferences>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
-      <DelayLoadDLLs>comctl32.dll;crypt32.dll;winmm.dll;Shlwapi.dll;psapi.dll;</DelayLoadDLLs>
+      <DelayLoadDLLs>comctl32.dll;crypt32.dll;winmm.dll;mpr.dll;Shlwapi.dll;psapi.dll;gdiplus.dll;Shell32.dll</DelayLoadDLLs>
     </Link>
     <Manifest>
       <AdditionalManifestFiles>src\install\setup.exe.manifest;%(AdditionalManifestFiles)</AdditionalManifestFiles>

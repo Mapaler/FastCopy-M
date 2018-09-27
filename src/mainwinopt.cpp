@@ -96,6 +96,7 @@ BOOL TMainDlg::CommandLineExecW(int argc, WCHAR **argv)
 	BOOL	is_openwin			= FALSE;
 	BOOL	is_noexec			= FALSE;
 	BOOL	is_delete			= FALSE;
+	BOOL	is_updated			= FALSE;
 	int		estimate_flg		= -1;
 	DWORD	runas_flg			= 0;
 	int		filter_mode			= 0;
@@ -310,6 +311,18 @@ BOOL TMainDlg::CommandLineExecW(int argc, WCHAR **argv)
 				dlsvtMode = 2;
 			}
 		}
+		else if (wcsicmpEx(*argv, UPDATED_STR, &len) == 0) {
+			is_updated = TRUE;
+			is_noexec = TRUE;
+
+			SendDlgItemMessage(PATH_EDIT,   EM_AUTOURLDETECT, AURL_ENABLEURL, 0);
+			LRESULT evMask = pathEdit.SendMessage(EM_GETEVENTMASK, 0, 0) | ENM_LINK;
+			pathEdit.SendMessage(EM_SETEVENTMASK, 0, evMask); 
+
+			SetDlgItemText(PATH_EDIT,
+				Fmt("Update done. (%s) \r\nFastCopy HomePage: %s",
+				GetVersionStr(), LoadStr(IDS_FASTCOPYURL)));
+		}
 		else if (wcsicmpEx(*argv, TO_STR, &len) == 0) {
 			SetDlgItemTextW(DST_COMBO, dst_path = *argv + len);
 		}
@@ -380,9 +393,11 @@ BOOL TMainDlg::CommandLineExecW(int argc, WCHAR **argv)
 
 	if (!isRunAsStart) {
 		if (job_idx == -1) {
-			srcEdit.SetWindowText("");
-			if (!dst_path)
-				SetDlgItemText(DST_COMBO, "");
+			if (!is_updated) {
+				srcEdit.SetWindowText("");
+				if (!dst_path)
+					SetDlgItemText(DST_COMBO, "");
+			}
 		}
 		WCHAR	wBuf[MAX_PATH_EX];
 
@@ -450,7 +465,7 @@ BOOL TMainDlg::CommandLineExecW(int argc, WCHAR **argv)
 			Show(SW_MINIMIZE);
 		}
 		else {
-			TaskTray(NIM_ADD, hMainIcon[FCNORMAL_ICON_IDX], FASTCOPY);
+			TaskTray(NIM_ADD, FCNORM_ICON_IDX, FASTCOPY);
 		}
 	}
 

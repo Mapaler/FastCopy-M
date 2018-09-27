@@ -88,8 +88,8 @@
 				<param name="ImageNumber" value="9">
 				</OBJECT>
 			<LI> <OBJECT type="text/sitemap">
-				<param name="Name" value="2) 拡張設定（シェル拡張・フォント）">
-				<param name="Local" value="fastcopy.htm#shell">
+				<param name="Name" value="2) フォント設定">
+				<param name="Local" value="fastcopy.htm#font">
 				<param name="ImageNumber" value="9">
 				</OBJECT>
 			<LI> <OBJECT type="text/sitemap">
@@ -118,11 +118,6 @@
 		<LI> <OBJECT type="text/sitemap">
 			<param name="Name" value="その他（設定保存先等）">
 			<param name="Local" value="fastcopy.htm#misc">
-			</OBJECT>
-		<LI> <OBJECT type="text/sitemap">
-			<param name="Name" value="ToDo">
-			<param name="Local" value="fastcopy.htm#todo">
-			<param name="URL" value="fastcopy.htm#todo">
 			</OBJECT>
 		<LI> <OBJECT type="text/sitemap">
 			<param name="Name" value="履歴">
@@ -196,13 +191,13 @@
 			</OBJECT>
 			<UL>
 			<LI> <OBJECT type="text/sitemap">
-				<param name="Name" value="1) General Settings">
+				<param name="Name" value="1) Main Settings">
 				<param name="Local" value="fastcopy_eng.htm#gen_settings">
 				<param name="ImageNumber" value="9">
 				</OBJECT>
 			<LI> <OBJECT type="text/sitemap">
-				<param name="Name" value="2) Extensions (Shell & Font)">
-				<param name="Local" value="fastcopy_eng.htm#shell">
+				<param name="Name" value="2) Font Settings">
+				<param name="Local" value="fastcopy_eng.htm#font">
 				<param name="ImageNumber" value="9">
 				</OBJECT>
 			<LI> <OBJECT type="text/sitemap">
@@ -231,10 +226,6 @@
 		<LI> <OBJECT type="text/sitemap">
 			<param name="Name" value="Misc (setting file, etc)">
 			<param name="Local" value="fastcopy_eng.htm#misc">
-			</OBJECT>
-		<LI> <OBJECT type="text/sitemap">
-			<param name="Name" value="ToDo">
-			<param name="Local" value="fastcopy_eng.htm#todo">
 			</OBJECT>
 		<LI> <OBJECT type="text/sitemap">
 			<param name="Name" value="History">

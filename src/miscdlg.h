@@ -1,9 +1,9 @@
 ﻿/* static char *miscdlg_id = 
-	"@(#)Copyright (C) 2005-2016 H.Shirouzu		miscdlg.h	Ver3.20"; */
+	"@(#)Copyright (C) 2005-2018 H.Shirouzu		miscdlg.h	Ver3.50"; */
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2005-01-23(Sun)
-	Update					: 2016-09-28(Wed)
+	Update					: 2018-05-28(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -100,6 +100,7 @@ public:
 #define OFDLG_DIRSELECT		0x0001
 #define OFDLG_WITHQUOTE		0x0002
 #define OFDLG_TAILCR		0x0004
+#define OFDLG_CHDIRREFLECT	0x0008
 #define OFDLG_TIMER			100
 
 #define WM_OFN_AFTERPROC	(WM_APP + 100)
@@ -117,6 +118,7 @@ protected:
 	LPOFNHOOKPROC	hook;
 	OpenMode		openMode;
 	VBuf			vbuf;
+	WCHAR			*defaultDir;
 
 public:
 	TOpenFileDlg(TWin *_parent, OpenMode _openMode=OPEN, int _flg=0, LPOFNHOOKPROC _hook=NULL) {
@@ -129,7 +131,7 @@ public:
 	static UINT WINAPI OpenFileDlgProc(HWND hdlg, UINT msg, WPARAM wParam, LPARAM lParam);
 	virtual BOOL AttachWnd(HWND _hWnd);
 	virtual BOOL EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl);
-	virtual BOOL Exec(WCHAR *title=NULL, WCHAR *filter=NULL, WCHAR *defaultDir=NULL);
+	virtual BOOL Exec(WCHAR *title=NULL, WCHAR *filter=NULL, WCHAR *_defaultDir=NULL);
 	virtual BOOL Exec(UINT editCtl, WCHAR *title=NULL, WCHAR *filter=NULL, WCHAR *defaultDir=NULL,
 						WCHAR *init_data=NULL);
 	virtual BOOL EventApp(UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -137,6 +139,7 @@ public:
 	virtual BOOL EvTimer(WPARAM timerID, TIMERPROC proc);
 	virtual BOOL EventCtlColor(UINT uMsg, HDC hDcCtl, HWND hWndCtl, HBRUSH *result);
 	virtual BOOL EvNotify(UINT ctlID, NMHDR *pNmHdr);
+	UINT	NotifyProc(OFNOTIFYW *ont);
 
 	DirFileMode GetMode(void) { return mode; };
 };
@@ -262,7 +265,7 @@ public:
 
 	virtual BOOL	SetWindowTextW(const WCHAR *text);
 
-	int		NeedDiffY();
+	int		NeedDiffY(int *real);
 	void	Fit(BOOL allow_reduce=FALSE);
 };
 

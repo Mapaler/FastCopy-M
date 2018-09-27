@@ -1,7 +1,7 @@
 ﻿======================================================================
-                     FastCopy  ver3.41                 2018/01/27
+                     FastCopy  ver3.54                 2018/08/09
                                             H.Shirouzu（白水啓章）
-                     FastCopy-M branch                 2017/03/06
+                     FastCopy-M branch                 2018/09/27
                                             Mapaler  （枫谷剑仙）
 ======================================================================
 
@@ -30,10 +30,6 @@ FastCopy 是Windows上最快的复制/删除软件。
 FastCopy-M特点：
   支持更加完整的多国语言显示
 
-  Vista以后支持新版文件/文件夹选择框（可多选）
-
-  主界面复制时图标也显示动画，并允许修改动画总帧数
-
   支持调用网络URL作为帮助文件
 
 许可:
@@ -43,12 +39,10 @@ Copyright(C) 2004-2018 SHIROUZU Hiroaki All rights reserved.
 
 此程序是免费软件。你可以将它根据GNU通用公共许可证第三版重新分发和/或修改。
 
-
-如果你想分发你修改后的二进制文件，但是你不想要公布修改后的源代码，或你想请求开发捆绑/特殊版本，请与原作者联系。(shirouzu@ipmsg.org) 
-
 详细信息请阅读 license-gpl3.txt
 
-	xxHash library Copyright (C) 2012-2014 Mr.Yann Collet, All rights reserved.
+	xxHash library
+	  Copyright (C) 2012-2016 Mr.Yann Collet, All rights reserved.
 	  more details: external/xxhash/LICENSE
 
 -------------------------------------------------------------------------
@@ -57,4 +51,4 @@ Copyright(C) 2004-2018 SHIROUZU Hiroaki All rights reserved.
 请参阅 http://mapaler.github.io/FastCopy-M/help-chs.html
 
 生成:
-VS2015 或更高版本
+VS2017 或更高版本

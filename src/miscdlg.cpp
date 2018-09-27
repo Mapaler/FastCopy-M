@@ -1,9 +1,9 @@
 ﻿static char *miscdlg_id = 
-	"@(#)Copyright (C) 2005-2018 H.Shirouzu		miscdlg.cpp	ver3.41";
+	"@(#)Copyright (C) 2005-2018 H.Shirouzu		miscdlg.cpp	ver3.50";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2005-01-23(Sun)
-	Update					: 2018-01-25(Thu)
+	Update					: 2018-05-28(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-22
@@ -11,17 +11,11 @@
 
 #include "mainwin.h"
 #include <stdio.h>
+#include <vector>
+
+using namespace std;
 
 #include "shellext/shelldef.h"
-
-#include <shlwapi.h>
-
-#define CONTROL_GROUP				2000
-#define CONTROL_RADIOBUTTONLIST		2
-#define CONTROL_RADIOBUTTON_Folder	1
-#define CONTROL_RADIOBUTTON_File	2
-
-IShellItem *defaultFolder = NULL;
 
 /*
 	About Dialog初期化処理
@@ -56,7 +50,7 @@ BOOL TAboutDlg::EvCreate(LPARAM lParam)
 			xsize, ysize, FALSE);
 	}
 	else
-		MoveWindow(rect.left, rect.top, rect.cx(), rect.cy(), FALSE);
+		MoveWindow(rect.x(), rect.y(), rect.cx(), rect.cy(), FALSE);
 
 	return	TRUE;
 }
@@ -95,9 +89,8 @@ BOOL TExecConfirmDlg::EvCreate(LPARAM lParam)
 
 	if (rect.left == CW_USEDEFAULT) {
 		GetWindowRect(&rect);
-		rect.left += 30, rect.right += 30;
-		rect.top += 30, rect.bottom += 30;
-		MoveWindow(rect.left, rect.top, rect.cx(), rect.cy(), FALSE);
+		rect.Slide(30, 30);
+		MoveWindow(rect.x(), rect.y(), rect.cx(), rect.cy(), FALSE);
 	}
 
 	SetDlgItem(SRC_EDIT, XY_FIT);
@@ -163,156 +156,6 @@ BOOL TExecConfirmDlg::EvSize(UINT fwSizeType, WORD nWidth, WORD nHeight)
 }
 
 
-//
-//   CLASS: CFileDialogEventHandler
-//
-//   PURPOSE: 
-//   File Dialog Event Handler that responds to Events in Added Controls. The 
-//   events handler provided by the calling process can implement 
-//   IFileDialogControlEvents in addition to IFileDialogEvents. 
-//   IFileDialogControlEvents enables the calling process to react to these events: 
-//     1) PushButton clicked. 
-//     2) CheckButton state changed. 
-//     3) Item selected from a menu, ComboBox, or RadioButton list. 
-//     4) Control activating. This is sent when a menu is about to display a 
-//        drop-down list, in case the calling process wants to change the items in 
-//        the list.
-//
-class CFileDialogEventHandler :
-	public IFileDialogEvents,
-	public IFileDialogControlEvents
-{
-public:
-
-	// 
-	// IUnknown methods
-	// 
-
-	IFACEMETHODIMP QueryInterface(REFIID riid, void** ppv)
-	{
-		static const QITAB qit[] =
-		{
-			QITABENT(CFileDialogEventHandler, IFileDialogEvents),
-			QITABENT(CFileDialogEventHandler, IFileDialogControlEvents),
-			{ 0 }
-		};
-		return QISearch(this, qit, riid, ppv);
-	}
-
-	IFACEMETHODIMP_(ULONG) AddRef()
-	{
-		return InterlockedIncrement(&m_cRef);
-	}
-    IFACEMETHODIMP_(ULONG) Release()
-    {
-        long cRef = InterlockedDecrement(&m_cRef);
-        if (!cRef)
-        {
-            delete this;
-        }
-        return cRef;
-    }
-
-    // 
-    // IFileDialogEvents methods
-    // 
-
-    IFACEMETHODIMP OnFileOk(IFileDialog*)
-    { return S_OK; }
-    IFACEMETHODIMP OnFolderChange(IFileDialog*)
-    { return S_OK; }
-    IFACEMETHODIMP OnFolderChanging(IFileDialog*, IShellItem*)
-    { return S_OK; }
-    IFACEMETHODIMP OnHelp(IFileDialog*)
-    { return S_OK; }
-    IFACEMETHODIMP OnSelectionChange(IFileDialog*)
-    { return S_OK; }
-    IFACEMETHODIMP OnTypeChange(IFileDialog*)
-    { return S_OK; }
-    IFACEMETHODIMP OnShareViolation(IFileDialog*, IShellItem*, FDE_SHAREVIOLATION_RESPONSE*)
-    { return S_OK; }
-    IFACEMETHODIMP OnOverwrite(IFileDialog*, IShellItem*, FDE_OVERWRITE_RESPONSE*)
-    { return S_OK; }
-
-    // 
-    // IFileDialogControlEvents methods
-    // 
-
-	IFACEMETHODIMP OnItemSelected(IFileDialogCustomize*pfdc, DWORD dwIDCtl, DWORD dwIDItem)
-	{
-		IFileDialog *pfd = NULL;
-		HRESULT hr = pfdc->QueryInterface(&pfd);
-		if (SUCCEEDED(hr))
-		{
-			if (dwIDCtl == CONTROL_RADIOBUTTONLIST)
-			{
-				DWORD dwOptions;
-				//IShellItem *dwFolder = NULL;
-				//PWSTR folderShellItemName = NULL;
-				switch (dwIDItem)
-				{
-				case CONTROL_RADIOBUTTON_Folder:
-					hr = pfd->GetOptions(&dwOptions);
-					hr = pfd->GetFolder(&defaultFolder);
-					//defaultFolder->GetDisplayName(SIGDN_FILESYSPATH, & folderShellItemName);
-					//MessageBoxW(0, folderShellItemName, L"The selected folder is", MB_OK);
-
-					if(!(dwOptions & FOS_PICKFOLDERS))
-						hr = pfd->Close(hr);
-					break;
-
-				case CONTROL_RADIOBUTTON_File:
-					hr = pfd->GetOptions(&dwOptions);
-					hr = pfd->GetFolder(&defaultFolder);
-					//defaultFolder->GetDisplayName(SIGDN_FILESYSPATH, &folderShellItemName);
-					//MessageBoxW(0, folderShellItemName, L"The selected folder is", MB_OK);
-
-					if (dwOptions & FOS_PICKFOLDERS)
-						hr = pfd->Close(hr);
-					break;
-				}
-			}
-			pfd->Release();
-		}
-		return hr;
-	}
-
-	IFACEMETHODIMP OnButtonClicked(IFileDialogCustomize*, DWORD)
-	{ return S_OK; }
-	IFACEMETHODIMP OnControlActivating(IFileDialogCustomize*, DWORD)
-	{ return S_OK; }
-	IFACEMETHODIMP OnCheckButtonToggled(IFileDialogCustomize*, DWORD, BOOL)
-	{ return S_OK; }
-
-	CFileDialogEventHandler() : m_cRef(1) { }
-
-protected:
-
-	~CFileDialogEventHandler() { }
-	long m_cRef;
-};
-
-
-//
-//   FUNCTION: CFileDialogEventHandler_CreateInstance(REFIID, void**)
-//
-//   PURPOSE:  CFileDialogEventHandler instance creation helper function.
-//
-HRESULT CFileDialogEventHandler_CreateInstance(REFIID riid, void **ppv)
-{
-	*ppv = NULL;
-	CFileDialogEventHandler* pFileDialogEventHandler =
-		new(std::nothrow)CFileDialogEventHandler();
-	HRESULT hr = pFileDialogEventHandler ? S_OK : E_OUTOFMEMORY;
-	if (SUCCEEDED(hr))
-	{
-		hr = pFileDialogEventHandler->QueryInterface(riid, ppv);
-		pFileDialogEventHandler->Release();
-	}
-	return hr;
-}
-
-
 /*=========================================================================
   クラス ： BrowseDirDlgW
   概  要 ： ディレクトリブラウズ用コモンダイアログ拡張クラス
@@ -324,7 +167,8 @@ BOOL BrowseDirDlgW(TWin *parentWin, UINT editCtl, WCHAR *title, int flg)
 	WCHAR		fileBuf[MAX_PATH_EX] = L"";
 	WCHAR		buf[MAX_PATH_EX] = L"";
 	BOOL		ret = FALSE;
-	PathArray	pathArray;
+	PathArray	pathArray(PathArray::DIRFILE_REDUCE);
+	BOOL		with_endsep = (flg & BRDIR_TAILCR) ? TRUE : FALSE;
 
 	parentWin->GetDlgItemTextW(editCtl, fileBuf, MAX_PATH_EX);
 	pathArray.RegisterMultiPath(fileBuf, CRLF);
@@ -337,208 +181,50 @@ BOOL BrowseDirDlgW(TWin *parentWin, UINT editCtl, WCHAR *title, int flg)
 		wcscpy(fileBuf, c_root_v);
 	}
 
+	if (IsWin7()) {
+		GetParentDirW(fileBuf, buf);
+		vector<Wstr>	wvec;
+		Wstr			dir(buf);
+		TFileDlg(parentWin, &wvec, &dir,
+			((flg & BRDIR_FILESELECT) ? FDOPT_DIRFILE : FDOPT_DIR) |
+			((flg & BRDIR_MULTIPATH) ? FDOPT_MULTI : 0),
+			title,
+			(flg & BRDIR_FILESELECT) ? LoadStrW(IDS_SELECT) : NULL);
+
+		if (wvec.size() > 0) {
+			if ((flg & BRDIR_CTRLADD) == 0 ||
+				(::GetKeyState(VK_CONTROL) & 0x8000) == 0) {
+				pathArray.Init();
+			}
+			for (auto &s : wvec) {
+				if ((flg & BRDIR_BACKSLASH)) {
+					DWORD	attr = ::GetFileAttributesW(s.s());
+					if (attr != ~0 && (attr & FILE_ATTRIBUTE_DIRECTORY)) {
+						MakePathW(fileBuf, s.s(), NULW);
+						pathArray.RegisterPath(fileBuf);
+						continue;
+					}
+				}
+				pathArray.RegisterPath(s.s());
+			}
+			pathArray.Sort();
+			DWORD	len = pathArray.GetMultiPathLen(CRLF, NULW, with_endsep);
+			Wstr	w(len);
+			pathArray.GetMultiPath(w.Buf(), len, CRLF, NULW, with_endsep);
+			parentWin->SetDlgItemTextW(editCtl, w.s());
+		}
+		return	TRUE;
+	}
+
 	DirFileMode mode = (flg & BRDIR_INITFILESEL) ? FILESELECT : DIRSELECT;
 
 	TBrowseDirDlgW	dirDlg(title, fileBuf, flg, parentWin);
 	TOpenFileDlg	fileDlg(parentWin, TOpenFileDlg::MULTI_OPEN,
-		OFDLG_DIRSELECT|((flg & BRDIR_TAILCR) ? OFDLG_TAILCR : 0));
-		
-	//新式选择文件夹
-	HRESULT hr = S_OK;
+		OFDLG_DIRSELECT|OFDLG_CHDIRREFLECT|(with_endsep ? OFDLG_TAILCR : 0));
 
-	// Create a new common open file dialog.
-	IFileOpenDialog *pfd = NULL;
 	while (mode != SELECT_EXIT) {
 		switch (mode) {
 		case DIRSELECT:
-			hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_INPROC_SERVER,
-				IID_PPV_ARGS(&pfd));
-			if (SUCCEEDED(hr))
-			{
-				// Set the dialog as a folder picker.
-				DWORD dwOptions;
-				hr = pfd->GetOptions(&dwOptions);
-				if (SUCCEEDED(hr))
-				{
-					if (flg & BRDIR_BACKSLASH)
-						hr = pfd->SetOptions(dwOptions | FOS_PICKFOLDERS); //目标目录
-					else
-						hr = pfd->SetOptions(dwOptions | FOS_PICKFOLDERS | FOS_ALLOWMULTISELECT);
-				}
-
-				if (SUCCEEDED(hr) && defaultFolder)
-				{
-					hr = pfd->SetFolder(defaultFolder);
-				}
-
-				// Set the title of the dialog.
-				if (SUCCEEDED(hr))
-				{
-					hr = pfd->SetTitle(title);
-				}
-
-				// Create an event handling object, and hook it up to the dialog.
-				IFileDialogEvents *pfde = NULL;
-				hr = CFileDialogEventHandler_CreateInstance(IID_PPV_ARGS(&pfde));
-				if (SUCCEEDED(hr))
-				{
-					// Hook up the event handler.
-					DWORD dwCookie = 0;
-					hr = pfd->Advise(pfde, &dwCookie);
-					if (SUCCEEDED(hr))
-					{
-						// Set up the customization.
-						IFileDialogCustomize *pfdc = NULL;
-						hr = pfd->QueryInterface(IID_PPV_ARGS(&pfdc));
-						if (SUCCEEDED(hr) && !(flg & BRDIR_BACKSLASH))
-						{
-							// Create a visual group.
-							hr = pfdc->StartVisualGroup(CONTROL_GROUP, LoadStrW(IDS_IFD_GROUP));
-							if (SUCCEEDED(hr))
-							{
-
-								// Add a radio-button list.
-								hr = pfdc->AddRadioButtonList(CONTROL_RADIOBUTTONLIST);
-								if (SUCCEEDED(hr))
-								{
-									// Set the state of the added radio-button list.
-									hr = pfdc->SetControlState(CONTROL_RADIOBUTTONLIST,
-										CDCS_VISIBLE | CDCS_ENABLED);
-								}
-
-								// Add individual buttons to the radio-button list.
-								if (SUCCEEDED(hr))
-								{
-									hr = pfdc->AddControlItem(CONTROL_RADIOBUTTONLIST,
-										CONTROL_RADIOBUTTON_Folder, LoadStrW(IDS_DIRSELECT));
-								}
-								if (SUCCEEDED(hr))
-								{
-									hr = pfdc->AddControlItem(CONTROL_RADIOBUTTONLIST,
-										CONTROL_RADIOBUTTON_File, LoadStrW(IDS_FILESELECT));
-								}
-
-								// Set the default selection to option 1.
-								if (SUCCEEDED(hr))
-								{
-									hr = pfdc->SetSelectedControlItem(
-										CONTROL_RADIOBUTTONLIST, CONTROL_RADIOBUTTON_Folder);
-								}
-
-								// End the visual group
-								pfdc->EndVisualGroup();
-							}
-							pfdc->Release();
-						}
-
-						// Show the open file dialog.
-						if (SUCCEEDED(hr))
-						{
-							hr = pfd->Show(parentWin->hWnd);
-							if (SUCCEEDED(hr))
-							{
-								// Obtain the results of the user interaction.
-								IShellItemArray *psiaResults = NULL;
-								hr = pfd->GetResults(&psiaResults);
-								if (SUCCEEDED(hr))
-								{
-									// Get the number of files being selected.
-									DWORD dwFolderCount;
-									hr = psiaResults->GetCount(&dwFolderCount);
-									if (SUCCEEDED(hr))
-									{
-
-										// 处理选择多个文件夹
-										if ((flg & BRDIR_CTRLADD) == 0 ||
-											(::GetKeyState(VK_CONTROL) & 0x8000) == 0) {
-											pathArray.Init();
-										}
-										for (DWORD i = 0; i < dwFolderCount; i++)
-										{
-											IShellItem *psi = NULL;
-											if (SUCCEEDED(psiaResults->GetItemAt(i, &psi)))
-											{
-												// Retrieve the file path.
-												PWSTR pszPath = NULL;
-												if (SUCCEEDED(psi->GetDisplayName(SIGDN_FILESYSPATH,
-													&pszPath)))
-												{
-													if (fileBuf[0] == '\\') {
-														GetRootDirW(fileBuf, buf);
-														if (wcslen(buf) > wcslen(fileBuf)) { // netdrv root で末尾の \ がない
-															wcscpy(fileBuf, buf);
-														}
-													}
-													wcscpy(fileBuf, pszPath);
-													if ((flg & BRDIR_BACKSLASH)) {
-														MakePathW(buf, fileBuf, NULW);
-														wcscpy(fileBuf, buf);
-													}
-													pathArray.RegisterPath(fileBuf);
-													pathArray.GetMultiPath(fileBuf, MAX_PATH_EX, CRLF, NULW,
-														(flg & BRDIR_TAILCR) ? TRUE : FALSE);
-													CoTaskMemFree(pszPath);
-												}
-												psi->Release();
-											}
-										}
-										parentWin->SetDlgItemTextW(editCtl, fileBuf);
-										ret = TRUE;
-									}
-									psiaResults->Release();
-								}
-							}
-							else
-							{
-								if (hr == HRESULT_FROM_WIN32(ERROR_CANCELLED))
-								{
-									// User cancelled the dialog...
-								}
-							}
-						}
-
-						if (pfdc && !(flg & BRDIR_BACKSLASH))
-						{
-							// Determine which item in the combo box was selected.
-							DWORD dwSelItem;
-
-							hr = pfdc->GetSelectedControlItem(CONTROL_RADIOBUTTONLIST, &dwSelItem);
-
-							if (SUCCEEDED(hr))
-							{
-								//if (CONTROL_RADIOBUTTON1 == dwSelItem)
-									//MessageBox(0, "选择目录", NULL, 0);
-								if (CONTROL_RADIOBUTTON_File == dwSelItem)
-								{
-									//PWSTR folderShellItemName = NULL;
-									////hr = pfd->GetFolder(&defaultFolder);
-									//if (defaultFolder) {
-									//	defaultFolder->GetDisplayName(SIGDN_FILESYSPATH, &folderShellItemName);
-									//	MessageBoxW(0, folderShellItemName, L"The selected folder is", MB_OK);
-									//}
-									mode = FILESELECT;
-									continue;
-								}
-							}
-						}
-
-						// Unhook the event handler
-						pfd->Unadvise(dwCookie);
-					}
-					pfde->Release();
-				}
-				pfd->Release();
-
-			}
-
-			// Report the error.
-			if (FAILED(hr))
-			{
-				// If it's not that the user cancelled the dialog, report the error in a 
-				// message box.
-				if (hr != HRESULT_FROM_WIN32(ERROR_CANCELLED))
-				{
-					//XP不支持的情况
 			if (dirDlg.Exec()) {
 				if (fileBuf[0] == '\\') {
 					GetRootDirW(fileBuf, buf);
@@ -556,8 +242,8 @@ BOOL BrowseDirDlgW(TWin *parentWin, UINT editCtl, WCHAR *title, int flg)
 						pathArray.Init();
 					}
 					pathArray.RegisterPath(fileBuf);
-					pathArray.GetMultiPath(fileBuf, MAX_PATH_EX, CRLF, NULW,
-						(flg & BRDIR_TAILCR) ? TRUE : FALSE);
+					pathArray.Sort();
+					pathArray.GetMultiPath(fileBuf, MAX_PATH_EX, CRLF, NULW,  with_endsep);
 				}
 				parentWin->SetDlgItemTextW(editCtl, fileBuf);
 				ret = TRUE;
@@ -566,197 +252,16 @@ BOOL BrowseDirDlgW(TWin *parentWin, UINT editCtl, WCHAR *title, int flg)
 				mode = FILESELECT;
 				continue;
 			}
-				}
-			}
 			mode = SELECT_EXIT;
 			break;
 
 		case FILESELECT:
-
-			hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_INPROC_SERVER,
-				IID_PPV_ARGS(&pfd));
-			if (SUCCEEDED(hr))
-			{
-				// Set the dialog as a folder picker.
-				DWORD dwOptions;
-				hr = pfd->GetOptions(&dwOptions);
-				if (SUCCEEDED(hr))
-				{
-					hr = pfd->SetOptions(dwOptions | FOS_ALLOWMULTISELECT);
-				}
-
-				if (SUCCEEDED(hr) && defaultFolder)
-				{
-					hr = pfd->SetFolder(defaultFolder);
-				}
-
-				// Create an event handling object, and hook it up to the dialog.
-				IFileDialogEvents *pfde = NULL;
-				hr = CFileDialogEventHandler_CreateInstance(IID_PPV_ARGS(&pfde));
-				if (SUCCEEDED(hr))
-				{
-					// Hook up the event handler.
-					DWORD dwCookie = 0;
-					hr = pfd->Advise(pfde, &dwCookie);
-					if (SUCCEEDED(hr))
-					{
-						// Set up the customization.
-						IFileDialogCustomize *pfdc = NULL;
-						hr = pfd->QueryInterface(IID_PPV_ARGS(&pfdc));
-						if (SUCCEEDED(hr) && !(flg & BRDIR_BACKSLASH))
-						{
-							// Create a visual group.
-							hr = pfdc->StartVisualGroup(CONTROL_GROUP, LoadStrW(IDS_IFD_GROUP));
-							if (SUCCEEDED(hr))
-							{
-
-								// Add a radio-button list.
-								hr = pfdc->AddRadioButtonList(CONTROL_RADIOBUTTONLIST);
-								if (SUCCEEDED(hr))
-								{
-									// Set the state of the added radio-button list.
-									hr = pfdc->SetControlState(CONTROL_RADIOBUTTONLIST,
-										CDCS_VISIBLE | CDCS_ENABLED);
-								}
-
-								// Add individual buttons to the radio-button list.
-								if (SUCCEEDED(hr))
-								{
-									hr = pfdc->AddControlItem(CONTROL_RADIOBUTTONLIST,
-										CONTROL_RADIOBUTTON_Folder, LoadStrW(IDS_DIRSELECT));
-								}
-								if (SUCCEEDED(hr))
-								{
-									hr = pfdc->AddControlItem(CONTROL_RADIOBUTTONLIST,
-										CONTROL_RADIOBUTTON_File, LoadStrW(IDS_FILESELECT));
-								}
-
-								// Set the default selection to option 1.
-								if (SUCCEEDED(hr))
-								{
-									hr = pfdc->SetSelectedControlItem(
-										CONTROL_RADIOBUTTONLIST, CONTROL_RADIOBUTTON_File);
-								}
-
-								// End the visual group
-								pfdc->EndVisualGroup();
-							}
-							pfdc->Release();
-						}
-
-						// Show the open file dialog.
-						if (SUCCEEDED(hr))
-						{
-							hr = pfd->Show(parentWin->hWnd);
-							if (SUCCEEDED(hr))
-							{
-								// Obtain the results of the user interaction.
-								IShellItemArray *psiaResults = NULL;
-								hr = pfd->GetResults(&psiaResults);
-								if (SUCCEEDED(hr))
-								{
-									// Get the number of files being selected.
-									DWORD dwFolderCount;
-									hr = psiaResults->GetCount(&dwFolderCount);
-									if (SUCCEEDED(hr))
-									{
-
-										// 处理选择多个文件夹
-										if ((flg & BRDIR_CTRLADD) == 0 ||
-											(::GetKeyState(VK_CONTROL) & 0x8000) == 0) {
-											pathArray.Init();
-										}
-										for (DWORD i = 0; i < dwFolderCount; i++)
-										{
-											IShellItem *psi = NULL;
-											if (SUCCEEDED(psiaResults->GetItemAt(i, &psi)))
-											{
-												// Retrieve the file path.
-												PWSTR pszPath = NULL;
-												if (SUCCEEDED(psi->GetDisplayName(SIGDN_FILESYSPATH,
-													&pszPath)))
-												{
-													if (fileBuf[0] == '\\') {
-														GetRootDirW(fileBuf, buf);
-														if (wcslen(buf) > wcslen(fileBuf)) { // netdrv root で末尾の \ がない
-															wcscpy(fileBuf, buf);
-														}
-													}
-													wcscpy(fileBuf, pszPath);
-													if ((flg & BRDIR_BACKSLASH)) {
-														MakePathW(buf, fileBuf, NULW);
-														wcscpy(fileBuf, buf);
-													}
-													pathArray.RegisterPath(fileBuf);
-													pathArray.GetMultiPath(fileBuf, MAX_PATH_EX, CRLF, NULW,
-														(flg & BRDIR_TAILCR) ? TRUE : FALSE);
-													CoTaskMemFree(pszPath);
-												}
-												psi->Release();
-											}
-										}
-										parentWin->SetDlgItemTextW(editCtl, fileBuf);
-										ret = TRUE;
-									}
-									psiaResults->Release();
-								}
-							}
-							else
-							{
-								if (hr == HRESULT_FROM_WIN32(ERROR_CANCELLED))
-								{
-									// User cancelled the dialog...
-								}
-							}
-						}
-
-						if (pfdc && !(flg & BRDIR_BACKSLASH))
-						{
-							// Determine which item in the combo box was selected.
-							DWORD dwSelItem;
-
-							hr = pfdc->GetSelectedControlItem(CONTROL_RADIOBUTTONLIST, &dwSelItem);
-
-							if (SUCCEEDED(hr))
-							{
-								if (CONTROL_RADIOBUTTON_Folder == dwSelItem)
-								{
-									//PWSTR folderShellItemName = NULL;
-									//hr = pfd->GetFolder(&defaultFolder);
-									//if (defaultFolder) {
-									//	defaultFolder->GetDisplayName(SIGDN_FILESYSPATH, &folderShellItemName);
-									//	MessageBoxW(0, folderShellItemName, L"The selected folder is", MB_OK);
-									//}
-									mode = DIRSELECT;
-									continue;
-								}
-							}
-						}
-
-						// Unhook the event handler
-						pfd->Unadvise(dwCookie);
-					}
-					pfde->Release();
-				}
-				pfd->Release();
-
-			}
-
-			// Report the error.
-			if (FAILED(hr))
-			{
-				// If it's not that the user cancelled the dialog, report the error in a 
-				// message box.
-				if (hr != HRESULT_FROM_WIN32(ERROR_CANCELLED))
-				{
-					//XP不支持的情况
 			buf[wcscpyz(buf, LoadStrW(IDS_ALLFILES_FILTER)) + 1] =  0;
 			ret = fileDlg.Exec(editCtl, NULL, buf, fileBuf, fileBuf);
 			if (fileDlg.GetMode() == DIRSELECT)
 				mode = DIRSELECT;
-				}
-			}
-			mode = SELECT_EXIT;
+			else
+				mode = SELECT_EXIT;
 			break;
 		}
 	}
@@ -813,15 +318,19 @@ BOOL TBrowseDirDlgW::Exec()
 */
 int CALLBACK TBrowseDirDlgW::BrowseDirDlg_Proc(HWND hWnd, UINT uMsg, LPARAM lParam, LPARAM data)
 {
+	auto dlg = (TBrowseDirDlgW *)data;
+	if (!dlg) return 0;
+
 	switch (uMsg)
 	{
 	case BFFM_INITIALIZED:
-		((TBrowseDirDlgW *)data)->AttachWnd(hWnd);
+		dlg->AttachWnd(hWnd);
 		break;
 
 	case BFFM_SELCHANGED:
-		if (((TBrowseDirDlgW *)data)->hWnd)
-			((TBrowseDirDlgW *)data)->SetFileBuf(lParam);
+		if (dlg->hWnd) {
+			dlg->SetFileBuf(lParam);
+		}
 		break;
 	}
 	return 0;
@@ -840,7 +349,7 @@ BOOL TBrowseDirDlgW::AttachWnd(HWND _hWnd)
 		GetParentDirW(fileBuf, fileBuf);
 
 	LPITEMIDLIST pidl = ::ILCreateFromPathW(fileBuf);
-	SendMessageW(BFFM_SETSELECTION, FALSE, (LPARAM)pidl);
+	SendMessageW(BFFM_SETSELECTIONW, FALSE, (LPARAM)pidl);
 	ILFree(pidl);
 
 // ボタン作成
@@ -957,8 +466,29 @@ BOOL TBrowseDirDlgW::EvNotify(UINT ctlID, NMHDR *pNmHdr)
 	return	FALSE;
 }
 
+HWND FindSysTree(HWND hWnd)
+{
+	for (HWND hChild=::GetWindow(hWnd, GW_CHILD);
+		hChild; hChild=::GetWindow(hChild, GW_HWNDNEXT)) {
+		for (HWND hSubChild = ::GetWindow(hChild, GW_CHILD); hSubChild;
+			hSubChild = ::GetWindow(hSubChild, GW_HWNDNEXT)) {
+			WCHAR	wbuf[MAX_PATH];
+			if (GetClassNameW(hSubChild, wbuf, wsizeof(wbuf)) && !wcscmp(wbuf, WC_TREEVIEWW)) {
+				return	hSubChild;
+			}
+		}
+	}
+	return	NULL;
+}
+
 BOOL TBrowseDirDlgW::SetFileBuf(LPARAM list)
 {
+	if (auto hSysTree = FindSysTree(hWnd)) {
+		auto hRoot = TreeView_GetRoot(hSysTree);
+		auto hCur = TreeView_GetNextItem(hSysTree, hRoot, TVGN_CARET);
+		TreeView_EnsureVisible(hSysTree, hCur);
+	}
+
 	return	::SHGetPathFromIDListW((LPITEMIDLIST)list, fileBuf);
 }
 
@@ -1025,9 +555,12 @@ BOOL TConfirmDlg::EvCreate(LPARAM lParam)
 
 	if (rect.left == CW_USEDEFAULT) {
 		GetWindowRect(&rect);
-		rect.left += 30, rect.right += 30;
-		rect.top += 30, rect.bottom += 30;
-		MoveWindow(rect.left, rect.top, rect.cx(), rect.cy(), FALSE);
+		rect.Slide(30, 30);
+		MoveWindow(rect.x(), rect.y(), rect.cx(), rect.cy(), FALSE);
+	}
+	else {
+		RestoreRectFromParent();
+		MoveWindow(rect.x(), rect.y(), rect.cx(), rect.cy(), FALSE);
 	}
 
 	Show();
@@ -1044,7 +577,7 @@ BOOL TOpenFileDlg::Exec(UINT editCtl, WCHAR *title, WCHAR *filter, WCHAR *defaul
 	WCHAR *init_data)
 {
 	int			len = ::GetWindowTextLengthW(parent->GetDlgItem(editCtl)) + 1;
-	PathArray	pathArray;
+	PathArray	pathArray(PathArray::DIRFILE_REDUCE);
 
 	if (parent == NULL) {
 		return FALSE;
@@ -1085,6 +618,7 @@ BOOL TOpenFileDlg::Exec(UINT editCtl, WCHAR *title, WCHAR *filter, WCHAR *defaul
 				offset += wcscpyz(w() + dir_len, w() + offset);
 				pathArray.RegisterPath(w());
 			}
+			pathArray.Sort();
 			BOOL	tail = (flg & OFDLG_TAILCR) ? TRUE : FALSE;
 			int		len = pathArray.GetMultiPathLen(CRLF, NULW, tail);
 			vbuf.AllocBuf(len * sizeof(WCHAR *));
@@ -1099,6 +633,7 @@ BOOL TOpenFileDlg::Exec(UINT editCtl, WCHAR *title, WCHAR *filter, WCHAR *defaul
 	auto	sep  = (flg & OFDLG_WITHQUOTE) ? L" " : NULW;
 	auto	tail = ((flg & OFDLG_WITHQUOTE) || !(flg & OFDLG_TAILCR)) ? FALSE : TRUE;
 
+	pathArray.Sort();
 	len = pathArray.GetMultiPathLen(CRLF, sep, tail);
 	vbuf.AllocBuf(len * sizeof(WCHAR));
 	pathArray.GetMultiPath(w(), (int)vbuf.Size(), CRLF, sep, tail);
@@ -1112,7 +647,7 @@ BOOL TOpenFileDlg::Exec(UINT editCtl, WCHAR *title, WCHAR *filter, WCHAR *defaul
 #define OFN_ENABLESIZING 0x00800000
 #endif
 
-BOOL TOpenFileDlg::Exec(WCHAR *title, WCHAR *filter, WCHAR *defaultDir)
+BOOL TOpenFileDlg::Exec(WCHAR *title, WCHAR *filter, WCHAR *_defaultDir)
 {
 	OPENFILENAMEW	ofn = {};
 	WCHAR	szDirName[MAX_PATH] = L"";
@@ -1141,6 +676,7 @@ BOOL TOpenFileDlg::Exec(WCHAR *title, WCHAR *filter, WCHAR *defaultDir)
 		vbuf.AllocBuf(MAX_OFNBUF * sizeof(WCHAR));
 	}
 
+	defaultDir = _defaultDir;
 	if (szDirName[0] == 0 && defaultDir)
 		wcscpy(szDirName, defaultDir);
 	memset(&ofn, 0, sizeof(ofn));
@@ -1166,16 +702,18 @@ BOOL TOpenFileDlg::Exec(WCHAR *title, WCHAR *filter, WCHAR *defaultDir)
 	BOOL	ret = (openMode == OPEN || openMode == MULTI_OPEN) ?
 				 ::GetOpenFileNameW(&ofn) : ::GetSaveFileNameW(&ofn);
 
-	::SetCurrentDirectoryW(orgDir);
 	if (ret) {
 //		if (openMode == MULTI_OPEN)
 //			memcpy(w(), szFile, MAX_WPATH * sizeof(WCHAR));
 //		else
 //			wcscpy(w(), ofn.lpstrFile);
 
-		if (defaultDir)
+		if (defaultDir) {
 			wcscpy(defaultDir, ofn.lpstrFile);
+		}
 	}
+
+	::SetCurrentDirectoryW(orgDir);
 
 	return	ret;
 }
@@ -1188,36 +726,49 @@ UINT WINAPI TOpenFileDlg::OpenFileDlgProc(HWND hdlg, UINT msg, WPARAM wParam, LP
 		return TRUE;
 
 	case WM_NOTIFY:
-		if (NMHDR *nh = (NMHDR *)lParam) {
-			Debug("notify=%d\n", nh->code - CDN_FIRST);
-			if (nh->code == CDN_SELCHANGE) {
-				auto	ont = (OFNOTIFYW *)lParam;
-				auto	ofn = ont->lpOFN;
-				auto	dlg = (TOpenFileDlg *)(ofn->lCustData);
-				LRESULT	dlen = dlg->SendMessageW(CDM_GETFOLDERPATH, 0, 0);
-				LRESULT	flen = dlg->SendMessageW(CDM_GETSPEC, 0, 0);
-				size_t	need = (dlen + flen + MAX_PATH) * sizeof(WCHAR);
-
-				if (dlg->vbuf.Size() < need) {
-					dlg->vbuf.AllocBuf(need);
-					ofn->lpstrFile = dlg->vbuf.WBuf();
-					ofn->nMaxFile = (DWORD)dlg->vbuf.Size();
-					Debug("size %zd\n", need);
-				}
-
-//				dlg->SendMessageW(CDM_GETFOLDERPATH, need/2, (LPARAM)dlg->vbuf.Buf());
-//				DebugW(L"dir=%s\n", dlg->vbuf.WBuf());
-//				dlg->SendMessageW(CDM_GETSPEC, need/2, (LPARAM)dlg->vbuf.Buf());
-//				DebugW(L"file=%s\n", dlg->vbuf.WBuf());
-
-				return	0;
+		if (auto ont = (OFNOTIFYW *)lParam) {
+			if (auto dlg = (TOpenFileDlg *)(ont->lpOFN->lCustData)) {
+				return	dlg->NotifyProc(ont);
 			}
 		}
 	}
 	return FALSE;
 }
 
-int CalcLineCx(HDC hDc, const WCHAR *s)
+
+UINT TOpenFileDlg::NotifyProc(OFNOTIFYW *ont)
+{
+	DBG("notify=%d\n", ont->hdr.code - CDN_FIRST);
+	if (ont->hdr.code != CDN_SELCHANGE && ont->hdr.code != CDN_FOLDERCHANGE) {
+		return 0;
+	}
+
+	auto	ofn = ont->lpOFN;
+	LRESULT	dlen = SendMessageW(CDM_GETFOLDERPATH, 0, 0);
+	LRESULT	flen = SendMessageW(CDM_GETSPEC, 0, 0);
+	size_t	need = (dlen + flen + MAX_PATH) * sizeof(WCHAR);
+
+	if (vbuf.Size() < need) {
+		vbuf.AllocBuf(need);
+		ofn->lpstrFile = vbuf.WBuf();
+		ofn->nMaxFile = (DWORD)vbuf.Size();
+		DBG("size %zd\n", need);
+	}
+
+	SendMessageW(CDM_GETFOLDERPATH, need / 2, (LPARAM)vbuf.Buf());
+	DBGW(L"dir=%s\n", vbuf.WBuf());
+
+	if (defaultDir && (flg & OFDLG_CHDIRREFLECT)) {
+		wcscpy(defaultDir, vbuf.WBuf());
+	}
+
+	SendMessageW(CDM_GETSPEC, need / 2, (LPARAM)vbuf.Buf());
+		DBGW(L"file=%s\n", vbuf.WBuf());
+
+	return	0;
+}
+	
+	int CalcLineCx(HDC hDc, const WCHAR *s)
 {
 	int		cx = 0;
 
@@ -1322,7 +873,7 @@ BOOL TOpenFileDlg::EventApp(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		int	need_size = base_size + sz.cx - 70;
 
 		if (rect.cx() < need_size) {
-			MoveWindow(rect.left, rect.top, need_size, rect.cy(), TRUE);
+			MoveWindow(rect.x(), rect.y(), need_size, rect.cy(), TRUE);
 			GetWindowRect(&rect);
 		}
 
@@ -1379,12 +930,13 @@ BOOL TJobDlg::EvCreate(LPARAM lParam)
 {
 	WCHAR	buf[MAX_PATH];
 
-	if (rect.left == CW_USEDEFAULT)
-	{
+	if (rect.left == CW_USEDEFAULT) {
 		GetWindowRect(&rect);
-		int xsize = rect.right - rect.left;
-		int	ysize = rect.bottom - rect.top;
-		MoveWindow(rect.left + 30, rect.top + 50, xsize, ysize, FALSE);
+		MoveWindow(rect.x() + 30, rect.y() + 50, rect.cx(), rect.cy(), FALSE);
+	}
+	else {
+		RestoreRectFromParent();
+		MoveWindow(rect.x(), rect.y(), rect.cx(), rect.cy(), FALSE);
 	}
 
 	for (int i=0; i < cfg->jobMax; i++)
@@ -1460,6 +1012,7 @@ BOOL TJobDlg::AddJob()
 	mainParent->GetDlgItemTextW(SRC_EDIT, src_buf, srcbuf_len);
 	PathArray	srcArray;
 	srcArray.RegisterMultiPath(src_buf, CRLF);
+	srcArray.Sort();
 	int		src_len = srcArray.GetMultiPathLen();
 	if (src_len >= MAX_HISTORY_BUF) {
 		TMsgBox(this).Exec("Source is too long (max.8192 chars)");
@@ -1506,9 +1059,10 @@ BOOL TJobDlg::AddJob()
 
 BOOL TJobDlg::DelJob()
 {
-	WCHAR	buf[MAX_PATH], msg[MAX_PATH];
+	WCHAR	buf[MAX_PATH];
 
 	if (GetDlgItemTextW(TITLE_COMBO, buf, MAX_PATH) > 0) {
+		WCHAR	msg[MAX_PATH];
 		int idx = cfg->SearchJobW(buf);
 		swprintf(msg, LoadStrW(IDS_JOBNAME), buf);
 		if (idx >= 0
@@ -1535,12 +1089,13 @@ TFinActDlg::TFinActDlg(Cfg *_cfg, TMainDlg *_parent) : TDlg(FINACTION_DIALOG, _p
 
 BOOL TFinActDlg::EvCreate(LPARAM lParam)
 {
-	if (rect.left == CW_USEDEFAULT)
-	{
+	if (rect.left == CW_USEDEFAULT) {
 		GetWindowRect(&rect);
-		int xsize = rect.right - rect.left;
-		int	ysize = rect.bottom - rect.top;
-		MoveWindow(rect.left + 30, rect.top + 50, xsize, ysize, FALSE);
+		MoveWindow(rect.x() + 30, rect.y() + 50, rect.cx(), rect.cy(), FALSE);
+	}
+	else {
+		RestoreRectFromParent();
+		MoveWindow(rect.x(), rect.y(), rect.cx(), rect.cy(), FALSE);
 	}
 
 	for (int i=0; i < cfg->finActMax; i++) {
@@ -1657,7 +1212,6 @@ BOOL TFinActDlg::AddFinAct()
 	WCHAR	title[MAX_PATH];
 	WCHAR	sound[MAX_PATH];
 	WCHAR	command[MAX_PATH_EX];
-	WCHAR	buf[MAX_PATH];
 
 	if (GetDlgItemTextW(TITLE_COMBO, title, MAX_PATH) <= 0 || wcsicmp(title, L"FALSE") == 0)
 		return	FALSE;
@@ -1688,6 +1242,7 @@ BOOL TFinActDlg::AddFinAct()
 	}
 
 	if (finAct.flags & (FinAct::SUSPEND|FinAct::HIBERNATE|FinAct::SHUTDOWN)) {
+		WCHAR	buf[MAX_PATH];
 		finAct.flags |= (IsDlgButtonChecked(FORCE_CHECK) ? FinAct::FORCE : 0);
 		finAct.flags |= (IsDlgButtonChecked(SHUTDOWNERR_CHECK) ? FinAct::ERR_SHUTDOWN : 0);
 		finAct.shutdownTime = 60;
@@ -1710,9 +1265,10 @@ BOOL TFinActDlg::AddFinAct()
 
 BOOL TFinActDlg::DelFinAct()
 {
-	WCHAR	buf[MAX_PATH], msg[MAX_PATH];
+	WCHAR	buf[MAX_PATH];
 
 	if (GetDlgItemTextW(TITLE_COMBO, buf, MAX_PATH) > 0) {
+		WCHAR	msg[MAX_PATH];
 		int idx = cfg->SearchFinActW(buf);
 		swprintf(msg, LoadStrW(IDS_FINACTNAME), buf);
 		if (cfg->finActArray[idx]->flags & FinAct::BUILTIN) {
@@ -1750,12 +1306,13 @@ TMsgBox::~TMsgBox()
 */
 BOOL TMsgBox::EvCreate(LPARAM lParam)
 {
-	if (rect.left == CW_USEDEFAULT)
-	{
+	if (rect.left == CW_USEDEFAULT) {
 		GetWindowRect(&rect);
-		int xsize = rect.right - rect.left;
-		int	ysize = rect.bottom - rect.top;
-		MoveWindow(rect.left + 30, rect.top + 50, xsize, ysize, FALSE);
+		MoveWindow(rect.x() + 30, rect.y() + 50, rect.cx(), rect.cy(), FALSE);
+	}
+	else {
+		RestoreRectFromParent();
+		MoveWindow(rect.x(), rect.y(), rect.cx(), rect.cy(), FALSE);
 	}
 
 	if (isExecW) {
@@ -1919,7 +1476,7 @@ BOOL TListHeader::EventUser(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	if (uMsg == HDM_LAYOUT) {
 		HD_LAYOUT *hl = (HD_LAYOUT *)lParam;
 		::CallWindowProcW((WNDPROC)oldProc, hWnd, uMsg, wParam, lParam);
-//		Debug("HDM_LAYOUT(USER)2 top:%d/bottom:%d diff:%d cy:%d y:%d\n",
+//		DBG("HDM_LAYOUT(USER)2 top:%d/bottom:%d diff:%d cy:%d y:%d\n",
 //			hl->prc->top, hl->prc->bottom, hl->prc->bottom - hl->prc->top,
 //			hl->pwpos->cy, hl->pwpos->y);
 
@@ -1943,7 +1500,7 @@ BOOL TListHeader::ChangeFontNotify()
 	if (::GetObject(hFont, sizeof(LOGFONT), (void *)&logFont) == 0)
 		return	FALSE;
 
-//	Debug("lfHeight=%d\n", logFont.lfHeight);
+	DBG("lfHeight=%d\n", logFont.lfHeight);
 	return	TRUE;
 }
 
@@ -2141,7 +1698,9 @@ BOOL TSrcEdit::AttachWnd(HWND _hWnd)
 	if (!TSubClassCtl::AttachWnd(_hWnd)) {
 		return	FALSE;
 	}
-	SendMessage(EM_SETMARGINS, EC_LEFTMARGIN, 1);
+	if (TGetDefaultLCID() == 0x411) {
+		SendMessage(EM_SETMARGINS, EC_LEFTMARGIN, 1);
+	}
 
 	GetWindowRect(&orgRect);
 
@@ -2155,7 +1714,7 @@ BOOL TSrcEdit::AttachWnd(HWND _hWnd)
 	}
 
 //	HDC		hDc = ::GetDC(hWnd);
-//	Debug("base=%d lf=%d caps=%d, rc=%d\n",
+//	DBG("base=%d lf=%d caps=%d, rc=%d\n",
 //		baseCy, lf.lfHeight, GetDeviceCaps(hDc, LOGPIXELSY), orgRect.cy());
 //	::ReleaseDC(hWnd, hDc);
 
@@ -2172,16 +1731,19 @@ int char_num(const WCHAR *str, WCHAR ch)
 	return	cnt;
 }
 
-int TSrcEdit::NeedDiffY()
+int TSrcEdit::NeedDiffY(int *real_diff)
 {
 	int		len = GetWindowTextLengthW() + 1;
 	Wstr	wstr(len);
 
 	if (GetWindowTextW(wstr.Buf(), len)) {
-		int		crnum = max(min(char_num(wstr.s(), L'\n') + 1, maxCr), 2);
-		int		needCy = baseCy * crnum + marginCy;
+		int		crnum = char_num(wstr.s(), L'\n') + 1;
+		int		crmax = max(min(crnum, maxCr), 2);
+		int		needCy = baseCy * crmax + marginCy;
+		int		realCy = baseCy * crnum + marginCy;
 
-	//	Debug("need=%d org=%d cr=%d\n", needCy, orgRect.cy(), crnum);
+		*real_diff = realCy - orgRect.cy();
+	//	DBG("need=%d org=%d cr=%d\n", needCy, orgRect.cy(), crnum);
 
 		return	max(needCy - orgRect.cy(), 0);
 	}
@@ -2190,13 +1752,22 @@ int TSrcEdit::NeedDiffY()
 
 void TSrcEdit::Fit(BOOL allow_reduce)
 {
-	int	diff = NeedDiffY();
+	int	real = 0;
+	int	diff = NeedDiffY(&real);
 
 	GetWindowRect(&rect);
 	int	cur_diff = rect.cy() - orgRect.cy();
 
-	if (diff > cur_diff || allow_reduce && diff != cur_diff) {
-	//	Debug("fit %d %d\n", diff, cur_diff);
+	if (allow_reduce && cur_diff > diff) {
+		if (cur_diff > real) {
+			diff = real;
+		} else {
+			diff = cur_diff;
+		}
+	}
+
+	if (diff > cur_diff || allow_reduce && diff < cur_diff) {
+	//	DBG("fit %d %d\n", diff, cur_diff);
 		parent->PostMessage(WM_FASTCOPY_RESIZESRCEDIT, 0, diff);
 	}
 }
@@ -2210,7 +1781,7 @@ BOOL TSrcEdit::EvChar(WCHAR code, LPARAM keyData)
 
 	case 0x01: // Control-A
 		SendMessage(EM_SETSEL, 0, -1);
-		Debug("send emsetsel\n");
+		DBG("send emsetsel\n");
 		break;
 	}
 	return	FALSE;
@@ -2239,4 +1810,5 @@ BOOL TSrcEdit::EvPaste()
 	parent->PostMessage(WM_FASTCOPY_SRCEDITFIT, 0, 1);
 	return	FALSE;
 }
+
 

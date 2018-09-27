@@ -1,9 +1,9 @@
 ﻿static char *cfg_id = 
-	"@(#)Copyright (C) 2004-2018 H.Shirouzu		cfg.cpp	ver3.41";
+	"@(#)Copyright (C) 2004-2018 H.Shirouzu		cfg.cpp	ver3.50";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2018-01-27(Sat)
+	Update					: 2018-05-28(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-08-23
@@ -58,7 +58,8 @@
 #define BUFSIZE_KEY				"bufsize"
 #define MAXRUNNUM_KEY			"max_runnum"
 #define MAXOVLSIZE_KEY			"max_ovlsize"
-#define MAXOVLNUM_KEY			"max_ovlnum"
+#define MAXOVLNUMOLD_KEY		"max_ovlnum"
+#define MAXOVLNUM_KEY			"max_ovlnum2"
 #define MAXOPENFILES_KEY		"max_openfiles"
 #define MAXATTRSIZEOLD_KEY		"max_attrsize"
 #define MAXATTRSIZE_KEY			"max_attrsize2"
@@ -75,7 +76,7 @@
 #define FORCESTART_KEY			"force_start"
 #define LCID_KEY				"lcid"
 #define LOGFILE_KEY				"logfile"
-#define WAITTICK_KEY			"wait_tick"
+#define WAITLV_KEY				"wait_lv"
 #define ISAUTOSLOWIO_KEY		"is_autoslow_io2"
 #define SPEEDLEVEL_KEY			"speed_level"
 #define PRIORITY_KEY			"priority"
@@ -86,7 +87,8 @@
 #define STREAM_KEY				"stream"
 #define VERIFY_KEY				"verify"
 #define USEMD5_KEY				"using_md5"
-#define HASHMODE_KEY			"hash_mode"
+#define HASHMODE_KEY			"hash_mode2"
+#define HASHMODEOLD_KEY			"hash_mode"
 #define NSA_KEY					"nsa_del"
 #define DELDIR_KEY				"deldir_with_filter"
 #define MOVEATTR_KEY			"move_attr"
@@ -111,6 +113,7 @@
 #define DIRSEL_KEY				"dirsel"
 #define UPDCHECK_KEY			"updCheck"
 #define LASTUPDCHECK_KEY		"lastUpdCheck"
+#define VERIFY_REMOVE_KEY		"verifyRemove"
 
 #define NONBUFMINSIZENTFS_KEY	"nonbuf_minsize_ntfs2"
 #define NONBUFMINSIZEFAT_KEY	"nonbuf_minsize_fat"
@@ -143,7 +146,8 @@
 #define DEFAULT_EMPTYDIR		1
 #define DEFAULT_FORCESTART		0
 #define DEFAULT_MAXRUNNUM		3
-#define DEFAULT_MAXOVLNUM		4
+#define DEFAULT_MAXOVLNUM_OLD	4
+#define DEFAULT_MAXOVLNUM		20
 #define DEFAULT_MAXOVLSIZE		1
 #ifdef _WIN64
 #define DEFAULT_BUFSIZE			256
@@ -167,7 +171,7 @@
 #define DEFAULT_NBMINSIZE_FAT	128		// nbMinSize 参照
 #define DEFAULT_LINKHASH		300000
 #define DEFAULT_ALLOWCONTFSIZE	(1024 * 1024 * 1024)
-#define DEFAULT_WAITTICK		10
+#define DEFAULT_WAITLV			5
 #define JOB_MAX					1000
 #define FINACT_MAX				1000
 #define DEFAULT_FASTCOPYLOG		"FastCopy.log"
@@ -223,7 +227,8 @@ BOOL ConvertToX86Dir(WCHAR *target)
 BOOL ConvertVirtualStoreConf(WCHAR *execDir, WCHAR *userDir, WCHAR *virtualDir)
 {
 	WCHAR	buf[MAX_PATH];
-	WCHAR	org_ini[MAX_PATH], usr_ini[MAX_PATH], vs_ini[MAX_PATH];
+	WCHAR	org_ini[MAX_PATH];
+	WCHAR	usr_ini[MAX_PATH];
 	BOOL	is_admin = ::IsUserAnAdmin();
 	BOOL	is_exists;
 
@@ -240,6 +245,7 @@ BOOL ConvertVirtualStoreConf(WCHAR *execDir, WCHAR *userDir, WCHAR *virtualDir)
 	}
 
 	if (virtualDir && virtualDir[0]) {
+		WCHAR	vs_ini[MAX_PATH];
 		MakePathW(vs_ini,  virtualDir, FASTCOPY_INI);
 		if (::GetFileAttributesW(vs_ini) != 0xffffffff) {
 			if (!is_exists) {
@@ -257,7 +263,7 @@ BOOL ConvertVirtualStoreConf(WCHAR *execDir, WCHAR *userDir, WCHAR *virtualDir)
 
 	if ((is_admin || !is_exists) && ::GetFileAttributesW(org_ini) != 0xffffffff) {
 		if (!is_exists) {
-			is_exists = ::CopyFileW(org_ini, usr_ini, TRUE);
+			::CopyFileW(org_ini, usr_ini, TRUE);
 		}
 		if (is_admin) {
 			swprintf(buf, L"%s.obsolete", org_ini);
@@ -276,6 +282,7 @@ BOOL ConvertVirtualStoreConf(WCHAR *execDir, WCHAR *userDir, WCHAR *virtualDir)
 	return	TRUE;
 }
 
+//#include <crtdbg.h>
 
 /*=========================================================================
   クラス ： Cfg
@@ -285,6 +292,8 @@ BOOL ConvertVirtualStoreConf(WCHAR *execDir, WCHAR *userDir, WCHAR *virtualDir)
 =========================================================================*/
 Cfg::Cfg()
 {
+//	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF|_CRTDBG_CHECK_ALWAYS_DF|_CRTDBG_CHECK_CRT_DF|_CRTDBG_DELAY_FREE_MEM_DF);
+//	_ASSERTE( _CrtCheckMemory( ) );
 }
 
 Cfg::~Cfg()
@@ -419,7 +428,7 @@ void ConvertFilter(const WCHAR *s, WCHAR *d)
 	}
 	d[di] = 0;
 
-	DebugW(L"%s -> %s\n", s, d);
+	DBGW(L"%s -> %s\n", s, d);
 }
 
 BOOL Cfg::GetFilterStr(const char *key, char *tmpbuf, WCHAR *wbuf)
@@ -441,10 +450,6 @@ BOOL Cfg::GetFilterStr(const char *key, char *tmpbuf, WCHAR *wbuf)
 
 	return	TRUE;
 }
-
-//#include <crtdbg.h>
-//_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF|_CRTDBG_CHECK_ALWAYS_DF|_CRTDBG_CHECK_CRT_DF|_CRTDBG_DELAY_FREE_MEM_DF);
-//_ASSERTE( _CrtCheckMemory( ) );
 
 BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 {
@@ -501,12 +506,21 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 	bufSize			= ini.GetInt(BUFSIZE_KEY, DEFAULT_BUFSIZE);
 	maxRunNum		= ini.GetInt(MAXRUNNUM_KEY, DEFAULT_MAXRUNNUM);
 
-	maxOvlNum		= ini.GetInt(MAXOVLNUM_KEY, DEFAULT_MAXOVLNUM);
+
+	maxOvlNum		= ini.GetInt(MAXOVLNUM_KEY, 0);
+	if (maxOvlNum == 0) {
+		maxOvlNum = ini.GetInt(MAXOVLNUMOLD_KEY, DEFAULT_MAXOVLNUM_OLD);
+		if (maxOvlNum == DEFAULT_MAXOVLNUM_OLD) {
+			maxOvlNum = DEFAULT_MAXOVLNUM;
+		}
+	}
+
 	maxOvlSize		= ini.GetInt(MAXOVLSIZE_KEY, DEFAULT_MAXOVLSIZE);
 	maxOvlSize		= min(max(maxOvlSize, 1), 4095);
 
-	if (bufSize < maxOvlNum * maxOvlSize * BUFIO_SIZERATIO) {
-		bufSize = maxOvlNum * maxOvlSize * BUFIO_SIZERATIO;
+	int	need_mb = FASTCOPY_BUFMB(maxOvlSize, maxOvlNum);
+	if (bufSize < need_mb) {
+		bufSize = need_mb;
 	}
 	maxOpenFiles	= ini.GetInt(MAXOPENFILES_KEY, DEFAULT_MAXOPENFILES);
 
@@ -577,7 +591,7 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 
 	execConfirm		= ini.GetInt(EXECCONRIM_KEY, FALSE);
 	lcid			= ini.GetInt(LCID_KEY, -1);
-	waitTick		= ini.GetInt(WAITTICK_KEY, DEFAULT_WAITTICK);
+	waitLv			= ini.GetInt(WAITLV_KEY, DEFAULT_WAITLV);
 	isAutoSlowIo	= ini.GetInt(ISAUTOSLOWIO_KEY, TRUE);
 	speedLevel		= ini.GetInt(SPEEDLEVEL_KEY, SPEED_FULL);
 	priority		= ini.GetInt(PRIORITY_KEY, -1);
@@ -586,7 +600,16 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 	enableStream	= ini.GetInt(STREAM_KEY, FALSE);
 	enableVerify	= ini.GetInt(VERIFY_KEY, FALSE);
 	useOverlapIo	= ini.GetInt(USEOVERLAPIO_KEY, TRUE);
-	hashMode		= (HashMode)ini.GetInt(HASHMODE_KEY, MD5);
+
+	if ((hashMode = (HashMode)ini.GetInt(HASHMODE_KEY, -1)) == -1) {
+		hashMode = (HashMode)ini.GetInt(HASHMODEOLD_KEY, -1);
+		if (hashMode < SHA1 || hashMode > SHA512) {
+			hashMode = XXHASH;
+		}
+	}
+
+	verifyRemove	= ini.GetInt(VERIFY_REMOVE_KEY, 0);
+
 	enableNSA		= ini.GetInt(NSA_KEY, FALSE);
 	delDirWithFilter= ini.GetInt(DELDIR_KEY, FALSE);
 	enableMoveAttr	= ini.GetInt(MOVEATTR_KEY, FALSE);
@@ -832,7 +855,7 @@ BOOL Cfg::WriteIni(void)
 	ini.SetInt(EXECCONRIM_KEY, execConfirm);
 	ini.SetInt(FORCESTART_KEY, forceStart);
 	ini.SetInt(LCID_KEY, lcid);
-//	ini.SetInt(WAITTICK_KEY, waitTick);
+//	ini.SetInt(WAITLV_KEY, waitLv);
 //	ini.SetInt(ISAUTOSLOWIO_KEY, isAutoSlowIo);
 	ini.SetInt(SPEEDLEVEL_KEY, speedLevel);
 //	ini.SetInt(PRIORITY_KEY, priority);
@@ -843,6 +866,8 @@ BOOL Cfg::WriteIni(void)
 	ini.SetInt(USEOVERLAPIO_KEY, useOverlapIo);
 //	ini.SetInt(USEMD5_KEY, usingMD5);
 	ini.SetInt(HASHMODE_KEY, hashMode);
+	ini.SetInt(VERIFY_REMOVE_KEY, verifyRemove);
+
 	ini.SetInt(NSA_KEY, enableNSA);
 	ini.SetInt(DELDIR_KEY, delDirWithFilter);
 	ini.SetInt(MOVEATTR_KEY, enableMoveAttr);

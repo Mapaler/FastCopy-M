@@ -20,6 +20,8 @@
 #include "shellext.h"
 #pragma data_seg()
 
+using namespace std;
+
 static ShellExtSystem	*SysObj = NULL;
 
 // レジストリ登録キー（Ref: tortoise subversion）
@@ -229,7 +231,7 @@ BOOL ShellExt::GetClipBoardInfo(PathArray *pathArray, BOOL *is_cut)
 	return	ret;
 }
 
-BOOL ShellExt::IsDir(WCHAR *path, BOOL is_resolve)
+BOOL ShellExt::IsDir(const WCHAR *path, BOOL is_resolve)
 {
 	WCHAR	wbuf[MAX_PATH_EX];
 
@@ -333,8 +335,8 @@ STDMETHODIMP ShellExt::QueryContextMenu(HMENU hMenu, UINT iMenu, UINT cmdFirst, 
 			iMenu++;
 		}
 		SysObj->lastMenu = hMenu;
-		DbgLogW(L" added cnt=%d self=%x set menu=%x/%x\r\n",
-			ref_cnt, this, hMenu, SysObj->lastMenu);
+		DbgLogW(L" added cnt=%d self=%x set menu=%x/%x i=%d\r\n",
+			ref_cnt, this, hMenu, SysObj->lastMenu, iMenu);
 	}
 
 	return	ResultFromScode(MAKE_SCODE(SEVERITY_SUCCESS, 0, SHEXT_MENU_MAX));
@@ -369,7 +371,6 @@ STDMETHODIMP ShellExt::InvokeCommand(CMINVOKECOMMANDINFO *info)
 	char	arg[MAX_PATH_EX], *cmd_str = "";
 	PROCESS_INFORMATION	pr_info;
 	BOOL	isClip = cmd == 2;
-	BOOL	is_del = FALSE;
 	int		menu_flags = GetMenuFlags(isAdmin);
 
 	if (isClip && isCut || cmd == 1 && is_dd) {
@@ -377,7 +378,6 @@ STDMETHODIMP ShellExt::InvokeCommand(CMINVOKECOMMANDINFO *info)
 	}
 	else if (cmd == 1 && !is_dd) {
 		cmd_str = "/cmd=delete";
-		is_del = TRUE;
 	}
 
 	sprintf(arg, "\"%s\" %s %s=%x", SysObj->ExeName, cmd_str, SHELLEXT_OPT, menu_flags);
@@ -392,7 +392,8 @@ STDMETHODIMP ShellExt::InvokeCommand(CMINVOKECOMMANDINFO *info)
 		PathArray	&src = isClip ? clipArray : srcArray;
 		PathArray	&dst = (isClip && dstArray.Num() == 0) ? srcArray : dstArray;
 		DWORD		len = src.GetMultiPathLen();
-		WCHAR		*buf = new WCHAR[max(len, MAX_PATH_EX)];
+		auto		_buf = make_unique<WCHAR[]>(max(len, MAX_PATH_EX));
+		auto		buf = _buf.get();
 		// dstArray が無い場合は、\0 まで出力
 		len = src.GetMultiPath(buf, len) + (!is_dd && !isClip ? 1 : 0);
 
@@ -403,14 +404,13 @@ STDMETHODIMP ShellExt::InvokeCommand(CMINVOKECOMMANDINFO *info)
 		if (is_dd || isClip) {
 			WCHAR	dir[MAX_PATH_EX];
 			WCHAR	path[MAX_PATH_EX];
-			WCHAR	*dstPath = (isClip && ReadLinkW(dst.Path(0), path)) ? path : dst.Path(0);
+			const WCHAR	*dstPath = (isClip && ReadLinkW(dst.Path(0), path)) ? path : dst.Path(0);
 
 			MakePathW(dir, dstPath, L"");	// 末尾に \\ を付与
 			len = swprintf(buf, FMT_TOSTR, dir) + 1;
 			DbgLogW(L"send fastcopy dst=%s\r\n", buf);
 			::WriteFile(hWrite, buf, len * sizeof(WCHAR *), &len, 0);
 		}
-		delete [] buf;
 		::CloseHandle(pr_info.hProcess);
 		::CloseHandle(pr_info.hThread);
 

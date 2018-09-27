@@ -39,6 +39,8 @@ static BOOL gCsInit = []() {
 Condition::Event	*Condition::gEvents  = NULL;
 volatile LONG		Condition::gEventMap = 0;
 
+static LCID defaultLCID;
+
 #pragma comment (lib, "Dbghelp.lib")
 #pragma comment (lib, "Netapi32.lib")
 
@@ -213,7 +215,7 @@ void Condition::Notify(void)	// 現状では、眠っているスレッド全員
 //		cv[i].UnLock();
 //	}
 //
-//	Debug(Fmt("%d\n", GetTickCount() - tick));
+//	DBG(Fmt("%d\n", GetTickCount() - tick));
 //}
 
 
@@ -223,48 +225,50 @@ void Condition::Notify(void)	// 現状では、眠っているスレッド全員
   説  明 ： 
   注  意 ： 
 =========================================================================*/
-VBuf::VBuf(size_t _size, size_t _max_size, VBuf *_borrowBuf)
+VBuf::VBuf(size_t _size, size_t _max_size)
 {
+	dumpExcept = FALSE;
 	Init();
 
-	if (_size || _max_size) AllocBuf(_size, _max_size, _borrowBuf);
+	if (_size || _max_size) {
+		AllocBuf(_size, _max_size);
+	}
 }
 
 VBuf::~VBuf()
 {
-	if (buf)
+	if (buf) {
 		FreeBuf();
+	}
 }
 
 void VBuf::Init(void)
 {
 	buf = NULL;
-	borrowBuf = NULL;
-	size = usedSize = maxSize = 0;
+	size = 0;
+	usedSize = 0;
+	maxSize = 0;
 }
 
-BOOL VBuf::AllocBuf(size_t _size, size_t _max_size, VBuf *_borrowBuf)
+BOOL VBuf::AllocBuf(size_t _size, size_t _max_size)
 {
 	if (buf) FreeBuf();
 
-	if (_max_size == 0)
+	if (_max_size == 0) {
 		_max_size = _size;
+	}
 	maxSize = _max_size;
-	borrowBuf = _borrowBuf;
 
-	if (borrowBuf) {
-		if (!borrowBuf->Buf() || borrowBuf->MaxSize() < borrowBuf->UsedSize() + maxSize)
-			return	FALSE;
-		buf = borrowBuf->UsedEnd();
-		borrowBuf->AddUsedSize(maxSize + PAGE_SIZE);
+// 1page 分だけ余計に確保（buffer over flow 検出用）
+	if (!(buf = (BYTE *)::VirtualAlloc(NULL, maxSize + PAGE_SIZE, MEM_RESERVE, PAGE_READWRITE))) {
+		Init();
+		return	FALSE;
 	}
-	else {
-	// 1page 分だけ余計に確保（buffer over flow 検出用）
-		if (!(buf = (BYTE *)::VirtualAlloc(NULL, maxSize + PAGE_SIZE, MEM_RESERVE, PAGE_READWRITE))) {
-			Init();
-			return	FALSE;
-		}
+
+	if (dumpExcept) {
+		RegisterDumpExceptArea(buf, maxSize + PAGE_SIZE);
 	}
+
 	return	Grow(_size);
 }
 
@@ -276,11 +280,9 @@ BOOL VBuf::LockBuf(void)
 void VBuf::FreeBuf(void)
 {
 	if (buf) {
-		if (borrowBuf) {
-			::VirtualFree(buf, maxSize + PAGE_SIZE, MEM_DECOMMIT);
-		}
-		else {
-			::VirtualFree(buf, 0, MEM_RELEASE);
+		::VirtualFree(buf, 0, MEM_RELEASE);
+		if (dumpExcept && size) {
+			RemoveDumpExceptArea(buf);
 		}
 	}
 	Init();
@@ -295,10 +297,12 @@ BOOL VBuf::Grow(size_t grow_size)
 		return	FALSE;
 
 	size += grow_size;
+
 	return	TRUE;
 }
 
 
+// LoadStr
 void InitInstanceForLoadStr(HINSTANCE hI)
 {
 	defaultStrInstance = hI;
@@ -306,16 +310,17 @@ void InitInstanceForLoadStr(HINSTANCE hI)
 
 LPSTR LoadStrA(UINT resId, HINSTANCE hI)
 {
-#ifdef _WIN64
-	static TResHash	*hash = new TResHash(1000);
-#else
 	static TResHash	*hash;
-	if (!hash) {	// avoid XP shell extension problem
-					// (an exception occurs in XP Shell when initializing
-					//  static variable in a function by new allocator or any function)
-		hash = new TResHash(1000);
+	static LCID lastLCID;
+
+	if (lastLCID != defaultLCID || !hash) {
+		if (hash) {
+			hash->Reset();
+		} else {
+			hash = new TResHash(1000);
+		}
+		lastLCID = defaultLCID;
 	}
-#endif
 
 	TResHashObj	*obj;
 
@@ -331,19 +336,22 @@ LPSTR LoadStrA(UINT resId, HINSTANCE hI)
 
 LPWSTR LoadStrW(UINT resId, HINSTANCE hI)
 {
-#ifdef _WIN64
-	static TResHash	*hash = new TResHash(1000);
-#else
 	static TResHash	*hash;
-	if (!hash) {	// avoid XP shell extension problem
-		hash = new TResHash(1000);
-	}
-#endif
+	static LCID lastLCID;
 
-	WCHAR		buf[1024];
+	if (lastLCID != defaultLCID || !hash) {
+		if (hash) {
+			hash->Reset();
+		} else {
+			hash = new TResHash(1000);
+		}
+		lastLCID = defaultLCID;
+	}
+
 	TResHashObj	*obj;
 
 	if ((obj = hash->Search(resId)) == NULL) {
+		WCHAR	buf[1024];
 		if (::LoadStringW(hI ? hI : defaultStrInstance, resId, buf,
 				sizeof(buf) / sizeof(WCHAR)) >= 0) {
 			obj = new TResHashObj(resId, wcsdup(buf));
@@ -353,13 +361,44 @@ LPWSTR LoadStrW(UINT resId, HINSTANCE hI)
 	return	obj ? (LPWSTR)obj->val : NULL;
 }
 
-static LCID defaultLCID;
+LPSTR LoadStrU8(UINT resId, HINSTANCE hI)
+{
+	static TResHash	*hash;
+	static LCID lastLCID;
+
+	if (lastLCID != defaultLCID || !hash) {
+		if (hash) {
+			hash->Reset();
+		} else {
+			hash = new TResHash(1000);
+		}
+		lastLCID = defaultLCID;
+	}
+
+	TResHashObj	*obj;
+
+	if ((obj = hash->Search(resId)) == NULL) {
+		WCHAR	buf[1024];
+		if (::LoadStringW(hI ? hI : defaultStrInstance, resId, buf, sizeof(buf) / sizeof(WCHAR))
+				>= 0) {
+			U8str	buf_u8(buf);
+			obj = new TResHashObj(resId, strdup(buf_u8.s()));
+			hash->Register(obj);
+		}
+	}
+	return	obj ? (char *)obj->val : NULL;
+}
 
 void TSetDefaultLCID(LCID lcid)
 {
-	defaultLCID = lcid ? lcid : ::GetSystemDefaultLCID();
+	defaultLCID = lcid ? lcid : ::GetUserDefaultLCID();
 
 	TSetThreadLocale(defaultLCID);
+}
+
+LCID TGetDefaultLCID()
+{
+	return	defaultLCID;
 }
 
 HMODULE TLoadLibrary(LPSTR dllname)
@@ -384,570 +423,6 @@ HMODULE TLoadLibraryW(WCHAR *dllname)
 	return	hModule;
 }
 
-/*=========================================================================
-	パス合成（ANSI 版）
-=========================================================================*/
-int MakePath(char *dest, const char *dir, const char *file, int max_len)
-{
-	if (!dir) {
-		dir = dest;
-	}
-
-	int	len;
-	if (dest == dir) {
-		len = (int)strlen(dir);
-	} else {
-		len = strcpyz(dest, dir);
-	}
-
-	if (len > 0) {
-		bool	need_sep = (dest[len -1] != '\\');
-
-		if (len >= 2 && !need_sep) {	// 表などで終端の場合は sep必要
-			BYTE	*p = (BYTE *)dest;
-			while (*p) {
-				if (IsDBCSLeadByte(*p) && *(p+1)) {
-					p += 2;
-					if (!*p) {
-						need_sep = true;
-					}
-				} else {
-					p++;
-				}
-			}
-		}
-		if (need_sep) {
-			dest[len++] = '\\';
-		}
-	}
-	return	len + strncpyz(dest + len, file, max_len - len);
-}
-
-/*=========================================================================
-	パス合成（UTF-8 版）
-=========================================================================*/
-int MakePathU8(char *dest, const char *dir, const char *file, int max_len)
-{
-	if (!dir) {
-		dir = dest;
-	}
-
-	int	len;
-
-	if (dest == dir) {
-		len = (int)strlen(dir);
-	} else {
-		len = strcpyz(dest, dir);
-	}
-	if (len > 0 && dest[len -1] != '\\') {
-		dest[len++] = '\\';
-	}
-	return	len + strncpyz(dest + len, file, max_len - len);
-}
-
-/*=========================================================================
-	パス合成（UNICODE 版）
-=========================================================================*/
-int MakePathW(WCHAR *dest, const WCHAR *dir, const WCHAR *file, int max_len)
-{
-	if (!dir) {
-		dir = dest;
-	}
-
-	int	len;
-
-	if (dest == dir) {
-		len = (int)wcslen(dir);
-	} else {
-		len = wcscpyz(dest, dir);
-	}
-	if (len > 0 && dest[len -1] != '\\') {
-		dest[len++] = '\\';
-	}
-	return	len + wcsncpyz(dest + len, file, max_len - len);
-}
-
-
-/*=========================================================================
-	bin <-> hex
-=========================================================================*/
-static char  *hexstr   =  "0123456789abcdef";
-static WCHAR *hexstr_w = L"0123456789abcdef";
-
-inline u_char hexchar2char(u_char ch)
-{
-	if (ch >= '0' && ch <= '9')
-		return ch - '0';
-	if (ch >= 'a' && ch <= 'z')
-		return ch - 'a' + 10;
-	if (ch >= 'A' && ch <= 'Z')
-		return ch - 'A' + 10;
-	return 0xff;
-}
-
-size_t hexstr2bin(const char *buf, BYTE *bindata, size_t maxlen)
-{
-	size_t	len = 0;
-
-	for ( ; buf[0] && buf[1] && len < maxlen; buf+=2, len++)
-	{
-		u_char c1 = hexchar2char(buf[0]);
-		u_char c2 = hexchar2char(buf[1]);
-		if (c1 == 0xff || c2 == 0xff) break;
-		bindata[len] = (c1 << 4) | c2;
-	}
-	return	len;
-}
-
-int bin2hexstr(const BYTE *bindata, size_t len, char *buf)
-{
-	for (const BYTE *end=bindata+len; bindata < end; bindata++)
-	{
-		*buf++ = hexstr[*bindata >> 4];
-		*buf++ = hexstr[*bindata & 0x0f];
-	}
-	*buf = 0;
-	return	int(len * 2);
-}
-
-int bin2hexstrW(const BYTE *bindata, size_t len, WCHAR *buf)
-{
-	for (const BYTE *end=bindata+len; bindata < end; bindata++)
-	{
-		*buf++ = hexstr_w[*bindata >> 4];
-		*buf++ = hexstr_w[*bindata & 0x0f];
-	}
-	*buf = 0;
-	return	int(len * 2);
-}
-
-/* little-endian binary to hexstr */
-int bin2hexstr_revendian(const BYTE *bindata, size_t len, char *buf)
-{
-	size_t	sv_len = len;
-	while (len-- > 0)
-	{
-		*buf++ = hexstr[bindata[len] >> 4];
-		*buf++ = hexstr[bindata[len] & 0x0f];
-	}
-	*buf = 0;
-	return	int(sv_len * 2);
-}
-
-size_t hexstr2bin_revendian(const char *s, BYTE *bindata, size_t maxlen)
-{
-	return	hexstr2bin_revendian_ex(s, bindata, maxlen);
-}
-
-size_t hexstr2bin_revendian_ex(const char *s, BYTE *bindata, size_t maxlen, int slen)
-{
-	size_t	len = 0;
-
-	if (slen == -1) {
-		slen = (int)strlen(s);
-	}
-
-	for ( ; slen >= 1 && len < maxlen; slen-=2, len++) {
-		u_char c1 = hexchar2char(s[slen-1]);
-		u_char c2 = (slen >= 2) ? hexchar2char(s[slen-2]) : 0;
-		if (c1 == 0xff || c2 == 0xff) {
-			return FALSE;
-		}
-		bindata[len] = c1 | (c2 << 4);
-	}
-	return	len;
-}
-
-BYTE hexstr2byte(const char *buf)
-{
-	BYTE	val = 0;
-
-	hexstr2bin_revendian(buf, (BYTE *)&val, sizeof(val));
-
-	return	val;
-}
-
-WORD hexstr2word(const char *buf)
-{
-	WORD	val = 0;
-
-	hexstr2bin_revendian(buf, (BYTE *)&val, sizeof(val));
-
-	return	val;
-}
-
-DWORD hexstr2dword(const char *buf)
-{
-	DWORD	val = 0;
-
-	hexstr2bin_revendian(buf, (BYTE *)&val, sizeof(val));
-
-	return	val;
-}
-
-int64 hexstr2int64(const char *buf)
-{
-	int64	val = 0;
-
-	hexstr2bin_revendian(buf, (BYTE *)&val, sizeof(val));
-
-	return	val;
-}
-
-int strip_crlf(const char *s, char *d)
-{
-	char	*sv = d;
-
-	while (*s) {
-		char	c = *s++;
-		if (c != '\r' && c != '\n') *d++ = c;
-	}
-	*d = 0;
-	return	(int)(d - sv);
-}
-
-/* base64 convert routine */
-size_t b64str2bin(const char *s, BYTE *bindata, size_t maxsize)
-{
-	DWORD	size = (DWORD)maxsize;
-	BOOL ret = ::CryptStringToBinary(s, 0, CRYPT_STRING_BASE64, bindata, &size, 0, 0);
-	return	ret ? size : 0;
-}
-
-size_t b64str2bin_ex(const char *s, int len, BYTE *bindata, size_t maxsize)
-{
-	DWORD	size = (DWORD)maxsize;
-	BOOL ret = ::CryptStringToBinary(s, len, CRYPT_STRING_BASE64, bindata, &size, 0, 0);
-	return	ret ? size : 0;
-}
-
-int bin2b64str(const BYTE *bindata, size_t size, char *str)
-{
-	DWORD	len  = (DWORD)size * 2 + 5;
-	char	*b64 = new char [len];
-
-	if (!::CryptBinaryToString(bindata, (DWORD)size, CRYPT_STRING_BASE64, b64, &len)) {
-		return 0;
-	}
-	len = strip_crlf(b64, str);
-
-	delete [] b64;
-	return	len;
-}
-
-size_t b64str2bin_revendian(const char *s, BYTE *bindata, size_t maxsize)
-{
-	size_t	size = b64str2bin(s, bindata, maxsize);
-	rev_order(bindata, size);
-	return	size;
-}
-
-int bin2b64str_revendian(const BYTE *bindata, size_t size, char *buf)
-{
-	BYTE *rev = new BYTE [size];
-
-	if (!rev) return -1;
-
-	rev_order(bindata, rev, size);
-	int	ret = bin2b64str(rev, size, buf);
-	delete [] rev;
-
-	return	ret;
-}
-
-int bin2urlstr(const BYTE *bindata, size_t size, char *str)
-{
-	int ret = bin2b64str(bindata, size, str);
-
-	for (char *s=str; *s; s++) {
-		switch (*s) {
-		case '+': *s = '-'; break;
-		case '/': *s = '_'; break;
-
-		case '\r':
-		case '\n':
-		case '=': *s = 0;   break;
-		}
-	}
-	return	ret;
-}
-
-void swap_s(BYTE *s, size_t len)
-{
-	if (len == 0) return;
-
-	size_t	mid = len / 2;
-
-	for (size_t i=0, e=len-1; i < mid; i++, e--) {
-		BYTE	&c1 = s[i];
-		BYTE	&c2 = s[e];
-		BYTE	tmp = c1;
-		c1 = c2;
-		c2 = tmp;
-	}
-}
-
-
-/*
-0: 0
-1: 2+2
-2: 3+1
-3: 4
-4  6+2
-*/
-
-size_t urlstr2bin(const char *str, BYTE *bindata, size_t maxsize)
-{
-	int		len = (int)strlen(str);
-	char	*b64 = new char [len + 4];
-
-	strcpy(b64, str);
-	for (char *s=b64; *s; s++) {
-		switch (*s) {
-		case '-': *s = '+'; break;
-		case '_': *s = '/'; break;
-		}
-	}
-	if (b64[len-1] != '\n' && (len % 4) && b64[len-1] != '=') {
-		sprintf(b64 + len -1, "%.*s", int(4 - (len % 4)), "===");
-	}
-
-	size_t	size = b64str2bin(b64, bindata, maxsize);
-	delete [] b64;
-
-	return	size;
-}
-
-/*
-	16進 -> long long
-*/
-int64 hex2ll(char *buf)
-{
-	int64	ret = 0;
-
-	for ( ; *buf; buf++)
-	{
-		if (*buf >= '0' && *buf <= '9')
-			ret = (ret << 4) | (*buf - '0');
-		else if (toupper(*buf) >= 'A' && toupper(*buf) <= 'F')
-			ret = (ret << 4) | (toupper(*buf) - 'A' + 10);
-		else continue;
-	}
-	return	ret;
-}
-
-void rev_order(BYTE *data, size_t size)
-{
-	BYTE	*d1 = data;
-	BYTE	*d2 = data + size - 1;
-
-	for (BYTE *end = d1 + (size/2); d1 < end; ) {
-		BYTE	sv = *d1;
-		*d1++ = *d2;
-		*d2-- = sv;
-	}
-}
-
-void rev_order(const BYTE *src, BYTE *dst, size_t size)
-{
-	dst = dst + size - 1;
-
-	for (const BYTE *end = src + size; src < end; ) {
-		*dst-- = *src++;
-	}
-}
-
-int snprintfz(char *buf, int size, const char *fmt,...)
-{
-	va_list	ap;
-	va_start(ap, fmt);
-	int len = vsnprintfz(buf, size, fmt, ap);
-	va_end(ap);
-
-	return	len;
-}
-
-int vsnprintfz(char *buf, int size, const char *fmt, va_list ap)
-{
-	if (!buf) {
-		return	(int)vsnprintf(buf, size, fmt, ap);
-	}
-
-	if (size <= 0) return 0;
-
-	int len = (int)vsnprintf(buf, size, fmt, ap);
-
-	if (len <= 0 || len >= size) {
-		buf[size -1] = 0;
-		len = (int)strlen(buf);
-	}
-
-	va_end(ap);
-
-	return	len;
-}
-
-int snwprintfz(WCHAR *buf, int wsize, const WCHAR *fmt,...)
-{
-	va_list	ap;
-	va_start(ap, fmt);
-	int len = vsnwprintfz(buf, wsize, fmt, ap);
-	va_end(ap);
-
-	return	len;
-}
-
-int vsnwprintfz(WCHAR *buf, int wsize, const WCHAR *fmt, va_list ap)
-{
-	if (!buf) {
-		return	(int)vswprintf(buf, wsize, fmt, ap);
-	}
-	if (wsize <= 0) return 0;
-
-	int len = (int)vswprintf(buf, wsize, fmt, ap);
-
-	if (len <= 0 || len >= wsize) {
-		buf[wsize -1] = 0;
-		len = (int)wcslen(buf);
-	}
-
-	va_end(ap);
-
-	return	len;
-}
-
-/*
-	nul文字を必ず付与する strcpy かつ return は 0 を除くコピー文字数
-*/
-int strcpyz(char *dest, const char *src)
-{
-	char	*sv_dest = dest;
-
-	while (*src) {
-		*dest++ = *src++;
-	}
-	*dest = 0;
-	return	(int)(dest - sv_dest);
-}
-
-int wcscpyz(WCHAR *dest, const WCHAR *src)
-{
-	WCHAR	*sv_dest = dest;
-
-	while (*src) {
-		*dest++ = *src++;
-	}
-	*dest = 0;
-	return	(int)(dest - sv_dest);
-}
-
-/*
-	nul文字を必ず付与する strncpy かつ return は 0 を除くコピー文字数
-*/
-int strncpyz(char *dest, const char *src, int num)
-{
-	char	*sv_dest = dest;
-
-	if (num <= 0) return 0;
-
-	while (--num > 0 && *src) {
-		*dest++ = *src++;
-	}
-	*dest = 0;
-	return	(int)(dest - sv_dest);
-}
-
-int strncatz(char *dest, const char *src, int num)
-{
-	for ( ; *dest; dest++, num--)
-		;
-	return strncpyz(dest, src, num);
-}
-
-const char *strnchr(const char *s, char ch, int num)
-{
-	const char *end = s + num;
-
-	for ( ; s < end && *s; s++) {
-		if (*s == ch) return s;
-	}
-	return	NULL;
-}
-
-int wcsncpyz(WCHAR *dest, const WCHAR *src, int num)
-{
-	WCHAR	*sv_dest = dest;
-
-	if (num <= 0) return 0;
-
-	while (--num > 0 && *src) {
-		*dest++ = *src++;
-	}
-
-	if (IsSurrogateL(dest[-1])) { // surrogate includes IVS
-		dest--;
-	}
-	*dest = 0;
-
-	return	(int)(dest - sv_dest);
-}
-
-int wcsncatz(WCHAR *dest, const WCHAR *src, int num)
-{
-	for ( ; *dest; dest++, num--)
-		;
-	return wcsncpyz(dest, src, num);
-}
-
-const WCHAR *wcsnchr(const WCHAR *dest, WCHAR ch, int num)
-{
-	for ( ; num > 0 && *dest; num--, dest++) {
-		if (*dest == ch) {
-			return	dest;
-		}
-	}
-	return	NULL;
-}
-
-char *strdupNew(const char *_s, int max_len)
-{
-	int		len = int((max_len == -1) ? strlen(_s) : strnlen(_s, max_len));
-	char	*s = new char [len + 1];
-	memcpy(s, _s, len);
-	s[len] = 0;
-	return	s;
-}
-
-WCHAR *wcsdupNew(const WCHAR *_s, int max_len)
-{
-	int		len = int((max_len == -1) ? wcslen(_s) : wcsnlen(_s, max_len));
-	WCHAR	*s = new WCHAR [len + 1];
-	memcpy(s, _s, len * sizeof(WCHAR));
-	s[len] = 0;
-
-	if (len > 0) {
-		if (IsSurrogateL(s[len-1])) { // surrogate includes IVS
-			s[len-1] = 0;
-		}
-	}
-
-	return	s;
-}
-
-int ReplaceCharW(WCHAR *s, WCHAR rep_in, WCHAR rep_out, int max_len)
-{
-	WCHAR	*p = s;
-	WCHAR	*end = s + max_len;
-
-	for ( ; p < end && *p; p++) {
-		if (*p == rep_in) {
-			*p = rep_out;
-		}
-	}
-	return	int(p - s);
-}
-
-
 /* Win64検出 */
 BOOL TIsWow64()
 {
@@ -962,6 +437,15 @@ BOOL TIsWow64()
 	}();
 
     return ret;
+}
+
+BOOL TOs64()
+{
+#ifdef _WIN64
+	return	TRUE;
+#else
+	return	TIsWow64();
+#endif
 }
 
 BOOL TRegDisableReflectionKey(HKEY hBase)
@@ -1033,12 +517,24 @@ BOOL TIsVirtualizedDirW(WCHAR *path)
 
 	for (int i=0; csidl[i] != 0xffffffff; i++) {
 		if (SHGetSpecialFolderPathW(NULL, buf, csidl[i], FALSE)) {
-			int	len = (int)wcslen(buf);
-			if (wcsnicmp(buf, path, len) == 0) {
-				WCHAR	ch = path[len];
-				if (ch == 0 || ch == '\\' || ch == '/') {
-					return	TRUE;
+			while (1) {
+				int	len = (int)wcslen(buf);
+				if (wcsnicmp(buf, path, len) == 0) {
+					WCHAR	ch = path[len];
+					if (ch == 0 || ch == '\\' || ch == '/') {
+						return	TRUE;
+					}
 				}
+#ifndef _WIN64
+#define X86_SFX		L" (x86)"
+#define X86_SFX_LEN	6
+				if (csidl[i] == CSIDL_PROGRAM_FILES &&
+					wcscmp(buf + len - X86_SFX_LEN, X86_SFX) == 0) {
+					buf[len - X86_SFX_LEN] = 0;
+					continue;
+				}
+#endif
+				break;
 			}
 		}
 	}
@@ -1222,7 +718,6 @@ BOOL ShellLinkW(const WCHAR *target, const WCHAR *link, const WCHAR *arg, const 
 	IShellLinkW		*shellLink;
 	IPersistFile	*persistFile;
 	BOOL			ret = FALSE;
-	WCHAR			buf[MAX_PATH];
 
 	if (SUCCEEDED(CoCreateInstance(CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER, IID_IShellLinkW,
 			(void **)&shellLink))) {
@@ -1233,6 +728,7 @@ BOOL ShellLinkW(const WCHAR *target, const WCHAR *link, const WCHAR *arg, const 
 		if (desc) {
 			shellLink->SetDescription(desc);
 		}
+		WCHAR	buf[MAX_PATH];
 		GetParentDirW(target, buf);
 		shellLink->SetWorkingDirectory(buf);
 
@@ -1329,9 +825,8 @@ HRESULT UpdateLinkW(const WCHAR *link, const WCHAR *arg, const WCHAR *desc, DWOR
 {
 	IPersistFile	*persistFile;
 	IShellLinkW		*shellLink;
-	HRESULT			hr = S_OK;
 
-	hr = CoCreateInstance(CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER, IID_IShellLinkW,
+	HRESULT hr = CoCreateInstance(CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER, IID_IShellLinkW,
 		(void **)&shellLink);
 	if (hr == S_OK) {
 		// 事前に IPersistFile::Loadしないと、Distribute Link Tracking されない
@@ -1429,6 +924,55 @@ BOOL GetParentDirU8(const char *org_path, char *target_dir)
 
 	strncpyz(target_dir, path, MAX_PATH_U8);
 	return	TRUE;
+}
+
+
+BOOL MakeDirU8(char *dir)
+{
+	if (GetFileAttributesU8(dir) != 0xffffffff) {
+		return	TRUE;
+	}
+	return	CreateDirectoryU8(dir, 0);
+}
+
+BOOL MakeDirW(WCHAR *dir)
+{
+	if (::GetFileAttributesW(dir) != 0xffffffff) {
+		return	TRUE;
+	}
+	return	::CreateDirectoryW(dir, 0);
+}
+
+BOOL MakeDirAllU8(char *dir)
+{
+	if (MakeDirU8(dir)) {
+		return	TRUE;
+	}
+
+	char	parent[MAX_PATH_U8];
+	if (!GetParentDirU8(dir, parent) || stricmp(dir, parent) == 0 || *parent == 0) {
+		return	FALSE;
+	}
+	if (!MakeDirAllU8(parent)) {
+		return	FALSE;
+	}
+	return	MakeDirU8(dir);
+}
+
+BOOL MakeDirAllW(WCHAR *dir)
+{
+	if (MakeDirW(dir)) {
+		return	TRUE;
+	}
+
+	WCHAR	parent[MAX_PATH];
+	if (!GetParentDirW(dir, parent) || wcsicmp(dir, parent) == 0 || *parent == 0) {
+		return	FALSE;
+	}
+	if (!MakeDirAllW(parent)) {
+		return	FALSE;
+	}
+	return	MakeDirW(dir);
 }
 
 
@@ -1613,14 +1157,14 @@ void *valloc(size_t size)
 	void	*d = VirtualAlloc(0, s, MEM_RESERVE, PAGE_NOACCESS);
 
 	if (!d || !VirtualAlloc(d, s - PAGE_SIZE, MEM_COMMIT, PAGE_READWRITE)) {
-		Debug("valloc error(%x %d %d)\n", d, s, size);
+		DBG("valloc error(%x %d %d)\n", d, s, size);
 		return NULL;
 	}
 
 	((DWORD *)d)[0]  = VALLOC_SIG;
 	((size_t *)d)[1] = size;
 
-	Debug("valloc (%x %d %d)\n", d, s, size);
+	DBG("valloc (%x %d %d)\n", d, s, size);
 
 	return (void *)((u_char *)d + s - PAGE_SIZE - align_size(size, ALLOC_ALIGN));
 }
@@ -1642,7 +1186,7 @@ void *vrealloc(void *d, size_t size)
 
 	if (d) {
 		if ((old_size = valloc_size(d)) == SIZE_MAX) {
-			Debug("non vrealloc (%x %d %d)\n", d, old_size, size);
+			DBG("non vrealloc (%x %d %d)\n", d, old_size, size);
 			return realloc(d, size);
 		}
 		if (size == 0) {
@@ -1666,11 +1210,11 @@ void vfree(void *d)
 	size_t	size = valloc_size(d);
 
 	if (size == SIZE_MAX) {
-		Debug("vfree non vfree (%x)\n", d);
+		DBG("vfree non vfree (%x)\n", d);
 		free(d);
 		return;
 	}
-	Debug(" vfree %x %d %d\n", valloc_base(d), alloc_size(size), size);
+	DBG(" vfree %x %d %d\n", valloc_base(d), alloc_size(size), size);
 
 #ifdef NON_FREE
 	VirtualFree(valloc_base(d), alloc_size(size), MEM_DECOMMIT);
@@ -1743,6 +1287,7 @@ public:
 	virtual HRESULT __stdcall Notify(u_long, NOTIFYITEM *) = 0;
 };
 
+
 class __declspec(uuid("FB852B2C-6BAD-4605-9551-F15F87830935")) ITrayNotify : public IUnknown {
 public:
 	virtual HRESULT __stdcall RegisterCallback(INotificationCB *) = 0;
@@ -1752,13 +1297,58 @@ public:
 class __declspec(uuid("D133CE13-3537-48BA-93A7-AFCD5D2053B4")) ITrayNotify8 : public IUnknown {
 public:
 	virtual HRESULT __stdcall RegisterCallback(INotificationCB *, u_long *) = 0;
-	virtual HRESULT __stdcall UnregisterCallback(u_long *) = 0;
+	virtual HRESULT __stdcall UnregisterCallback(u_long) = 0;
 	virtual HRESULT __stdcall SetPreference(const NOTIFYITEM *) = 0;
 	virtual HRESULT __stdcall EnableAutoTray(BOOL) = 0;
 	virtual HRESULT __stdcall DoAction(BOOL) = 0;
 };
 const CLSID TrayNotifyId = {
 	0x25DEAD04, 0x1EAC, 0x4911, {0x9E, 0x3A, 0xAD, 0x0A, 0x4A, 0xB5, 0x60, 0xFD}
+};
+
+class INotifyCb : public INotificationCB {
+	DWORD	ref = 0;
+
+public:
+	INotifyCb() {
+	}
+	DWORD	pref = 0;
+
+	HRESULT __stdcall QueryInterface(REFIID riid, void **ppv) {
+		if (riid == __uuidof(INotificationCB)) {
+			*ppv = (INotificationCB *)this;
+			AddRef();
+			return	S_OK;
+		}
+		else if (riid == __uuidof(IUnknown)) {
+			*ppv = (IUnknown *)this;
+			AddRef();
+			return	S_OK;
+		}
+		return	E_NOINTERFACE;
+	}
+	ULONG __stdcall AddRef() {
+		DBG("AddRef(%d)\n", ref+1);
+		return ++ref;
+	}
+	ULONG __stdcall Release() {
+		DBG("Release(%d)\n", ref-1);
+		if (--ref == 0) {
+			DBG("delete INotifyCb\n");
+			delete this;
+		}
+		return	ref;
+	}
+	HRESULT __stdcall Notify(ULONG ev, NOTIFYITEM *ni) {
+		DBGW(L"ev=%d pref=%d id=%d path=%s tip=%s\n", ev, ni->pref, ni->id, ni->exe, ni->tip);
+		DWORD	procId = 0;
+		::GetWindowThreadProcessId(ni->hWnd, &procId);
+		if (procId == ::GetCurrentProcessId()) {
+			pref = ni->pref;
+			DBG("pref=%d\n", pref);
+		}
+		return S_OK;
+	}
 };
 
 BOOL ForceSetTrayIcon(HWND hWnd, UINT id, DWORD pref)
@@ -1772,8 +1362,9 @@ BOOL ForceSetTrayIcon(HWND hWnd, UINT id, DWORD pref)
 		CoCreateInstance(TrayNotifyId, NULL, CLSCTX_LOCAL_SERVER, __uuidof(ITrayNotify8),
 			(void **)&tn);
 		if (tn) {
-			auto	hr = tn->SetPreference(&ni);
-			if (SUCCEEDED(hr)) ret = TRUE;
+			if (SUCCEEDED(tn->SetPreference(&ni))) {
+				ret = TRUE;
+			}
 			tn->Release();
 		}
 	} else {
@@ -1782,12 +1373,46 @@ BOOL ForceSetTrayIcon(HWND hWnd, UINT id, DWORD pref)
 		CoCreateInstance(TrayNotifyId, NULL, CLSCTX_LOCAL_SERVER, __uuidof(ITrayNotify),
 			(void **)&tn);
 		if (tn) {
-			auto	hr = tn->SetPreference(&ni);
-			if (SUCCEEDED(hr)) ret = TRUE;
+			if (SUCCEEDED(tn->SetPreference(&ni))) {
+				ret = TRUE;
+			}
 			tn->Release();
 		}
 	}
+
 	return	ret;
+}
+
+TrayMode GetTrayIconState()
+{
+	TRegistry	reg(HKEY_CURRENT_USER);
+
+	if (reg.OpenKey("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer")) {
+		int		val = 0;
+		if (reg.GetInt("EnableAutoTray", &val) && val == 0) {
+			return	TIS_ALL;	// always show
+		}
+	}
+	if (!IsWin8()) {
+		return	TIS_SHOW;
+	}
+
+	DWORD		pref = 0;
+	ITrayNotify8 *tn = NULL;
+
+	CoCreateInstance(TrayNotifyId, NULL, CLSCTX_LOCAL_SERVER, __uuidof(ITrayNotify8),
+		(void **)&tn);
+	if (tn) {
+		INotifyCb	*incb = new INotifyCb;
+		u_long		incb_cookie;
+
+		tn->RegisterCallback(incb, &incb_cookie);
+		pref = incb->pref;
+		tn->UnregisterCallback(incb_cookie);
+		tn->Release();
+	}
+
+	return	pref == 2 ? TIS_SHOW : TIS_HIDE;
 }
 
 /* =======================================================================
@@ -1894,7 +1519,7 @@ unsigned __stdcall Is3rdPartyFwEnabledProc(void *_param)
 		param->ret = TRUE;
 	}
 	catch(...) {
-		Debug("INetFwProducts exception\n");
+		DBG("INetFwProducts exception\n");
 	}
 
 END:
@@ -1914,7 +1539,7 @@ BOOL Is3rdPartyFwEnabled(BOOL use_except_list, DWORD timeout, BOOL *is_timeout)
 		if (is_timeout) {
 			*is_timeout = TRUE;
 		}
-		Debug("FW check timeout\n");
+		DBG("FW check timeout\n");
 
 		::TerminateThread(hThread, 0); // 強制終了
 		::CloseHandle(hThread);
@@ -1962,7 +1587,7 @@ BOOL Get3rdPartyFwName(int idx, WCHAR *name, int max_len)
 				wcsncpyz(name, bName, max_len);
 				ret = TRUE;
 				::SysFreeString(bName);
-				//DebugW(L"dispname=<%s>\n", name);
+				DBGW(L"dispname=<%s>\n", name);
 			}
 		}
 		fwProd->Release();
@@ -2321,7 +1946,7 @@ BOOL TGetTextWidth(HDC hDc, const WCHAR *s, int len, int width, int *rlen, int *
 
 //	if (rc.cx() <= width) {
 //		if (rc.cx() != sz.cx) {
-//			DebugW(L" GetTextWidth: %d %d %.*s\n", rc.cx(), sz.cx, *rlen, s);
+//			DBGW(L" GetTextWidth: %d %d %.*s\n", rc.cx(), sz.cx, *rlen, s);
 //		}
 //	}
 	*rcx = rc.cx();
@@ -2435,7 +2060,7 @@ void bo_test()
 	bo_test_core(p);
 }
 
-#if !defined(_DEBUG) &&  _MSC_VER >= 1900 && _MSC_VER <= 1912
+#if !defined(_DEBUG) &&  _MSC_VER >= 1900 && _MSC_VER <= 1914
 #define ENABLE_GS_FAILURE_HACK
 extern "C" __declspec(noreturn) void __cdecl __raise_securityfailure(PEXCEPTION_POINTERS const exception_pointers);
 #endif
@@ -2504,11 +2129,11 @@ HBITMAP TIconToBmp(HICON hIcon, int cx, int cy)
 				((BYTE *)dat)[(i*cx + j) * 4 + 3] = 0xff;
 			}
 //			for (int k=0; k < 4; k++) {
-//				Debug("%02x:", ((BYTE *)dat)[(i*cx + j) * 4 + k]);
+//				DBG("%02x:", ((BYTE *)dat)[(i*cx + j) * 4 + k]);
 //			}
-//			Debug(" ");
+//			DBG(" ");
 		}
-//		Debug("\n");
+//		DBG("\n");
 	}
 
 	::SelectObject(hBmpDc, hBmpSv);
@@ -2577,7 +2202,7 @@ BOOL IsLockedScreen()
 	HWND	hWnd = ::GetForegroundWindow();
 
 	if (!hWnd) {
-		//Debug("NULL\n");
+		DBG("NULL\n");
 		return	TRUE;
 	}
 
@@ -2585,13 +2210,13 @@ BOOL IsLockedScreen()
 	if (itr != hmap.end()) {
 		hlist.erase(itr->second.second);
 		itr->second.second = hlist.insert(hlist.end(), hWnd);
-		//Debug("cached %p %d\n", hWnd, itr->second.first);
+		DBG("cached %p %d\n", hWnd, itr->second.first);
 		return	itr->second.first;
 	}
 
 	while (hlist.size() > 10) {
 		auto	itr = hlist.begin();
-		//Debug("erase cache %p %d\n", *itr, hmap[*itr].first);
+		DBG("erase cache %p %d\n", *itr, hmap[*itr].first);
 		hmap.erase(*itr);
 		hlist.erase(itr);
 	}
@@ -2614,9 +2239,9 @@ BOOL IsLockedScreen()
 #define LOCKAPP_LEN		12
 				if (len > LOCKAPP_LEN && wcsicmp(wbuf+len-LOCKAPP_LEN, LOCKAPP_NAME) == 0) {
 					ret = TRUE;
-					//Debug("Lock Detect %p\n", hWnd);
+					DBG("Lock Detect %p\n", hWnd);
 				}
-				//else DebugW(L"Non Lock Detect(%s) %p\n", wbuf, hWnd);
+				//else DBGW(L"Non Lock Detect(%s) %p\n", wbuf, hWnd);
 				::CloseHandle(hProc);
 			}
 		}
@@ -2755,4 +2380,72 @@ time_t SYSTEMTIME_to_time(const SYSTEMTIME &st, BOOL is_local)
 	return	FileTime2UnixTime(&ft);
 }
 
+BOOL TGetIntegrityLevel(DWORD *ilv)
+{
+	HANDLE hToken = NULL;
+
+	if (!::OpenProcessToken(::GetCurrentProcess(), TOKEN_QUERY, &hToken)) return FALSE;
+	scope_defer([&]() { if (hToken) ::CloseHandle(hToken); });
+
+	DWORD	len = 0;
+	::GetTokenInformation(hToken, TokenIntegrityLevel, NULL, 0, &len);
+	if (len == 0) return FALSE;
+
+	auto tml = scope_raii((PTOKEN_MANDATORY_LABEL)malloc(len), [](auto tml) { free(tml); });
+	if (!tml) return FALSE;
+
+	if (!GetTokenInformation(hToken, TokenIntegrityLevel, tml, len, &len)) return FALSE;
+
+	*ilv = *GetSidSubAuthority(tml->Label.Sid,
+			(DWORD)(UCHAR)(*GetSidSubAuthorityCount(tml->Label.Sid) - 1));
+
+	return	TRUE;
+}
+
+BOOL TIsLowIntegrity()
+{
+	DWORD	ilv = SECURITY_MANDATORY_LOW_RID;
+
+	if (!TGetIntegrityLevel(&ilv)) {
+		return	FALSE;
+	}
+
+	// SECURITY_MANDATORY_LOW_RID
+	// SECURITY_MANDATORY_MEDIUM_RID
+	// SECURITY_MANDATORY_HIGH_RID
+	// SECURITY_MANDATORY_SYSTEM_RID
+
+	return	ilv == SECURITY_MANDATORY_LOW_RID;
+}
+
+void U8Out(const char *fmt,...)
+{
+	static HANDLE hStdOut = ::GetStdHandle(STD_OUTPUT_HANDLE);
+	static BOOL isConsole = TRUE;
+
+	va_list	ap;
+	va_start(ap, fmt);
+
+	int len = vsnprintfz(NULL, 0, fmt, ap) + 1;
+
+	U8str	u8(len);
+
+	len = vsnprintfz(u8.Buf(), len, fmt, ap);
+	va_end(ap);
+
+	if (isConsole) {
+		Wstr	w(u8.s());
+		DWORD	wlen = w.Len();
+
+		if (!::WriteConsoleW(hStdOut, w.s(), wlen, &wlen, 0)) {
+			isConsole = FALSE;
+		}
+	}
+	if (!isConsole) {
+		DWORD	crlen = len * 2 + 1;
+		U8str	u8cr(crlen);
+		crlen = UnixNewLineToLocal(u8.s(), u8cr.Buf(), crlen);
+		::WriteFile(hStdOut, u8cr.s(), crlen, &crlen, 0);
+	}
+}
 

@@ -26,7 +26,7 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
-    <PlatformToolset>v141_xp</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
@@ -136,7 +136,7 @@
       <AdditionalLibraryDirectories>lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <DelayLoadDLLs>comctl32.dll;crypt32.dll;winmm.dll;mpr.dll;Shlwapi.dll;</DelayLoadDLLs>
+      <DelayLoadDLLs>comctl32.dll;crypt32.dll;winmm.dll;mpr.dll;Shlwapi.dll;psapi.dll;gdiplus.dll;Shell32.dll</DelayLoadDLLs>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -189,7 +189,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
-      <DelayLoadDLLs>comctl32.dll;crypt32.dll;winmm.dll;mpr.dll;Shlwapi.dll;</DelayLoadDLLs>
+      <DelayLoadDLLs>comctl32.dll;crypt32.dll;winmm.dll;mpr.dll;Shlwapi.dll;psapi.dll;gdiplus.dll;Shell32.dll</DelayLoadDLLs>
     </Link>
     <Manifest>
       <AdditionalManifestFiles>src\$(TargetFileName).manifest;%(AdditionalManifestFiles)</AdditionalManifestFiles>
@@ -319,14 +319,17 @@
     </Manifest>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="src\icon\icon1.ico" />
-    <Image Include="src\icon\icon2.ico" />
-    <Image Include="src\icon\icon3.ico" />
-    <Image Include="src\icon\icon4.ico" />
-    <Image Include="src\icon\icon5.ico" />
-    <Image Include="src\icon\icon6.ico" />
-    <Image Include="src\icon\icon7.ico" />
-    <Image Include="src\menu.ico" />
+    <Image Include="src\res\fastcopy.ico" />
+    <Image Include="src\res\fastcopy2.ico" />
+    <Image Include="src\res\fastcopy3.ico" />
+    <Image Include="src\res\fastcopy4.ico" />
+    <Image Include="src\res\fcdone.ico" />
+    <Image Include="src\res\fcerr.ico" />
+    <Image Include="src\res\fcwait.ico" />
+    <Image Include="src\res\menu.ico" />
+    <Image Include="src\res\pause.ico" />
+    <Image Include="src\res\play.ico" />
+    <Image Include="src\res\tray.gif" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\cfg.h" />
@@ -342,9 +345,7 @@
     <ClInclude Include="src\version.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="sep.cur" />
-    <None Include="src\cursor1.cur" />
-    <None Include="src\sep.cur" />
+    <None Include="src\res\sep.cur" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

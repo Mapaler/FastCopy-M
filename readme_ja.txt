@@ -1,12 +1,12 @@
 ﻿======================================================================
-                     FastCopy  ver3.41                 2018/01/27
+                     FastCopy  ver3.54                 2018/08/09
                                             H.Shirouzu（白水啓章）
-                     FastCopy-M branch                 2017/03/06
+                     FastCopy-M branch                 2018/09/27
                                             Mapaler  （枫谷剑仙）
 ======================================================================
 
 特徴：
-	Windows系最速(?) のファイルコピー＆削除ツールです。
+	Windows系最速のファイルコピー＆削除ツールです。
 
 	NT系OS の場合、UNICODE でしか表現できないファイル名や MAX_PATH
 	(260文字) を越えた位置のファイルもコピー（＆削除）できます。
@@ -33,30 +33,25 @@
 	軽量＆コンパクト＆軽快に動作します。
 
 	FastCopy-M feature :
-    More complete multilanguage supports.
-    
-    After Vista support new Shell common file dialog (Easy-to-use, and can select folder multiple)
+	More complete multilanguage supports.
 
-    The main window icon displayed animation when runing copy process. And allows to modify the total number of animation frames.
-    
-    Support use http url to replace "chm" help files.
+	Support use http url to replace "chm" help files.
 
 ライセンス：
 	FastCopy ver3.x
-	Copyright(C) 2004-2018 SHIROUZU Hiroaki All rights reserved.
+	  Copyright(C) 2004-2018 SHIROUZU Hiroaki All rights reserved.
 
-	 全ソースコードは GPLv3 で公開しています。
-	 VC++ 等をお持ちであれば、ご自由にカスタマイズしてのご利用も
-	 可能です。（カスタマイズ版の配布をソースコード非公開で行いたい
-	 場合は別途、お問い合わせください）
-	 詳しくは同梱の license.txt をご覧ください。
+	  全ソースコードは GPLv3 で公開しています。
+	  VC++ 等をお持ちであれば、カスタマイズしてのご利用も可能です。
+	  詳しくは同梱の license-gpl3.txt をご覧ください。
 
-	xxHash library Copyright (C) 2012-2014 Mr.Yann Collet, All rights reserved.
+	xxHash library
+	  Copyright (C) 2012-2016 Mr.Yann Collet, All rights reserved.
 	  more details: external/xxhash/LICENSE
 
 使用法等：
 	ヘルプ(fastcopy.chm) を参照してください。
 
 ソース・ビルドについて：
-	VS2015 以降でビルドできます。
+	VS2017 以降でビルドできます。
 

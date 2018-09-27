@@ -166,7 +166,7 @@ public:
 	int		netDrvMode;
 	int		aclReset;
 	int		lcid;
-	int		waitTick;
+	int		waitLv;
 	int		speedLevel;
 	BOOL	isAutoSlowIo;
 	int		priority;
@@ -211,6 +211,7 @@ public:
 	BOOL	dirSel;
 	BOOL	updCheck;
 	time_t	lastUpdCheck;
+	BOOL	verifyRemove;
 
 	struct ShExtCfg {
 		BOOL	autoClose;
@@ -245,7 +246,7 @@ public:
 	char	driveMap[64];
 	WCHAR	statusFont[LF_FACESIZE];
 	int		statusFontSize;
-	DynBuf	officialPub;	// for update from ipmsg.org
+	DynBuf	officialPub;
 
 	BOOL	needIniConvert;
 

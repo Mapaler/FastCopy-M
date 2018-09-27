@@ -15,8 +15,24 @@ TApp *TApp::tapp = NULL;
 #define MAX_TAPPWIN_HASH	1009
 #define ENGLISH_TEST		0
 
+
+void TLibInit()
+{
+	static BOOL once = []() {
+#if ENGLISH_TEST
+		TSetDefaultLCID(0x409); // for English Dialog Test
+#else
+		TSetDefaultLCID();
+#endif
+		::CoInitialize(NULL);
+		::InitCommonControls();
+		return	 TRUE;
+	}();
+}
+
 TApp::TApp(HINSTANCE _hI, LPSTR _cmdLine, int _nCmdShow)
 {
+	TLibInit();
 
 	hInstance		= _hI;
 	cmdLine			= _cmdLine;
@@ -37,13 +53,6 @@ TApp::TApp(HINSTANCE _hI, LPSTR _cmdLine, int _nCmdShow)
 
 	InitInstanceForLoadStr(hInstance);
 
-#if ENGLISH_TEST
-	TSetDefaultLCID(0x409); // for English Dialog Test
-#else
-	TSetDefaultLCID();
-#endif
-	::CoInitialize(NULL);
-	::InitCommonControls();
 }
 
 TApp::~TApp()
@@ -115,7 +124,7 @@ LRESULT CALLBACK TApp::WinProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 		ret = ::DefWindowProcW(hWnd, uMsg, wParam, lParam);
 	}
 
-	if (uMsg == WM_DESTROY && app->mainWnd && hWnd == app->mainWnd->hWnd) {
+	if (uMsg == WM_DESTROY && app->mainWnd == win) {
 		::PostQuitMessage(app->result);
 	}
 

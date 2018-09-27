@@ -1,9 +1,9 @@
 ﻿/* static char *utility_id = 
-	"@(#)Copyright (C) 2004-2017 H.Shirouzu		utility.h	Ver3.30"; */
+	"@(#)Copyright (C) 2004-2018 H.Shirouzu		utility.h	Ver3.50"; */
 /* ========================================================================
 	Project  Name			: Utility
 	Create					: 2004-09-15(Wed)
-	Update					: 2017-03-06(Mon)
+	Update					: 2018-05-28(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -29,24 +29,39 @@ public:
 class PathArray : public THashTbl {
 protected:
 	struct PathObj : THashObj {
-		WCHAR	*path;
-		int		len;
-		PathObj(const WCHAR *_path, int len=-1) { Set(_path, len); }
-		~PathObj() { if (path) free(path); }
-		BOOL Set(const WCHAR *_path, int len=-1);
+		std::unique_ptr<WCHAR[]> path;
+		std::unique_ptr<WCHAR[]> uppr;
+		int		len = 0;
+		int		upprLen = 0;
+		BOOL	isDir = FALSE;
+		u_int	hashId = 0;
+		BOOL	isDirStrip = FALSE;
+
+		PathObj(const WCHAR *_path, BOOL _isDirStrip=FALSE) {
+			isDirStrip = _isDirStrip;
+			Set(_path);
+		}
+		PathObj(const PathObj &init) {
+			*this = init;
+		}
+		~PathObj() {}
+
+		PathObj& operator=(const PathObj& init);
+
+		BOOL	Set(const WCHAR *_path);
+		int		Get(WCHAR *_path);
 	};
 	int		num;
 	PathObj	**pathArray;
 	DWORD	flags;
-	BOOL	SetPath(int idx, const WCHAR *path, int len=-1);
+	BOOL	SetPath(int idx, PathObj *obj);
+	BOOL	SetPath(int idx, const WCHAR *path);
 
-	virtual BOOL IsSameVal(THashObj *obj, const void *val) {
-		return wcsicmp(((PathObj *)obj)->path, (WCHAR *)val) == 0;
-	}
+	virtual BOOL IsSameVal(THashObj *obj, const void *val);
 
 public:
-	enum { ALLOW_SAME=1, NO_REMOVE_QUOTE=2 };
-	PathArray(void);
+	enum { ALLOW_SAME=1, DIRFILE_REDUCE=2, NO_REMOVE_QUOTE=4 };
+	PathArray(DWORD _flags=0);
 	PathArray(const PathArray &);
 	virtual ~PathArray();
 	void	Init(void);
@@ -58,17 +73,14 @@ public:
 				const WCHAR *escape_chars=SEMICLN_SPC, BOOL with_endsep=FALSE);
 
 	PathArray& operator=(const PathArray& init);
+	BOOL	IsDirStrip() { return (flags & DIRFILE_REDUCE) ? TRUE : FALSE; }
 
-	WCHAR	*Path(int idx) const { return idx < num ? pathArray[idx]->path : NULL; }
+	WCHAR	*Path(int idx) const { return idx < num ? pathArray[idx]->path.get() : NULL; }
 	int		PathLen(int idx) const { return idx < num ? pathArray[idx]->len : 0; }
 	int		Num(void) const { return num; }
 	BOOL	RegisterPath(const WCHAR *path);
 	BOOL	ReplacePath(int idx, WCHAR *new_path);
-
-	u_int	MakeHashId(const void *data, int len=-1) {
-		return MakeHash(data, (len >= 0 ? len : wcslen((WCHAR *)data)) * sizeof(WCHAR));
-	}
-	u_int	MakeHashId(const PathObj *obj) { return MakeHash(obj->path, obj->len * sizeof(WCHAR));}
+	void	Sort();
 };
 
 #define MAX_DRIVES			(64)	// A-Z + UNC_drives
@@ -106,6 +118,7 @@ public:
 	void	Init(NetDrvMode mode=NET_UNC_FULLVAL);
 	int		SetDriveID(const WCHAR *root);
 	BOOL	IsSameDrive(const WCHAR *root1, const WCHAR *root2);
+	BOOL	IsSSD(const WCHAR *_root);
 	void	SetDriveMap(char *map);
 	uint64	OccupancyDrives(uint64 use_drives);
 };
@@ -130,12 +143,10 @@ protected:
 	Condition	cv;
 
 public:
-	DataList(ssize_t size=0, ssize_t max_size=0, ssize_t _grow_size=0, VBuf *_borrowBuf=NULL,
-		ssize_t _min_margin=65536);
+	DataList(ssize_t size=0, ssize_t max_size=0, ssize_t _grow_size=0, ssize_t _min_margin=65536);
 	~DataList();
 
-	BOOL Init(ssize_t size, ssize_t max_size, ssize_t _grow_size, VBuf *_borrowBuf=NULL,
-		ssize_t _min_margin=65536);
+	BOOL Init(ssize_t size, ssize_t max_size, ssize_t _grow_size, ssize_t _min_margin=65536);
 	void UnInit();
 
 	void Lock() { cv.Lock(); }
@@ -154,6 +165,9 @@ public:
 	ssize_t Size() { return buf.Size(); }
 	ssize_t Grow(ssize_t grow_size) { return buf.Grow(grow_size); }
 	ssize_t MinMargin() { return min_margin; }
+	Condition *GetCv() { return &cv; }
+
+	void	EnableDumpExcept(BOOL on=TRUE) { buf.EnableDumpExcept(on); }
 };
 
 
@@ -169,8 +183,6 @@ public:
 #define HKEY_DYN_DATA		((HKEY)0x80000006)
 #endif
 
-WCHAR *strtok_pathW(WCHAR *str, const WCHAR *sep, WCHAR **p, BOOL remove_quote=TRUE);
-WCHAR **CommandLineToArgvExW(WCHAR *cmdLine, int *_argc);
 int CALLBACK EditWordBreakProcW(WCHAR *str, int cur, int len, int action);
 BOOL GetRootDirW(const WCHAR *path, WCHAR *root_dir);
 BOOL NetPlaceConvertW(WCHAR *src, WCHAR *dst);

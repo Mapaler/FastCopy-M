@@ -1,9 +1,9 @@
 ﻿static char *mainwin_id = 
-	"@(#)Copyright (C) 2004-2018 H.Shirouzu		mainwin.cpp	ver3.41";
+	"@(#)Copyright (C) 2004-2018 H.Shirouzu		mainwin.cpp	ver3.50";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2018-01-25(Thu)
+	Update					: 2018-05-28(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-29
@@ -12,6 +12,13 @@
 #include "mainwin.h"
 #include <time.h>
 #include "shellext/shelldef.h"
+
+#pragma warning (push)
+#pragma warning (disable : 4091) // dbghelp.h(1540): warning C4091: 'typedef ' ignored...
+#include <dbghelp.h>
+#pragma warning (pop)
+
+using namespace std;
 
 #define FASTCOPY_TIMER_TICK 250 //基本信息更新时间，帧速
 
@@ -36,25 +43,22 @@ TFastCopyApp::TFastCopyApp(HINSTANCE _hI, LPSTR _cmdLine, int _nCmdShow)
 	TLoadLibraryExW(L"riched20.dll", TLT_SYSDIR);
 	TLoadLibraryExW(L"msftedit.dll", TLT_SYSDIR);
 
-	Debug("FileStat=%zd\n", offsetof(FileStat, cFileName));
-
-	TInetSetUserAgent(Fmt("FastCopy %s%s", GetVersionStr(),
-#ifdef _WIN64
-	"(x64)"
-#else
-	""
-#endif
-	));
+	DBG("MSC_VER=%d FileStat=%zd %d\n", _MSC_VER, offsetof(FileStat, cFileName));
 
 //	LoadLibrary("SHELL32.DLL");
 //	LoadLibrary("COMCTL32.DLL");
 //	LoadLibrary("COMDLG32.dll");
 //	TLibInit_AdvAPI32();
-
 //	extern void tapi32_test();
 //	tapi32_test();
 //	extern void cond_test();
 //	cond_test();
+//	extern void makehash_test();
+//	makehash_test();
+//	extern void hash_speed();
+//	hash_speed();
+//	extern void hash_speed_mt2();
+//	hash_speed_mt2();
 }
 
 TFastCopyApp::~TFastCopyApp()
@@ -65,9 +69,9 @@ void TFastCopyApp::InitWindow(void)
 {
 	TRegisterClass(FASTCOPY_CLASS);
 
-	TDlg *mainDlg = new TMainDlg();
-	mainWnd = mainDlg;
-	mainDlg->Create();
+	auto	dlg = new TMainDlg();
+	mainWnd = dlg;
+	dlg->Create();
 }
 
 extern HWND TransMsgHelp(MSG *msg);
@@ -98,8 +102,8 @@ int WINAPI WinMain(HINSTANCE _hI, HINSTANCE, LPSTR arg, int show)
 =========================================================================*/
 TMainDlg::TMainDlg() : TDlg(MAIN_DIALOG),
 	aboutDlg(this), setupDlg(&cfg, this), jobDlg(&cfg, this), finActDlg(&cfg, this),
-	srcEdit(MAX_SRCEDITCR, this), pathEdit(this), errEdit(this),
-	speedSlider(this), speedStatic(this), topCheck(this), listBtn(this)
+	srcEdit(MAX_SRCEDITCR, this), pathEdit(this), errEdit(this), bufEdit(this), statEdit(this),
+	speedSlider(this), speedStatic(this), listBtn(this), pauseOkBtn(this), pauseListBtn(this)
 #ifdef USE_LISTVIEW
 	, listHead(this), listView(this)
 #endif
@@ -136,11 +140,11 @@ TMainDlg::TMainDlg() : TDlg(MAIN_DIALOG),
 		TApp::Exit(-1);
 		return;
 	}
+	SetUserAgent();
 
 	if (cfg.lcid > 0) {
 		TSetDefaultLCID(cfg.lcid);
 	}
-
 	cfg.PostReadIni();
 
 	shellMode = SHELL_NONE;
@@ -157,8 +161,9 @@ TMainDlg::TMainDlg() : TDlg(MAIN_DIALOG),
 	forceStart = cfg.forceStart;
 	finishNotify = cfg.finishNotify;
 	dlsvtMode = cfg.dlsvtMode;
+	isPause = FALSE;
 
-	isTaskTray = FALSE;
+	showState = SS_HIDE;
 	noConfirmDel = noConfirmStop = FALSE;
 	isNetPlaceSrc = FALSE;
 	skipEmptyDir = cfg.skipEmptyDir;
@@ -216,7 +221,7 @@ TMainDlg::TMainDlg() : TDlg(MAIN_DIALOG),
 	}
 
 	autoCloseLevel = NO_CLOSE;
-	curIconIndex = 0;
+	curIconIdx = 0;
 	pathLogBuf = NULL;
 	isDelay = FALSE;
 	isAbort = FALSE;
@@ -254,14 +259,13 @@ void TMainDlg::SetFilterHistory(SetHistMode mode, UINT item)
 
 void TMainDlg::SetComboBox(UINT item, WCHAR **history, SetHistMode mode)
 {
-	DWORD	len = 0;
-	WCHAR	*wbuf = NULL;
+	Wstr	wstr;
 
 	// backup editbox
 	if (mode == SETHIST_LIST || mode == SETHIST_CLEAR) {
-		len = ::GetWindowTextLengthW(GetDlgItem(item));
-		wbuf = new WCHAR [len + 1];
-		if (GetDlgItemTextW(item, wbuf, len + 1) != len)
+		auto len = ::GetWindowTextLengthW(GetDlgItem(item));
+		wstr.Init(len + 1);
+		if (GetDlgItemTextW(item, wstr.Buf(), len + 1) != len)
 			return;
 	}
 
@@ -284,23 +288,21 @@ void TMainDlg::SetComboBox(UINT item, WCHAR **history, SetHistMode mode)
 
 	// restore editbox
 	if (mode == SETHIST_LIST || mode == SETHIST_CLEAR) {
-		SetDlgItemTextW(item, wbuf);
+		SetDlgItemTextW(item, wstr.s());
 	}
-
-	delete [] wbuf;
 }
 
 BOOL TMainDlg::SetMiniWindow(void)
 {
 	GetWindowRect(&rect);
-	int cur_height = rect.bottom - rect.top;
+	int cur_height = rect.cy();
 	int new_height = cur_height - (isErrEditHide ? 0 : normalHeight - miniHeight);
 	int min_height = miniHeight - (isExtendFilter ? 0 : filterHeight);
 
 	isErrEditHide = TRUE;
 	if (new_height < min_height) new_height = min_height;
 
-	MoveWindow(rect.left, rect.top, rect.right - rect.left, new_height, IsWindowVisible());
+	MoveWindow(rect.x(), rect.y(), rect.cx(), new_height, IsWindowVisible());
 	return	TRUE;
 }
 
@@ -309,9 +311,9 @@ BOOL TMainDlg::SetNormalWindow()
 	if (IsWindowVisible()) {
 		GetWindowRect(&rect);
 		int diff_size = normalHeight - miniHeight;
-		int height = rect.bottom - rect.top + (isErrEditHide ? diff_size : 0);
+		int height = rect.cy() + (isErrEditHide ? diff_size : 0);
 		isErrEditHide = FALSE;
-		MoveWindow(rect.left, rect.top, rect.right - rect.left, height, TRUE);
+		MoveWindow(rect.x(), rect.y(), rect.cx(), height, TRUE);
 	}
 	return	TRUE;
 }
@@ -326,36 +328,34 @@ BOOL TMainDlg::MoveCenter()
 	BOOL isFixSize = !IS_INVALID_SIZE(cfg.winsize);
 
 	if (isFixSize) {
-		sz.cx = orgRect.right - orgRect.left + cfg.winsize.cx;
+		sz.cx = orgRect.cx() + cfg.winsize.cx;
 		sz.cy = cfg.winsize.cy + (isErrEditHide ? miniHeight : normalHeight);
 	}
-
-	RECT	screen_rect = { 0, 0,
-				::GetSystemMetrics(SM_CXFULLSCREEN), ::GetSystemMetrics(SM_CYFULLSCREEN) };
-
-	HMONITOR	hMon;
-
-	if (isFixPos && !(hMon = ::MonitorFromPoint(cfg.winpos, MONITOR_DEFAULTTONEAREST))) {
-		isFixPos = FALSE;
-	}
-	if (!isFixPos && (hMon = ::MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST)) != NULL) {
-		MONITORINFO	minfo;
-		minfo.cbSize = sizeof(minfo);
-
-		if (::GetMonitorInfoW(hMon, &minfo) && (minfo.rcMonitor.right - minfo.rcMonitor.left)
-				> 0 && (minfo.rcMonitor.bottom - minfo.rcMonitor.top) > 0) {
-			screen_rect = minfo.rcMonitor;
-		}
-	}
+	TRect	src(0, 0, ::GetSystemMetrics(SM_CXFULLSCREEN), ::GetSystemMetrics(SM_CYFULLSCREEN));
 
 	if (isFixPos) {
-		pt = cfg.winpos;
+		isFixPos = FALSE;
+		if (HMONITOR hMon = ::MonitorFromPoint(cfg.winpos, MONITOR_DEFAULTTONEAREST)) {
+			MONITORINFO	mi = { sizeof(mi) };
+
+			if (::GetMonitorInfoW(hMon, &mi)) {
+				if (PtInRect(&mi.rcMonitor, cfg.winpos)) {
+					pt = cfg.winpos;
+					isFixPos = TRUE;
+				}
+			}
+		}
 	}
-	else {
-		pt.x = screen_rect.left + ((screen_rect.right - screen_rect.left)
-				- (rect.right - rect.left)) / 2;
-		pt.y = screen_rect.top + ((screen_rect.bottom - screen_rect.top)
-				- (rect.bottom - rect.top)) / 2;
+	if (!isFixPos) {
+		if (HMONITOR hMon = ::MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST)) {
+			MONITORINFO	mi = { sizeof(mi) };
+
+			if (::GetMonitorInfoW(hMon, &mi)) {
+				src = mi.rcMonitor;
+			}
+		}
+		pt.x = src.x() + (src.cx() - rect.cx()) / 2;
+		pt.y = src.y() + (src.cy() - rect.cy()) / 2;
 	}
 
 	return	SetWindowPos(NULL, pt.x, pt.y, sz.cx, sz.cy,
@@ -439,9 +439,10 @@ void TMainDlg::StatusEditSetup(BOOL reset)
 	::ReleaseDC(hWnd, hDc);
 
 	statusFont = ::CreateFontIndirectW(&lf);
-	SendDlgItemMessage(STATUS_EDIT, WM_SETFONT, (WPARAM)statusFont, 0);
-	SendDlgItemMessage(STATUS_EDIT, EM_SETWORDBREAKPROC, 0, (LPARAM)EditWordBreakProcW);
-	SendDlgItemMessage(STATUS_EDIT, EM_SETTARGETDEVICE, 0, 0);		// 折り返し
+	statEdit.SendMessage(WM_SETFONT, (WPARAM)statusFont, 0);
+
+	SetStatMargin();
+
 	InvalidateRect(0, 0);
 }
 
@@ -474,6 +475,7 @@ void TMainDlg::ChooseFont()
 		SetInfo(TRUE);
 		cfg.WriteIni();
 	}
+	SetStatMargin();
 
 	::ReleaseDC(hWnd, hDc);
 }
@@ -487,22 +489,25 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 	}
 	::DragAcceptFiles(hWnd, TRUE);
 
-	MAX_NORMAL_FASTCOPY_ICON = atoi((char *)LoadStr(IDS_Animation_Icon_Num));
-	//用指针hMainIcon指向new动态分配的长度为len*sizeof(HICON)的内存空间 
-	hMainIcon = new HICON[MAX_NORMAL_FASTCOPY_ICON];
-
 	char	title[100];
 	sprintf(title, "%s %s%s", FASTCOPY_TITLE, GetVersionStr(), GetVerAdminStr());
 
 	WCHAR	user_log[MAX_PATH];
+	WCHAR	dump_log[MAX_PATH];
 	MakePathW(user_log, cfg.userDir, L"fastcopy_exception.log");
+	MakePathW(dump_log, cfg.userDir, L"fastcopy_exception.dmp");
 
-	InstallExceptionFilter(title, LoadStr(IDS_EXCEPTIONLOG), WtoAs(user_log));
-#if _MSC_VER == 1900
+	InstallExceptionFilter(title, LoadStr(IDS_EXCEPTIONLOG), WtoAs(user_log), WtoAs(dump_log),
+		MiniDumpWithPrivateReadWriteMemory | 
+		MiniDumpWithDataSegs | 
+		MiniDumpWithHandleData |
+		MiniDumpWithFullMemoryInfo | 
+		MiniDumpWithThreadInfo | 
+		MiniDumpWithUnloadedModules);
+
 	if ((cfg.debugMainFlags & GSHACK_SKIP) == 0) {
 		TGsFailureHack();
 	}
-#endif
 
 	if (IsWinVista()) {
 		HMENU	hMenu = ::GetMenu(hWnd);
@@ -515,7 +520,7 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 			}
 			else {
 				char buf[128], *p;
-				int	 len = ::GetMenuString(hMenu, 3, buf, sizeof(buf), MF_BYPOSITION|MF_STRING);
+				::GetMenuString(hMenu, 3, buf, sizeof(buf), MF_BYPOSITION|MF_STRING);
 				if ((p = strchr(buf, '('))) {
 					*p = 0;
 					::ModifyMenu(hMenu, 3, MF_BYPOSITION|MF_STRING, 0, buf);
@@ -527,15 +532,20 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 	}
 
 	srcEdit.AttachWnd(GetDlgItem(SRC_EDIT));
+	statEdit.AttachWnd(GetDlgItem(STATUS_EDIT));
 	pathEdit.AttachWnd(GetDlgItem(PATH_EDIT));
 	errEdit.AttachWnd(GetDlgItem(ERR_EDIT));
-	auto hFont = SendDlgItemMessage(IDOK, WM_GETFONT, 0, 0L);
+	bufEdit.AttachWnd(GetDlgItem(BUFSIZE_EDIT));
+	bufEdit.CreateTipWnd(LoadStrW(IDS_BUFSIZETIP));
+
+	SendDlgItemMessage(IDOK, WM_GETFONT, 0, 0L);
 
 	int		i;
 	for (i=0; i < MAX_FASTCOPY_ICON; i++) {
 		hMainIcon[i] = ::LoadIcon(TApp::GetInstance(), (LPCSTR)(LONG_PTR)(FASTCOPY_ICON + i));
 	}
-	::SetClassLong(hWnd, GCL_HICON, LONG_RDC(hMainIcon[FCNORMAL_ICON_IDX]));
+	::SetClassLong(hWnd, GCL_HICON, LONG_RDC(hMainIcon[FCNORM_ICON_IDX]));
+	SetIcon();
 
 	hAccel = ::LoadAccelerators(TApp::GetInstance(), (LPCSTR)IDR_ACCEL);
 	SetSize();
@@ -567,7 +577,6 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 	CheckDlgButton(IGNORE_CHECK, cfg.ignoreErr);
 	CheckDlgButton(ESTIMATE_CHECK, cfg.estimateMode);
 	CheckDlgButton(VERIFY_CHECK, cfg.enableVerify);
-	CheckDlgButton(TOPLEVEL_CHECK, cfg.isTopLevel);
 	CheckDlgButton(OWDEL_CHECK, cfg.enableOwdel);
 	CheckDlgButton(ACL_CHECK, cfg.enableAcl);
 	CheckDlgButton(STREAM_CHECK, cfg.enableStream);
@@ -589,12 +598,22 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 	speedStatic.CreateTipWnd(LoadStrW(IDS_SPEEDTIP));
 	SetSpeedLevelLabel(this, speedLevel = cfg.speedLevel);
 
-	topCheck.AttachWnd(GetDlgItem(TOPLEVEL_CHECK));
-	topCheck.CreateTipWnd(LoadStrW(IDS_TOPTIP));
-
 	listBtn.AttachWnd(GetDlgItem(LIST_BUTTON));
 	listBtn.CreateTipWnd(LoadStrW(IDS_LISTTIP));
 
+	// Pause/Resume
+	hPauseIcon = ::LoadIcon(TApp::hInst(), (LPCSTR)PAUSE_ICON);
+	hPlayIcon = ::LoadIcon(TApp::hInst(), (LPCSTR)PLAY_ICON);
+
+	pauseOkBtn.AttachWnd(GetDlgItem(PAUSEOK_BTN));
+	pauseOkBtn.CreateTipWnd(LoadStrW(IDS_PAUSE));
+	pauseOkBtn.SendMessage(BM_SETIMAGE, IMAGE_ICON, (LPARAM)hPauseIcon);
+
+	pauseListBtn.AttachWnd(GetDlgItem(PAUSELIST_BTN));
+	pauseListBtn.CreateTipWnd(LoadStrW(IDS_PAUSE));
+	pauseListBtn.SendMessage(BM_SETIMAGE, IMAGE_ICON, (LPARAM)hPauseIcon);
+
+	// Source hist
 	SendDlgItemMessage(HIST_BTN, BM_SETIMAGE, IMAGE_ICON,
 		(LPARAM)::LoadIcon(TApp::hInst(), (LPCSTR)HIST_ICON));
 
@@ -615,7 +634,7 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 	::GetWindowRect(GetDlgItem(ERR_EDIT), &err_rect);
 	SendDlgItemMessage(PATH_EDIT, EM_SETBKGNDCOLOR, 0, ::GetSysColor(COLOR_3DFACE));
 	SendDlgItemMessage(ERR_EDIT, EM_SETBKGNDCOLOR, 0, ::GetSysColor(COLOR_3DFACE));
-	normalHeight	= rect.bottom - rect.top;
+	normalHeight	= rect.cy();
 	miniHeight		= normalHeight - (err_rect.bottom - path_rect.bottom);
 	normalHeightOrg	= normalHeight;
 
@@ -626,18 +645,10 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 
 	SetExtendFilter();
 
-	if (isTaskTray) {
-		TaskTray(NIM_ADD, hMainIcon[FCNORMAL_ICON_IDX], FASTCOPY);
-	}
-	else if (isInstaller) {
-		TaskTray(NIM_ADD, hMainIcon[FCNORMAL_ICON_IDX], FASTCOPY);
-		TaskTray(NIM_DELETE);
-		isInstaller = FALSE;
-	}
-
 	if (*cfg.statusFont) {
 		StatusEditSetup();
 	}
+	SetStatMargin();
 
 	// command line mode
 	if (orgArgc > 1) {
@@ -659,16 +670,45 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 	else {
 		Show();
 		/* //去除自动检查更新
-		if (cfg.updCheck) {	// 最新版確認
+		if (cfg.updCheck & 0x1) {	// 最新版確認
 			time_t	now = time(NULL);
 
-			if (cfg.lastUpdCheck + (24 * 3600) < now) {	// 1日以上経過
+			if (cfg.lastUpdCheck + (24 * 3600) < now || cfg.lastUpdCheck > now) {	// 1日以上経過
 				cfg.lastUpdCheck = now;
 				cfg.WriteIni();
 				UpdateCheck(TRUE);
 			}
 		}
 		*/
+	}
+	if (isInstaller) {
+		TaskTrayTemp(TRUE);
+		auto	mode = GetTrayIconState();
+		TaskTrayTemp(FALSE);
+		isInstaller = FALSE;
+
+		if (mode == TIS_HIDE && !isNoUI && !cfg.taskbarMode) {
+			PostMessage(WM_FASTCOPY_TRAYSETUP, 0, 0);
+		}
+	}
+
+/*
+	OpenDebugConsole();
+						// EN     JP     DE     LUX     PRC      HK      TW      SG
+	LCID	lcids[] = { 0x409, 0x411, 0x407, 0x1007, 0x0804, 0x0C04, 0x0404, 0x1004 };
+	for (auto id: lcids) {
+		TSetDefaultLCID(id);
+		DebugW(L"id(%x): %s\n", id, LoadStrW(IDS_MKDIR));
+	}
+*/
+
+	return	TRUE;
+}
+
+BOOL TMainDlg::EvDestroy(void)
+{
+	if (auto *app = TApp::GetApp()) {
+		app->SetResult(resultStatus ? 0 : -1);
 	}
 
 	return	TRUE;
@@ -678,10 +718,6 @@ BOOL TMainDlg::EvNcDestroy(void)
 {
 	TaskTray(NIM_DELETE);
 	UnInitShowHelp();
-
-	if (auto *app = TApp::GetApp()) {
-		app->SetResult(resultStatus ? 0 : -1);
-	}
 
 	return	TRUE;
 }
@@ -695,7 +731,7 @@ BOOL TMainDlg::CancelCopy()
 	int	ret = TRUE;
 
 	if (isNoUI) {
-		WriteErrLogNoUI("CancelCopy (aborted by system or etc)");
+		WriteErrLogNoUI("CancelCopy (aborted by system or etc.)");
 	}
 	else if (!isDelay) {
 		ret = (TMsgBox(this).Exec(LoadStr(IsListing() ? IDS_LISTCONFIRM :
@@ -801,9 +837,12 @@ BOOL TMainDlg::SwapTarget(BOOL check_only)
 
 	if (src_len == 0 && dst_len == 0 || max(src_len, dst_len) >= MAX_WPATH) return FALSE;
 
-	WCHAR		*src = new WCHAR [MAX_WPATH];
-	WCHAR		*dst = new WCHAR [MAX_WPATH];
-	PathArray	srcArray, dstArray;
+	auto		_src = make_unique<WCHAR[]>(MAX_WPATH);
+	auto		src = _src.get();
+	auto		_dst = make_unique<WCHAR[]>(MAX_WPATH);
+	auto		dst = _dst.get();
+	PathArray	srcArray;
+	PathArray	dstArray;
 	BOOL		ret = FALSE;
 
 	if (src && dst && srcEdit.GetWindowTextW(src, src_len+1) == src_len
@@ -831,15 +870,34 @@ BOOL TMainDlg::SwapTarget(BOOL check_only)
 		}
 	}
 
-	delete [] dst;
-	delete [] src;
 	return	ret;
+}
+
+void TMainDlg::PostSetup()
+{
+	SetCopyModeList();
+	isErrLog = cfg.isErrLog;
+	isUtf8Log = cfg.isUtf8Log;
+	fileLogMode = (FileLogMode)cfg.fileLogMode;
+	isReparse = cfg.isReparse;
+	skipEmptyDir = cfg.skipEmptyDir;
+	forceStart = cfg.forceStart;
+	dlsvtMode = cfg.dlsvtMode;
+	isExtendFilter = cfg.isExtendFilter;
+	finishNotify = cfg.finishNotify;
+
+	SetDlgItemInt(BUFSIZE_EDIT, cfg.bufSize);
+
+	SetExtendFilter();
 }
 
 BOOL TMainDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl)
 {
 	switch (wID) {
 	case IDOK: case LIST_BUTTON:
+	//	if (fastCopy.IsStarting()) {
+	//		*(int *)0 = 0;
+	//	}
 		if (!fastCopy.IsStarting() && !isDelay) {
 			if ((::GetTick() - endTick) > 1000)
 				ExecCopy(wID == LIST_BUTTON ? LISTING_EXEC : NORMAL_EXEC);
@@ -847,17 +905,46 @@ BOOL TMainDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl)
 		else if (CancelCopy()) {
 			autoCloseLevel = NO_CLOSE;
 		}
+
 //		extern void bo_test(void);
 //		bo_test();
 		return	TRUE;
 
-	case SRC_COMBO: case DST_COMBO:
+	case PAUSEOK_BTN:
+	case PAUSELIST_BTN:
+		isPause = !isPause;
+		UpdateSpeedLevel();
+		if (auto *btn = (wID == PAUSEOK_BTN) ? &pauseOkBtn : &pauseListBtn) {
+			btn->SendMessage(BM_SETIMAGE, IMAGE_ICON, (LPARAM)(isPause ? hPlayIcon : hPauseIcon));
+			btn->SetTipTextW(LoadStrW(isPause ? IDS_RESUME : IDS_PAUSE));
+		}
+		return	TRUE;
+
+	case BUFSIZE_EDIT:
+		setupDlg.SetSheetIdx(IO_SHEET);
+		setupDlg.Exec();
+		return	TRUE;
+
+	//case SRC_COMBO:
+	case DST_COMBO:
 		if (wNotifyCode == CBN_DROPDOWN) {
 			SetPathHistory(SETHIST_LIST, wID);
 		}
 		else if (wNotifyCode == CBN_CLOSEUP) {
 			PostMessage(WM_FASTCOPY_PATHHISTCLEAR, wID, 0);
 		}
+		return	TRUE;
+
+	case SRC_FILE_BUTTON:
+		if (BrowseDirDlgW(this, SRC_EDIT, LoadStrW(IDS_SRC_SELECT),
+				BRDIR_MULTIPATH|BRDIR_CTRLADD|BRDIR_FILESELECT|BRDIR_TAILCR
+				|BRDIR_BACKSLASH|(cfg.dirSel ? 0 : BRDIR_INITFILESEL))) {
+			srcEdit.Fit(TRUE);
+		}
+		return	TRUE;
+
+	case DST_FILE_BUTTON:
+		BrowseDirDlgW(this, DST_COMBO, LoadStrW(IDS_DST_SELECT), BRDIR_BACKSLASH);
 		return	TRUE;
 
 	case HIST_BTN:
@@ -906,31 +993,12 @@ BOOL TMainDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl)
 		ExecCopyCore();
 		return	TRUE;
 
-	case SRC_FILE_BUTTON:
-		if (BrowseDirDlgW(this, SRC_EDIT, LoadStrW(IDS_SRC_SELECT),
-				BRDIR_MULTIPATH|BRDIR_CTRLADD|BRDIR_FILESELECT|BRDIR_TAILCR
-				|(cfg.dirSel ? 0 : BRDIR_INITFILESEL))) {
-			srcEdit.Fit(TRUE);
-		}
-		return	TRUE;
-
-	case DST_FILE_BUTTON:
-		BrowseDirDlgW(this, DST_COMBO, LoadStrW(IDS_DST_SELECT), BRDIR_BACKSLASH);
-		return	TRUE;
-
-	case TOPLEVEL_CHECK:
-		cfg.isTopLevel = IsDlgButtonChecked(TOPLEVEL_CHECK);
+	case TOPLEVEL_MENUITEM:
+		cfg.isTopLevel = !cfg.isTopLevel;
 		SetWindowPos(cfg.isTopLevel ? HWND_TOPMOST :
 			HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOSIZE|SWP_NOACTIVATE|SWP_NOMOVE);
 		cfg.WriteIni();
 		break;
-
-//	case TOPLEVEL_MENUITEM:
-//		cfg.isTopLevel = !cfg.isTopLevel;
-//		SetWindowPos(cfg.isTopLevel ? HWND_TOPMOST :
-//			HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOSIZE|SWP_NOACTIVATE|SWP_NOMOVE);
-//		cfg.WriteIni();
-//		break;
 
 	case MODE_COMBO:
 		if (wNotifyCode == CBN_SELCHANGE) {
@@ -1010,9 +1078,8 @@ BOOL TMainDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl)
 	case FIXSIZE_MENUITEM:
 		if (IS_INVALID_SIZE(cfg.winsize)) {
 			GetWindowRect(&rect);
-			cfg.winsize.cx = (rect.right - rect.left) - (orgRect.right - orgRect.left);
-			cfg.winsize.cy = (rect.bottom - rect.top)
-								- (isErrEditHide ? miniHeight : normalHeight);
+			cfg.winsize.cx = rect.cx() - orgRect.cx();
+			cfg.winsize.cy = rect.cy() - (isErrEditHide ? miniHeight : normalHeight);
 			cfg.WriteIni();
 		}
 		else {
@@ -1022,19 +1089,8 @@ BOOL TMainDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl)
 		return	TRUE;
 
 	case SETUP_MENUITEM:
-		if (setupDlg.Exec() == IDOK) {
-			SetCopyModeList();
-			isErrLog = cfg.isErrLog;
-			isUtf8Log = cfg.isUtf8Log;
-			fileLogMode = (FileLogMode)cfg.fileLogMode;
-			isReparse = cfg.isReparse;
-			skipEmptyDir = cfg.skipEmptyDir;
-			forceStart = cfg.forceStart;
-			dlsvtMode = cfg.dlsvtMode;
-			isExtendFilter = cfg.isExtendFilter;
-			finishNotify = cfg.finishNotify;
-		}
-		SetExtendFilter();
+		setupDlg.Exec();
+		SetUserAgent();
 		return	TRUE;
 
 	case FONT_MENUITEM:
@@ -1051,14 +1107,6 @@ BOOL TMainDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl)
 	case EXTENDFILTER_MENUITEM:
 		isExtendFilter = !isExtendFilter;
 		SetExtendFilter();
-		return	TRUE;
-
-	case SHELLEXT_MENUITEM:
-	case SHELLEXTLOCAL_MENUITEM:
-		{
-			TShellExtDlg	dlg(&cfg, wID == SHELLEXT_MENUITEM ? TRUE : FALSE, this);
-			dlg.Exec();
-		}
 		return	TRUE;
 
 	case ABOUT_MENUITEM:
@@ -1086,6 +1134,7 @@ BOOL TMainDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl)
 	case JOB_MENUITEM:
 		jobDlg.Exec();
 		UpdateMenu();
+		SetUserAgent();
 		return	TRUE;
 
 	case SWAPTARGET_MENUITEM:
@@ -1146,7 +1195,7 @@ BOOL TMainDlg::EvSysCommand(WPARAM uCmdType, POINTS pos)
 	switch (uCmdType)
 	{
 	case SC_RESTORE: case SC_MAXIMIZE:
-		if (cfg.taskbarMode) {
+		if (IsWindowVisible()) {
 			TaskTray(NIM_DELETE);
 		}
 		return	FALSE;
@@ -1158,10 +1207,28 @@ BOOL TMainDlg::EvSysCommand(WPARAM uCmdType, POINTS pos)
 	return	FALSE;
 }
 
-//BOOL TMainDlg::EvNotify(UINT ctlID, NMHDR *pNmHdr)
-//{
-//	return FALSE;
-//}
+BOOL TMainDlg::EvNotify(UINT ctlID, NMHDR *pNmHdr)
+{
+	switch (pNmHdr->code) {
+	case EN_LINK:
+		{
+			ENLINK	*el = (ENLINK *)pNmHdr;
+			switch (el->msg) {
+			case WM_LBUTTONUP:
+				if (el->chrg.cpMax - el->chrg.cpMin < 1024) {
+					WCHAR	wbuf[1024];
+					pathEdit.SendMessageW(EM_EXSETSEL, 0, (LPARAM)(&(el->chrg)));
+					pathEdit.SendMessageW(EM_GETSELTEXT, 0, (LPARAM)wbuf);
+					::ShellExecuteW(hWnd, NULL, wbuf, NULL, NULL, SW_SHOWNORMAL);
+				}
+				break;
+			}
+		}
+		return	FALSE;
+	}
+
+	return FALSE;
+}
 
 BOOL TMainDlg::EventInitMenu(UINT uMsg, HMENU hMenu, UINT uPos, BOOL fSystemMenu)
 {
@@ -1170,9 +1237,9 @@ BOOL TMainDlg::EventInitMenu(UINT uMsg, HMENU hMenu, UINT uPos, BOOL fSystemMenu
 			MF_BYCOMMAND|(IS_INVALID_POINT(cfg.winpos) ? MF_UNCHECKED : MF_CHECKED));
 		::CheckMenuItem(GetSubMenu(hMenu, 0), FIXSIZE_MENUITEM,
 			MF_BYCOMMAND|(IS_INVALID_SIZE(cfg.winsize) ? MF_UNCHECKED : MF_CHECKED));
-//		::CheckMenuItem(GetSubMenu(hMenu, 0), TOPLEVEL_MENUITEM,
-//			MF_BYCOMMAND|(cfg.isTopLevel ? MF_CHECKED : MF_UNCHECKED));
-//
+		::CheckMenuItem(GetSubMenu(hMenu, 0), TOPLEVEL_MENUITEM,
+			MF_BYCOMMAND|(cfg.isTopLevel ? MF_CHECKED : MF_UNCHECKED));
+
 		::EnableMenuItem(GetSubMenu(hMenu, 2), SWAPTARGET_MENUITEM,
 			MF_BYCOMMAND|(SwapTarget(TRUE) ? MF_ENABLED : MF_GRAYED));
 
@@ -1248,6 +1315,18 @@ void TMainDlg::SetHistPath(int idx)
 	}
 }
 
+void TMainDlg::SetStatMargin()
+{
+	static auto lcid = ::GetUserDefaultLCID();
+
+	if (lcid == 0x411) return;
+
+#define STAT_MARGIN	(2)
+	TRect	rc;
+	statEdit.GetClientRect(&rc);
+	rc.left = rc.top = STAT_MARGIN;
+	statEdit.SendMessage(EM_SETRECT, 0, (LPARAM)&rc);
+}
 
 BOOL TMainDlg::EvSize(UINT fwSizeType, WORD nWidth, WORD nHeight)
 {
@@ -1255,8 +1334,16 @@ BOOL TMainDlg::EvSize(UINT fwSizeType, WORD nWidth, WORD nHeight)
 		return	FALSE;
 	}
 
+	if (IsWindowVisible()) {
+		EnableWindow(TRUE);
+	}
+	if ((showState & SS_TRAY) && IsWindowVisible()) {
+		TaskTray(NIM_DELETE);
+	}
+
 	RefreshWindow();
 	SetTimer(FASTCOPY_PAINT_TIMER, 100);
+	SetStatMargin();
 
 	return	TRUE;
 }
@@ -1299,7 +1386,6 @@ BOOL TMainDlg::IsSeparateArea(int x, int y)
 
 BOOL TMainDlg::EvSetCursor(HWND cursorWnd, WORD nHitTest, WORD wMouseMsg)
 {
-	static HCURSOR hResizeCursor;
 	BOOL	need_set = captureMode;
 
 	if (!need_set) {
@@ -1310,7 +1396,7 @@ BOOL TMainDlg::EvSetCursor(HWND cursorWnd, WORD nHitTest, WORD wMouseMsg)
 	}
 
 	if (need_set) {
-		if (!hResizeCursor) hResizeCursor = ::LoadCursor(TApp::hInst(), (LPCSTR)SEP_CUR);
+		static HCURSOR hResizeCursor = ::LoadCursor(TApp::hInst(), (LPCSTR)SEP_CUR);
 		::SetCursor(hResizeCursor);
 		return	TRUE;
 	}
@@ -1322,10 +1408,10 @@ void TMainDlg::ResizeForSrcEdit(int diff_y)
 {
 	dlgItems[srcedit_item].diffCy += diff_y;
 
-//	Debug("ResizeForSrcEdit=%d\n", diff_y);
+	DBG("ResizeForSrcEdit=%d\n", diff_y);
 	TRect	rc;
 	GetWindowRect(&rc);
-	MoveWindow(rc.left, rc.top, rc.cx(), rc.cy() + diff_y, TRUE);
+	MoveWindow(rc.x(), rc.y(), rc.cx(), rc.cy() + diff_y, TRUE);
 }
 
 BOOL TMainDlg::EvMouseMove(UINT fwKeys, POINTS pos)
@@ -1445,6 +1531,10 @@ void TMainDlg::RefreshWindow(BOOL is_start_stop)
 
 	set_fitskip(&dlgItems[ok_item].flags, is_exec && IsListing());
 	set_fitskip(&dlgItems[list_item].flags, is_exec && !IsListing());
+
+	set_fitskip(&dlgItems[pauseok_item].flags, !is_exec || !IsListing());
+	set_fitskip(&dlgItems[pauselist_item].flags, !is_exec || IsListing());
+
 	set_fitskip(&dlgItems[atonce_item].flags, !isDelay);
 
 	item = dlgItems + path_item;
@@ -1462,7 +1552,6 @@ void TMainDlg::RefreshWindow(BOOL is_start_stop)
 		::EnableWindow(dlgItems[owdel_item].hWnd, flg);
 		::EnableWindow(dlgItems[acl_item].hWnd, flg);
 		::EnableWindow(dlgItems[stream_item].hWnd, flg);
-	//	::EnableWindow(dlgItems[filterhelp_item].hWnd, flg);
 	}
 }
 
@@ -1476,13 +1565,13 @@ void TMainDlg::SetSize(void)
 	SetDlgItem(MODE_COMBO, RIGHT_FIT|TOP_FIT);
 	SetDlgItem(BUF_STATIC, RIGHT_FIT|TOP_FIT);
 	SetDlgItem(BUFSIZE_EDIT, RIGHT_FIT|TOP_FIT);
-	SetDlgItem(HELP_BUTTON, RIGHT_FIT|TOP_FIT);
 	SetDlgItem(IGNORE_CHECK, RIGHT_FIT|TOP_FIT);
 	SetDlgItem(ESTIMATE_CHECK, RIGHT_FIT|TOP_FIT);
 	SetDlgItem(VERIFY_CHECK, RIGHT_FIT|TOP_FIT);
-	SetDlgItem(TOPLEVEL_CHECK,RIGHT_FIT|TOP_FIT);
 	SetDlgItem(LIST_BUTTON, RIGHT_FIT|TOP_FIT);
+	SetDlgItem(PAUSELIST_BTN, RIGHT_FIT|TOP_FIT);
 	SetDlgItem(IDOK, RIGHT_FIT|TOP_FIT);
+	SetDlgItem(PAUSEOK_BTN, RIGHT_FIT|TOP_FIT);
 	SetDlgItem(ATONCE_BUTTON, X_FIT|TOP_FIT);
 	SetDlgItem(OWDEL_CHECK, LEFT_FIT|TOP_FIT);
 	SetDlgItem(ACL_CHECK, LEFT_FIT|TOP_FIT);
@@ -1519,7 +1608,7 @@ void TMainDlg::SetSize(void)
 */
 BOOL TMainDlg::EvDropFiles(HDROP hDrop)
 {
-	PathArray	pathArray;
+	PathArray	pathArray(PathArray::DIRFILE_REDUCE);
 	WCHAR	path[MAX_PATH_EX];
 	BOOL	isDstDrop = IsDestDropFiles(hDrop);
 	BOOL	isDeleteMode = GetCopyMode() == FastCopy::DELETE_MODE;
@@ -1529,10 +1618,9 @@ BOOL TMainDlg::EvDropFiles(HDROP hDrop)
 	if (!isDstDrop) {
 		if (::GetKeyState(VK_CONTROL) & 0x8000) {
 			max_len = srcEdit.GetWindowTextLengthW() + 1;
-			WCHAR	*buf = new WCHAR [max_len];
-			srcEdit.GetWindowTextW(buf, max_len);
-			pathArray.RegisterMultiPath(buf, CRLF);
-			delete [] buf;
+			auto buf = make_unique<WCHAR[]>(max_len);
+			srcEdit.GetWindowTextW(buf.get(), max_len);
+			pathArray.RegisterMultiPath(buf.get(), CRLF);
 		}
 		else
 			isNetPlaceSrc = FALSE;
@@ -1546,25 +1634,26 @@ BOOL TMainDlg::EvDropFiles(HDROP hDrop)
 			if (NetPlaceConvertW(path, path) && !isDstDrop)
 				isNetPlaceSrc = TRUE;
 		}
+
+		DWORD	attr = ::GetFileAttributesW(path);
+		if (attr & FILE_ATTRIBUTE_DIRECTORY) {	// 0xffffffff も認める(for 95系OSのroot対策)
+			MakePathW(path, NULL, L"");
+		}
 		pathArray.RegisterPath(path);
+		pathArray.Sort();
 	}
 	::DragFinish(hDrop);
 
 	if (pathArray.Num() > 0) {
 		if (isDstDrop) {
-			DWORD	attr = ::GetFileAttributesW(pathArray.Path(0));
-			if (attr & FILE_ATTRIBUTE_DIRECTORY) {	// 0xffffffff も認める(for 95系OSのroot対策)
-				MakePathW(path, pathArray.Path(0), L"");
-				SetDlgItemTextW(DST_COMBO, path);
-			}
+			SetDlgItemTextW(DST_COMBO, path);
 		}
 		else {
 			// 文字列連結用領域
-			WCHAR	*buf = new WCHAR [max_len = pathArray.GetMultiPathLen(CRLF, NULW, TRUE)];
-			if (pathArray.GetMultiPath(buf, max_len, CRLF, NULW, TRUE)) {
-				srcEdit.SetWindowTextW(buf);
+			auto buf = make_unique<WCHAR[]>(max_len = pathArray.GetMultiPathLen(CRLF, NULW, TRUE));
+			if (pathArray.GetMultiPath(buf.get(), max_len, CRLF, NULW, TRUE)) {
+				srcEdit.SetWindowTextW(buf.get());
 			}
-			delete [] buf;
 		}
 	}
 	return	TRUE;
@@ -1574,11 +1663,15 @@ void TMainDlg::SetPriority(DWORD new_class)
 {
 	if (curPriority != new_class) {
 		if (IsWinVista() && curPriority == IDLE_PRIORITY_CLASS) {
-			::SetPriorityClass(::GetCurrentProcess(), PROCESS_MODE_BACKGROUND_END);
+//			::SetPriorityClass(::GetCurrentProcess(), PROCESS_MODE_BACKGROUND_END);
+//			::SetThreadPriority(GetCurrentThread(), THREAD_MODE_BACKGROUND_END);
 		}
+
 		::SetPriorityClass(::GetCurrentProcess(), new_class);
+
 		if (IsWinVista() && new_class == IDLE_PRIORITY_CLASS) {
-			::SetPriorityClass(::GetCurrentProcess(), PROCESS_MODE_BACKGROUND_BEGIN);
+//			::SetPriorityClass(::GetCurrentProcess(), PROCESS_MODE_BACKGROUND_BEGIN);
+//			::SetThreadPriority(GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN);
 		}
 		curPriority = new_class;
 	}
@@ -1617,8 +1710,8 @@ void TMainDlg::SetExtendFilter()
 		::ShowWindow(dlgItems[maxsizecombo_item].hWnd, mode);
 
 		GetWindowRect(&rect);
-		int height = rect.bottom - rect.top + (isExtendFilter ? filterHeight : -filterHeight);
-		MoveWindow(rect.left, rect.top, rect.right - rect.left, height, IsWindowVisible());
+		int height = rect.cy() + (isExtendFilter ? filterHeight : -filterHeight);
+		MoveWindow(rect.x(), rect.y(), rect.cx(), height, IsWindowVisible());
 		if (IsWindowVisible()) RefreshWindow();
 
 		lastExtendFilter = isExtendFilter;
@@ -1752,9 +1845,9 @@ int64 TMainDlg::GetDateInfo(WCHAR *buf, BOOL is_end)
 		st.wMonth	= (WORD)((day / 100) % 100);
 		st.wDay		= (WORD) (day % 100);
 
-		FILETIME	lt;
-		if (!::SystemTimeToFileTime(&st, &lt)) return -1;
-		if (!::LocalFileTimeToFileTime(&lt, &ft)) return -1;
+		SYSTEMTIME	sst;
+		TzSpecificLocalTimeToSystemTime(NULL, &st, &sst);
+		if (!::SystemTimeToFileTime(&sst, &ft)) return -1;
 	}
 	else {
 		::GetSystemTime(&st);
@@ -1855,7 +1948,9 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 	if (!is_test_mode && !is_delete_mode) {
 		if ((!is_listing && IsDlgButtonChecked(VERIFY_CHECK)) ||
 			(is_listing && is_fore && is_ctrkey)) {
-			info.verifyFlags = FastCopy::VERIFY_FILE;
+			info.verifyFlags = FastCopy::VERIFY_FILE
+				| (cfg.verifyRemove ? FastCopy::VERIFY_REMOVE : 0);
+
 			switch (cfg.hashMode) {
 			case Cfg::MD5:
 				info.verifyFlags |= FastCopy::VERIFY_MD5;
@@ -1915,14 +2010,15 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 	memset(&ti, 0, sizeof(ti));
 	isAbort = FALSE;
 
-	resultStatus = FALSE;
+	resultStatus = TRUE;
 	int		src_len = srcEdit.GetWindowTextLengthW() + 1;
 	int		dst_len = ::GetWindowTextLengthW(GetDlgItem(DST_COMBO)) + 1;
 	if (src_len <= 1 || !is_delete_mode && dst_len <= 1) {
 		return	FALSE;
 	}
 
-	WCHAR	*src = new WCHAR [src_len];
+	auto	_src = make_unique<WCHAR[]>(src_len);
+	auto	src = _src.get();
 	WCHAR	dst[MAX_PATH_EX] = L"";
 	BOOL	ret = TRUE;
 	BOOL	exec_confirm = FALSE;
@@ -1942,7 +2038,7 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 
 	if (srcEdit.GetWindowTextW(src, src_len) == 0
 	|| !is_delete_mode && GetDlgItemTextW(DST_COMBO, dst, MAX_PATH_EX) == 0) {
-		const char	*msg = "Can't get source or destination directory field";
+		const char	*msg = "Can't get src or dst field";
 		if (isNoUI) {
 			WriteErrLogNoUI(msg);
 		}
@@ -1951,6 +2047,11 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 		}
 		ret = FALSE;
 	}
+
+	SendDlgItemMessage(PATH_EDIT,   EM_AUTOURLDETECT, 0, 0);
+	LRESULT evMask = pathEdit.SendMessage(EM_GETEVENTMASK, 0, 0) & ~ENM_LINK;
+	pathEdit.SendMessage(EM_SETEVENTMASK, 0, evMask); 
+
 	SendDlgItemMessage(PATH_EDIT, WM_SETTEXT, 0, (LPARAM)"");
 	SendDlgItemMessage(STATUS_EDIT, WM_SETTEXT, 0, (LPARAM)"");
 	SendDlgItemMessage(ERRSTATUS_STATIC, WM_SETTEXT, 0, (LPARAM)"");
@@ -1964,7 +2065,8 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 	// フィルタ
 	WCHAR	from_date[MINI_BUF]=L"", to_date[MINI_BUF]=L"";
 	WCHAR	min_size[MINI_BUF]=L"", max_size[MINI_BUF]=L"";
-	WCHAR	*inc = NULL, *exc = NULL;
+	WCHAR	*inc = NULL;
+	WCHAR	*exc = NULL;
 	if (is_filter) {
 		DWORD	inc_len = ::GetWindowTextLengthW(GetDlgItem(INCLUDE_COMBO));
 		DWORD	exc_len = ::GetWindowTextLengthW(GetDlgItem(EXCLUDE_COMBO));
@@ -2017,7 +2119,8 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 	}
 
 	int		src_list_len = srcArray.GetMultiPathLen(CRLF, NULW);
-	WCHAR	*src_list = new WCHAR [src_list_len];
+	auto	_src_list = make_unique<WCHAR[]>(src_list_len);
+	auto	src_list = _src_list.get();
 
 	int		srcline_len = srcArray.GetMultiPathLen();
 	Wstr	srcline(srcline_len);
@@ -2068,7 +2171,7 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 		}
 	}
 
-	int	pathLogMax = src_len * sizeof(WCHAR) + sizeof(dst);
+	int	pathLogMax = (src_len + wsizeof(dst)) * 4 + 1; // UTF8換算
 
 	if ((ret || is_initerr_logging) && (pathLogBuf = new char [pathLogMax])) {
 		int len = sprintf(pathLogBuf, "<%s> %s" //Source
@@ -2127,8 +2230,8 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 			len += sprintf(pathLogBuf + len, ")");
 		}
 		if (is_listing && isListLog) len += sprintf(pathLogBuf + len, " (%s)"
-											, isUtf8Log ? AtoU8s(LoadStr(IDS_Log_ListingOnly)) : LoadStr(IDS_Log_ListingOnly) //Listing only
-											);
+					, isUtf8Log ? AtoU8s(LoadStr(IDS_Log_ListingOnly)) : LoadStr(IDS_Log_ListingOnly) //Listing only
+					);
 
 		WCHAR	job[MAX_PATH] = L"";
 		GetDlgItemTextW(JOBTITLE_STATIC, job, MAX_PATH);
@@ -2143,8 +2246,6 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 
 	delete [] exc;
 	delete [] inc;
-	delete [] src_list;
-	delete [] src;
 
 	if (ret) {
 		SendDlgItemMessage(PATH_EDIT, EM_SETTARGETDEVICE, 0, IsListing() ? 1 : 0);	// 折り返し
@@ -2165,16 +2266,19 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 			SetDlgItemText(STATUS_EDIT, LoadStr(ci.all_running >= MaxRunNum() ?
 				IDS_WAIT_MANYPROC : IDS_WAIT_ACQUIREDRV));
 			SetTimer(FASTCOPY_TIMER, FASTCOPY_TIMER_TICK*2);
-			if (isTaskTray) {
-				TaskTray(NIM_MODIFY, hMainIcon[FCWAIT_ICON_IDX], FASTCOPY);
-			}
-			else {
-				::SetClassLong(hWnd, GCL_HICON, (LONG)hMainIcon[FCWAIT_ICON_IDX]);//变为等待图标
+			SetIcon(FCWAIT_ICON_IDX);
+			if (showState & SS_TRAY) {
+				TaskTray(NIM_MODIFY, FCWAIT_ICON_IDX, FASTCOPY);
 			}
 		}
 
 		if (ret) {
 			SetDlgItemText(IsListing() ? LIST_BUTTON : IDOK, LoadStr(IDS_CANCEL));
+			if (auto *btn = IsListing() ? &pauseOkBtn : &pauseListBtn) {
+				btn->SendMessage(BM_SETIMAGE, IMAGE_ICON, (LPARAM)hPauseIcon);
+				btn->SetTipTextW(LoadStrW(IDS_PAUSE));
+			}
+
 			RefreshWindow(TRUE);
 			if (IsWinVista() && !::IsUserAnAdmin()) {
 				::EnableMenuItem(GetMenu(hWnd), ADMIN_MENUITEM,
@@ -2223,16 +2327,20 @@ BOOL TMainDlg::EndCopy(void)
 		SetPriority(NORMAL_PRIORITY_CLASS);
 	}
 	::KillTimer(hWnd, FASTCOPY_TIMER);
+	isPause = FALSE;
 
 	BOOL	is_starting = fastCopy.IsStarting();
 
 	if (is_starting) {
-		SetInfo(TRUE);
-
+		fastCopy.GetTransInfo(&ti, TRUE);
 		if (ti.total.allErrFiles == 0 && ti.total.allErrDirs == 0 &&
 			(ti.total.abortCnt + ti.preTotal.abortCnt) == 0) {
 			resultStatus = TRUE;
 		}
+		else {
+			resultStatus = FALSE;
+		}
+		SetInfo(TRUE);
 
 		if (!IsListing() && isErrLog) {
 			WriteErrLogNormal();
@@ -2247,7 +2355,6 @@ BOOL TMainDlg::EndCopy(void)
 	else {
 		fastCopy.ReleaseExclusivePriv();	// start後は fastCopy.End() で自動発行
 		SendDlgItemMessage(STATUS_EDIT, WM_SETTEXT, 0, (LPARAM)LoadStr(IDS_EndCopy_Cancelled)); // ---- Cancelled. ----
-		::SetClassLong(hWnd, GCL_HICON, (LONG)hMainIcon[FCNORMAL_ICON_IDX]);//图标回到正常
 	}
 
 	::SetThreadExecutionState(ES_CONTINUOUS);
@@ -2452,6 +2559,9 @@ BOOL TMainDlg::EventApp(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		return	TRUE;
 
 	case WM_FASTCOPY_NOTIFY:
+		if (showState & SS_TEMP) {
+			return TRUE;
+		}
 		switch (lParam) {
 		case WM_LBUTTONDOWN: case WM_RBUTTONDOWN:
 			SetForceForegroundWindow();
@@ -2466,7 +2576,7 @@ BOOL TMainDlg::EventApp(UINT uMsg, WPARAM wParam, LPARAM lParam)
 			if (isErrEditHide && (ti.errBuf && ti.errBuf->UsedSize() || errBufOffset)) {
 				SetNormalWindow();
 			}
-			if (isTaskTray) {
+			if (showState & SS_TRAY) {
 				TaskTray(NIM_DELETE);
 			}
 			break;
@@ -2474,8 +2584,7 @@ BOOL TMainDlg::EventApp(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		return	TRUE;
 
 	case WM_FASTCOPY_HIDDEN:
-		Show(cfg.taskbarMode ? SW_MINIMIZE : SW_HIDE);
-		TaskTray(NIM_ADD, hMainIcon[isDelay ? FCWAIT_ICON_IDX : FCNORMAL_ICON_IDX], FASTCOPY);
+		TaskTray(NIM_ADD, curIconIdx, FASTCOPY);
 		return	TRUE;
 
 	case WM_FASTCOPY_RUNAS:
@@ -2521,6 +2630,19 @@ BOOL TMainDlg::EventApp(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_FASTCOPY_SRCEDITFIT:
 		srcEdit.Fit((BOOL)lParam);
 		return	TRUE;
+
+	case WM_FASTCOPY_TRAYTEMP:
+		TaskTrayTemp((BOOL)lParam);
+		return	TRUE;
+
+	case WM_FASTCOPY_TRAYSETUP:
+		setupDlg.SetSheetIdx(TRAY_SHEET);
+		setupDlg.Exec();
+		return	TRUE;
+
+	case WM_FASTCOPY_POSTSETUP:
+		PostSetup();
+		return	TRUE;
 	}
 	return	FALSE;
 }
@@ -2528,9 +2650,8 @@ BOOL TMainDlg::EventApp(UINT uMsg, WPARAM wParam, LPARAM lParam)
 BOOL TMainDlg::EventUser(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	if (uMsg == TaskBarCreateMsg) {
-		if (isTaskTray) {
-			TaskTray(NIM_ADD, hMainIcon[isDelay ? FCWAIT_ICON_IDX : FCNORMAL_ICON_IDX],
-				FASTCOPY);
+		if (showState & SS_TRAY) {
+			TaskTray(NIM_ADD, curIconIdx, FASTCOPY);
 		}
 		return	TRUE;
 	}
@@ -2539,6 +2660,20 @@ BOOL TMainDlg::EventUser(UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 BOOL TMainDlg::EventSystem(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+	return	FALSE;
+}
+
+BOOL TMainDlg::EventCtlColor(UINT uMsg, HDC hDcCtl, HWND hWndCtl, HBRUSH *result)
+{
+	if (uMsg == WM_CTLCOLORSTATIC) {
+		if (hWndCtl == bufEdit.hWnd) {
+			static HBRUSH hBrush = ::CreateSolidBrush(::GetSysColor(COLOR_WINDOW));
+			::SetBkColor(hDcCtl, ::GetSysColor(COLOR_WINDOW));
+			*result = hBrush;
+			return	TRUE;
+		}
+	}
+
 	return	FALSE;
 }
 
@@ -2570,12 +2705,13 @@ BOOL TMainDlg::EvTimer(WPARAM timerID, TIMERPROC proc)
 		}
 	}
 	else if (timerID == FASTCOPY_PAINT_TIMER) {
+		DBG("GetTrayIconState=%d\n", GetTrayIconState());
 		KillTimer(timerID);
 		InvalidateRect(NULL, TRUE);
-		Debug("InvalidateRect timer\n");
+		DBG("InvalidateRect timer\n");
 	}
 	else {
-		Debug("Illegal timer(%d)\n", timerID);
+		DBG("Illegal timer(%d)\n", timerID);
 		KillTimer(timerID);
 	}
 
@@ -2612,11 +2748,11 @@ int TMainDlg::MessageBox(LPCSTR msg, LPCSTR title, UINT style)
 
 DWORD TMainDlg::UpdateSpeedLevel(BOOL is_timer)
 {
-	DWORD	waitCnt = fastCopy.GetWaitTick();
-	DWORD	newWaitCnt = waitCnt;
+	DWORD	waitLv = fastCopy.GetWaitLv();
+	DWORD	newWaitLv = waitLv;
 
 	if (speedLevel == SPEED_FULL) {
-		newWaitCnt = 0;
+		newWaitLv = 0;
 	}
 	else if (speedLevel == SPEED_AUTO) {
 		POINT	pt;
@@ -2624,35 +2760,37 @@ DWORD TMainDlg::UpdateSpeedLevel(BOOL is_timer)
 		HWND	foreWnd = ::GetForegroundWindow();
 
 		if (foreWnd == hWnd) {
-			newWaitCnt = 0;
+			newWaitLv = FastCopy::AUTOSLOW_WAITLV;
 		}
 		else if (pt.x != curPt.x || pt.y != curPt.y || foreWnd != curForeWnd) {
 			curPt = pt;
 			curForeWnd = foreWnd;
-			newWaitCnt = cfg.waitTick;
+			newWaitLv = cfg.waitLv;
 			timerLast = timerCnt;
 		}
-		else if (is_timer && newWaitCnt > 0 && (timerCnt - timerLast) >= 10) {
-			newWaitCnt -= 1;
+		else if (is_timer
+				 && newWaitLv > FastCopy::AUTOSLOW_WAITLV
+				 && (timerCnt - timerLast) >= 10) {
+			newWaitLv -= 1;
 			timerLast = timerCnt;
 		}
 	}
 	else if (speedLevel == SPEED_SUSPEND) {
-		newWaitCnt = FastCopy::SUSPEND_WAITTICK;
+		newWaitLv = FastCopy::SUSPEND_WAITLV;
 	}
 	else {
-		static DWORD	waitArray[]    = { 2560, 1280, 640, 320, 160, 80, 40, 20, 10 };
-		newWaitCnt = waitArray[speedLevel - 1];
+		static DWORD	waitArray[]    = { 95, 90, 80, 70, 55, 40, 30, 20, 10 };
+		newWaitLv = waitArray[speedLevel - 1];
 	}
 
-	fastCopy.SetWaitTick(newWaitCnt);
+	fastCopy.SetWaitLv(newWaitLv);
 
 	if (!is_timer && fastCopy.IsStarting()) {
 		if (cfg.priority <= 0) {
 			SetPriority((speedLevel != SPEED_FULL || cfg.priority == 1) ?
 							IDLE_PRIORITY_CLASS : NORMAL_PRIORITY_CLASS);
 		}
-		if (speedLevel == SPEED_SUSPEND) {
+		if (speedLevel == SPEED_SUSPEND || isPause) {
 			fastCopy.Suspend();
 		}
 		else {
@@ -2660,7 +2798,7 @@ DWORD TMainDlg::UpdateSpeedLevel(BOOL is_timer)
 		}
 	}
 
-	return	newWaitCnt;
+	return	newWaitLv;
 }
 
 #ifdef USE_LISTVIEW
@@ -2685,7 +2823,6 @@ BOOL TMainDlg::RunAsAdmin(DWORD flg)
 {
 	SHELLEXECUTEINFOW	sei = {};
 	WCHAR				buf[MAX_PATH];
-	DWORD				size = MAX_PATH;
 
 	swprintf(buf, L"/runas=%p,%x,\"%s\",\"%s\"",
 		hWnd, flg, cfg.userDir, cfg.virtualDir ? cfg.virtualDir : L"");
@@ -2708,15 +2845,14 @@ BOOL CopyItem(HWND hSrc, HWND hDst)
 	if (!hSrc || !hDst) return	FALSE;
 
 	DWORD	len = (DWORD)::SendMessageW(hSrc, WM_GETTEXTLENGTH, 0, 0) + 1;
-	WCHAR	*wbuf = new WCHAR [len];
+	auto	wbuf = make_unique<WCHAR[]>(len);
 
 	if (!wbuf) return	FALSE;
 
-	::SendMessageW(hSrc, WM_GETTEXT, len, (LPARAM)wbuf);
-	::SendMessageW(hDst, WM_SETTEXT, 0, (LPARAM)wbuf);
+	::SendMessageW(hSrc, WM_GETTEXT, len, (LPARAM)wbuf.get());
+	::SendMessageW(hDst, WM_SETTEXT, 0, (LPARAM)wbuf.get());
 	::EnableWindow(hDst, ::IsWindowEnabled(hSrc));
 
-	delete [] wbuf;
 	return	TRUE;
 }
 
@@ -2772,59 +2908,100 @@ void TMainDlg::Show(int mode)
 	if (mode != SW_HIDE && mode != SW_MINIMIZE) {
 		SetupWindow();
 	}
+	if (mode == SW_SHOWDEFAULT) {
+		isNoUI = FALSE;
+	}
 	TDlg::Show(mode);
 }
 
-BOOL TMainDlg::TaskTray(int nimMode, HICON hSetIcon, LPCSTR tip, BOOL balloon)
+BOOL TMainDlg::TaskTray(int nimMode, int idx, LPCSTR tip, BOOL balloon)
 {
-	isTaskTray = (nimMode == NIM_DELETE) ? FALSE : TRUE;
+	if (nimMode != NIM_DELETE) {
+		SetIcon(idx);
+	}
+
+	if (cfg.taskbarMode && (showState & SS_TEMP) == 0) {
+		Show(SW_MINIMIZE);
+		showState = SS_MINMIZE;
+		DBG("TaskTray min\n");
+		return	TRUE;
+	}
+
 	BOOL	ret = FALSE;
 
-	if (cfg.taskbarMode) {
-		if (!hSetIcon) {
-			hSetIcon = hMainIcon[FCNORMAL_ICON_IDX];
+	if (nimMode == NIM_DELETE) {
+		showState &= ~SS_TRAY;
+	} else {
+		showState |= SS_TRAY;
+	}
+	HICON	hIcon = (nimMode == NIM_DELETE) ? NULL : hMainIcon[idx];
+
+	NOTIFYICONDATA	tn = { IsWinVista() ? sizeof(tn) : NOTIFYICONDATA_V2_SIZE };
+	tn.hWnd = hWnd;
+	tn.uID = FASTCOPY_NIM_ID;
+	tn.uFlags = NIF_MESSAGE|(hIcon ? NIF_ICON : 0)|(tip ? NIF_TIP : 0);
+	tn.uCallbackMessage = WM_FASTCOPY_NOTIFY;
+	tn.hIcon = hIcon;
+	if (tip) {
+		sprintf(tn.szTip, "%.127s", tip);
+	}
+	DWORD	sv_tout = 0;
+
+	if (balloon && tip && !isNoUI) {
+		tn.uFlags |= NIF_INFO;
+		strncpyz(tn.szInfo, tip, sizeof(tn.szInfo));
+		strncpyz(tn.szInfoTitle, FASTCOPY, sizeof(tn.szInfoTitle));
+		tn.uTimeout		= cfg.finishNotifyTout * 1000;
+		tn.dwInfoFlags	= NIIF_INFO | NIIF_NOSOUND;
+
+		// Vista以降では uTimeout ではなく SPI_SETMESSAGEDURATION
+		if (IsWinVista() && !IsWin10()) {
+			::SystemParametersInfo(SPI_GETMESSAGEDURATION, 0, (void *)&sv_tout, 0);
+			::SystemParametersInfo(SPI_SETMESSAGEDURATION, 0, (void *)(INT_PTR)tn.uTimeout, 0);
 		}
-		ret = (BOOL)SendMessage(WM_SETICON, ICON_BIG, (LPARAM)hSetIcon);
+	}
+
+	ret = ::Shell_NotifyIcon(nimMode, &tn);
+
+	if (balloon && tip && !isNoUI) {
+		if (IsWinVista() && !IsWin10() && sv_tout) {
+			::SystemParametersInfo(SPI_SETMESSAGEDURATION, 0, (void *)(INT_PTR)sv_tout, 0);
+		}
+	}
+	if (nimMode == NIM_ADD) {
+		ForceSetTrayIcon(hWnd, FASTCOPY_NIM_ID);
+		auto	mode = GetTrayIconState();
+		if (mode == TIS_ALL || mode == TIS_SHOW || isNoUI) {
+			showState &= ~SS_MINMIZE;
+		} else {
+			showState |= SS_MINMIZE;
+		}
+	}
+	if (showState & SS_MINMIZE) {
+//		SetIcon(idx);
+	}
+	if (nimMode != NIM_DELETE && (showState & SS_TEMP) == 0) {
+		Show((showState & SS_MINMIZE) ? SW_MINIMIZE : SW_HIDE);
+		DBG("TaskTray showState=%x\n", showState);
+	}
+
+	return	ret;
+}
+
+void TMainDlg::TaskTrayTemp(BOOL on)
+{
+	if (on) {
+		if ((showState & SS_TEMP) == 0) {
+			showState |= SS_TEMP;
+			TaskTray(NIM_ADD, FCNORM_ICON_IDX, FASTCOPY);
+		}
 	}
 	else {
-		NOTIFYICONDATA	tn = { IsWinVista() ? sizeof(tn) : NOTIFYICONDATA_V2_SIZE };
-		tn.hWnd = hWnd;
-		tn.uID = FASTCOPY_NIM_ID;		// test
-		tn.uFlags = NIF_MESSAGE|(hSetIcon ? NIF_ICON : 0)|(tip ? NIF_TIP : 0);
-		tn.uCallbackMessage = WM_FASTCOPY_NOTIFY;
-		tn.hIcon = hSetIcon;
-		if (tip) {
-			sprintf(tn.szTip, "%.127s", tip);
-		}
-		DWORD	sv_tout = 0;
-
-		if (balloon && tip) {
-			tn.uFlags |= NIF_INFO;
-			strncpyz(tn.szInfo, tip, sizeof(tn.szInfo));
-			strncpyz(tn.szInfoTitle, FASTCOPY, sizeof(tn.szInfoTitle));
-			tn.uTimeout		= cfg.finishNotifyTout * 1000;
-			tn.dwInfoFlags	= NIIF_INFO | NIIF_NOSOUND;
-
-			// Vista以降では uTimeout ではなく SPI_SETMESSAGEDURATION
-			if (IsWinVista() && !IsWin10()) {
-				::SystemParametersInfo(SPI_GETMESSAGEDURATION, 0, (void *)&sv_tout, 0);
-				::SystemParametersInfo(SPI_SETMESSAGEDURATION, 0, (void *)(INT_PTR)tn.uTimeout, 0);
-			}
-		}
-
-		ret = ::Shell_NotifyIcon(nimMode, &tn);
-
-		if (balloon && tip) {
-			if (IsWinVista() && !IsWin10() && sv_tout) {
-				::SystemParametersInfo(SPI_SETMESSAGEDURATION, 0, (void *)(INT_PTR)sv_tout, 0);
-			}
-		}
-
-		if (isTaskTray) {
-			static BOOL once_result = ForceSetTrayIcon(hWnd, FASTCOPY_NIM_ID);
+		if (showState & SS_TEMP) {
+			TaskTray(NIM_DELETE);
+			showState &= ~SS_TEMP;
 		}
 	}
-	return	ret;
 }
 
 #ifndef SF_UNICODE
@@ -2895,7 +3072,36 @@ ssize_t ticktime_str(char *buf, DWORD tick)
 	return	time_str(buf, tick/1000);
 }
 
-BOOL TMainDlg::SetTaskTrayInfo(BOOL is_finish_status, double doneRate, int remain_sec)
+
+void TMainDlg::SetIcon(int idx)
+{
+//	DBG("SetIcon=%d\n", idx);
+
+	curIconIdx = idx;
+
+	SendMessage(WM_SETICON, ICON_BIG, (LPARAM)hMainIcon[idx]);
+}
+
+void TMainDlg::SetUserAgent()
+{
+	static auto icld = ::GetUserDefaultLCID();
+
+	TInetSetUserAgent(Fmt("FastCopy %s%s %x/%d%d%d/%x %s", GetVersionStr(),
+#ifdef _WIN64
+		"(x64)",
+#else
+		"",
+#endif
+		icld,
+		cfg.ignoreErr?1:0,
+		cfg.enableVerify?1:0,
+		cfg.estimateMode?1:0,
+		cfg.jobMax,
+		TGetHashedMachineIdStr()
+	));
+}
+
+BOOL TMainDlg::SetTaskTrayInfo(BOOL is_finish, double doneRate, int remain_sec)
 {
 	char	buf[1024];
 
@@ -2914,11 +3120,11 @@ BOOL TMainDlg::SetTaskTrayInfo(BOOL is_finish_status, double doneRate, int remai
 				"FastCopy (%s%s %s%s %s)" :
 				"FastCopy (%s%s %s%s %s%s %s)"
 				, s1
-				, LoadStr(IDS_Info_MB) //MB
+				, LoadStr(IDS_Info_MiB) //MiB
 				, s2
 				, LoadStr(IDS_Info_files) //files
 				, IsListing() ? s4 : s3
-				, LoadStr(IDS_Info_MB_s) //MB/s
+				, LoadStr(IDS_Info_MiB_s) //MiB/s
 				, s4
 				);
 		}
@@ -2931,14 +3137,14 @@ BOOL TMainDlg::SetTaskTrayInfo(BOOL is_finish_status, double doneRate, int remai
 				, LoadStr(IDS_TaskTrayInfo_Estimating) //Estimating
 				, LoadStr(IDS_TaskTrayInfo_Total) //Total
 				, s1
-				, LoadStr(IDS_Info_MB) //MB
+				, LoadStr(IDS_Info_MiB) //MiB
 				, s2
 				, LoadStr(IDS_Info_files) //files
 				, s3
 				);
 		}
 		else {
-			if ((info.flags & FastCopy::PRE_SEARCH) && !ti.isPreSearch && !is_finish_status
+			if ((info.flags & FastCopy::PRE_SEARCH) && !ti.isPreSearch && !is_finish
 			&& doneRate >= 0.0001) {
 				time_str(s1, remain_sec);
 				len += sprintf(buf + len, "%d%% (%s %s) "
@@ -2956,22 +3162,21 @@ BOOL TMainDlg::SetTaskTrayInfo(BOOL is_finish_status, double doneRate, int remai
 				"FastCopy (%s %s %s %s %s)" :
 				"FastCopy (%s %s %s %s %s %s %s)"
 				, s1
-				, LoadStr(IDS_Info_MB) //MB
+				, LoadStr(IDS_Info_MiB) //MiB
 				, s2
 				, LoadStr(IDS_Info_files) //files
 				, IsListing() ? s4 : s3
-				, LoadStr(IDS_Info_MB_s) //MB/s
+				, LoadStr(IDS_Info_MiB_s) //MiB/s
 				, s4
 				);
 		}
-		if (is_finish_status) {
+		if (is_finish) {
 			strcpy(buf + len, LoadStr(IDS_TaskTrayInfo_Finished)); //Finished
 		}
 	}
 
-	curIconIndex = is_finish_status ? 0 : (curIconIndex + 1) % MAX_NORMAL_FASTCOPY_ICON;
-	TaskTray(NIM_MODIFY, hMainIcon[curIconIndex], buf,
-		(finishNotify & 1) && is_finish_status);
+	TaskTray(NIM_MODIFY, curIconIdx, buf, (finishNotify & 1) && is_finish);
+
 	return	TRUE;
 }
 
@@ -3044,7 +3249,7 @@ BOOL TMainDlg::CalcInfo(double *doneRate, int *remain_sec, int *total_sec)
 //			doneTrans += cur.verifyTrans;
 		}
 
-		Debug("F: %5d(%4d/%4d) / %5d  T: %7d / %7d   \n", int(doneFiles), int(cur.writeFiles),
+		DBG("F: %5d(%4d/%4d) / %5d  T: %7d / %7d   \n", int(doneFiles), int(cur.writeFiles),
 			int(cur.readFiles), int(preFiles), int(doneTrans/1024), int(preTrans/1024));
 
 		if (doneFiles > preFiles) preFiles = doneFiles;
@@ -3073,7 +3278,7 @@ BOOL TMainDlg::CalcInfo(double *doneRate, int *remain_sec, int *total_sec)
 		}
 		prevTotalSec = lastTotalSec;
 
-		Debug("recalc(%d) %.2f sec=%d coef=%.2f pre=%lld\n",
+		DBG("recalc(%d) %.2f sec=%d coef=%.2f pre=%lld\n",
 			(realDoneRate < 0.70 ? 10 : (11 - int(realDoneRate * 10))),
 			doneTransRate, lastTotalSec, coef, preFiles);
 	}
@@ -3086,7 +3291,7 @@ BOOL TMainDlg::CalcInfo(double *doneRate, int *remain_sec, int *total_sec)
 	return	TRUE;
 }
 
-BOOL TMainDlg::SetInfo(BOOL is_finish_status)
+BOOL TMainDlg::SetInfo(BOOL is_finish)
 {
 	char	buf[1024], s1[64], s2[64], s3[64], s4[64], s5[64], s6[64];
 	int		len = 0;
@@ -3096,7 +3301,7 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 
 	doneRatePercent = -1;
 
-	fastCopy.GetTransInfo(&ti, is_finish_status || !isTaskTray);
+	fastCopy.GetTransInfo(&ti, is_finish || (showState & SS_TRAY) == 0);
 	if (ti.fullTickCount == 0) {
 		ti.fullTickCount++;
 	}
@@ -3124,14 +3329,21 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 		SetWindowTitle();
 	}
 
-	if (isTaskTray) {
-		SetTaskTrayInfo(is_finish_status, doneRate, remain_sec);
-		if (isTaskTray && !is_finish_status) {
+	auto idx =	isPause   ? FCNORM2_ICON_IDX :
+				is_finish ? ((IsListing() || isAbort) ? FCNORM_ICON_IDX : 
+							 resultStatus ? FCDONE_ICON_IDX : FCERR_ICON_IDX) :
+				(curIconIdx + 1) % MAX_FCNORM_ICON;
+
+	SetIcon(idx);
+
+	if (showState & SS_TRAY) {
+		SetTaskTrayInfo(is_finish, doneRate, remain_sec);
+		if ((showState & SS_TRAY) && !is_finish) {
 			return TRUE;
 		}
 	}
 
-	if ((info.flags & FastCopy::PRE_SEARCH) && !ti.isPreSearch && !is_finish_status
+	if ((info.flags & FastCopy::PRE_SEARCH) && !ti.isPreSearch && !is_finish
 	&& doneRate >= 0.0001) {
 		time_str(s1, remain_sec);
 		len += sprintf(buf + len, "--%s %s (%d%%)--\r\n"
@@ -3159,7 +3371,7 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 			, LoadStr(IDS_Info_Estimating) //Estimating ...
 			, LoadStr(IDS_Info_PreTrans) //PreTrans
 			, s1
-			, LoadStr(IDS_Info_MB) //MB
+			, LoadStr(IDS_Info_MiB) //MiB
 			, LoadStr(IDS_Info_PreFiles) //PreFiles
 			, s2
 			, s3
@@ -3195,7 +3407,7 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 			"%s = %s %s"
 			, LoadStr(IDS_Info_TotalDel) //TotalDel
 			, s1
-			, LoadStr(IDS_Info_MB) //MB
+			, LoadStr(IDS_Info_MiB) //MiB
 			, LoadStr(IDS_Info_DelFiles) //DelFiles
 			, s2
 			, s3
@@ -3206,7 +3418,7 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 			, LoadStr(IDS_Info_files_s) //files/s
 			, LoadStr(IDS_Info_OverWrite) //OverWrite
 			, s6
-			, LoadStr(IDS_Info_MB_s) //MB/s
+			, LoadStr(IDS_Info_MiB_s) //MiB/s
 			);
 	}
 	else {
@@ -3225,7 +3437,7 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 				"%s = %s (%s)\r\n"
 				, LoadStr(IDS_Info_TotalSize) //TotalSize
 				, s1
-				, LoadStr(IDS_Info_MB) //MB
+				, LoadStr(IDS_Info_MiB) //MiB
 				, LoadStr(IDS_Info_TotalFiles) //TotalFiles
 				, s2
 				, s3
@@ -3250,10 +3462,10 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 				"%s = %s (%s)\r\n"
 				, LoadStr(IDS_Info_TotalRead) //TotalRead
 				, s1
-				, LoadStr(IDS_Info_MB) //MB
+				, LoadStr(IDS_Info_MiB) //MiB
 				, LoadStr(IDS_Info_TotalWrite) //TotalWrite
 				, s2
-				, LoadStr(IDS_Info_MB) //MB
+				, LoadStr(IDS_Info_MiB) //MiB
 				, LoadStr(IDS_Info_TotalFiles) //TotalFiles
 				, s3
 				, s4
@@ -3271,7 +3483,7 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 				"%s = %s (%s)\r\n"
 				, LoadStr(IDS_Info_TotalSkip) //TotalSkip
 				, s1
-				, LoadStr(IDS_Info_MB) //MB
+				, LoadStr(IDS_Info_MiB) //MiB
 				, LoadStr(IDS_Info_SkipFiles) //SkipFiles
 				, s2
 				, s3
@@ -3287,7 +3499,7 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 				"%s = %s (%s)\r\n"
 				, LoadStr(IDS_Info_TotalDel) //TotalDel
 				, s1
-				, LoadStr(IDS_Info_MB) //MB
+				, LoadStr(IDS_Info_MiB) //MiB
 				, LoadStr(IDS_Info_DelFiles) //DelFiles
 				, s2
 				, s3
@@ -3306,7 +3518,7 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 			, s1
 			, LoadStr(IDS_Info_TransRate) //TransRate
 			, s2
-			, LoadStr(IDS_Info_MB_s) //MB/s
+			, LoadStr(IDS_Info_MiB_s) //MiB/s
 			, LoadStr(IDS_Info_FileRate) //FileRate
 			, s3
 			, LoadStr(IDS_Info_files_s) //files/s
@@ -3322,25 +3534,24 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 				"%s = %s"
 				, LoadStr(IDS_Info_VerifyRead) //VerifyRead
 				, s1
-				, LoadStr(IDS_Info_MB) //MB
+				, LoadStr(IDS_Info_MiB) //MiB
 				, LoadStr(IDS_Info_VerifyFiles) //VerifyFiles
 				, s2
 				);
 		}
 	}
 
-	if (IsListing() && is_finish_status) {
+	if (IsListing() && is_finish) {
 		len += sprintf(buf + len, "\r\n---- %s%s %s ----"
 			, LoadStr(IDS_Info_Listing) //Listing
 			, (info.verifyFlags & FastCopy::VERIFY_FILE) ? LoadStr(IDS_Info_verify) : ""
 			, LoadStr(IDS_Info_Done) //Done
 			);
 	}
-	curIconIndex = is_finish_status ? 0 : (curIconIndex + 1) % MAX_NORMAL_FASTCOPY_ICON;
-	::SetClassLong(hWnd, GCL_HICON, (LONG)hMainIcon[curIconIndex]);//图标动起来
 	SetDlgItemText(STATUS_EDIT, buf);
+
 	if (IsListing()) {
-		if (is_finish_status) {
+		if (is_finish) {
 			int offset_v = listBufOffset / sizeof(WCHAR);
 			SendDlgItemMessageW(PATH_EDIT, WM_GETTEXTLENGTH, 0, 0);
 
@@ -3360,7 +3571,7 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 //			SendDlgItemMessage(PATH_EDIT, EM_LINESCROLL, 0, line > 2 ? line -2 : 0);
 		}
 	}
-	else if (is_finish_status) {
+	else if (is_finish) {
 		comma_int64(s1, ti.total.allErrFiles);
 		comma_int64(s2, ti.total.allErrDirs);
 
@@ -3389,11 +3600,11 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 
 	if (isErrEditHide && ti.errBuf->UsedSize() > 0) {
 		if (ti.errBuf->UsedSize() < 40) {	// abort only の場合は小さく
-			normalHeight = normalHeightOrg - (normalHeight - miniHeight) / 3;
+//			normalHeight = normalHeightOrg - (normalHeight - miniHeight) / 3;
 		}
 		SetNormalWindow();
 	}
-	if (ti.errBuf->UsedSize() > errBufOffset || errBufOffset == MAX_ERR_BUF || is_finish_status) {
+	if (ti.errBuf->UsedSize() > errBufOffset || errBufOffset == MAX_ERR_BUF || is_finish) {
 		if (ti.errBuf->UsedSize() > errBufOffset && errBufOffset != MAX_ERR_BUF) {
 			::EnterCriticalSection(ti.errCs);
 			RichEditSetText(GetDlgItem(ERR_EDIT), (WCHAR *)(ti.errBuf->Buf() + errBufOffset));
@@ -3411,7 +3622,7 @@ BOOL TMainDlg::SetInfo(BOOL is_finish_status)
 		SetDlgItemText(ERRSTATUS_STATIC, buf);
 	}
 
-	if (!isTaskTray && is_finish_status && (finishNotify & 2)) {
+	if ((showState & SS_TRAY) == 0 && is_finish && (finishNotify & 2)) {
 		if (::GetForegroundWindow() != hWnd) {
 			::FlashWindow(hWnd, TRUE);
 		}

@@ -39,6 +39,8 @@ struct TInetReqParam { // 内部利用
 void TInetSetUserAgent(const char *key);
 void TInetSetUserAgentRaw(const char *agent);
 const char *TInetGetUserAgent();
+const char *TGetAddHeadStr();
+void TSetAddHeadStr(const char *head);
 
 DWORD TInetRequest(LPCSTR host, LPCSTR path, BYTE *data, int data_len, DynBuf *reply,
 	U8str *errMsg, DWORD flags=0);

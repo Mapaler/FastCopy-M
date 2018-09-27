@@ -401,7 +401,7 @@ bool IPDict::get_dict_list(const char *key, IPDictList *val) const
 			size_t size = ipd->unpack_core(d->Buf(), d->UsedSize());
 			if (size == 0) return false;
 			if (size != d->UsedSize()) {
-				Debug("internal size mismatch %zd %zd\n", size, d->UsedSize());
+				DBG("internal size mismatch %zd %zd\n", size, d->UsedSize());
 			}
 		}
 		val->push_back(shared_ptr<IPDict>(ipd));
@@ -421,7 +421,7 @@ bool IPDict::get_ipdict_list(const char *key, IPDictList *val) const
 		size_t size = ipd->unpack(d->Buf(), d->UsedSize());
 		if (size == 0) return false;
 		if (size != d->UsedSize()) {
-			Debug("internal size mismatch(ip) %zd %zd\n", size, d->UsedSize());
+			DBG("internal size mismatch(ip) %zd %zd\n", size, d->UsedSize());
 		}
 		val->push_back(shared_ptr<IPDict>(ipd));
 	}
@@ -796,10 +796,10 @@ bool ipdict_verify(const IPDict *ipdict, const DynBuf *key_blob, HCRYPTPROV h_cs
 		if (::CryptHashData(hHash, dbuf, pack_size, 0)) {
 			if (::CryptVerifySignature(hHash, sign, RSA2048_SIGN_SIZE, hExKey, 0, 0)) {
 				ret = true;
-		//		Debug("CryptVerifySignature OK!\n");
+		//		DBG("CryptVerifySignature OK!\n");
 			}
 			else {
-				Debug("CryptVerifySignature err=%x\n", GetLastError());
+				DBG("CryptVerifySignature err=%x\n", GetLastError());
 			}
 		}
 		::CryptDestroyHash(hHash);
@@ -827,19 +827,19 @@ static const char	*sv2 = "strstr2";
 
 static bool ipdic_prim_put(shared_ptr<IPDict> cmd)
 {
-	if (!cmd->put_int("int",  iv1))		return Debug("put_int err\n"),  false;
-	if (!cmd->put_int("int2", iv2))		return Debug("put_int2 err\n"), false;
-	if (!cmd->put_str("str",  sv1))		return Debug("put_str err\n"),  false;
-	if (!cmd->put_str("str2", sv2))		return Debug("put_str2 err\n"), false;
+	if (!cmd->put_int("int",  iv1))		return DBG("put_int err\n"),  false;
+	if (!cmd->put_int("int2", iv2))		return DBG("put_int2 err\n"), false;
+	if (!cmd->put_str("str",  sv1))		return DBG("put_str err\n"),  false;
+	if (!cmd->put_str("str2", sv2))		return DBG("put_str2 err\n"), false;
 
-	if (!cmd->put_bytes("bytes1", db1->Buf(), db1->UsedSize())) return Debug("put_bytes"), false;
-	if (!cmd->put_bytes("bytes2", db2->Buf(), db2->UsedSize())) return Debug("put_bytes2"), false;
+	if (!cmd->put_bytes("bytes1", db1->Buf(), db1->UsedSize())) return DBG("put_bytes"), false;
+	if (!cmd->put_bytes("bytes2", db2->Buf(), db2->UsedSize())) return DBG("put_bytes2"), false;
 
 	if (!cmd->put_bytes_str("bytes_str1", dbs1->Buf(), dbs1->UsedSize())) {
-		return Debug("put_bytes_str1"), false;
+		return DBG("put_bytes_str1"), false;
 	}
 	if (!cmd->put_bytes_str("bytes_str2", dbs2->Buf(), dbs2->UsedSize())) {
-		return Debug("put_bytes_str2"), false;
+		return DBG("put_bytes_str2"), false;
 	}
 
 	return	true;
@@ -856,17 +856,17 @@ static bool ipdic_prim_get(shared_ptr<IPDict> cmd)
 	DynBuf	rdbs1;
 	DynBuf	rdbs2;
 
-	if (!cmd->get_int("int",     &riv1) || riv1 != iv1)	return Debug("get_int err\n"),  false;
-	if (!cmd->get_int("int2",    &riv2) || riv2 != iv2)	return Debug("get_int2 err\n"), false;
-	if (!cmd->get_str("str",     &rs1)  || rs1 != sv1)	return Debug("get_str err\n"),  false;
-	if (!cmd->get_str("str2",    &rs2)  || rs2 != sv2)	return Debug("get_str2 err\n"), false;
-	if (!cmd->get_bytes("bytes1", &rdb1)|| rdb1 != *db1)	return Debug("get_bytes"),      false;
-	if (!cmd->get_bytes("bytes2", &rdb2)|| rdb2 != *db2)	return Debug("get_bytes2"),     false;
+	if (!cmd->get_int("int",     &riv1) || riv1 != iv1)	return DBG("get_int err\n"),  false;
+	if (!cmd->get_int("int2",    &riv2) || riv2 != iv2)	return DBG("get_int2 err\n"), false;
+	if (!cmd->get_str("str",     &rs1)  || rs1 != sv1)	return DBG("get_str err\n"),  false;
+	if (!cmd->get_str("str2",    &rs2)  || rs2 != sv2)	return DBG("get_str2 err\n"), false;
+	if (!cmd->get_bytes("bytes1", &rdb1)|| rdb1 != *db1)	return DBG("get_bytes"),      false;
+	if (!cmd->get_bytes("bytes2", &rdb2)|| rdb2 != *db2)	return DBG("get_bytes2"),     false;
 	if (!cmd->get_bytes_str("bytes_str1", &rdbs1)|| rdbs1 != *dbs1) {
-		return Debug("get_bytes_str1"), false;
+		return DBG("get_bytes_str1"), false;
 	}
 	if (!cmd->get_bytes_str("bytes_str2", &rdbs2)|| rdbs2 != *dbs2) {
-		return Debug("get_bytes_str2"), false;
+		return DBG("get_bytes_str2"), false;
 	}
 
 	return	true;
@@ -880,8 +880,8 @@ static bool ipdic_dict_put(shared_ptr<IPDict> cmd)
 {
 	if (!ipdic_prim_put(sd2))  return false;
 
-	if (!cmd->put_dict("sd1", *sd1)) return Debug("put_dict1"), false;
-	if (!cmd->put_dict("sd2", *sd2)) return Debug("put_dict2"), false;
+	if (!cmd->put_dict("sd1", *sd1)) return DBG("put_dict1"), false;
+	if (!cmd->put_dict("sd2", *sd2)) return DBG("put_dict2"), false;
 
 	return	true;
 }
@@ -891,8 +891,8 @@ static bool ipdic_dict_get(shared_ptr<IPDict> cmd)
 	shared_ptr<IPDict>	rsd1(new IPDict);
 	shared_ptr<IPDict>	rsd2(new IPDict);
 
-	if (!cmd->get_dict("sd1", rsd1.get()) || *rsd1 != *sd1) return Debug("get_dict1"), false;
-	if (!cmd->get_dict("sd2", rsd2.get()) || *rsd2 != *sd2) return Debug("get_dict2"), false;
+	if (!cmd->get_dict("sd1", rsd1.get()) || *rsd1 != *sd1) return DBG("get_dict1"), false;
+	if (!cmd->get_dict("sd2", rsd2.get()) || *rsd2 != *sd2) return DBG("get_dict2"), false;
 
 	if (!ipdic_prim_get(rsd2))  return false;
 
@@ -909,12 +909,12 @@ static const IPDictList		ipl = { shared_ptr<IPDict>(sd1), shared_ptr<IPDict>(sd2
 
 static bool ipdic_list_put(shared_ptr<IPDict> cmd)
 {
-	if (!cmd->put_int_list("il",         il)) return Debug("put_int_list"), false;
-	if (!cmd->put_str_list("sl",         sl)) return Debug("put_str_list"), false;
-	if (!cmd->put_bytes_list("bl",       bl)) return Debug("put_bytes_list"), false;
-	if (!cmd->put_bytes_str_list("bsl", bsl)) return Debug("put_bytes_str_list"), false;
-	if (!cmd->put_dict_list("dl",        dl)) return Debug("put_dict_list"), false;
-	if (!cmd->put_ipdict_list("ipl",    ipl)) return Debug("put_ipdict_list"), false;
+	if (!cmd->put_int_list("il",         il)) return DBG("put_int_list"), false;
+	if (!cmd->put_str_list("sl",         sl)) return DBG("put_str_list"), false;
+	if (!cmd->put_bytes_list("bl",       bl)) return DBG("put_bytes_list"), false;
+	if (!cmd->put_bytes_str_list("bsl", bsl)) return DBG("put_bytes_str_list"), false;
+	if (!cmd->put_dict_list("dl",        dl)) return DBG("put_dict_list"), false;
+	if (!cmd->put_ipdict_list("ipl",    ipl)) return DBG("put_ipdict_list"), false;
 
 	return	true;
 }
@@ -929,27 +929,27 @@ static bool ipdic_list_get(shared_ptr<IPDict> cmd)
 	IPDictList		ripl;
 
 	if (!cmd->get_int_list("il",   &ril) || ril != il)
-		return Debug("get_int_list"), false;
+		return DBG("get_int_list"), false;
 
 	if (!cmd->get_str_list("sl",   &rsl) ||
 		!equal(rsl.begin(), rsl.end(), sl.begin(), deref_eq<shared_ptr<U8str>>))
-		return Debug("get_str_list"), false;
+		return DBG("get_str_list"), false;
 
 	if (!cmd->get_bytes_list("bl", &rbl) ||
 		!equal(rbl.begin(), rbl.end(), bl.begin(), deref_eq<shared_ptr<DynBuf>>))
-		return Debug("get_bytes_list"), false;
+		return DBG("get_bytes_list"), false;
 
 	if (!cmd->get_bytes_str_list("bsl", &rbsl) ||
 		!equal(rbsl.begin(), rbsl.end(), bsl.begin(), deref_eq<shared_ptr<DynBuf>>))
-		return Debug("get_bytes_str_list"), false;
+		return DBG("get_bytes_str_list"), false;
 
 	if (!cmd->get_dict_list("dl",  &rdl) ||
 		!equal(rdl.begin(), rdl.end(), dl.begin(), deref_eq<shared_ptr<IPDict>>))
-		return Debug("get_dict_list"), false;
+		return DBG("get_dict_list"), false;
 
 	if (!cmd->get_ipdict_list("ipl", &ripl) ||
 		!equal(ripl.begin(), ripl.end(), ipl.begin(), deref_eq<shared_ptr<IPDict>>))
-		return Debug("get_ipdict_list"), false;
+		return DBG("get_ipdict_list"), false;
 
 	return	true;
 }
@@ -980,7 +980,7 @@ static bool ipdic_pack_test(DynBuf *d)
 	d->Alloc(cmd->pack_size());
 	d->SetUsedSize(cmd->pack(d->Buf(), d->Size()));
 
-	Debug("pack=%s\n", d->Buf());
+	DBG("pack=%s\n", d->Buf());
 
 	return	d->UsedSize() > 0 ? true : false;
 }
@@ -989,7 +989,7 @@ static bool ipdic_unpack_test(DynBuf *d)
 {
 	auto cmd = make_shared<IPDict>();
 
-	if (!cmd->unpack(d->Buf(), d->UsedSize())) return Debug("unpack err\n"), false;
+	if (!cmd->unpack(d->Buf(), d->UsedSize())) return DBG("unpack err\n"), false;
 
 	// primitive type
 	if (!ipdic_prim_get(cmd)) return false;
@@ -1000,7 +1000,7 @@ static bool ipdic_unpack_test(DynBuf *d)
 	// list type
 	if (!ipdic_list_get(cmd)) return false;
 
-	Debug("unpack success\n");
+	DBG("unpack success\n");
 
 	return	true;
 }
@@ -1016,7 +1016,7 @@ bool ipdic_test()
 //		uint64	d1 = 1ULL << i;
 //		uint64	d2 = 0xffffffffffffffffULL << i;
 //		uint64	d3 = 0xffffffffffffffffULL >> i;
-//		Debug("%d: %d:%d %d:%d %d:%d\n", i,
+//		DBG("%d: %d:%d %d:%d %d:%d\n", i,
 //			get_nlz64(d1), get_ntz64(d1),
 //			get_nlz64(d2), get_ntz64(d2),
 //			get_nlz64(d3), get_ntz64(d3)
@@ -1030,7 +1030,7 @@ bool ipdic_test()
 	_ASSERTE( _CrtCheckMemory( ) );
 
 	if (!ret) {
-		Debug("test error");
+		DBG("test error");
 		Sleep(100000000);
 	}
 	return	ret;

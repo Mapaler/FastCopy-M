@@ -1,9 +1,9 @@
 ﻿/* static char *mainwin_id = 
-	"@(#)Copyright (C) 2004-2017 H.Shirouzu		mainwin.h	Ver3.41"; */
+	"@(#)Copyright (C) 2004-2018 H.Shirouzu		mainwin.h	Ver3.50"; */
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2017-03-06(Mon)
+	Update					: 2018-05-28(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-16
@@ -43,6 +43,11 @@
 #define WM_FASTCOPY_UPDDLRES		(WM_APP + 121)
 #define WM_FASTCOPY_RESIZESRCEDIT	(WM_APP + 122)
 #define WM_FASTCOPY_SRCEDITFIT		(WM_APP + 123)
+#define WM_FASTCOPY_FOCUS			(WM_APP + 124) // for setupdlg
+#define WM_FASTCOPY_TRAYTEMP		(WM_APP + 125) // for setupdlg - mainwin
+#define WM_FASTCOPY_TRAYSETUP		(WM_APP + 126)
+#define WM_FASTCOPY_PLAYFIN			(WM_APP + 127)
+#define WM_FASTCOPY_POSTSETUP		(WM_APP + 128)
 
 #define FASTCOPY_TIMER			100
 #define FASTCOPY_FIN_TIMER		110
@@ -73,13 +78,28 @@ struct CopyInfo {
 	FastCopy::OverWrite	overWrite;
 };
 
-#define FCNORMAL_ICON_IDX			0
-#define FCWAIT_ICON_IDX				MAX_NORMAL_FASTCOPY_ICON
-#define MAX_FASTCOPY_ICON			MAX_NORMAL_FASTCOPY_ICON + 1
+#define FCNORM_ICON_IDX				0
+#define FCNORM2_ICON_IDX			1
+#define FCNORM3_ICON_IDX			2
+#define FCNORM4_ICON_IDX			3
+#define FCDONE_ICON_IDX				4
+#define FCWAIT_ICON_IDX				5
+#define FCERR_ICON_IDX				6
+#define MAX_FASTCOPY_ICON			(FCERR_ICON_IDX + 1)
+#define MAX_FCNORM_ICON				(FCNORM4_ICON_IDX + 1)
 
 #define SPEED_FULL		11
 #define SPEED_AUTO		10
 #define SPEED_SUSPEND	0
+
+// SDK 7.0A用Richedit.h に存在しない。SDK10に完全移行したら削除
+#ifndef AURL_ENABLEURL
+#define AURL_ENABLEURL			1
+#define AURL_ENABLEEMAILADDR	2
+#define AURL_ENABLETELNO		4
+#define AURL_ENABLEEAURLS		8
+#define AURL_ENABLEDRIVELETTERS	16
+#endif
 
 struct UpdateData {
 	U8str	ver;
@@ -118,8 +138,9 @@ protected:
 	int			orgArgc;
 	WCHAR		**orgArgv;
 	Cfg			cfg;
-	int				MAX_NORMAL_FASTCOPY_ICON; //动态图标个数
-	HICON			*hMainIcon;
+	HICON		hMainIcon[MAX_FASTCOPY_ICON];
+	HICON		hPauseIcon;
+	HICON		hPlayIcon;
 	CopyInfo	*copyInfo;
 	int			finActIdx;
 	int			doneRatePercent;
@@ -133,8 +154,10 @@ protected:
 
 /* share to runas */
 	AutoCloseLevel autoCloseLevel;
-	BOOL		isTaskTray;
-	BOOL		speedLevel;
+	enum { SS_HIDE=0, SS_NORMAL=1, SS_MINMIZE=2, SS_TRAY=4, SS_TRAYMIN=6, SS_TEMP=8 };
+	int			showState;
+	int			speedLevel;
+	BOOL		isPause;
 	int			finishNotify;
 
 	BOOL		noConfirmDel;
@@ -180,8 +203,9 @@ protected:
 
 	// Register to dlgItems in SetSize()
 	enum {	srcbutton_item=0, srcedit_item, dstbutton_item, dstcombo_item,
-			status_item, mode_item, bufstatic_item, bufedit_item, help_item,
-			ignore_item, estimate_item, verify_item, top_item, list_item, ok_item, atonce_item,
+			status_item, mode_item, bufstatic_item, bufedit_item,
+			ignore_item, estimate_item, verify_item, list_item, pauselist_item,
+			ok_item, pauseok_item, atonce_item,
 			owdel_item, acl_item, stream_item, speed_item, speedstatic_item, samedrv_item,
 			incstatic_item, filterhelp_item, excstatic_item, inccombo_item, exccombo_item,
 			filter_item,
@@ -197,7 +221,7 @@ protected:
 	int			normalHeightOrg;
 	int			filterHeight;
 	BOOL		isErrEditHide;
-	UINT		curIconIndex;
+	UINT		curIconIdx;
 	BOOL		isDelay;
 
 	SYSTEMTIME	startTm;
@@ -228,10 +252,13 @@ protected:
 	TSrcEdit		srcEdit;
 	TEditSub		pathEdit;
 	TEditSub		errEdit;
+	TSubClassCtl	bufEdit;
+	TSubClassCtl	statEdit;
 	TSubClassCtl	speedSlider;
 	TSubClassCtl	speedStatic;
-	TSubClassCtl	topCheck;
 	TSubClassCtl	listBtn;
+	TSubClassCtl	pauseOkBtn;
+	TSubClassCtl	pauseListBtn;
 	HFONT			statusFont;
 	LOGFONTW		statusLogFont;
 	ITaskbarList3	*taskbarList;
@@ -245,6 +272,7 @@ protected:
 	BOOL	SetupWindow();
 	void	StatusEditSetup(BOOL reset=FALSE);
 	void	ChooseFont();
+	void	PostSetup();
 	BOOL	ExecCopy(DWORD exec_flags);
 	BOOL	ExecCopyCore(void);
 	BOOL	EndCopy(void);
@@ -262,6 +290,7 @@ protected:
 	BOOL	IsListing() { return (info.flags & FastCopy::LISTING_ONLY) ? TRUE : FALSE; }
 	void	SetPriority(DWORD new_class);
 	DWORD	UpdateSpeedLevel(BOOL is_timer=FALSE);
+	void	SetUserAgent();
 #ifdef USE_LISTVIEW
 	int		ListViewIdx(int idx);
 	BOOL	SetListViewItem(int idx, int subIdx, char *txt);
@@ -291,6 +320,7 @@ protected:
 	void	ShowHistMenu();
 	void	SetHistPath(int idx);
 	void	ResizeForSrcEdit(int diff_y);
+	void	SetStatMargin();
 
 public:
 	TMainDlg();
@@ -298,6 +328,7 @@ public:
 
 	virtual BOOL	EvCreate(LPARAM lParam);
 	virtual BOOL	EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl);
+	virtual BOOL	EvDestroy(void);
 	virtual BOOL	EvNcDestroy(void);
 	virtual BOOL	EvTimer(WPARAM timerID, TIMERPROC proc);
 	virtual BOOL	EvSysCommand(WPARAM uCmdType, POINTS pos);
@@ -310,7 +341,7 @@ public:
 	virtual BOOL	EvDropFiles(HDROP hDrop);
 	virtual BOOL	EvActivateApp(BOOL fActivate, DWORD dwThreadID);
 	virtual BOOL	EventScroll(UINT uMsg, int nCode, int nPos, HWND scrollBar);
-//	virtual BOOL	EvNotify(UINT ctlID, NMHDR *pNmHdr);
+	virtual BOOL	EvNotify(UINT ctlID, NMHDR *pNmHdr);
 
 /*
 	virtual BOOL	EvEndSession(BOOL nSession, BOOL nLogOut);
@@ -322,6 +353,8 @@ public:
 	virtual BOOL	EventApp(UINT uMsg, WPARAM wParam, LPARAM lParam);
 	virtual BOOL	EventUser(UINT uMsg, WPARAM wParam, LPARAM lParam);
 	virtual BOOL	EventSystem(UINT uMsg, WPARAM wParam, LPARAM lParam);
+	virtual BOOL	EventCtlColor(UINT uMsg, HDC hDcCtl, HWND hWndCtl, HBRUSH *result);
+
 	virtual void	Show(int mode = SW_SHOWDEFAULT);
 	virtual	int		MessageBox(LPCSTR msg, LPCSTR title="msg", UINT style=MB_OK);
 	virtual	int		MessageBoxW(LPCWSTR msg, LPCWSTR title=L"", UINT style=MB_OK);
@@ -347,7 +380,9 @@ public:
 	void	SetComboBox(UINT item, WCHAR **history, SetHistMode mode);
 	void	SetPathHistory(SetHistMode mode, UINT item=0);
 	void	SetFilterHistory(SetHistMode mode, UINT item=0);
-	BOOL	TaskTray(int nimMode, HICON hSetIcon=NULL, LPCSTR tip=NULL, BOOL balloon=FALSE);
+	void	SetIcon(int idx=0);
+	BOOL	TaskTray(int nimMode, int idx=0, LPCSTR tip=NULL, BOOL balloon=FALSE);
+	void	TaskTrayTemp(BOOL on);
 	CopyInfo *GetCopyInfo() { return copyInfo; }
 	void	SetFinAct(int idx);
 	int		GetFinActIdx() { return finActIdx; }
@@ -371,7 +406,7 @@ int inline wcsicmpEx(WCHAR *s1, WCHAR *s2, int *len)
 	return	wcsnicmp(s1, s2, *len);
 }
 
-#define IPMSG_SITE				"ipmsg.org"
+#define FASTCOPY_SITE			"fastcopy.jp"
 #define FASTCOPY_UPDATEINFO		"fastcopy-update.dat"
 #ifdef _WIN64
 #define UPDATE_FILENAME			UPDATE64_FILENAME

@@ -158,6 +158,32 @@ void DebugU8(const char *fmt,...)
 	}
 }
 
+void OutW(const WCHAR *fmt,...)
+{
+	if (!hStdOut) return;
+
+	va_list	ap;
+	va_start(ap, fmt);
+
+	DWORD len = vsnwprintfz(NULL, 0, fmt, ap) + 1;
+
+	Wstr	w(len);
+
+	len = vsnwprintfz(w.Buf(), len, fmt, ap);
+	va_end(ap);
+
+	DWORD	wlen = w.Len();
+
+	if (!::WriteConsoleW(hStdOut, w.s(), wlen, &wlen, 0)) {
+		U8str	u8(w);
+		DWORD	len = u8.Len() * 2 + 1;
+		U8str	u8cr(len);
+
+		len = UnixNewLineToLocal(u8.s(), u8cr.Buf(), len);
+		::WriteFile(hStdOut, u8cr.s(), len, &len, 0);
+	}
+}
+
 #define FMT_BUF_NUM		8		// 2^n
 #define FMT_BUF_SIZE	8192
 
@@ -197,10 +223,12 @@ const WCHAR *FmtW(const WCHAR *fmt,...)
 	例外情報取得
 =========================================================================*/
 static char *ExceptionTitle;
+static WCHAR *ExceptionDirW;
 static char *ExceptionLogFile;
 static char *ExceptionDumpFile;
+static WCHAR *ExceptionFilesW[2];
+static DWORD ExceptionFilesWNum;
 static DWORD ExceptionDumpFlags;
-static char *ExceptionShellArg;
 static char *ExceptionLogInfo;
 static char *ExceptionVerInfo;
 static char *ExceptionTrace;
@@ -299,11 +327,111 @@ BOOL ExTrace(const char *fmt,...)
 	return	TRUE;
 }
 
+#define MAX_DEA_NUM 30
+
+static struct {
+	const void *ptr;
+	size_t		size;
+} DumpExceptArea[MAX_DEA_NUM];
+
+static DWORD DumpExceptAreaIdx;
+
+BOOL RegisterDumpExceptArea(void *ptr, size_t size)
+{
+	if (DumpExceptAreaIdx >= MAX_DEA_NUM || !ptr || !size) {
+		DBG("RegisterDumpExceptArea err(%d %p %zx)\n", DumpExceptAreaIdx, ptr, size);
+		return	FALSE;
+	}
+	auto	&area = DumpExceptArea[DumpExceptAreaIdx];
+	area.ptr  = ptr;
+	area.size = size;
+
+	//DBG("RegisterDumpExceptArea (%d %p %zx)\n", DumpExceptAreaIdx, ptr, size);
+
+	DumpExceptAreaIdx++;
+
+	return	TRUE;
+}
+
+BOOL ModifyDumpExceptArea(void *ptr, size_t size)
+{
+	if (!ptr || !size) {
+		DBG("ModifyDumpExceptArea is null(%p %zx)\n", ptr, size);
+		return	RemoveDumpExceptArea(ptr);
+	}
+	for (int i=0; i < DumpExceptAreaIdx; i++) {
+		auto	&area = DumpExceptArea[i];
+		if (area.ptr == ptr) {
+			area.size = size;
+			//DBG("ModifyDumpExceptArea (%d %p %zx)\n", i, ptr, size);
+			return	TRUE;
+		}
+	}
+	//DBG("ModifyDumpExceptArea not found (%p %zx)\n", ptr, size);
+	return	FALSE;
+}
+
+BOOL RemoveDumpExceptArea(void *ptr)
+{
+	if (!ptr) {
+		DBG("RemoveDumpExceptArea is null\n");
+		return	FALSE;
+	}
+	for (int i=0; i < DumpExceptAreaIdx; i++) {
+		auto	&area = DumpExceptArea[i];
+		if (area.ptr == ptr) {
+			//DBG("RemoveDumpExceptArea (%d %p %zx)\n", i, ptr, area.size);
+			memmove(&area, &area + 1, sizeof(area) * (DumpExceptAreaIdx - i -1));
+			DumpExceptAreaIdx--;
+			return	TRUE;
+		}
+	}
+	DBG("RemoveDumpExceptArea not found (%p)\n", ptr);
+	return	FALSE;
+}
+
+void InitDumpExceptArea()
+{
+	//DBG("InitDumpExceptArea\n");
+	DumpExceptAreaIdx = 0;
+}
+
+HANDLE	hlogFile;
+
+BOOL CALLBACK MiniDumpCallback(
+  void *mcp,
+  const PMINIDUMP_CALLBACK_INPUT  mci,
+        PMINIDUMP_CALLBACK_OUTPUT mco
+) {
+	if (mci->CallbackType == RemoveMemoryCallback && DumpExceptAreaIdx > 0) {
+		auto	&area = DumpExceptArea[DumpExceptAreaIdx - 1];
+		mco->MemoryBase = (ULONG64)area.ptr;
+
+		const ULONG MAX_REMOVE_SIZE = 0x8000000UL;
+		if (area.size <= MAX_REMOVE_SIZE) {
+			mco->MemorySize = (LONG)area.size;
+			DumpExceptAreaIdx--;
+		}
+		else {
+			mco->MemorySize = MAX_REMOVE_SIZE;
+			*(BYTE **)&area.ptr += MAX_REMOVE_SIZE;
+			area.size -= MAX_REMOVE_SIZE;
+		}
+
+		auto	f = Fmt("MiniDumpCallback type=%d base=%p sz=%d\n",
+			mci->CallbackType, mco->MemoryBase, mco->MemorySize);
+
+		DWORD	len = (DWORD)strlen(f);
+		WriteFile(hlogFile, f, len, &len, 0);
+	}
+
+	return	TRUE; 
+}
+
 LONG WINAPI Local_UnhandledExceptionFilter(struct _EXCEPTION_POINTERS *info)
 {
 	static char	buf[MAX_DUMPBUF_SIZE];
 	HANDLE		hFile;
-	HANDLE		hDumpFile;
 	SYSTEMTIME	&stm = ExceptionTm;
 	SYSTEMTIME	tm;
 	DWORD		len;
@@ -313,6 +441,8 @@ LONG WINAPI Local_UnhandledExceptionFilter(struct _EXCEPTION_POINTERS *info)
 	hFile = ::CreateFile(ExceptionLogFile, GENERIC_WRITE, 0, 0, OPEN_ALWAYS, 0, 0);
 	::SetFilePointer(hFile, 0, 0, FILE_END);
 	::GetLocalTime(&tm);
+
+	hlogFile = hFile;
 
 	len = sprintf(buf,
 		"------ %.100s -----\r\n"
@@ -436,10 +566,14 @@ LONG WINAPI Local_UnhandledExceptionFilter(struct _EXCEPTION_POINTERS *info)
 		len = sprintf(buf, "---- dump info ----\r\n");
 		::WriteFile(hFile, buf, len, &len, 0);
 
-		hDumpFile = ::CreateFile(ExceptionDumpFile, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
+		HANDLE	hDumpFile =
+			::CreateFile(ExceptionDumpFile, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
 		while (1) {
+			static MINIDUMP_CALLBACK_INFORMATION mci;
+			mci.CallbackRoutine = MiniDumpCallback;
+			mci.CallbackParam = (void *)1;
 			if (::MiniDumpWriteDump(::GetCurrentProcess(), ::GetCurrentProcessId(), hDumpFile,
-				(MINIDUMP_TYPE)ExceptionDumpFlags, &mei, NULL, NULL)) {
+				(MINIDUMP_TYPE)ExceptionDumpFlags, &mei, NULL, &mci)) {
 				len = ::GetFileSize(hDumpFile, NULL);
 				len = sprintf(buf, " size=%d flags=%x\r\n", len, ExceptionDumpFlags);
 				::WriteFile(hFile, buf, len, &len, 0);
@@ -513,9 +647,11 @@ LONG WINAPI Local_UnhandledExceptionFilter(struct _EXCEPTION_POINTERS *info)
 	}
 	once = TRUE;
 
-	snprintfz(buf, sizeof(buf), ExceptionLogInfo, ExceptionLogFile);
+	snprintfz(buf, sizeof(buf), ExceptionLogInfo,
+		ExceptionLogFile, ExceptionDumpFile ? ExceptionDumpFile : NULL);
+
 	if (::MessageBox(0, buf, ExceptionTitle, MB_OKCANCEL) == IDOK) {
-		::ShellExecute(0, 0, "explorer", ExceptionShellArg, 0, SW_SHOW);
+		TOpenExplorerSelW(ExceptionDirW, ExceptionFilesW, ExceptionFilesWNum);
 	}
 
 	return	EXCEPTION_EXECUTE_HANDLER;
@@ -537,13 +673,30 @@ BOOL InstallExceptionFilter(const char *title, const char *info, const char *fna
 
 	ExceptionLogFile = strdup(buf);
 
+	WCHAR	wBuf[MAX_PATH];
+	WCHAR	*fnameW = NULL;
+
+	::GetFullPathNameW(AtoWs(fname), wsizeof(wBuf), wBuf, &fnameW);
+	if (fnameW && fnameW > wBuf) {
+		*(fnameW - 1) = 0;
+		ExceptionDirW = wcsdup(wBuf);
+		ExceptionFilesW[ExceptionFilesWNum++] = wcsdup(fnameW);
+		DBGW(L"ef=%s\n", ExceptionFilesW[ExceptionFilesWNum-1]);
+	}
+
 	if (dump && *dump) {
 		ExceptionDumpFile = strdup(dump);
 		ExceptionDumpFlags = dump_flags;
-	}
 
-	snprintfz(buf, sizeof(buf), "/select,%s", ExceptionLogFile);
-	ExceptionShellArg = strdup(buf);
+		if (ExceptionDirW) {
+			fnameW = NULL;
+			::GetFullPathNameW(AtoWs(dump), wsizeof(wBuf), wBuf, &fnameW);
+			if (fnameW) {
+				ExceptionFilesW[ExceptionFilesWNum++] = wcsdup(fnameW);
+				DBGW(L"ef=%s\n", ExceptionFilesW[ExceptionFilesWNum-1]);
+			}
+		}
+	}
 
 	ExceptionTitle = strdup(title);
 	ExceptionLogInfo = strdup(info);
