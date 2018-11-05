@@ -69,6 +69,8 @@ public:
 #define MISC_SHEET     SETUP_SHEET10
 #define MAX_SETUP_SHEET	(MISC_SHEET - MAIN_SHEET + 1)
 
+inline int SheetToIdx(int sheet) { return (sheet - SETUP_SHEET1); }
+
 class TSetupDlg : public TDlg {
 	Cfg			*cfg;
 	int			curIdx;

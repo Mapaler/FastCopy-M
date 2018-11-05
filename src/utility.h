@@ -96,6 +96,7 @@ public:
 	//  NET_UNC_SVRONLY: UNCサーバ名部分で判断
 	//  NET_UNC_COMMON:  サーバを問わず、ネットワーク経由は同じと見做す
 	enum NetDrvMode { NET_UNC_FULLVAL=0, NET_UNC_SVRONLY=1, NET_UNC_COMMON=2 };
+	enum Flags { SSD = 1, WEBDAV = 2 };
 
 protected:
 	ShareInfo	*shareInfo;
@@ -105,10 +106,12 @@ protected:
 		BYTE	*data;
 		int		len;
 		uint64	sameDrives;
+		DWORD	flags;
 	} drvID[MAX_DRIVES];	// A-Z + UNC drives
 	char		driveMap[64];
 
 	BOOL	RegisterDriveID(int index, void *data, int len);
+	void	SetDriveFlags(int index, DWORD flags);
 	void	ModifyNetRoot(WCHAR *root);
 
 public:
@@ -119,6 +122,7 @@ public:
 	int		SetDriveID(const WCHAR *root);
 	BOOL	IsSameDrive(const WCHAR *root1, const WCHAR *root2);
 	BOOL	IsSSD(const WCHAR *_root);
+	BOOL	IsWebDAV(const WCHAR *_root);
 	void	SetDriveMap(char *map);
 	uint64	OccupancyDrives(uint64 use_drives);
 };
@@ -206,6 +210,8 @@ ssize_t comma_int64(WCHAR *s, int64);
 ssize_t comma_double(WCHAR *s, double, int precision);
 ssize_t comma_int64(char *s, int64);
 ssize_t comma_double(char *s, double, int precision);
+
+void ShowHelp(const WCHAR *dir, const WCHAR *file, const WCHAR *section=NULL);
 
 //#define TRACE_DBG
 #ifdef TRACE_DBG

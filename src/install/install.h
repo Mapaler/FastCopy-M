@@ -56,9 +56,13 @@ protected:
 	TInstSheet		*propertySheet = NULL;
 	InstallCfg		cfg;
 	IPDict			ipDict;
-	U8str           ver;
-	WCHAR			**orgArgv = NULL;
-	int				orgArgc = 0;
+	WCHAR			defaultDir[MAX_PATH] = {};
+
+	U8str	ver;
+	WCHAR	**orgArgv = NULL;
+	int		orgArgc = 0;
+	BOOL	VerifyDict();
+	void	GetDefaultDir();
 
 public:
 	TInstDlg(char *cmdLine);
@@ -134,11 +138,20 @@ public:
 #define FASTCOPY			L"FastCopy"
 #define FASTCOPY_EXE		L"FastCopy.exe"
 #define INSTALL_EXE			L"setup.exe"
+
 #define README_TXT			L"readme.txt"
 #define README_ENG_TXT		L"readme_eng.txt"
 #define GPL_TXT				L"license-gpl3.txt"
 #define XXHASH_TXT			L"xxhash-LICENSE.txt"
 #define HELP_CHM			L"FastCopy.chm"
+
+#define DOC_README_TXT		L"doc\\readme.txt"
+#define DOC_README_ENG_TXT	L"doc\\readme_eng.txt"
+#define DOC_HELP_JA			L"doc\\FastCopy.chm"
+//#define DOC_HELP_EN		L"doc\\FastCopy_eng.htm"
+#define DOC_XXHASH_TXT		L"doc\\xxhash-LICENSE.txt"
+#define DOC_GPL_TXT			L"doc\\license-gpl3.txt"
+
 #define SHELLEXT1_DLL		L"FastCopy_shext.dll"
 #define SHELLEXT2_DLL		L"FastCopy_shext2.dll"
 #define SHELLEXT3_DLL		L"FastCopy_shext3.dll"
@@ -149,6 +162,7 @@ public:
 #define FASTCOPY_LINK		L"to_ExeDir.lnk"
 #define FASTCOPY_LOG		L"FastCopy.log"
 #define FASTCOPY_LOGDIR		L"Log"
+#define FASTCOPY_DOCDIR		L"Doc"
 
 #ifdef _WIN64
 #define CURRENT_SHEXTDLL	FCSHELLEX64_DLL
@@ -196,6 +210,7 @@ BOOL GetIPDictBySelf(IPDict *dict);
 #define MTIME_KEY	"mtime"
 #define FSIZE_KEY	"fsize"
 #define VER_KEY		"ver"
+#define SHA256_KEY	"sha256"
 
 #endif
 

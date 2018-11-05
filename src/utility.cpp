@@ -319,6 +319,7 @@ BOOL DriveMng::RegisterDriveID(int idx, void *data, int len)
 	drv_id.data = new BYTE [len];
 	memcpy(drv_id.data, data, drv_id.len = len);
 	drv_id.sameDrives = 1LL << idx;
+	drv_id.flags = 0;
 
 	for (int i=0; i < MAX_DRIVES; i++) {
 		if (i != idx && drvID[i].data && (drvID[i].len == drv_id.len)
@@ -329,6 +330,12 @@ BOOL DriveMng::RegisterDriveID(int idx, void *data, int len)
 	}
 
 	return	TRUE;
+}
+
+void DriveMng::SetDriveFlags(int idx, DWORD flags)
+{
+	DriveID &drv_id = drvID[idx];
+	drv_id.flags = flags;
 }
 
 uint64 DriveMng::OccupancyDrives(uint64 use_drives)
@@ -436,6 +443,7 @@ int DriveMng::SetDriveID(const WCHAR *_root)
 		BYTE				buf[2048];
 		DWORD				size = sizeof(buf);
 		REMOTE_NAME_INFOW	*pni = (REMOTE_NAME_INFOW *)buf;
+		DWORD				flags = 0;
 
 		if (::WNetGetUniversalNameW(root, REMOTE_NAME_INFO_LEVEL, pni, &size) != NO_ERROR) {
 			DBG("WNetGetUniversalNameW err=%d\n", GetLastError());
@@ -443,6 +451,12 @@ int DriveMng::SetDriveID(const WCHAR *_root)
 		}
 		if (pni->lpUniversalName) {
 			wcscpy(root, pni->lpUniversalName);
+			if (auto *p = wcsstr(pni->lpUniversalName + 2, L"\\")) {
+#define DAV_NAME	L"\\DavWWWRoot\\"
+				if (wcsncmp(p, DAV_NAME, wsizeof(DAV_NAME) - 1) == 0) {
+					flags |= WEBDAV;
+				}
+			}
 		} // NULL の場合、root をそのまま使う
 
 		::CharUpperW(root);
@@ -454,6 +468,7 @@ int DriveMng::SetDriveID(const WCHAR *_root)
 		if (net_idx >= 0) {
 			RegisterDriveID(net_idx, &hash_id, sizeof(hash_id));
 		}
+		SetDriveFlags(idx, flags);
 		return	idx;
 	}
 
@@ -467,6 +482,7 @@ int DriveMng::SetDriveID(const WCHAR *_root)
 			VOLUME_DISK_EXTENTS &vde = *(VOLUME_DISK_EXTENTS *)buf.Buf();
 			DWORD	size;
 			DWORD	val = 0;
+			DWORD	flags = 0;
 			if (::DeviceIoControl(hFile, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS, 0, 0,
 					&vde, (DWORD)buf.Size(), &size, 0)) {
 				if (vde.NumberOfDiskExtents >= 1) {
@@ -478,7 +494,7 @@ int DriveMng::SetDriveID(const WCHAR *_root)
 					//}
 					swprintf(vol_name, L"\\\\.\\PhysicalDrive%d", vde.Extents[0].DiskNumber);
 					if (::IsSSDDrv(vol_name)) {
-						val |= 0x2000;
+						flags |= SSD;
 					}
 				}
 			}
@@ -488,6 +504,7 @@ int DriveMng::SetDriveID(const WCHAR *_root)
 			::CloseHandle(hFile);
 			if (val) {
 				RegisterDriveID(idx, &val, sizeof(val));
+				SetDriveFlags(idx, flags);
 				return idx;
 			}
 		}
@@ -549,13 +566,13 @@ BOOL DriveMng::IsSameDrive(const WCHAR *_root1, const WCHAR *_root2)
 BOOL DriveMng::IsSSD(const WCHAR *_root)
 {
 	int		idx = SetDriveID(_root);
+	return	(drvID[idx].flags & SSD) ? TRUE : FALSE;
+}
 
-	if (drvID[idx].len != sizeof(DWORD)) {
-		return FALSE;
-	}
-	DWORD	val = *(DWORD *)drvID[idx].data;
-
-	return	((val & 0xfffff000) == 0x00003000) ? TRUE : FALSE;
+BOOL DriveMng::IsWebDAV(const WCHAR *_root)
+{
+	int		idx = SetDriveID(_root);
+	return	(drvID[idx].flags & WEBDAV) ? TRUE : FALSE;
 }
 
 // ワード単位ではなく、文字単位で折り返すための EDIT Control 用 CallBack
@@ -1098,6 +1115,30 @@ ssize_t comma_double(char *s, double val, int precision)
 		if ((!pos || p < pos) && len > 2 && (--len % 3) == 0) *s++ = ',';
 	}
 	return	s - sv_s - 1;
+}
+
+void ShowHelp(const WCHAR *dir, const WCHAR *file, const WCHAR *section)
+{
+	if (wcsstr(file, L".chm::")) {
+		ShowHelpW(0, dir, file, section);
+		return;
+	}
+
+	WCHAR	app[MAX_PATH] = {};
+	WCHAR	path[MAX_PATH] = {};
+
+	auto	len = snwprintfz(path, wsizeof(path),
+								L"file:///%s/%s%s", dir, file, section ? section : L"");
+
+	ReplaceCharW(path, '\\', '/', MAX_PATH);
+
+
+	if (TGetUrlAssocAppW(L"https", app, wsizeof(app))) {
+		ShellExecuteW(0, 0, app, path, 0, SW_SHOW);
+	}
+	else {
+		ShellExecuteW(0, 0, path, 0, 0, SW_SHOW);
+	}
 }
 
 

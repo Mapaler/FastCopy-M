@@ -101,11 +101,12 @@ struct CopyInfo {
 #endif
 
 struct UpdateData {
-	U8str	ver;
-	U8str	path;
-	int64	size;
-	DynBuf	hash;
-	DynBuf	dlData;
+	U8str			ver;
+	U8str			path;
+	int64			size;
+	DynBuf			hash;
+	DynBuf			dlData;
+	IPDictStrList	sites;
 
 	UpdateData() {
 		Init();
@@ -119,6 +120,7 @@ struct UpdateData {
 		size = 0;
 		hash.Free();
 		dlData.Free();
+		sites.clear();
 	}
 };
 

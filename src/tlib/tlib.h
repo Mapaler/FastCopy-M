@@ -809,11 +809,13 @@ public:
 template <class T>
 class TRecycleListEx {
 	TListEx<T>	list[RLIST_MAX];
-	T *data;
+	T		*data;
+	int		totalNum;
 
 public:
 	TRecycleListEx(int init_cnt=0) {
 		data = NULL;
+		totalNum = 0;
 		if (init_cnt) {
 			Init(init_cnt);
 		}
@@ -823,7 +825,7 @@ public:
 	}
 	BOOL Init(int init_cnt) {
 		UnInit();
-		data = new T[init_cnt];
+		data = new T[totalNum = init_cnt];
 		for (int i=0; i < init_cnt; i++) {
 			list[FREE_LIST].AddObj(&data[i]);
 		}
@@ -837,6 +839,7 @@ public:
 		for (int i=0; i < RLIST_MAX; i++) {
 			list[i].Init();
 		}
+		totalNum = 0;
 	}
 	T *GetObj(int list_type) {
 		T *d = list[list_type].TopObj();
@@ -853,8 +856,9 @@ public:
 	T	*NextObj(int list_type, T *obj) { return list[list_type].NextObj(obj); }
 	T	*PrevObj(int list_type, T *obj) { return list[list_type].PrevObj(obj); }
 	BOOL IsEmpty(int list_type)         { return list[list_type].IsEmpty();    }
-	int  Num(int list_type)             { return list[list_type].Num();        }
 	TListEx<T> *List(int list_type)     { return &list[list_type];             }
+	int  Num(int list_type)             { return list[list_type].Num();        }
+	int  TotalNum()                     { return totalNum;                     }
 };
 
 

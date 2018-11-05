@@ -1,5 +1,5 @@
 ﻿static char *version_id = 
-	"@(#)Copyright (C) 2004-2018 H.Shirouzu	Version.cpp ver3.54"
+	"@(#)Copyright (C) 2004-2018 H.Shirouzu and FastCopy Lab, LLC.	Version.cpp ver3.60"
 #ifdef _DEBUG
 	"d"
 #endif
@@ -9,7 +9,7 @@
 	Module Name				: Version
 	Create					: 2010-06-13(Sun)
 	Update					: 2018-05-28(Mon)
-	Copyright				: H.Shirouzu
+	Copyright				: H.Shirouzu and FastCopy Lab, LLC.
 	License					: GNU General Public License version 3
 	======================================================================== */
 

@@ -213,7 +213,8 @@
       <OutputFile>x64\Obj\DebugInst\install.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Command>python3 ..\..\scripts\geninst.py -d ../../x64/obj/DebugInst 350d fc_installer.exe setup.exe FastCopy.exe FastCopy.chm setup.exe FastEx64.dll FastExt1.dll fastcopy.chm readme.txt readme_eng.txt xxhash-LICENSE.txt license-gpl3.txt</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">

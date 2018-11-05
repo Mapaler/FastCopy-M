@@ -6,7 +6,6 @@
 </HEAD><BODY>
 <OBJECT type="text/site properties">
 	<param name="Window Styles" value="0x800025">
-<param name="Font" value="ＭＳ Ｐゴシック,10,128">
 </OBJECT>
 <UL>
 	<LI> <OBJECT type="text/sitemap">
@@ -30,7 +29,7 @@
 			<param name="Local" value="fastcopy.htm#about">
 			</OBJECT>
 		<LI> <OBJECT type="text/sitemap">
-			<param name="Name" value="&times;&sup2;&frac34;&Yacute;&frac12;">
+			<param name="Name" value="ライセンス">
 			<param name="Local" value="fastcopy.htm#license">
 			</OBJECT>
 		<LI> <OBJECT type="text/sitemap">
@@ -38,7 +37,7 @@
 			<param name="Local" value="fastcopy.htm#environment">
 			</OBJECT>
 		<LI> <OBJECT type="text/sitemap">
-			<param name="Name" value="&sup2;&Yacute;&frac12;&Auml;&deg;&Ugrave;">
+			<param name="Name" value="インストール">
 			<param name="Local" value="FastCopy.htm#install">
 			</OBJECT>
 		<LI> <OBJECT type="text/sitemap">
@@ -104,7 +103,7 @@
 				</OBJECT>
 			</UL>
 		<LI> <OBJECT type="text/sitemap">
-			<param name="Name" value="&ordm;&Iuml;&Yacute;&Auml;&THORN;&times;&sup2;&Yacute;">
+			<param name="Name" value="コマンドライン">
 			<param name="Local" value="fastcopy.htm#cmdline">
 			</OBJECT>
 		<LI> <OBJECT type="text/sitemap">

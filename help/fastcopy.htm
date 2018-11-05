@@ -70,17 +70,28 @@
 .help_license_cond {
 	padding:5%;
 }
+.help_index {
+	position: fixed;
+	right: 2px;
+	top: 2px;
+	background-color: #eeffff;
+	border-style:solid; 
+	border-color:#777777; 
+	overflow-y: scroll;
+//	height: 200px;
+	font-size: 70%;
+}
 -->
 </style>
 </head>
 <body bgcolor="#eeffff">
 
 <div align="center">
-<h1 class="help_head1">FastCopy ver3.54</h1>
+<h1 class="help_head1">FastCopy ver3.60</h1>
 </div>
 <div class="help_all">
 
-<div align="right">2018/08/09 H.Shirouzu (白水啓章)</div>
+<div align="right">2018/11/04 H.Shirouzu (白水啓章) & FastCopy Lab, LLC.</div>
 
 <a name="index"/>
 <h2 class="help_head2">Index</h2>
@@ -116,9 +127,9 @@
 <a name="about"/>
 <h2 class="help_head2">1. 概要</h2>
 <div class="help_section">
-	<strong>Windows系最速</strong> のファイルコピー＆削除ツールです。
+	<strong>Windows系最速</strong> のファイルコピー＆バックアップツールです。
 	<br><br>
-	UNICODE でしか表現できないファイル名やMAX_PATH(260文字) を越えた位置のファイルもコピー（＆削除）できます。
+	UNICODE でしか表現できないファイル名やMAX_PATH(260文字) を越えた位置のファイルもコピーできます。
 	<br><br>
 	<a name="disk_mode"/>
 	自動的に、コピー元とコピー先が、同一のHDD(or SSD)に属するかを判定した後、以下の動作を行います。
@@ -146,7 +157,7 @@
 <h2 class="help_head2">2. ライセンス</h2>
 <div class="help_section">
 	<div class="help_license">
-	FastCopy ver3.x Copyright(C) 2004-2018 by SHIROUZU Hiroaki<br>
+	FastCopy ver3.x Copyright(C) 2004-2018 by SHIROUZU Hiroaki and FastCopy Lab, LLC.<br>
 	<br>
 	FastCopy ver3.x は GNU Public License ver3 のオープンソースソフトウェアです。<br>
 	詳細は同梱の <a href="license-gpl3.txt">license-gpl3.txt</a> をご覧ください。<br>
@@ -177,9 +188,9 @@
 
 	<h3 class="help_head3">アンインストール</h3>
 	<div class="help_sub_section">
-		インストールディレクトリの setup.exe を使ってアンインストールすることができます。<br>
-		Win7以降ではOSの設定/コントロールパネル等にある「プログラムと機能」から、アンインストール可能です。<br>
-		/r /silent とすると、サイレントインストールになります。
+		Win7以降では設定/コントロールパネル等にある「プログラムと機能」から、アンインストール可能です。<br>
+		インストール先の setup.exe を使ってアンインストールすることもできます。<br>
+		/r /silent とすると、サイレントアンインストールになります。
 	</div>
 </div>
 
@@ -848,8 +859,7 @@
 <h2 class="help_head2">9. サポート掲示板＆最新版</h2>
 <div class="help_section">
 	サポート掲示板: <a href="https://groups.google.com/forum/?hl=ja#!forum/fastcopy">https://groups.google.com/forum/?hl=ja#!forum/fastcopy</a><br>
-	最新版: <a href="https://fastcopy.jp">https://fastcopy.jp</a><br>
-	個人ページ: <a href="https://shirouzu.jp">https://shirouzu.jp</a>
+	最新版: <a href="https://fastcopy.jp">https://fastcopy.jp</a>
 </div>
 
 
@@ -877,13 +887,16 @@
 <table class="help_table" border="4">
 <tr><th>Version</th><th>説明</th></tr>
 
-<tr><td>v3.54</td><td>
-シェル拡張が有効にならない問題の修正。（v3.53のみ）<br>
+<tr><td>v3.60</td><td>
+Sourceオープンのマルチスレッド化。（ネットワークドライブで特に効果）<br>
+OneDrive用WevDAVでタイムスタンプが反映するように。<br>
+NTFS以外でのハードリンク試行によるエラーを抑止。
 </td></tr>
 
-<tr><td>v3.53</td><td>
+<tr><td>v3.53-v3.54</td><td>
 速度コントロール指定をより正確に。<br>
-同一HDDモードの性能をわずかに改善。
+同一HDDモードの性能をわずかに改善。<br>
+シェル拡張が有効にならない問題の修正。（v3.53のみ）
 </td></tr>
 
 <tr><td>v3.52</td><td>

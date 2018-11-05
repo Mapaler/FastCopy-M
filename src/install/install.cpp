@@ -22,12 +22,14 @@ using namespace std;
 WCHAR *current_shell = TIsWow64() ? CURRENT_SHEXTDLL_EX : CURRENT_SHEXTDLL;
 
 #define SETUPFILES	FASTCOPY_EXE, INSTALL_EXE, CURRENT_SHEXTDLL, CURRENT_SHEXTDLL_EX, \
-					README_TXT, README_ENG_TXT, GPL_TXT, XXHASH_TXT, HELP_CHM
+		DOC_HELP_JA, DOC_XXHASH_TXT, DOC_GPL_TXT, DOC_README_TXT, DOC_README_ENG_TXT
 WCHAR *SetupFiles [] = { SETUPFILES };
-WCHAR *SetupFilesEx [] = { SETUPFILES,
-	FASTCOPY_INI, FASTCOPY_LINK, /*FASTCOPY_LOG, FASTCOPY_LOGDIR,*/
+WCHAR *SetupFilesEx [] = { SETUPFILES, FASTCOPY_INI, FASTCOPY_LINK, FASTCOPY_DOCDIR
+	/*, FASTCOPY_LOG, FASTCOPY_LOGDIR,*/ 
 };
 WCHAR *DualFiles [] = { FASTCOPY_EXE, INSTALL_EXE };
+
+WCHAR *OldFiles [] = { HELP_CHM, XXHASH_TXT, GPL_TXT, README_TXT, README_ENG_TXT };
 
 BOOL ConvertToX86Dir(WCHAR *target);
 BOOL ConvertVirtualStoreConf(WCHAR *execDir, WCHAR *userDir, WCHAR *virtualDir);
@@ -329,6 +331,8 @@ TInstDlg::TInstDlg(char *cmdLine) : TDlg(INSTALL_DIALOG),
 			ErrMsg(L"/DIR= can't be specified\n");
 		}
 	}
+
+	GetDefaultDir();
 }
 
 TInstDlg::~TInstDlg()
@@ -352,6 +356,44 @@ BOOL GetShortcutPath(InstallCfg *cfg)
 		return	TRUE;
 	}
 	return	FALSE;
+}
+
+BOOL TInstDlg::VerifyDict()
+{
+	DynBuf	dict_hash;
+	if (!ipDict.get_bytes(SHA256_KEY, &dict_hash)) return FALSE;
+	ipDict.del_key(SHA256_KEY);
+
+	DynBuf	dbuf;
+	auto	size = ipDict.pack(&dbuf);
+	if (size == 0) return FALSE;
+
+	TDigest	digest;
+	BYTE	sha256[SHA256_SIZE];
+
+	digest.Init(TDigest::SHA256);
+	digest.Update(dbuf.Buf(), (DWORD)size);
+	if (!digest.GetVal(sha256)) return FALSE;
+
+	return	memcmp(dict_hash.Buf(), sha256, SHA256_SIZE) == 0 ? TRUE : FALSE;
+}
+
+void TInstDlg::GetDefaultDir()
+{
+	WCHAR	buf[MAX_PATH] = L"";
+
+	if (::SHGetSpecialFolderPathW(NULL, buf, CSIDL_PROFILE, FALSE)) {
+		MakePathW(defaultDir, buf, FASTCOPY);
+	}
+	else {
+		TRegistry	reg(HKEY_LOCAL_MACHINE, BY_MBCS);
+		if (reg.OpenKey(REGSTR_PATH_SETUP)) {
+			if (reg.GetStrMW(REGSTR_PROGRAMFILES, buf, sizeof(buf))) {
+				MakePathW(defaultDir, buf, FASTCOPY);
+			}
+			reg.CloseKey();
+		}
+	}
 }
 
 /*
@@ -387,6 +429,16 @@ BOOL TInstDlg::EvCreate(LPARAM lParam)
 #endif
 	));
 
+	if (ipDict.key_num() && !VerifyDict()) {
+		if (cfg.isSilent) {
+			OutW(L"Installer is broken.\n");
+		} else {
+			MessageBox("Installer is broken.", "FastCopy");
+		}
+		TApp::Exit(-1);
+		return	FALSE;
+	}
+
 	// プロパティシートの生成
 	staticText.AttachWnd(GetDlgItem(INSTALL_STATIC));
 	propertySheet = new TInstSheet(this, &cfg);
@@ -417,19 +469,8 @@ BOOL TInstDlg::EvCreate(LPARAM lParam)
 		reg.CloseKey();
 	}
 
-// Program Filesのパス取り出し
-	if (!*setupDir) {
-		if (::SHGetSpecialFolderPathW(NULL, buf, CSIDL_PROFILE, FALSE)) {
-			MakePathW(setupDir, buf, FASTCOPY);
-		}
-		else {
-			TRegistry	reg(HKEY_LOCAL_MACHINE, BY_MBCS);
-			if (reg.OpenKey(REGSTR_PATH_SETUP)) {
-				if (reg.GetStrMW(REGSTR_PROGRAMFILES, buf, sizeof(buf)))
-					MakePathW(setupDir, buf, FASTCOPY);
-				reg.CloseKey();
-			}
-		}
+	if (!*setupDir && *defaultDir) {
+		wcscpy(setupDir, defaultDir);
 	}
 
 	if (!cfg.startMenu || !cfg.deskTop) {
@@ -501,6 +542,10 @@ BOOL TInstDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl)
 
 	case EXTRACT_BTN:
 		Extract();
+		return	TRUE;
+
+	case DEFAULT_BTN:
+		SetDlgItemTextW(FILE_EDIT, defaultDir);
 		return	TRUE;
 
 	case SETUP_RADIO:
@@ -668,7 +713,7 @@ BOOL MiniCopy(WCHAR *src, WCHAR *dst, BOOL *is_rotate=NULL)
 	DWORD	srcSize = 0;
 	DWORD	dstSize;
 
-	if ((hSrc = ::CreateFileW(src, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0))
+	if ((hSrc = ::CreateFileWithDirW(src, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0))
 				== INVALID_HANDLE_VALUE) {
 		DebugW(L"src(%s) open err(%x)\n", src, GetLastError());
 		return	FALSE;
@@ -677,7 +722,7 @@ BOOL MiniCopy(WCHAR *src, WCHAR *dst, BOOL *is_rotate=NULL)
 
 #define MAX_ROTATE	10
 	CleanupRotateFile(dst, MAX_ROTATE);
-	hDst = ::CreateFileW(dst, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+	hDst = ::CreateFileWithDirW(dst, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
 	if (hDst == INVALID_HANDLE_VALUE) {
 		RotateFile(dst, MAX_ROTATE, TRUE);
 		if (is_rotate) {
@@ -852,6 +897,10 @@ BOOL TInstDlg::Install(void)
 				ErrMsg(installPath, LoadStrW(IDS_NOTCREATEFILE));
 			}
 			return	FALSE;
+		}
+		for (auto &fname: OldFiles) {
+			MakePathW(installPath, setupDir, fname);
+			::DeleteFileW(installPath);
 		}
 	}
 
@@ -1086,8 +1135,10 @@ int ShellExtFunc(WCHAR *setup_dir, ShellExtOpe kind, BOOL isAdmin)
 BOOL IsKindOfFile(const WCHAR *org, const WCHAR *exists)
 {
 	WCHAR	reg_buf[MAX_PATH];
+	auto	p = wcsrchr(org, '\\');
+	auto	targ = p ? p+1 : org;
 
-	swprintf(reg_buf, L"^(%s|%s\\..+)$", org, org);
+	swprintf(reg_buf, L"^(%s|%s\\..+)$", targ, targ);
 
 	auto re = make_unique<wregex>(reg_buf, regex_constants::icase);
 
@@ -1118,7 +1169,9 @@ BOOL ReadyToRmFolder(const WCHAR *dir)
 				if (IsKindOfFile(fname, fdat.cFileName)) {
 					MakePathW(path, dir, fdat.cFileName);
 					if (!::DeleteFileW(path) &&
-						wcscmp(fname, INSTALL_EXE) && wcscmp(fname, FASTCOPY_LOGDIR)) {
+						wcscmp(fname, INSTALL_EXE) &&
+						wcscmp(fname, FASTCOPY_LOGDIR) &&
+						wcscmp(fname, FASTCOPY_DOCDIR)) {
 						ret = FALSE;
 					}
 					found = TRUE;
@@ -1257,7 +1310,10 @@ BOOL TInstDlg::UnInstall(void)
 	MakePathW(cmd, setupDir, UNINST_BAT_W);
 
 	if (FILE *fp = _wfopen(cmd, L"w")) {
+		WCHAR doc[MAX_PATH];
+		MakePathW(doc, setupDir, FASTCOPY_DOCDIR);
 		MakePathW(path, setupDir, INSTALL_EXE);
+
 		for (int i=0; i < 10; i++) {
 			// fwprintf(fp, L"timeout 1 /NOBREAK\n");
 			fwprintf(fp, L"ping 127.0.0.1 -w 1\n");
@@ -1265,6 +1321,7 @@ BOOL TInstDlg::UnInstall(void)
 				fwprintf(fp, L"rd /s /q \"%s\"\n", setupDir);
 			}
 			else {
+				fwprintf(fp, L"rd /s /q \"%s\"\n", doc);
 				fwprintf(fp, L"del /q \"%s\" \"%s\"\n", path, cmd);
 			}
 		}
@@ -1742,7 +1799,7 @@ BOOL IPDictCopy(IPDict *dict, const WCHAR *fname, const WCHAR *dst, BOOL *is_rot
 
 #define MAX_ROTATE	10
 	CleanupRotateFile(dst, MAX_ROTATE);
-	hDst = ::CreateFileW(dst, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+	hDst = ::CreateFileWithDirW(dst, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
 	if (hDst == INVALID_HANDLE_VALUE) {
 		RotateFile(dst, MAX_ROTATE, TRUE);
 		if (is_rotate) {

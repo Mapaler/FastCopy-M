@@ -94,6 +94,9 @@ void TMainDlg::UpdateCheckRes(TInetReqReply *_irr)
 		}
 		return;
 	}
+	if (data.get_str_list("sites", &updData.sites)) {
+		Debug("site num = %zd\n", updData.sites.size());
+	}
 
 	double	self_ver = VerStrToDouble(GetVersionStr(TRUE));
 	double	new_ver  = VerStrToDouble(updData.ver.s());
@@ -129,8 +132,16 @@ void TMainDlg::UpdateCheckRes(TInetReqReply *_irr)
 			cfg.WriteIni();
 		}
 	}
+	U8str	host = FASTCOPY_SITE;
 
-	TInetAsync(FASTCOPY_SITE, updData.path.s(), hWnd, WM_FASTCOPY_UPDDLRES);
+	if (updData.sites.size() > 0) {
+		auto	itr = updData.sites.begin();
+		auto	idx = time(NULL) % updData.sites.size();
+		while (idx-- > 0) itr++;
+		host = (*itr)->s();
+	}
+
+	TInetAsync(host.s(), updData.path.s(), hWnd, WM_FASTCOPY_UPDDLRES);
 }
 
 void TMainDlg::UpdateDlRes(TInetReqReply *_irr)

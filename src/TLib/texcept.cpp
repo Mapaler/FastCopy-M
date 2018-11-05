@@ -428,6 +428,24 @@ BOOL CALLBACK MiniDumpCallback(
 	return	TRUE; 
 }
 
+DWORD WINAPI MessageProc(void *msg)
+{
+	return	(DWORD)::MessageBox(0, (char *)msg, ExceptionTitle, MB_OKCANCEL);
+}
+
+int MessageBoxThread(char *msg)
+{
+	DWORD	id = 0;
+	HANDLE	hThread = ::CreateThread(0, 0, MessageProc, msg, 0, &id);
+	::WaitForSingleObject(hThread, INFINITE);
+
+	DWORD	ret = 0;
+	::GetExitCodeThread(hThread, &ret);
+	::CloseHandle(hThread);
+
+	return	(int)ret;
+}
+
 LONG WINAPI Local_UnhandledExceptionFilter(struct _EXCEPTION_POINTERS *info)
 {
 	static char	buf[MAX_DUMPBUF_SIZE];
@@ -593,44 +611,46 @@ LONG WINAPI Local_UnhandledExceptionFilter(struct _EXCEPTION_POINTERS *info)
 	static void		*backTrace[MAX_BACKTRACE];
 	static DWORD	btNum;
 
-	len = sprintf(buf, "\r\n---- back trace info ----\r\n");
-	if ((btNum = ::CaptureStackBackTrace(0, MAX_BACKTRACE, backTrace, NULL)) > 0) {
-		static HMODULE	hMod[MAX_MODULE];
-		static DWORD	modNum;
-		static DWORD	baseIdx;
-		static DWORD	idx;
-		HANDLE	hCur = ::GetCurrentProcess();
+	if (info) {
+		len = sprintf(buf, "\r\n---- back trace info ----\r\n");
+		if ((btNum = ::CaptureStackBackTrace(0, MAX_BACKTRACE, backTrace, NULL)) > 0) {
+			static HMODULE	hMod[MAX_MODULE];
+			static DWORD	modNum;
+			static DWORD	baseIdx;
+			static DWORD	idx;
+			HANDLE	hCur = ::GetCurrentProcess();
 
-		::EnumProcessModules(hCur, hMod, MAX_MODULE, &modNum);
+			::EnumProcessModules(hCur, hMod, MAX_MODULE, &modNum);
 
-		for (baseIdx=0; baseIdx < btNum; baseIdx++) {	// 例外ハンドラ関連は skip
-			if (backTrace[baseIdx] == (void *)info->ExceptionRecord->ExceptionAddress) break;
-		}
-		if (baseIdx == btNum) baseIdx = 0;
+			for (baseIdx=0; baseIdx < btNum; baseIdx++) {	// 例外ハンドラ関連は skip
+				if (backTrace[baseIdx] == (void *)info->ExceptionRecord->ExceptionAddress) break;
+			}
+			if (baseIdx == btNum) baseIdx = 0;
 
-		for (i=0; baseIdx + i < btNum && len < sizeof(buf)-1; i++) {
-			static char			modName[MAX_PATH];
-			static MODULEINFO	mi;
-			void	*&bt = backTrace[baseIdx + i];
+			for (i=0; baseIdx + i < btNum && len < sizeof(buf)-1; i++) {
+				static char			modName[MAX_PATH];
+				static MODULEINFO	mi;
+				void	*&bt = backTrace[baseIdx + i];
 
-			for (j=0; j < modNum; j++) {
-				if (::GetModuleInformation(hCur, hMod[j], &mi, sizeof(MODULEINFO))) {
-					if (bt >= mi.lpBaseOfDll &&
-						bt < (void *)((char *)mi.lpBaseOfDll + mi.SizeOfImage)) {
-						break;
+				for (j=0; j < modNum; j++) {
+					if (::GetModuleInformation(hCur, hMod[j], &mi, sizeof(MODULEINFO))) {
+						if (bt >= mi.lpBaseOfDll &&
+							bt < (void *)((char *)mi.lpBaseOfDll + mi.SizeOfImage)) {
+							break;
+						}
 					}
 				}
-			}
-			if (j < modNum && ::GetModuleBaseName(hCur, hMod[j], modName, sizeof(modName))) {
-				len += snprintfz(buf+len, sizeof(buf)-len, "%2d: %p : %8zx : %s\r\n",
-					i, bt, (char *)bt - (char *)mi.lpBaseOfDll, modName);
-			}
-			else {
-				len += snprintfz(buf+len, sizeof(buf)-len, "%2d: %p\r\n", i, bt);
+				if (j < modNum && ::GetModuleBaseName(hCur, hMod[j], modName, sizeof(modName))) {
+					len += snprintfz(buf+len, sizeof(buf)-len, "%2d: %p : %8zx : %s\r\n",
+						i, bt, (char *)bt - (char *)mi.lpBaseOfDll, modName);
+				}
+				else {
+					len += snprintfz(buf+len, sizeof(buf)-len, "%2d: %p\r\n", i, bt);
+				}
 			}
 		}
+		::WriteFile(hFile, buf, len, &len, 0);
 	}
-	::WriteFile(hFile, buf, len, &len, 0);
 
 	// end mark
 	len = sprintf(buf, "------------------------\r\n\r\n");
@@ -650,17 +670,26 @@ LONG WINAPI Local_UnhandledExceptionFilter(struct _EXCEPTION_POINTERS *info)
 	snprintfz(buf, sizeof(buf), ExceptionLogInfo,
 		ExceptionLogFile, ExceptionDumpFile ? ExceptionDumpFile : NULL);
 
-	if (::MessageBox(0, buf, ExceptionTitle, MB_OKCANCEL) == IDOK) {
+	if (MessageBoxThread(buf) == IDOK) {
 		TOpenExplorerSelW(ExceptionDirW, ExceptionFilesW, ExceptionFilesWNum);
 	}
 
 	return	EXCEPTION_EXECUTE_HANDLER;
 }
 
+void CrtInvalidParameterHandler(const wchar_t* exp, const wchar_t* func, const wchar_t* file,
+   u_int line, uintptr_t pReserved)
+{
+	::RaiseException(EXCEPTION_BREAKPOINT, EXCEPTION_NONCONTINUABLE, 0, 0);
+}
+
 BOOL InstallExceptionFilter(const char *title, const char *info, const char *fname,
 	const char *dump, DWORD dump_flags)
 {
 	::GetLocalTime(&ExceptionTm);
+
+	::_set_invalid_parameter_handler(CrtInvalidParameterHandler);
+//	::AddVectoredExceptionHandler(1, Local_UnhandledExceptionFilter);
 
 	char	buf[MAX_PATH_U8];
 
