@@ -978,9 +978,12 @@ BOOL FastCopy::OpenFileProc(FileStat *stat, int dir_len)
 		return	TRUE;
 	}
 
+	if (enableStream) {
+		return	OpenFileProcCore(src, stat, dir_len, name_len);
+	}
+
 	return	OpenFileQueue(src, stat, dir_len, name_len);
 
-//	return	OpenFileProcCore(src, stat, dir_len, name_len);
 }
 
 unsigned WINAPI FastCopy::OpenThread(void *fastCopyObj)
@@ -1152,15 +1155,19 @@ BOOL FastCopy::OpenFileBackupProc(WCHAR *path, FileStat *stat, int src_len)
 					ConfirmErr(L"Duplicate or Too big ACL/EADATA", path + srcPrefixLen);
 				break;
 			}
+			opCv.Lock();
 			data = fileStatBuf.UsedEnd();
 			data_size = sid.Size.LowPart + STRMID_OFFSET;
 			if (fileStatBuf.RemainSize() <= maxStatSize + data_size
 			&& !fileStatBuf.Grow(ALIGN_SIZE(maxStatSize + data_size, MIN_ATTR_BUF))) {
+				opCv.UnLock();
 				ConfirmErr(L"Can't alloc memory(fileStat(ACL/EADATA))",
 					path + srcPrefixLen, CEF_STOP);
 				break;
 			}
 			fileStatBuf.AddUsedSize(data_size);
+			opCv.UnLock();
+
 			memcpy(data, &sid, STRMID_OFFSET);
 			if (!(ret = ::BackupRead(stat->hFile, data + STRMID_OFFSET, sid.Size.LowPart,
 							&size, FALSE, TRUE, &context)) || size <= 0) {
@@ -1231,6 +1238,7 @@ BOOL FastCopy::OpenFileBackupStreamCore(WCHAR *path, int src_len, int64 size, WC
 		return	FALSE;
 	}
 
+	opCv.Lock();
 	FileStat	*subStat = (FileStat *)fileStatBuf.UsedEnd();
 	bool		useOvl = info.IsMinOvl(size) && flagOvl && IsLocalFs(srcFsType);
 	DWORD		share = FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE;
@@ -1252,9 +1260,12 @@ BOOL FastCopy::OpenFileBackupStreamCore(WCHAR *path, int src_len, int64 size, WC
 
 	fileStatBuf.AddUsedSize(subStat->minSize);
 	if (fileStatBuf.RemainSize() <= maxStatSize && !fileStatBuf.Grow(MIN_ATTR_BUF)) {
+		opCv.UnLock();
 		ConfirmErr(L"Can't alloc memory(fileStatBuf2)", NULL, CEF_STOP);
 		return	FALSE;
 	}
+	opCv.UnLock();
+
 	memcpy(subStat->cFileName, altname, altnamesize + sizeof(WCHAR));
 	memcpy(path + src_len, subStat->cFileName, altnamesize + sizeof(WCHAR));
 
