@@ -1,7 +1,8 @@
 ﻿======================================================================
                      FastCopy  ver3.54                 2018/08/09
                                             H.Shirouzu（白水啓章）
-                     FastCopy-M branch                 2018/09/27
+                                            FastCopy Lab, LLC.
+                     FastCopy-M branch                 2018/12/11
                                             Mapaler   （楓谷劍仙）
 ======================================================================
 
@@ -34,8 +35,9 @@ FastCopy-M特點：
 
 許可:
 -------------------------------------------------------------------------
-FastCopy ver3.x
-Copyright(C) 2004-2018 SHIROUZU Hiroaki All rights reserved.
+	FastCopy ver3.x
+	  Copyright(C) 2004-2018 SHIROUZU Hiroaki
+	    and FastCopy Lab, LLC. All rights reserved.
 
 此程式是免費軟體。你可以將它根據GNU通用公共許可證第三版重新分發和/或修改。
 

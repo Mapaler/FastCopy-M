@@ -1,7 +1,7 @@
 [OPTIONS]
 Binary Index=Yes
 Compatibility=1.1 or later
-Compiled file=FastCopy.chm
+Compiled file=..\doc\FastCopy.chm
 Contents file=FastCopy.hhc
 Default Font=‚l‚r ‚oƒSƒVƒbƒN,8,128
 Default Window=Main

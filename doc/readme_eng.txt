@@ -1,7 +1,8 @@
 ﻿======================================================================
-                   FastCopy  ver3.54                   2018/08/09
+                   FastCopy  ver3.61                   2018/11/08
                                                  SHIROUZU Hiroaki
-                   FastCopy-M branch                   2018/09/27
+                                                 FastCopy Lab, LLC.
+                   FastCopy-M branch                   2018/12/11
                                                  Mapaler
 ======================================================================
 
@@ -24,6 +25,7 @@ License:
 	-------------------------------------------------------------------------
 	 FastCopy ver3.x
 	 Copyright(C) 2004-2018 SHIROUZU Hiroaki All rights reserved.
+	 Copyright(C) 2018 FastCopy Lab, LLC. All rights reserved.
 
 	 This program is free software. You can redistribute it and/or modify
 	 it under the GNU General Public License version 3.
@@ -35,7 +37,7 @@ License:
 	  more details: external/xxhash/LICENSE
 
 Usage：
-	Please see fastcopy.chm
+	Please see fastcopy_eng.htm
 
 Build:
 	VS2017 or later
