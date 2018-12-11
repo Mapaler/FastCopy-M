@@ -211,7 +211,7 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 	}
 	else {
 		Show();
-
+		/*
 		if (cfg.updCheck & 0x1) {	// 最新版確認
 			time_t	now = time(NULL);
 
@@ -221,6 +221,7 @@ BOOL TMainDlg::EvCreate(LPARAM lParam)
 				UpdateCheck(TRUE);
 			}
 		}
+		*/
 	}
 	if (isInstaller) {
 		TaskTrayTemp(TRUE);

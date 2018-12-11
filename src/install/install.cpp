@@ -1,10 +1,10 @@
 ﻿static char *install_id = 
-	"@(#)Copyright (C) 2005-2017 H.Shirouzu		install.cpp	Ver3.31";
+	"@(#)Copyright (C) 2005-2018 H.Shirouzu		install.cpp	Ver3.50";
 /* ========================================================================
 	Project  Name			: Installer for FastCopy
 	Module Name				: Installer Application Class
 	Create					: 2005-02-02(Wed)
-	Update					: 2017-07-30(Sun)
+	Update					: 2018-05-28(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify  				: Mapaler 2017-03-06
@@ -12,23 +12,61 @@
 
 #include "../tlib/tlib.h"
 #include "stdio.h"
-#include "instrc.h"
+#include "resource.h"
 #include "install.h"
 #include "../../external/zlib/zlib.h"
+#include "../version.h"
+#include <regex>
+
+using namespace std;
 
 WCHAR *current_shell = TIsWow64() ? CURRENT_SHEXTDLL_EX : CURRENT_SHEXTDLL;
-WCHAR *SetupFiles [] = {
-	FASTCOPY_EXE, INSTALL_EXE, CURRENT_SHEXTDLL, CURRENT_SHEXTDLL_EX,
-	README_JA_TXT, README_ENG_TXT, README_CHS_TXT, README_CHT_TXT, GPL_TXT, XXHASH_TXT, HELP_CHM,
+
+#define SETUPFILES	FASTCOPY_EXE, INSTALL_EXE, CURRENT_SHEXTDLL, CURRENT_SHEXTDLL_EX, \
+		DOC_HELP_JA, DOC_XXHASH_TXT, DOC_GPL_TXT, DOC_README_JA_TXT, DOC_README_ENG_TXT, DOC_README_CHS_TXT, DOC_README_CHT_TXT
+WCHAR *SetupFiles [] = { SETUPFILES };
+WCHAR *SetupFilesEx [] = { SETUPFILES, FASTCOPY_INI, FASTCOPY_LINK, FASTCOPY_DOCDIR
+	/*, FASTCOPY_LOG, FASTCOPY_LOGDIR,*/ 
 };
+WCHAR *DualFiles [] = { FASTCOPY_EXE, INSTALL_EXE };
+
+WCHAR *OldFiles [] = { HELP_CHM, XXHASH_TXT, GPL_TXT, README_JA_TXT, README_ENG_TXT };
 
 BOOL ConvertToX86Dir(WCHAR *target);
 BOOL ConvertVirtualStoreConf(WCHAR *execDir, WCHAR *userDir, WCHAR *virtualDir);
 
-#define TEMPDIR_OPT	L"/TEMPDIR"
-#define RUNAS_OPT	L"/runas="
+#define TEMPDIR_OPT		L"/TEMPDIR"
+#define RUNAS_OPT		L"/runas="
+#define UNINST_OPT		L"/r"
+#define INSTALL_OPT		L"/INSTALL"
+#define UPDATE_OPT		L"/UPDATE"
+#define SILENT_OPT		L"/SILENT"
+#define EXTRACT_OPT		L"/EXTRACT"
+#define EXTRACT32_OPT	L"/EXTRACT32"
+#define EXTRACT64_OPT	L"/EXTRACT64"
+#define DIR_OPT			L"/DIR="
+#define NOPROG_OPT		L"/NOPROG"
+#define NODESK_OPT		L"/NODESK"
+#define NOAPP_OPT		L"/NOAPP"
+#define NOSUBDIR_OPT	L"/NOSUBDIR"
+#define UPDATED_OPT		L"/UPDATED"
+#define HELP_OPT		L"/h"
 
 int ExecInTempDir();
+
+#define USAGE_STR	L"\r\n \
+USAGE: \r\n \
+	/SILENT ... silent install/uninstall\r\n \
+	/DIR=<dir> ... setup/target dir\r\n\r\n \
+	/NOPROG ... no create program menu\r\n \
+	/NODESK ... no create desktop shortcut\r\n \
+	/NOAPP  ... no register application to OS\r\n\r\n \
+	/EXTRACT   ... extract files\r\n \
+	/EXTRACT32 ... extract 32bit files\r\n \
+	/EXTRACT64 ... extract 64bit files\r\n \
+	/NOSUBDIR  ... no create subdir with /EXTRACT \r\n\r\n \
+	/r ... uninstall\r\n \
+"
 
 /*
 	WinMain
@@ -38,6 +76,9 @@ int WINAPI WinMain(HINSTANCE hI, HINSTANCE, LPSTR cmdLine, int nCmdShow)
 	::SetDllDirectory("");
 	::SetCurrentDirectoryW(TGetExeDirW());
 
+	TLibInit();
+//	TSetDefaultLCID(0x409); // for English Dialog Test
+
 	if (!TSetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_SYSTEM32)) {
 		TLoadLibraryExW(L"iertutil.dll", TLT_SYSDIR);
 		TLoadLibraryExW(L"cryptbase.dll", TLT_SYSDIR);
@@ -45,7 +86,9 @@ int WINAPI WinMain(HINSTANCE hI, HINSTANCE, LPSTR cmdLine, int nCmdShow)
 		TLoadLibraryExW(L"cscapi.dll", TLT_SYSDIR);
 
 		WCHAR	*cmdLineW = ::GetCommandLineW();
-		if (!wcsstr(cmdLineW, TEMPDIR_OPT) && !wcsstr(cmdLineW, RUNAS_OPT)) {
+		if (!wcsstr(cmdLineW, TEMPDIR_OPT) &&
+			!wcsstr(cmdLineW, RUNAS_OPT)   &&
+			!wcsstr(cmdLineW, UNINST_OPT)) {
 			return	ExecInTempDir();
 		}
 	}
@@ -77,28 +120,20 @@ int ExecInTempDir()
 	}
 
 // テンポラリディレクトリにインストーラをコピー
-	WCHAR	orgDir[MAX_PATH];
-	wcscpy(orgDir, TGetExeDirW());
+	WCHAR	orgFile[MAX_PATH] = L"";
+	::GetModuleFileNameW(NULL, orgFile, wsizeof(orgFile));
 
-	for (auto &fname: SetupFiles) {
-		WCHAR	orgFile[MAX_PATH];
-		WCHAR	dstFile[MAX_PATH];
+	WCHAR	dstFile[MAX_PATH];
+	MakePathW(dstFile, dir, wcsrchr(orgFile, '\\') + 1);
 
-		MakePathW(orgFile, orgDir, fname);
-		MakePathW(dstFile, dir, fname);
-
-		if (!::CopyFileW(orgFile, dstFile, TRUE)) {
-			TMessageBoxW(dstFile, LoadStrW(IDS_NOTCREATEFILE), MB_OK);
-			return	-1;
-		}
+	if (!::CopyFileW(orgFile, dstFile, TRUE)) {
+		TMessageBoxW(dstFile, LoadStrW(IDS_NOTCREATEFILE), MB_OK);
+		return	-1;
 	}
 
 // テンポラリディレクトリのインストーラを実行
-	WCHAR	new_self[MAX_PATH];
-	MakePathW(new_self, dir, INSTALL_EXE);
-
 	WCHAR	cmdline[MAX_PATH * 2] = L"";
-	snwprintfz(cmdline, wsizeof(cmdline), L"\"%s\" ", new_self);
+	snwprintfz(cmdline, wsizeof(cmdline), L"\"%s\" ", dstFile);
 
 	int		argc = 0;
 	WCHAR	**argv = ::CommandLineToArgvW(::GetCommandLineW(), &argc);
@@ -111,7 +146,7 @@ int ExecInTempDir()
 	STARTUPINFOW		sui = { sizeof(sui) };
 	PROCESS_INFORMATION pi = {};
 
-	if (!::CreateProcessW(new_self, cmdline, 0, 0, 0, 0, 0, dir, &sui, &pi)) {
+	if (!::CreateProcessW(dstFile, cmdline, 0, 0, 0, 0, 0, dir, &sui, &pi)) {
 		return	-1;
 	}
 
@@ -121,14 +156,8 @@ int ExecInTempDir()
 
 // テンポラリインストーラ終了後に、テンポラリファイル＆ディレクトリを削除
 	for (int i=0; i < 100; i++) {
-		for (auto &fname: SetupFiles) {
-			WCHAR	dstFile[MAX_PATH];
-
-			MakePathW(dstFile, dir, fname);
-
-			if (::GetFileAttributesW(dstFile) != 0xffffffff) {
-				::DeleteFileW(dstFile);
-			}
+		if (::GetFileAttributesW(dstFile) != 0xffffffff) {
+			::DeleteFileW(dstFile);
 		}
 		if (::GetFileAttributesW(dir) != 0xffffffff) {
 			::RemoveDirectoryW(dir);
@@ -160,6 +189,15 @@ void TInstApp::InitWindow(void)
 		TWow64DisableWow64FsRedirection(&val);
 	}
 */
+	if (TIsLowIntegrity()) {
+		TMessageBox(LoadStr(IDS_LOWINTEGRITY), "FastCopy");
+		WCHAR path[MAX_PATH];
+		::GetModuleFileNameW(NULL, path, wsizeof(path));
+		TOpenExplorerSelOneW(path);
+		TApp::Exit(-1);
+		return;
+	}
+
 	TDlg *maindlg = new TInstDlg(cmdLine);
 	mainWnd = maindlg;
 	maindlg->Create();
@@ -169,43 +207,133 @@ void TInstApp::InitWindow(void)
 /*
 	メインダイアログクラス
 */
-TInstDlg::TInstDlg(char *cmdLine) : TDlg(INSTALL_DIALOG), staticText(this)
+TInstDlg::TInstDlg(char *cmdLine) : TDlg(INSTALL_DIALOG),
+	staticText(this), extractBtn(this), startBtn(this)
 {
-	cfg.mode = strcmp(cmdLine, "/r") ? SETUP_MODE : UNINSTALL_MODE;
-	cfg.programLink	= TRUE;
-	cfg.desktopLink	= TRUE;
+	OpenDebugConsole(ODC_PARENT);
 
-	cfg.hOrgWnd   = NULL;
-	cfg.runImme   = FALSE;
-	cfg.appData   = NULL;
-	cfg.setupDir  = NULL;
-	cfg.startMenu = NULL;
-	cfg.deskTop   = NULL;
-	cfg.virtualDir= NULL;
+	GetIPDictBySelf(&ipDict);
 
-	if (::IsUserAnAdmin()) {
-		WCHAR	*p = wcsstr((WCHAR *)GetCommandLineW(), RUNAS_OPT);
+	orgArgv = CommandLineToArgvExW(::GetCommandLineW(), &orgArgc);
 
-		if (p) {
-			if (p && (p = wcstok(p+7,  L",")))  cfg.hOrgWnd	= (HWND)(LONG_PTR)wcstoull(p, 0, 16);
-			if (p && (p = wcstok(NULL, L",")))  cfg.mode	= (InstMode)wcstoul(p, 0, 10);
-			if (p && (p = wcstok(NULL, L",")))  cfg.runImme	= wcstoul(p, 0, 10);
-			if (p && (p = wcstok(NULL, L",")))  cfg.programLink	= wcstoul(p, 0, 10);
-			if (p && (p = wcstok(NULL, L",")))  cfg.desktopLink	= wcstoul(p, 0, 10);
-			if (p && (p = wcstok(NULL, L"\""))) cfg.startMenu = p; if (p) p = wcstok(NULL, L"\"");
-			if (p && (p = wcstok(NULL, L"\""))) cfg.deskTop   = p; if (p) p = wcstok(NULL, L"\"");
-			if (p && (p = wcstok(NULL, L"\""))) cfg.setupDir  = p; if (p) p = wcstok(NULL, L"\"");
-			if (p && (p = wcstok(NULL, L"\""))) cfg.appData   = p; if (p) p = wcstok(NULL, L"\"");
-			if (p && (p = wcstok(NULL, L"\""))) cfg.virtualDir= p;
+	cfg.mode = SETUP_MODE;
+	cfg.programLink = TRUE;
+	cfg.desktopLink = TRUE;
+	cfg.isAppReg    = TRUE;
+	cfg.isSubDir    = TRUE;
+
+	cfg.hOrgWnd    = NULL;
+	cfg.runImme    = FALSE;
+	cfg.isAuto     = FALSE;
+	cfg.isSilent   = FALSE;
+	cfg.isExtract  = FALSE;
+	cfg.isExt64    = ipDict.key_num() ? TOs64() :
+#ifdef _WIN64
+		TRUE;
+#else
+		FALSE;
+#endif
+
+	cfg.appData    = NULL;
+	cfg.setupDir   = NULL;
+	cfg.startMenu  = NULL;
+	cfg.deskTop    = NULL;
+	cfg.virtualDir = NULL;
+
+	for (int i=1; orgArgv[i] && orgArgv[i][0] == '/'; i++) {
+		auto	arg = orgArgv[i];
+
+		if (wcsicmp(arg, UNINST_OPT) == 0) {
+			cfg.mode = UNINSTALL_MODE;
+		}
+		else if (wcsicmp(arg, UPDATE_OPT) == 0) {
+			cfg.isAuto = TRUE;
+			cfg.desktopLink = FALSE;
+			cfg.programLink = FALSE;
+		}
+		else if (wcsicmp(arg, SILENT_OPT) == 0) {
+			cfg.isSilent = TRUE;
+		}
+		else if (wcsicmp(arg, EXTRACT_OPT) == 0) {
+			cfg.isExtract = TRUE;
+		}
+		else if (wcsicmp(arg, EXTRACT32_OPT) == 0) {
+			cfg.isExtract = TRUE;
+			cfg.isExt64   = FALSE;
+		}
+		else if (wcsicmp(arg, EXTRACT64_OPT) == 0) {
+			cfg.isExtract = TRUE;
+			cfg.isExt64   = TRUE;
+		}
+		else if (wcsicmp(arg, NOPROG_OPT) == 0) {
+			cfg.programLink = FALSE;
+		}
+		else if (wcsicmp(arg, NODESK_OPT) == 0) {
+			cfg.desktopLink = FALSE;
+		}
+		else if (wcsicmp(arg, NOAPP_OPT) == 0) {
+			cfg.isAppReg = FALSE;
+		}
+		else if (wcsicmp(arg, NOSUBDIR_OPT) == 0) {
+			cfg.isSubDir = FALSE;
+		
+		}
+		else if (wcsnicmp(arg, DIR_OPT, wsizeof(DIR_OPT)-1) == 0) {
+			cfg.setupDir = arg + wsizeof(DIR_OPT)-1;
+		}
+		else if (wcsnicmp(arg, RUNAS_OPT, wsizeof(RUNAS_OPT)-1) == 0 && ::IsUserAnAdmin()) {
+			WCHAR	*p = arg + wcslen(RUNAS_OPT);
+
+			if (p && (p = wcstok(p,    L","))) cfg.hOrgWnd = (HWND)(LONG_PTR)wcstoull(p, 0, 16);
+			if (p && (p = wcstok(NULL, L","))) cfg.mode    = (InstMode)wcstoul(p, 0, 10);
+			if (p && (p = wcstok(NULL, L","))) cfg.runImme     = wcstoul(p, 0, 10);
+			if (p && (p = wcstok(NULL, L","))) cfg.programLink = wcstoul(p, 0, 10);
+			if (p && (p = wcstok(NULL, L","))) cfg.desktopLink = wcstoul(p, 0, 10);
+			if (p && (p = wcstok(NULL, L","))) cfg.startMenu = p;
+			if (p && (p = wcstok(NULL, L","))) cfg.deskTop   = p;
+			if (p && (p = wcstok(NULL, L","))) cfg.setupDir  = p;
+			if (p && (p = wcstok(NULL, L","))) cfg.appData   = p;
+			if (p && (p = wcstok(NULL, L","))) cfg.virtualDir= p;
+			if (p && (p = wcstok(NULL, L","))) cfg.isAuto    = wcstoul(p, 0, 10);
+			if (p && (p = wcstok(NULL, L","))) cfg.isSilent  = wcstoul(p, 0, 10);
+			if (p && (p = wcstok(NULL, L","))) cfg.isExtract = wcstoul(p, 0, 10);
+			if (p && (p = wcstok(NULL, L","))) cfg.isExt64   = wcstoul(p, 0, 10);
+			if (p && (p = wcstok(NULL, L","))) cfg.isAppReg  = wcstoul(p, 0, 10);
+			if (p && (p = wcstok(NULL, L","))) cfg.isSubDir  = wcstoul(p, 0, 10);
 			if (p) {
 				::ShowWindow(cfg.hOrgWnd, SW_HIDE);
 			}
 			else {
 				cfg.runImme = FALSE;
+				OutW(L"RUNAS format error\n");
 				TApp::Exit(-1);
 			}
+			return;
+		}
+		else if (wcsicmp(arg, TEMPDIR_OPT) == 0) {
+			// nothing
+		}
+		else {
+			ErrMsg(USAGE_STR, (wcsicmp(arg, HELP_OPT) == 0) ? NULL :
+				FmtW(L"Unrecognized option: %s", arg));
+			TApp::Exit(-1);
 		}
 	}
+	if (cfg.isExtract) {
+		cfg.isAuto = TRUE;
+		cfg.isSilent = TRUE;
+		cfg.isAppReg = FALSE;
+		cfg.desktopLink = FALSE;
+		cfg.programLink = FALSE;
+	}
+
+	if (cfg.isSilent) {
+		if (cfg.mode == UNINSTALL_MODE && cfg.setupDir) {
+			ErrMsg(L"/DIR= can't be specified\n");
+		}
+	}
+
+	GetDefaultDir();
 }
 
 TInstDlg::~TInstDlg()
@@ -231,6 +359,44 @@ BOOL GetShortcutPath(InstallCfg *cfg)
 	return	FALSE;
 }
 
+BOOL TInstDlg::VerifyDict()
+{
+	DynBuf	dict_hash;
+	if (!ipDict.get_bytes(SHA256_KEY, &dict_hash)) return FALSE;
+	ipDict.del_key(SHA256_KEY);
+
+	DynBuf	dbuf;
+	auto	size = ipDict.pack(&dbuf);
+	if (size == 0) return FALSE;
+
+	TDigest	digest;
+	BYTE	sha256[SHA256_SIZE];
+
+	digest.Init(TDigest::SHA256);
+	digest.Update(dbuf.Buf(), (DWORD)size);
+	if (!digest.GetVal(sha256)) return FALSE;
+
+	return	memcmp(dict_hash.Buf(), sha256, SHA256_SIZE) == 0 ? TRUE : FALSE;
+}
+
+void TInstDlg::GetDefaultDir()
+{
+	WCHAR	buf[MAX_PATH] = L"";
+
+	if (::SHGetSpecialFolderPathW(NULL, buf, CSIDL_PROFILE, FALSE)) {
+		MakePathW(defaultDir, buf, FASTCOPY);
+	}
+	else {
+		TRegistry	reg(HKEY_LOCAL_MACHINE, BY_MBCS);
+		if (reg.OpenKey(REGSTR_PATH_SETUP)) {
+			if (reg.GetStrMW(REGSTR_PROGRAMFILES, buf, sizeof(buf))) {
+				MakePathW(defaultDir, buf, FASTCOPY);
+			}
+			reg.CloseKey();
+		}
+	}
+}
+
 /*
 	メインダイアログ用 WM_INITDIALOG 処理ルーチン
 */
@@ -244,12 +410,37 @@ BOOL TInstDlg::EvCreate(LPARAM lParam)
 
 	::SetClassLong(hWnd, GCL_HICON,
 					(LONG_PTR)::LoadIcon(TApp::GetInstance(), (LPCSTR)SETUP_ICON));
-	MoveWindow((cx - xsize)/2, (cy - ysize)/2, xsize, ysize, TRUE);
-	Show();
+	MoveWindow((cx - xsize)/2, (cy - ysize)/2, xsize, ysize, FALSE);
 
 	TChangeWindowMessageFilter(WM_CLOSE, 1);
 
-// プロパティシートの生成
+	extractBtn.AttachWnd(GetDlgItem(EXTRACT_BTN));
+	extractBtn.CreateTipWnd(LoadStrW(IDS_EXTRACT));
+
+	startBtn.AttachWnd(GetDlgItem(IDOK));
+	startBtn.CreateTipWnd(LoadStrW(IDS_START));
+
+	ipDict.get_str(VER_KEY, &ver);
+
+	SetWindowTextU8(Fmt("FastCopy Setup %s %s", GetVersionStr(),
+#ifdef _WIN64
+		"(x64)"
+#else
+		""
+#endif
+	));
+
+	if (ipDict.key_num() && !VerifyDict()) {
+		if (cfg.isSilent) {
+			OutW(L"Installer is broken.\n");
+		} else {
+			MessageBox("Installer is broken.", "FastCopy");
+		}
+		TApp::Exit(-1);
+		return	FALSE;
+	}
+
+	// プロパティシートの生成
 	staticText.AttachWnd(GetDlgItem(INSTALL_STATIC));
 	propertySheet = new TInstSheet(this, &cfg);
 
@@ -265,22 +456,22 @@ BOOL TInstDlg::EvCreate(LPARAM lParam)
 	}
 
 // 既にセットアップされている場合は、セットアップディレクトリを読み出す
-	if (!*setupDir) {
-		TRegistry	reg(HSTOOLS_STR);
-		if (reg.OpenKeyW(FASTCOPY)) {
-			reg.GetStrW(L"Path", setupDir, sizeof(setupDir));
+	TRegistry	reg(HKEY_CURRENT_USER);
+	if (reg.OpenKey("Software")) {
+		if (reg.OpenKey(HSTOOLS_STR)) {
+			if (reg.OpenKeyW(FASTCOPY)) {
+				if (reg.GetStrW(L"Path", setupDir, sizeof(setupDir))) {
+					cfg.setuped = setupDir;
+				}
+				reg.CloseKey();
+			}
 			reg.CloseKey();
 		}
+		reg.CloseKey();
 	}
 
-// Program Filesのパス取り出し
-	if (!*setupDir) {
-		TRegistry	reg(HKEY_LOCAL_MACHINE, BY_MBCS);
-		if (reg.OpenKey(REGSTR_PATH_SETUP)) {
-			if (reg.GetStrMW(REGSTR_PROGRAMFILES, buf, sizeof(buf)))
-				MakePathW(setupDir, buf, FASTCOPY);
-			reg.CloseKey();
-		}
+	if (!*setupDir && *defaultDir) {
+		wcscpy(setupDir, defaultDir);
 	}
 
 	if (!cfg.startMenu || !cfg.deskTop) {
@@ -289,11 +480,33 @@ BOOL TInstDlg::EvCreate(LPARAM lParam)
 
 	SetDlgItemTextW(FILE_EDIT, cfg.setupDir ? cfg.setupDir : setupDir);
 
+	GetDlgItemTextW(SETUP_GRP, buf, wsizeof(buf));
+	swprintf(buf + wcslen(buf), L"  (For %s)", cfg.isExt64 ? L"x64" : L"x86");
+	SetDlgItemTextW(SETUP_GRP, buf);
+
 	CheckDlgButton(cfg.mode == SETUP_MODE ? SETUP_RADIO : UNINSTALL_RADIO, 1);
 	ChangeMode();
 
-	if (cfg.runImme) {
-		PostMessage(WM_COMMAND, MAKEWORD(IDOK, 0), 0);
+	if (cfg.isAuto) {
+		if (!cfg.setuped || (!IsUserAnAdmin() && IsWinVista() && TIsVirtualizedDirW(setupDir))) {
+			cfg.isAuto = FALSE;
+		}
+	}
+	if (!cfg.isAuto && !cfg.isSilent) {
+		Show();
+
+		if (TIsWow64() && !cfg.isExt64) {
+			MessageBoxW(LoadStrW(IDS_WOW64), L"FastCopy Installer");
+		}
+	}
+
+	if (cfg.runImme || cfg.isAuto || cfg.isSilent) {
+		if (cfg.isExtract) {
+			Extract();
+		}
+		else {
+			PostMessage(WM_COMMAND, MAKEWORD(IDOK, 0), 0);
+		}
 	}
 
 	return	TRUE;
@@ -328,20 +541,98 @@ BOOL TInstDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl)
 		BrowseDirDlg(this, FILE_EDIT, LoadStrW(IDS_SELECTPATH));
 		return	TRUE;
 
+	case EXTRACT_BTN:
+		Extract();
+		return	TRUE;
+
+	case DEFAULT_BTN:
+		SetDlgItemTextW(FILE_EDIT, defaultDir);
+		return	TRUE;
+
 	case SETUP_RADIO:
 	case UNINSTALL_RADIO:
-		if (wNotifyCode == BN_CLICKED)
+		if (wNotifyCode == BN_CLICKED) {
 			ChangeMode();
+		}
 		return	TRUE;
 	}
 	return	FALSE;
 }
 
+void TInstDlg::Extract(void)
+{
+	if (ipDict.key_num() == 0 || ver.Len() == 0) {
+		if (cfg.isSilent) {
+			OutW(L"no contents\n");
+			Exit(-1);
+		}
+	}
+
+	WCHAR	wDir[MAX_PATH] = L"C:\\";
+
+	if (cfg.isSilent) {
+		if (cfg.setupDir) {
+			wcscpy(wDir, cfg.setupDir);
+		}
+		else {
+			::GetCurrentDirectoryW(wsizeof(wDir), wDir);
+		}
+	}
+	else {
+		::SHGetSpecialFolderPathW(0, wDir, CSIDL_DESKTOPDIRECTORY, FALSE);
+		SetDlgItemTextW(EXTRACT_EDIT, wDir);
+
+		if (!BrowseDirDlg(this, EXTRACT_EDIT, LoadStrW(IDS_EXTRACTDIR), &cfg.isExt64)) { return; }
+
+		if (!GetDlgItemTextW(EXTRACT_EDIT, wDir, wsizeof(wDir))) return;
+	}
+
+	if (cfg.isSubDir) {
+		AddPathW(wDir, FmtW(L"FastCopy%s%s", U8toWs(ver.s()), cfg.isExt64 ? L"_x64" : L""));
+	}
+	MakeDirAllW(wDir);
+
+	for (auto &fname : SetupFiles) {
+		WCHAR	wPath[MAX_PATH];
+		BOOL	is_rotate = FALSE;
+		MakePathW(wPath, wDir, fname);
+
+		WCHAR	dname[MAX_PATH];
+		GetDictName(fname, dname);
+
+		if (!IPDictCopy(&ipDict, dname, wPath, &is_rotate)) {
+			ErrMsg(wPath, LoadStrW(IDS_NOTCREATEFILE));
+			return;
+		}
+	}
+	if (!cfg.isSilent) {
+		::ShellExecuteW(0, NULL, wDir, NULL, NULL, SW_SHOW);
+	}
+	Exit(0);
+}
+
+void TInstDlg::ErrMsg(const WCHAR *body, const WCHAR *title)
+{
+	auto	s = title ? FmtW(L"%s: %s\n", title, body) : body;
+
+	if (cfg.isSilent) {
+		OutW(s);
+		TApp::Exit(-1);
+	} else {
+		MessageBoxW(s, FASTCOPY);
+	}
+}
+
 void TInstDlg::ChangeMode(void)
 {
+	if (!propertySheet) return;
+
 	cfg.mode = IsDlgButtonChecked(SETUP_RADIO) ? SETUP_MODE : UNINSTALL_MODE;
 	::EnableWindow(GetDlgItem(FILE_EDIT), cfg.mode == SETUP_MODE);
+	extractBtn.Show((cfg.mode == SETUP_MODE && ipDict.key_num()) ? SW_SHOW : SW_HIDE);
 	propertySheet->Paste();
+
+	::EnableWindow(GetDlgItem(IDOK), cfg.mode == SETUP_MODE || cfg.setuped.Len());
 }
 
 BOOL IsSameFile(const WCHAR *src, const WCHAR *dst)
@@ -422,9 +713,8 @@ BOOL MiniCopy(WCHAR *src, WCHAR *dst, BOOL *is_rotate=NULL)
 	BOOL	ret = FALSE;
 	DWORD	srcSize = 0;
 	DWORD	dstSize;
-	BOOL	isRotate = FALSE;
 
-	if ((hSrc = ::CreateFileW(src, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0))
+	if ((hSrc = ::CreateFileWithDirW(src, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0))
 				== INVALID_HANDLE_VALUE) {
 		DebugW(L"src(%s) open err(%x)\n", src, GetLastError());
 		return	FALSE;
@@ -433,7 +723,7 @@ BOOL MiniCopy(WCHAR *src, WCHAR *dst, BOOL *is_rotate=NULL)
 
 #define MAX_ROTATE	10
 	CleanupRotateFile(dst, MAX_ROTATE);
-	hDst = ::CreateFileW(dst, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+	hDst = ::CreateFileWithDirW(dst, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
 	if (hDst == INVALID_HANDLE_VALUE) {
 		RotateFile(dst, MAX_ROTATE, TRUE);
 		if (is_rotate) {
@@ -500,10 +790,14 @@ BOOL TInstDlg::RunAsAdmin(BOOL is_imme)
 		wcscpy(virtual_store, L"dummy");
 	}
 
-	snwprintfz(buf, wsizeof(buf), L"/runas=%p,%d,%d,%d,%d,\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"",
+	snwprintfz(buf, wsizeof(buf),
+		RUNAS_OPT \
+		L"%p,%d,%d,%d,%d,\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",%d,%d,%d,%d,%d,%d",
 		hWnd, cfg.mode, is_imme, cfg.programLink, cfg.desktopLink,
 		cfg.startMenu, cfg.deskTop,
-		setup_path, app_data, virtual_store);
+		setup_path, app_data, virtual_store,
+		cfg.isAuto, cfg.isSilent, cfg.isExtract, cfg.isExt64, cfg.isAppReg, cfg.isSubDir
+		);
 
 	sei.cbSize = sizeof(SHELLEXECUTEINFO);
 	sei.lpVerb = L"runas";
@@ -519,14 +813,25 @@ BOOL TInstDlg::RunAsAdmin(BOOL is_imme)
 	return	ret;
 }
 
+void TInstDlg::GetDictName(const WCHAR *fname, WCHAR *dname)
+{
+	wcscpy(dname, fname);
+
+	if (cfg.isExt64 && find_if(begin(DualFiles), end(DualFiles),
+		[&](auto v) { return !wcscmp(v, fname); }) != end(DualFiles)) {
+		wcscat(dname, L".x64");
+	}
+}
+
 BOOL TInstDlg::Install(void)
 {
-	WCHAR	buf[MAX_PATH];
-	WCHAR	setupDir[MAX_PATH];
-	WCHAR	setupPath[MAX_PATH];
+	WCHAR	buf[MAX_PATH] = {};
+	WCHAR	setupDir[MAX_PATH] = {};
+	WCHAR	setupPath[MAX_PATH] = {};
 	BOOL	is_delay_copy = FALSE;
 	BOOL	is_rotate = FALSE;
 	int		len;
+	BOOL	ret = FALSE;
 
 // インストールパス設定
 	len = GetDlgItemTextW(FILE_EDIT, setupDir, wsizeof(setupDir));
@@ -534,31 +839,36 @@ BOOL TInstDlg::Install(void)
 		setupDir[len-1] = 0;
 	}
 
-	if (IsWinVista() && TIsVirtualizedDirW(setupDir)) {
+	if (!cfg.isAuto && IsWinVista() && TIsVirtualizedDirW(setupDir)) {
 		if (!::IsUserAnAdmin()) {
-			return	RunAsAdmin(TRUE);
-		}
-		else if (cfg.runImme && cfg.setupDir && lstrcmpiW(setupDir, cfg.setupDir)) {
-			return	MessageBox(LoadStr(IDS_ADMINCHANGE)), FALSE;
+			auto ret = RunAsAdmin(TRUE);
+			if (!ret && cfg.isSilent) {
+				ErrMsg(L"Failed to elevate\n");
+			}
+			return	ret;
 		}
 	}
 
-	::CreateDirectoryW(setupDir, NULL);
+	MakeDirAllW(setupDir);
 	DWORD	attr = ::GetFileAttributesW(setupDir);
 
-	if (attr == 0xffffffff || (attr & FILE_ATTRIBUTE_DIRECTORY) == 0)
-		return	MessageBox(LoadStr(IDS_NOTCREATEDIR)), FALSE;
+	if (attr == 0xffffffff || (attr & FILE_ATTRIBUTE_DIRECTORY) == 0) {
+		if (cfg.isSilent || !cfg.isAuto) {
+			ErrMsg(setupDir, LoadStrW(IDS_NOTCREATEDIR));
+		}
+		return	FALSE;
+	}
 	MakePathW(setupPath, setupDir, FASTCOPY_EXE);
 
-	if (MessageBoxW(LoadStrW(IDS_START), INSTALL_STR, MB_OKCANCEL|MB_ICONINFORMATION) != IDOK)
+	if (!cfg.isAuto && !cfg.isSilent &&
+		MessageBoxW(LoadStrW(IDS_START), INSTALL_STR, MB_OKCANCEL|MB_ICONINFORMATION) != IDOK)
 		return	FALSE;
 
 // ファイルコピー
 	if (cfg.mode == SETUP_MODE) {
 		WCHAR	installPath[MAX_PATH];
 		WCHAR	orgDir[MAX_PATH];
-		IPDict	dict;
-		BOOL	use_dict = GetIPDictBySelf(&dict);
+		BOOL	use_dict = ipDict.key_num() ? TRUE : FALSE;
 
 		::GetModuleFileNameW(NULL, orgDir, wsizeof(orgDir));
 		GetParentDirW(orgDir, orgDir);
@@ -567,8 +877,10 @@ BOOL TInstDlg::Install(void)
 			MakePathW(installPath, setupDir, fname);
 
 			if (use_dict) {
-				if (IPDictCopy(&dict, fname, installPath, &is_rotate) ||
-					IsSameFileDict(&dict, fname, installPath))
+				WCHAR	dname[MAX_PATH];
+				GetDictName(fname, dname);
+				if (IPDictCopy(&ipDict, dname, installPath, &is_rotate) ||
+					IsSameFileDict(&ipDict, dname, installPath))
 					continue;
 			}
 			else {
@@ -578,75 +890,124 @@ BOOL TInstDlg::Install(void)
 					continue;
 				}
 			}
-			return	MessageBoxW(installPath, LoadStrW(IDS_NOTCREATEFILE)), FALSE;
+			if (cfg.isAuto) {
+				::ShellExecuteW(NULL, L"open", setupPath, L"", setupDir, SW_SHOW);
+				Exit(-1);
+			}
+			else {
+				ErrMsg(installPath, LoadStrW(IDS_NOTCREATEFILE));
+			}
+			return	FALSE;
 		}
-		TRegistry	reg(HSTOOLS_STR);
-		if (reg.CreateKeyW(FASTCOPY)) {
-			reg.SetStrW(L"Path", setupDir);
-			reg.CloseKey();
+		for (auto &fname: OldFiles) {
+			MakePathW(installPath, setupDir, fname);
+			::DeleteFileW(installPath);
 		}
 	}
 
 // スタートメニュー＆デスクトップに登録
-	WCHAR	*linkPath[]	= { cfg.startMenu, cfg.deskTop, NULL };
-	BOOL	execFlg[]	= { cfg.programLink,  cfg.desktopLink };
+	if (!cfg.isAuto) {
+		WCHAR	*linkPath[]	= { cfg.startMenu, cfg.deskTop, NULL };
+		BOOL	execFlg[]	= { cfg.programLink,  cfg.desktopLink };
 
-	for (int i=0; linkPath[i]; i++) {
-		auto	&fname = linkPath[i];
-		wcscpy(buf, fname);
-		if (i != 0 || RemoveSameLink(fname, buf) == FALSE) {
-			swprintf(buf + wcslen(buf), L"\\%s", FASTCOPY_SHORTCUT);
-		}
-		if (execFlg[i]) {
-			ShellLinkW(setupPath, buf);
-		}
-		else {
-			DeleteLinkW(buf);
+		for (int i=0; linkPath[i]; i++) {
+			auto	&fname = linkPath[i];
+			wcscpy(buf, fname);
+			if (i != 0 || RemoveSameLink(fname, buf) == FALSE) {
+				swprintf(buf + wcslen(buf), L"\\%s", FASTCOPY_SHORTCUT);
+			}
+			if (execFlg[i]) {
+				ShellLinkW(setupPath, buf);
+			}
+			else {
+			//	DeleteLinkW(buf);
+			}
 		}
 	}
 
-#if 0
 // レジストリにアンインストール情報を登録
+	TRegistry	reg(HKEY_CURRENT_USER);
 	if (reg.OpenKey(REGSTR_PATH_UNINSTALL)) {
-		if (reg.CreateKey(FASTCOPY)) {
+		WCHAR	exePath[MAX_PATH] = {};
+
+		MakePathW(exePath, setupDir, FASTCOPY_EXE);
+
+		if (cfg.isAuto) {
+			if (reg.OpenKeyW(FASTCOPY)) {
+				if (reg.GetStrMW(REGSTR_VAL_UNINSTALLER_DISPLAYICON, buf, sizeof(buf)) &&
+					wcscmp(exePath, buf) == 0) {
+					cfg.isAppReg = TRUE; // isAuto でかつ、同じパスにinst済みの場合は再登録
+				}
+				reg.CloseKey();
+			}
+		}
+		if (cfg.isAppReg && reg.CreateKeyW(FASTCOPY)) {
+			reg.SetStrMW(REGSTR_VAL_UNINSTALLER_DISPLAYNAME, FASTCOPY);
+
 			MakePathW(buf, setupDir, INSTALL_EXE);
 			wcscat(buf, L" /r");
-			reg.SetStrMW(REGSTR_VAL_UNINSTALLER_DISPLAYNAME, FASTCOPY);
 			reg.SetStrMW(REGSTR_VAL_UNINSTALLER_COMMANDLINE, buf);
+
+			reg.SetStrMW(REGSTR_VAL_UNINSTALLER_DISPLAYICON, exePath);
+
+			reg.SetStr(REGSTR_VAL_UNINSTALLER_DISPLAYVER, GetVersionStr() + 3);
+			reg.SetStr(REGSTR_VAL_UNINSTALLER_PUBLISHER, "H.Shirouzu");
+			reg.SetInt(REGSTR_VAL_UNINSTALLER_ESTIMATESIZE, 1500); // KB
+			reg.SetStr(REGSTR_VAL_UNINSTALLER_HELPLINK, LoadStrU8(IDS_HELPURL));
+			reg.SetStr(REGSTR_VAL_UNINSTALLER_URLUPDATEINFO, LoadStrU8(IDS_URL));
+			reg.SetStr(REGSTR_VAL_UNINSTALLER_URLINFOABOUT, LoadStrU8(IDS_SUPPORTBBS));
+			reg.SetStr(REGSTR_VAL_UNINSTALLER_COMMENTS, "shirouzu@ipmsg.org");
+
 			reg.CloseKey();
 		}
 		reg.CloseKey();
 	}
-#endif
-
-	if (IsWinVista() && TIsVirtualizedDirW(setupDir)) {
-		WCHAR	wbuf[MAX_PATH] = L"";
-		WCHAR	usr_path[MAX_PATH] = L"";
-		WCHAR	tmp[MAX_PATH];
-		WCHAR	*fastcopy_dirname = NULL;
-
-		::GetFullPathNameW(setupDir, MAX_PATH, tmp, &fastcopy_dirname);
-
-		if (cfg.appData) {
-			wcscpy(usr_path, cfg.appData);
+	if (cfg.isAppReg) {
+		if (reg.ChangeApp(HSTOOLS_STR)) {
+			if (reg.CreateKeyW(FASTCOPY)) {
+				reg.SetStrW(L"Path", setupDir);
+				reg.CloseKey();
+			}
 		}
-		else {
-			::SHGetSpecialFolderPathW(NULL, wbuf, CSIDL_APPDATA, FALSE);
-			MakePathW(usr_path, wbuf, fastcopy_dirname);
-		}
-
-		ConvertVirtualStoreConf(setupDir, usr_path, cfg.virtualDir);
 	}
 
-// コピーしたアプリケーションを起動
-	const WCHAR *msg = LoadStrW(is_delay_copy ? IDS_DELAYSETUPCOMPLETE :
-							  is_rotate ? IDS_REPLACECOMPLETE : IDS_SETUPCOMPLETE);
-	int			flg = MB_OKCANCEL|MB_ICONINFORMATION;
+	if (cfg.isAuto) {
+		::ShellExecuteW(NULL, L"open", setupPath, UPDATED_OPT, setupDir, SW_SHOW);
+	}
+	else {
+		if (IsWinVista() && TIsVirtualizedDirW(setupDir)) {
+			WCHAR	usr_path[MAX_PATH] = L"";
+			WCHAR	tmp[MAX_PATH];
+			WCHAR	*fastcopy_dirname = NULL;
 
-	TLaunchDlg	dlg(msg, this);
+			::GetFullPathNameW(setupDir, MAX_PATH, tmp, &fastcopy_dirname);
 
-	if (dlg.Exec() == IDOK) {
-		::ShellExecuteW(NULL, L"open", setupPath, L"", setupDir, SW_SHOW);
+			if (cfg.appData) {
+				wcscpy(usr_path, cfg.appData);
+			}
+			else {
+				WCHAR	wbuf[MAX_PATH] = L"";
+				::SHGetSpecialFolderPathW(NULL, wbuf, CSIDL_APPDATA, FALSE);
+				MakePathW(usr_path, wbuf, fastcopy_dirname);
+			}
+
+			ConvertVirtualStoreConf(setupDir, usr_path, cfg.virtualDir);
+		}
+
+		if (cfg.isSilent) {
+//			OutW(L"Done\n");
+		}
+		else {
+			// コピーしたアプリケーションを起動
+			const WCHAR *msg = LoadStrW(is_delay_copy ? IDS_DELAYSETUPCOMPLETE :
+									  is_rotate ? IDS_REPLACECOMPLETE : IDS_SETUPCOMPLETE);
+
+			TLaunchDlg	dlg(msg, this);
+
+			if (dlg.Exec() == IDOK) {
+				::ShellExecuteW(NULL, L"open", setupPath, L"" /* INSTALL_OPT */, setupDir, SW_SHOW);
+			}
+		}
 	}
 
 	Exit(0);
@@ -685,7 +1046,6 @@ BOOL ConvertVirtualStoreConf(WCHAR *execDir, WCHAR *userDir, WCHAR *virtualDir)
 	WCHAR	buf[MAX_PATH];
 	WCHAR	org_ini[MAX_PATH];
 	WCHAR	usr_ini[MAX_PATH];
-	WCHAR	vs_ini[MAX_PATH];
 	BOOL	is_admin = ::IsUserAnAdmin();
 	BOOL	is_exists;
 
@@ -702,6 +1062,7 @@ BOOL ConvertVirtualStoreConf(WCHAR *execDir, WCHAR *userDir, WCHAR *virtualDir)
 	}
 
 	if (virtualDir && virtualDir[0]) {
+		WCHAR	vs_ini[MAX_PATH];
 		MakePathW(vs_ini,  virtualDir, FASTCOPY_INI_W);
 		if (::GetFileAttributesW(vs_ini) != 0xffffffff) {
 			if (!is_exists) {
@@ -719,7 +1080,7 @@ BOOL ConvertVirtualStoreConf(WCHAR *execDir, WCHAR *userDir, WCHAR *virtualDir)
 
 	if ((is_admin || !is_exists) && ::GetFileAttributesW(org_ini) != 0xffffffff) {
 		if (!is_exists) {
-			is_exists = ::CopyFileW(org_ini, usr_ini, TRUE);
+			::CopyFileW(org_ini, usr_ini, TRUE);
 		}
 		if (is_admin) {
 			swprintf(buf, L"%s.obsolete", org_ini);
@@ -772,29 +1133,30 @@ int ShellExtFunc(WCHAR *setup_dir, ShellExtOpe kind, BOOL isAdmin)
 	return	ret;
 }
 
-BOOL IsRotateFile(const WCHAR *org, const WCHAR *target, int max_rotate)
+BOOL IsKindOfFile(const WCHAR *org, const WCHAR *exists)
 {
-	WCHAR	path[MAX_PATH];
-	WCHAR	*p = path + wcscpyz(path, org);
+	WCHAR	reg_buf[MAX_PATH];
+	auto	p = wcsrchr(org, '\\');
+	auto	targ = p ? p+1 : org;
 
-	for (int i=1; i < max_rotate; i++) {
-		swprintf(p, L".%d", i);
-		if (wcsicmp(path, target) == 0) {
-			return	TRUE;
-		}
-	}
-	return	FALSE;
+	swprintf(reg_buf, L"^(%s|%s\\..+)$", targ, targ);
+
+	auto re = make_unique<wregex>(reg_buf, regex_constants::icase);
+
+	wcmatch	wm;
+
+	return	regex_search(exists, wm, *re);
 }
 
 // ユーザファイルが無いことの確認
 BOOL ReadyToRmFolder(const WCHAR *dir)
 {
-	WCHAR				dir_aster[MAX_PATH];
+	WCHAR				path[MAX_PATH];
 	WIN32_FIND_DATAW	fdat;
 
-	MakePathW(dir_aster, dir, L"*");
+	MakePathW(path, dir, L"*");
 
-	HANDLE	fh = ::FindFirstFileW(dir_aster, &fdat);
+	HANDLE	fh = ::FindFirstFileW(path, &fdat);
 	if (fh == INVALID_HANDLE_VALUE) {
 		return	FALSE;
 	}
@@ -804,9 +1166,15 @@ BOOL ReadyToRmFolder(const WCHAR *dir)
 	do {
 		if (wcscmp(fdat.cFileName, L".") && wcscmp(fdat.cFileName, L"..")) {
 			BOOL	found = FALSE;
-			for (auto &fname: SetupFiles) {
-				if (wcsicmp(fname, fdat.cFileName) == 0 ||
-					IsRotateFile(fname, fdat.cFileName, 10)) {
+			for (auto &fname: SetupFilesEx) {
+				if (IsKindOfFile(fname, fdat.cFileName)) {
+					MakePathW(path, dir, fdat.cFileName);
+					if (!::DeleteFileW(path) &&
+						wcscmp(fname, INSTALL_EXE) &&
+						wcscmp(fname, FASTCOPY_LOGDIR) &&
+						wcscmp(fname, FASTCOPY_DOCDIR)) {
+						ret = FALSE;
+					}
 					found = TRUE;
 					break;
 				}
@@ -815,7 +1183,7 @@ BOOL ReadyToRmFolder(const WCHAR *dir)
 				ret = FALSE;
 			}
 		}
-	} while (ret && FindNextFileW(fh, &fdat));
+	} while (FindNextFileW(fh, &fdat));
 
 	::FindClose(fh);
 
@@ -826,29 +1194,27 @@ BOOL TInstDlg::UnInstall(void)
 {
 	WCHAR	setupDir[MAX_PATH] = L"";
 
-	TRegistry	reg(HSTOOLS_STR);
-	if (reg.OpenKeyW(FASTCOPY)) {
-		reg.GetStrW(L"Path", setupDir, sizeof(setupDir));
-		reg.CloseKey();
+	if (!cfg.setuped) {
+		ErrMsg(L"Setup path not found\n");
+		return	FALSE;
 	}
-	if (!*setupDir) {
-		::GetModuleFileNameW(NULL, setupDir, wsizeof(setupDir));
-		GetParentDirW(setupDir, setupDir);
-	}
-	BOOL	is_shext = FALSE;
-
-	is_shext = ShellExtFunc(setupDir, CHECK_SHELLEXT, TRUE);
+	wcscpy(setupDir, cfg.setuped.s());
+	BOOL	is_shext = ShellExtFunc(setupDir, CHECK_SHELLEXT, TRUE);
 
 	if ((is_shext || TIsVirtualizedDirW(setupDir)) && IsWinVista() && !::IsUserAnAdmin()) {
-		RunAsAdmin(TRUE);
+		auto ret = RunAsAdmin(TRUE);
+		if (!ret && cfg.isSilent) {
+			ErrMsg(L"Failed to elevate\n");
+		}
 		return	TRUE;
 	}
 
-	if (MessageBoxW(LoadStrW(IDS_START), UNINSTALL_STR, MB_OKCANCEL | MB_ICONINFORMATION) != IDOK)
+	if (!cfg.isSilent &&
+		MessageBoxW(LoadStrW(IDS_START), UNINSTALL_STR, MB_OKCANCEL | MB_ICONINFORMATION) != IDOK)
 		return	FALSE;
 
 	// スタートメニュー＆デスクトップから削除
-	reg.ChangeTopKey(HKEY_CURRENT_USER);
+	TRegistry	reg(HKEY_CURRENT_USER);
 	if (reg.OpenKey(REGSTR_SHELLFOLDERS)) {
 		char	*regStr[] = { REGSTR_PROGRAMS, REGSTR_DESKTOP, NULL };
 
@@ -872,11 +1238,7 @@ BOOL TInstDlg::UnInstall(void)
 		ShellExtFunc(setupDir, UNREGISTER_SHELLEXT, TRUE);
 	}
 
-#ifdef _WIN64
-	if (1) {
-#else
-	if (TIsWow64()) {
-#endif
+	if (TOs64()) {
 		SHELLEXECUTEINFOW	sei = { sizeof(sei) };
 		WCHAR				arg[1024];
 
@@ -895,72 +1257,85 @@ BOOL TInstDlg::UnInstall(void)
 		reg.CloseKey();
 	}
 
-#if 0
 // レジストリからアンインストール情報を削除
+	reg.ChangeTopKey(HKEY_CURRENT_USER);
 	if (reg.OpenKey(REGSTR_PATH_UNINSTALL)) {
-		if (reg.OpenKey(FASTCOPY)) {
-			if (reg.GetStrMW(REGSTR_VAL_UNINSTALLER_COMMANDLINE, setupDir, sizeof(setupDir)))
-				GetParentDirW(setupDir, setupDir);
-			reg.CloseKey();
-		}
-		reg.DeleteKey(FASTCOPY);
+		reg.DeleteKeyW(FASTCOPY);
 		reg.CloseKey();
 	}
-#endif
 
 	WCHAR	path[MAX_PATH];
 
 	GetParentDirW(setupDir, path);
 	::SetCurrentDirectoryW(path);
 
-	if (ReadyToRmFolder(setupDir)) {
-		WCHAR cmd[MAX_PATH];
+	Sleep(1000);	// for starting rundll
+	auto	ret = ReadyToRmFolder(setupDir);
+	auto	ret2 = TRUE;
 
-		MakePathW(cmd, setupDir, UNINST_BAT_W);
+// AppDataディレクトリ内のiniを削除
+	WCHAR	upath[MAX_PATH] = L"";
 
-		if (FILE *fp = _wfopen(cmd, L"w")) {
-			for (int i=0; i < 10; i++) {
-				fwprintf(fp, L"timeout 1 /NOBREAK\n");
-				fwprintf(fp, L"rd /s /q \"%s\"\n", setupDir);
-			}
-			fclose(fp);
-
-			STARTUPINFOW		sui = { sizeof(sui) };
-			PROCESS_INFORMATION	pi = {};
-
-			WCHAR opt[MAX_PATH];
-			swprintf(opt, L"cmd.exe /c \"%s\"", cmd);
-			if (::CreateProcessW(NULL, opt, 0, 0, 0, CREATE_NO_WINDOW, 0, 0, &sui, &pi)) {
-				::CloseHandle(pi.hThread);
-				::CloseHandle(pi.hProcess);
-			}
+	if (IsWinVista() && TIsVirtualizedDirW(setupDir)) {
+		WCHAR	wbuf[MAX_PATH] = L"";
+		if (::SHGetSpecialFolderPathW(NULL, wbuf, CSIDL_APPDATA, FALSE)) {
+			WCHAR	udir[MAX_PATH] = L"";
+			WCHAR	*udirname = NULL;
+			::GetFullPathNameW(setupDir, MAX_PATH, udir, &udirname);
+			MakePathW(upath, wbuf, udirname);
+		}
+	}
+	if (*upath && ::GetFileAttributesW(upath) != 0xffffffff) {
+		if ((ret2 = ReadyToRmFolder(upath))) {
+			::RemoveDirectoryW(upath);
 		}
 	}
 
 // 終了メッセージ
-	MessageBox(is_shext ? LoadStr(IDS_UNINSTSHEXTFIN) : LoadStr(IDS_UNINSTFIN));
+	if (!cfg.isSilent) {
+		MessageBox(
+			(is_shext || !ret || !ret2) ? LoadStr(IDS_UNINSTSHEXTFIN) : LoadStr(IDS_UNINSTFIN));
 
 // インストールディレクトリを開く
-	if (::GetFileAttributesW(setupDir) != 0xffffffff) {
-		::ShellExecuteW(NULL, NULL, setupDir, 0, 0, SW_SHOW);
+		if (!ret && ::GetFileAttributesW(setupDir) != 0xffffffff) {
+			if (!cfg.isSilent) 
+			::ShellExecuteW(NULL, NULL, setupDir, 0, 0, SW_SHOW);
+		}
+
+		if (*upath && ::GetFileAttributesW(upath) != 0xffffffff) {
+			::ShellExecuteW(NULL, NULL, upath, 0, 0, SW_SHOW);
+		}
 	}
 
-// AppDataディレクトリを開く
-	if (IsWinVista()) {
-		WCHAR	wbuf[MAX_PATH] = L"";
-		WCHAR	upath[MAX_PATH] = L"";
-		WCHAR	fastcopy_dir[MAX_PATH] = L"";
-		WCHAR	*fastcopy_dirname = NULL;
+	WCHAR cmd[MAX_PATH];
+	MakePathW(cmd, setupDir, UNINST_BAT_W);
 
-		if (TIsVirtualizedDirW(setupDir)) {
-			if (::SHGetSpecialFolderPathW(NULL, wbuf, CSIDL_APPDATA, FALSE)) {
-				::GetFullPathNameW(setupDir, MAX_PATH, fastcopy_dir, &fastcopy_dirname);
-				MakePathW(upath, wbuf, fastcopy_dirname);
+	if (FILE *fp = _wfopen(cmd, L"w")) {
+		WCHAR doc[MAX_PATH];
+		MakePathW(doc, setupDir, FASTCOPY_DOCDIR);
+		MakePathW(path, setupDir, INSTALL_EXE);
 
-				if (::GetFileAttributesW(upath) != 0xffffffff) {
-					::ShellExecuteW(NULL, NULL, upath, 0, 0, SW_SHOW);
-				}
+		for (int i=0; i < 10; i++) {
+			// fwprintf(fp, L"timeout 1 /NOBREAK\n");
+			fwprintf(fp, L"ping 127.0.0.1 -w 1\n");
+			if (ret) {
+				fwprintf(fp, L"rd /s /q \"%s\"\n", setupDir);
 			}
+			else {
+				fwprintf(fp, L"rd /s /q \"%s\"\n", doc);
+				fwprintf(fp, L"del /q \"%s\" \"%s\"\n", path, cmd);
+			}
+		}
+		fclose(fp);
+
+		STARTUPINFOW		sui = { sizeof(sui) };
+		PROCESS_INFORMATION	pi = {};
+
+		WCHAR opt[MAX_PATH];
+		swprintf(opt, L"cmd.exe /c \"%s\"", cmd);
+		if (::CreateProcessW(NULL, opt, 0, 0, 0, CREATE_NO_WINDOW, 0, 0, &sui, &pi)) {
+			::CloseHandle(pi.hThread);
+			::CloseHandle(pi.hProcess);
 		}
 	}
 
@@ -1066,12 +1441,13 @@ void TInstSheet::PutData(void)
 void TInstSheet::Paste(void)
 {
 	if (hWnd) {
-		if ((resId == UNINSTALL_SHEET) == (cfg->mode == UNINSTALL_MODE))
+		if ((resId == UNINSTALL_SHEET) == (cfg->mode == UNINSTALL_MODE)) {
 			return;
+		}
 		GetData();
 		Destroy();
 	}
-	resId = cfg->mode == UNINSTALL_MODE ? UNINSTALL_SHEET : INSTALL_SHEET;
+	resId = (cfg->mode == UNINSTALL_MODE) ? UNINSTALL_SHEET : INSTALL_SHEET;
 
 	Create();
 	PutData();
@@ -1102,14 +1478,21 @@ BOOL TInstSheet::EvCreate(LPARAM lParam)
 
 	SetWindowLong(GWL_EXSTYLE, GetWindowLong(GWL_EXSTYLE)|WS_EX_CONTROLPARENT);
 
+	if (cfg->mode == UNINSTALL_MODE) {
+		if (cfg->setuped.Len()) {
+			::SetWindowTextW(GetDlgItem(INST_STATIC), cfg->setuped.s());
+		}
+	}
+
 	Show();
+
 	return	TRUE;
 }
 
 /*
 	ディレクトリダイアログ用汎用ルーチン
 */
-void BrowseDirDlg(TWin *parentWin, UINT editCtl, WCHAR *title)
+BOOL BrowseDirDlg(TWin *parentWin, UINT editCtl, const WCHAR *title, BOOL *is_x64)
 {
 
 	HRESULT hr = S_OK;
@@ -1185,9 +1568,22 @@ void BrowseDirDlg(TWin *parentWin, UINT editCtl, WCHAR *title)
 
 	parentWin->GetDlgItemTextW(editCtl, fileBuf, wsizeof(fileBuf));
 	if (!SUCCEEDED(SHGetMalloc(&iMalloc)))
-		return;
+		return FALSE;
 
-	TBrowseDirDlg	dirDlg(fileBuf);
+	/*if (IsWin7()) {
+		WCHAR			buf[MAX_PATH];
+		GetParentDirW(fileBuf, buf);
+		vector<Wstr>	wvec;
+		Wstr			dir(buf);
+		TFileDlg(parentWin, &wvec, &dir, FDOPT_DIR);
+
+		if (wvec.size() == 0) return FALSE;
+		MakePathW(fileBuf, wvec[0].s(), L"");
+		parentWin->SetDlgItemTextW(editCtl, fileBuf);
+		return	TRUE;
+	}*/
+
+	TBrowseDirDlg	dirDlg(fileBuf, is_x64);
 	brInfo.hwndOwner = parentWin->hWnd;
 	brInfo.pidlRoot = 0;
 	brInfo.pszDisplayName = fileBuf;
@@ -1197,16 +1593,20 @@ void BrowseDirDlg(TWin *parentWin, UINT editCtl, WCHAR *title)
 	brInfo.lParam = (LPARAM)&dirDlg;
 	brInfo.iImage = 0;
 
+	BOOL ret = FALSE;
 	do {
 		if ((pidlBrowse = ::SHBrowseForFolderW(&brInfo)) != NULL) {
-			if (::SHGetPathFromIDListW(pidlBrowse, fileBuf))
+			if (::SHGetPathFromIDListW(pidlBrowse, fileBuf)) {
 				::SetDlgItemTextW(parentWin->hWnd, editCtl, fileBuf);
+				ret = TRUE;
+			}
 			iMalloc->Free(pidlBrowse);
 			break;
 		}
 	} while (dirDlg.IsDirty());
 
 	iMalloc->Release();
+	return	ret;
 		}
 	}
 }
@@ -1216,14 +1616,18 @@ void BrowseDirDlg(TWin *parentWin, UINT editCtl, WCHAR *title)
 */
 int CALLBACK BrowseDirDlg_Proc(HWND hWnd, UINT uMsg, LPARAM lParam, LPARAM data)
 {
+	TBrowseDirDlg *dlg = (TBrowseDirDlg *)data;
+	if (!dlg) return 0;
+
 	switch (uMsg) {
 	case BFFM_INITIALIZED:
-		((TBrowseDirDlg *)data)->AttachWnd(hWnd);
+		dlg->AttachWnd(hWnd);
 		break;
 
 	case BFFM_SELCHANGED:
-		if (((TBrowseDirDlg *)data)->hWnd)
-			((TBrowseDirDlg *)data)->SetFileBuf(lParam);
+		if (dlg->hWnd) {	// hWndがNULLの間に \Users\(User) が来るのを避ける
+			dlg->SetFileBuf(lParam);
+		}
 		break;
 	}
 	return 0;
@@ -1234,7 +1638,7 @@ int CALLBACK BrowseDirDlg_Proc(HWND hWnd, UINT uMsg, LPARAM lParam, LPARAM data)
 */
 BOOL TBrowseDirDlg::AttachWnd(HWND _hWnd)
 {
-	BOOL	ret = TSubClass::AttachWnd(_hWnd);
+	TSubClass::AttachWnd(_hWnd);
 	dirtyFlg = FALSE;
 
 // ディレクトリ設定
@@ -1242,30 +1646,30 @@ BOOL TBrowseDirDlg::AttachWnd(HWND _hWnd)
 	if (attr == 0xffffffff || (attr & FILE_ATTRIBUTE_DIRECTORY) == 0) {
 		GetParentDirW(fileBuf, fileBuf);
 	}
-	SendMessageW(BFFM_SETSELECTION, TRUE, (LPARAM)fileBuf);
+	SendMessageW(BFFM_SETSELECTIONW, TRUE, (LPARAM)fileBuf);
 	SetWindowTextW(FASTCOPY);
 
 // ボタン作成
-#if 0
-	RECT	tmp_rect;
-	::GetWindowRect(GetDlgItem(IDOK), &tmp_rect);
-	POINT	pt = { tmp_rect.left, tmp_rect.top };
-	::ScreenToClient(hWnd, &pt);
-	int		cx = (pt.x - 30) / 2, cy = tmp_rect.bottom - tmp_rect.top;
+	if (is_x64) {
+		TPoint	pt = { 30, 30 };
+		TSize	sz = { 80, 30 };
 
-	::CreateWindow(BUTTON_CLASS, LoadStr(IDS_MKDIR), WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON, 10,
-		pt.y, cx, cy, hWnd, (HMENU)MKDIR_BUTTON, TApp::GetInstance(), NULL);
-	::CreateWindow(BUTTON_CLASS, LoadStr(IDS_RMDIR), WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,
-		18 + cx, pt.y, cx, cy, hWnd, (HMENU)RMDIR_BUTTON, TApp::GetInstance(), NULL);
+		::CreateWindow(BUTTON_CLASS, "For x86", WS_CHILD|WS_VISIBLE|BS_AUTORADIOBUTTON|WS_GROUP,
+			pt.x, pt.y, sz.cx, sz.cy, hWnd, (HMENU)X86_RADIO, TApp::GetInstance(), NULL);
 
-	HFONT	hDlgFont = (HFONT)SendDlgItemMessage(IDOK, WM_GETFONT, 0, 0L);
-	if (hDlgFont) {
-		SendDlgItemMessage(MKDIR_BUTTON, WM_SETFONT, (LPARAM)hDlgFont, 0L);
-		SendDlgItemMessage(RMDIR_BUTTON, WM_SETFONT, (LPARAM)hDlgFont, 0L);
+		::CreateWindow(BUTTON_CLASS, "For x64", WS_CHILD|WS_VISIBLE|BS_AUTORADIOBUTTON,
+			pt.x + sz.cx, pt.y, sz.cx, sz.cy, hWnd, (HMENU)X64_RADIO, TApp::GetInstance(), NULL);
+
+		CheckDlgButton(*is_x64 ? X64_RADIO : X86_RADIO, TRUE);
+
+		HFONT	hDlgFont = (HFONT)SendDlgItemMessage(IDOK, WM_GETFONT, 0, 0L);
+		if (hDlgFont) {
+			SendDlgItemMessage(X86_RADIO, WM_SETFONT, (LPARAM)hDlgFont, 0L);
+			SendDlgItemMessage(X64_RADIO, WM_SETFONT, (LPARAM)hDlgFont, 0L);
+		}
 	}
-#endif
 
-	return	ret;
+	return	TRUE;
 }
 
 /*
@@ -1298,12 +1702,43 @@ BOOL TBrowseDirDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl)
 			PostMessage(WM_CLOSE, 0, 0);
 		}
 		return	TRUE;
+
+	case X86_RADIO:
+		*is_x64 = FALSE;
+		return	TRUE;
+
+	case X64_RADIO:
+		*is_x64 = TRUE;
+		return	TRUE;
 	}
 	return	FALSE;
 }
 
+HWND FindSysTree(HWND hWnd)
+{
+	for (HWND hChild=::GetWindow(hWnd, GW_CHILD);
+		hChild; hChild=::GetWindow(hChild, GW_HWNDNEXT)) {
+		for (HWND hSubChild = ::GetWindow(hChild, GW_CHILD); hSubChild;
+			hSubChild = ::GetWindow(hSubChild, GW_HWNDNEXT)) {
+			WCHAR	wbuf[MAX_PATH];
+			if (GetClassNameW(hSubChild, wbuf, wsizeof(wbuf))
+				&& wcscmp(wbuf, WC_TREEVIEWW) == 0) {
+				return	hSubChild;
+			}
+		}
+	}
+	return	NULL;
+}
+
 BOOL TBrowseDirDlg::SetFileBuf(LPARAM list)
 {
+	if (hWnd) {
+		if (auto hSysTree = FindSysTree(hWnd)) {
+			auto hRoot = TreeView_GetRoot(hSysTree);
+			auto hCur = TreeView_GetNextItem(hSysTree, hRoot, TVGN_CARET);
+			TreeView_EnsureVisible(hSysTree, hCur);
+		}
+	}
 	return	::SHGetPathFromIDListW((LPITEMIDLIST)list, fileBuf);
 }
 
@@ -1409,7 +1844,6 @@ BOOL IPDictCopy(IPDict *dict, const WCHAR *fname, const WCHAR *dst, BOOL *is_rot
 	HANDLE	hDst;
 	BOOL	ret = FALSE;
 	DWORD	dstSize = 0;
-	BOOL	isRotate = FALSE;
 	int64	mtime;
 	int64	fsize;
 	IPDict	fdict;
@@ -1435,7 +1869,7 @@ BOOL IPDictCopy(IPDict *dict, const WCHAR *fname, const WCHAR *dst, BOOL *is_rot
 
 #define MAX_ROTATE	10
 	CleanupRotateFile(dst, MAX_ROTATE);
-	hDst = ::CreateFileW(dst, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+	hDst = ::CreateFileWithDirW(dst, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
 	if (hDst == INVALID_HANDLE_VALUE) {
 		RotateFile(dst, MAX_ROTATE, TRUE);
 		if (is_rotate) {
@@ -1501,70 +1935,61 @@ BOOL IsSameFileDict(IPDict *dict, const WCHAR *fname, const WCHAR *dst)
 
 BOOL GetIPDictBySelf(IPDict *dict)
 {
-	BOOL	ret = FALSE;
-	WCHAR	self_name[MAX_PATH];
-	HANDLE	hSelfFile = INVALID_HANDLE_VALUE;
-	HANDLE	hMap = NULL;
-	DWORD	selfSize = 0;
-	BYTE	*data = NULL;
-	BYTE	*target = NULL;
-	char	sep[73];
+	auto hSelfFile = scope_raii(
+			[&]() {
+				WCHAR	self_name[MAX_PATH] = {};
+				::GetModuleFileNameW(NULL, self_name, wsizeof(self_name));
+				return	::CreateFileW(self_name, GENERIC_READ,
+						FILE_SHARE_READ|FILE_SHARE_WRITE, 0, OPEN_EXISTING, 0, 0);
+			}(),
+			[&](auto hSelfFile) { ::CloseHandle(hSelfFile); });
+	if (hSelfFile == INVALID_HANDLE_VALUE) return FALSE;
 
-	sep[0] = '\n';
-	memset(sep+1, '=', 70);
-	sep[71] = '\n';
-	sep[72] = 0;
+	auto hMap = scope_raii(
+			::CreateFileMapping(hSelfFile, 0, PAGE_READONLY, 0, 0, 0),
+			[&](auto hMap) { ::CloseHandle(hMap); });
+	if (!hMap) return FALSE;
 
-	int		sep_len = (int)strlen(sep);
-	size_t	remain = 0;
+	auto data = scope_raii(
+			(BYTE *)MapViewOfFile(hMap, FILE_MAP_READ, 0, 0, 0),
+			[&](auto data) { ::UnmapViewOfFile(data); });
+	if (!data) return FALSE;
 
-	::GetModuleFileNameW(::GetModuleHandle(NULL), self_name, wsizeof(self_name));
-	hSelfFile = ::CreateFileW(self_name, GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, 0,
-							OPEN_EXISTING, 0, 0);
-	hMap = ::CreateFileMapping(hSelfFile, 0, PAGE_READONLY, 0, 0, 0);
-	data = (BYTE *)MapViewOfFile(hMap, FILE_MAP_READ, 0, 0, 0);
-	if (!data) goto END;
+	BYTE	sep[72];
+	memset(sep, '=', sizeof(sep));
+	sep[0] = sep[sizeof(sep)-1] = '\n';
 
-	selfSize = ::GetFileSize(hSelfFile, 0);
+	auto	selfSize = (size_t)::GetFileSize(hSelfFile, 0);
+	auto	max_size = selfSize - sizeof(sep);
 
-	for (int i=0; i < selfSize; ) {
+	for (int i=0; i < max_size; ) {
 		BYTE	&ch = data[i];
-		BYTE	&end_ch = data[i+sep_len-1];
+		BYTE	&end_ch = data[i+sizeof(sep)-1];
 
 		if (ch == '\n') {
 			if (end_ch == '\n') {
-				if (memcmp(&ch, sep, sep_len) == 0 && memcmp(&end_ch+1, "IP2:", 4) == 0) {
-					target = &ch;
-					break;
+				if (memcmp(&ch, sep, sizeof(sep)) == 0 && memcmp(&end_ch+1, "IP2:", 4) == 0) {
+					auto	targ = &ch + sizeof(sep);
+					auto	remain = selfSize - (targ - data);
+					return	(dict->unpack(targ, remain) < remain) ? TRUE : FALSE;
 				}
-				i += sep_len-1;
-
+				i += sizeof(sep)-1;
 			}
 			else if (end_ch == '=') {
 				i++;
 			}
 			else {
-				i += sep_len;
+				i += sizeof(sep);
 			}
 		}
 		else if (end_ch == '=') {
 			i++;
 		}
 		else {
- 			i += sep_len;
+ 			i += sizeof(sep);
 		}
 	}
-	remain = selfSize - (target - data) - sep_len;
 
-	if (target) {
-		size_t	size = dict->unpack(target + sep_len, remain);
-		Debug("%zd %zd\n", size, remain);
-		ret = TRUE;
-	}
-
-END:
-	::UnmapViewOfFile(data);
-	::CloseHandle(hMap);
-	::CloseHandle(hSelfFile);
-	return	ret;
+	return	FALSE;
 }
+

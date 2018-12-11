@@ -6,7 +6,7 @@
 	Update					: 2017-07-30(Sun)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
-	Modify  				: Mapaler 2017-03-06
+	Modify  				: Mapaler 2018-12-11
 	======================================================================== */
 #ifndef __INST_H__
 #define __INST_H__
@@ -17,13 +17,20 @@ struct InstallCfg {
 	InstMode	mode;
 	BOOL		programLink;
 	BOOL		desktopLink;
+	BOOL		isAppReg;
 	BOOL		runImme;
+	BOOL		isAuto;
+	BOOL		isSilent;
+	BOOL		isExtract;
+	BOOL		isExt64;
+	BOOL		isSubDir;
 	HWND		hOrgWnd;
 	WCHAR		*setupDir;
 	WCHAR		*appData;
 	WCHAR		*virtualDir;
 	WCHAR		*startMenu;
 	WCHAR		*deskTop;
+	Wstr		setuped;
 };
 
 class TInstSheet : public TDlg
@@ -45,8 +52,18 @@ class TInstDlg : public TDlg
 {
 protected:
 	TSubClassCtl	staticText;
-	TInstSheet		*propertySheet;
+	TSubClassCtl	extractBtn;
+	TSubClassCtl	startBtn;
+	TInstSheet		*propertySheet = NULL;
 	InstallCfg		cfg;
+	IPDict			ipDict;
+	WCHAR			defaultDir[MAX_PATH] = {};
+
+	U8str	ver;
+	WCHAR	**orgArgv = NULL;
+	int		orgArgc = 0;
+	BOOL	VerifyDict();
+	void	GetDefaultDir();
 
 public:
 	TInstDlg(char *cmdLine);
@@ -62,8 +79,12 @@ public:
 	BOOL	UnInstall(void);
 	BOOL	RunAsAdmin(BOOL is_imme);
 	void	ChangeMode(void);
+	void	Extract(void);
 	void	Exit(DWORD exit_code);
 	BOOL	RemoveSameLink(const WCHAR *dir, WCHAR *remove_path=NULL);
+	void	GetDictName(const WCHAR *fname, WCHAR *dname);
+
+	void	ErrMsg(const WCHAR *body, const WCHAR *title=L"FastCopy");
 };
 
 class TInstApp : public TApp
@@ -78,11 +99,13 @@ public:
 class TBrowseDirDlg : public TSubClass
 {
 protected:
-	WCHAR	*fileBuf;
-	BOOL	dirtyFlg;
+	WCHAR	*fileBuf = NULL;
+	BOOL	dirtyFlg = FALSE;
+	BOOL	*is_x64 = NULL;
 
 public:
-	TBrowseDirDlg(WCHAR *_fileBuf) { fileBuf = _fileBuf; }
+	TBrowseDirDlg(WCHAR *_fileBuf, BOOL *_is_x64) :
+		fileBuf(_fileBuf), is_x64(_is_x64) {}
 	virtual BOOL	AttachWnd(HWND _hWnd);
 	virtual BOOL	EvCommand(WORD wNotifyCode, WORD wID, LPARAM hwndCtl);
 	virtual BOOL	SetFileBuf(LPARAM list);
@@ -116,6 +139,7 @@ public:
 #define FASTCOPY			L"FastCopy"
 #define FASTCOPY_EXE		L"FastCopy.exe"
 #define INSTALL_EXE			L"setup.exe"
+
 #define README_JA_TXT		L"readme_ja.txt"
 #define README_ENG_TXT		L"readme_eng.txt"
 #define README_CHS_TXT		L"readme_chs.txt"
@@ -123,12 +147,27 @@ public:
 #define GPL_TXT				L"license-gpl3.txt"
 #define XXHASH_TXT			L"xxhash-LICENSE.txt"
 #define HELP_CHM			L"FastCopy.chm"
+
+#define DOC_README_JA_TXT		L"doc\\readme_ja.txt"
+#define DOC_README_ENG_TXT	L"doc\\readme_eng.txt"
+#define DOC_README_CHS_TXT	L"doc\\readme_chs.txt"
+#define DOC_README_CHT_TXT	L"doc\\readme_cht.txt"
+#define DOC_HELP_JA			L"doc\\FastCopy.chm"
+//#define DOC_HELP_EN		L"doc\\FastCopy_eng.htm"
+#define DOC_XXHASH_TXT		L"doc\\xxhash-LICENSE.txt"
+#define DOC_GPL_TXT			L"doc\\license-gpl3.txt"
+
 #define SHELLEXT1_DLL		L"FastCopy_shext.dll"
 #define SHELLEXT2_DLL		L"FastCopy_shext2.dll"
 #define SHELLEXT3_DLL		L"FastCopy_shext3.dll"
 #define SHELLEXT4_DLL		L"FastCopy_shext4.dll"
 #define FCSHELLEXT1_DLL		L"FastExt1.dll"
 #define FCSHELLEX64_DLL		L"FastEx64.dll"
+#define FASTCOPY_INI		L"FastCopy2.ini"
+#define FASTCOPY_LINK		L"to_ExeDir.lnk"
+#define FASTCOPY_LOG		L"FastCopy.log"
+#define FASTCOPY_LOGDIR		L"Log"
+#define FASTCOPY_DOCDIR		L"Doc"
 
 #ifdef _WIN64
 #define CURRENT_SHEXTDLL	FCSHELLEX64_DLL
@@ -159,7 +198,7 @@ public:
 #define HSTOOLS_STR			"HSTools"
 
 // function prototype
-void BrowseDirDlg(TWin *parentWin, UINT editCtl, WCHAR *title);
+BOOL BrowseDirDlg(TWin *parentWin, UINT editCtl, const WCHAR *title, BOOL *is_x64=NULL);
 int CALLBACK BrowseDirDlg_Proc(HWND hWnd, UINT uMsg, LPARAM lParam, LPARAM data);
 
 // inline function
@@ -175,6 +214,8 @@ BOOL GetIPDictBySelf(IPDict *dict);
 #define FDATA_KEY	"fdata"
 #define MTIME_KEY	"mtime"
 #define FSIZE_KEY	"fsize"
+#define VER_KEY		"ver"
+#define SHA256_KEY	"sha256"
 
 #endif
 
