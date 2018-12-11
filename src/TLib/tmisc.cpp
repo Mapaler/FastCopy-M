@@ -7,7 +7,6 @@
 	Update					: 2017-06-12(Mon)
 	Copyright				: H.Shirouzu
 	Reference				: 
-	Modify					: Mapaler 2015-09-09
 	======================================================================== */
 
 #include "tlib.h"
@@ -1094,22 +1093,6 @@ HWND CloseHelpAll()
 
 HWND ShowHelpW(HWND hOwner, const WCHAR *help_dir, const WCHAR *help_file, const WCHAR *section)
 {
-	if (NULL != strstr(WtoA(help_file), "http"))
-	{
-		//从help_file中发现“http”字符，打开URL
-		//Found "http" in help_file string, open web URL.
-		WCHAR	path[MAX_PATH];
-
-		MakePathW(path, L"", help_file);
-		if (section)
-			wcscpy(path + wcslen(path), section);
-		::ShellExecuteW(NULL, NULL, path, NULL, NULL, SW_SHOW);
-		return	NULL;
-	}
-	else
-	{
-		//从help_file中未发现“http”字符，打开chm
-		//Not found "http" in help_file string, open chm file.
 #if defined(ENABLE_HTML_HELP)
 	if (!pHtmlHelpW) {
 		InitHtmlHelp();
@@ -1126,7 +1109,6 @@ HWND ShowHelpW(HWND hOwner, const WCHAR *help_dir, const WCHAR *help_file, const
 	}
 #endif
 	return	NULL;
-	}
 }
 
 HWND ShowHelpU8(HWND hOwner, const char *help_dir, const char *help_file, const char *section)

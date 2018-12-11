@@ -1494,73 +1494,6 @@ BOOL TInstSheet::EvCreate(LPARAM lParam)
 */
 BOOL BrowseDirDlg(TWin *parentWin, UINT editCtl, const WCHAR *title, BOOL *is_x64)
 {
-
-	HRESULT hr = S_OK;
-
-	// Create a new common open file dialog.
-	IFileOpenDialog *pfd = NULL;
-	hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_INPROC_SERVER,
-		IID_PPV_ARGS(&pfd));
-	if (SUCCEEDED(hr))
-	{
-		// Set the dialog as a folder picker.
-		DWORD dwOptions;
-		hr = pfd->GetOptions(&dwOptions);
-		if (SUCCEEDED(hr))
-		{
-			hr = pfd->SetOptions(dwOptions | FOS_PICKFOLDERS);
-		}
-
-		// Set the title of the dialog.
-		if (SUCCEEDED(hr))
-		{
-			hr = pfd->SetTitle(title);
-		}
-
-		// Show the open file dialog.
-		if (SUCCEEDED(hr))
-		{
-			hr = pfd->Show(parentWin->hWnd);
-			if (SUCCEEDED(hr))
-			{
-				// Get the selection from the user.
-				IShellItem *psiResult = NULL;
-				hr = pfd->GetResult(&psiResult);
-				if (SUCCEEDED(hr))
-				{
-					PWSTR pszPath = NULL;
-					hr = psiResult->GetDisplayName(SIGDN_FILESYSPATH, &pszPath);
-					if (SUCCEEDED(hr))
-					{
-						//MessageBoxW(parentWin->hWnd, pszPath, L"The selected folder is", MB_OK);
-						::SetDlgItemText(parentWin->hWnd, editCtl, WtoAs(pszPath));
-						CoTaskMemFree(pszPath);
-					}
-					psiResult->Release();
-				}
-			}
-			else
-			{
-				if (hr == HRESULT_FROM_WIN32(ERROR_CANCELLED))
-				{
-					// User cancelled the dialog...
-				}
-			}
-		}
-
-		pfd->Release();
-	}
-
-	// Report the error.
-	if (FAILED(hr))
-	{
-		// If it's not that the user cancelled the dialog, report the error in a 
-		// message box.
-		//The original sorce code at : https://code.msdn.microsoft.com/CppShellCommonFileDialog-c18192c7
-		if (hr != HRESULT_FROM_WIN32(ERROR_CANCELLED))
-		{
-			//XP不支持的情况
-
 	IMalloc			*iMalloc = NULL;
 	BROWSEINFOW		brInfo;
 	LPITEMIDLIST	pidlBrowse;
@@ -1570,7 +1503,7 @@ BOOL BrowseDirDlg(TWin *parentWin, UINT editCtl, const WCHAR *title, BOOL *is_x6
 	if (!SUCCEEDED(SHGetMalloc(&iMalloc)))
 		return FALSE;
 
-	/*if (IsWin7()) {
+	if (IsWin7()) {
 		WCHAR			buf[MAX_PATH];
 		GetParentDirW(fileBuf, buf);
 		vector<Wstr>	wvec;
@@ -1581,7 +1514,7 @@ BOOL BrowseDirDlg(TWin *parentWin, UINT editCtl, const WCHAR *title, BOOL *is_x6
 		MakePathW(fileBuf, wvec[0].s(), L"");
 		parentWin->SetDlgItemTextW(editCtl, fileBuf);
 		return	TRUE;
-	}*/
+	}
 
 	TBrowseDirDlg	dirDlg(fileBuf, is_x64);
 	brInfo.hwndOwner = parentWin->hWnd;
@@ -1607,8 +1540,6 @@ BOOL BrowseDirDlg(TWin *parentWin, UINT editCtl, const WCHAR *title, BOOL *is_x6
 
 	iMalloc->Release();
 	return	ret;
-		}
-	}
 }
 
 /*

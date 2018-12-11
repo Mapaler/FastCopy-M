@@ -6,6 +6,7 @@
 	Update					: 2018-05-28(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
+	Modify					: Mapaler 2015-09-09
 	======================================================================== */
 
 #include <stdio.h>
@@ -1119,6 +1120,17 @@ ssize_t comma_double(char *s, double val, int precision)
 
 void ShowHelp(const WCHAR *dir, const WCHAR *file, const WCHAR *section)
 {
+	//从help_file中发现“http”字符，打开URL
+	//Found "http" in help_file string, open web URL.
+	if (wcsstr(file, L"http")) {
+		WCHAR	path[MAX_PATH];
+
+		MakePathW(path, L"", file);
+		if (section)
+			wcscpy(path + wcslen(path), section);
+		::ShellExecuteW(NULL, NULL, path, NULL, NULL, SW_SHOW);
+		return;
+	}
 	if (wcsstr(file, L".chm::")) {
 		ShowHelpW(0, dir, file, section);
 		return;
