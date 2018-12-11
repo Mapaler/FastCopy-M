@@ -88,7 +88,7 @@ struct CopyInfo {
 #define FCWAIT_ICON_IDX				7
 #define FCERR_ICON_IDX				8
 #define MAX_FASTCOPY_ICON			(FCERR_ICON_IDX + 1)
-#define MAX_FCNORM_ICON				(FCNORM4_ICON_IDX + 1)
+#define MAX_FCNORM_ICON				(FCNORM6_ICON_IDX + 1)
 
 #define SPEED_FULL		11
 #define SPEED_AUTO		10

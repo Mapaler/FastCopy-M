@@ -323,13 +323,15 @@
     </Manifest>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="src\res\fastcopy.ico" />
-    <Image Include="src\res\fastcopy2.ico" />
-    <Image Include="src\res\fastcopy3.ico" />
-    <Image Include="src\res\fastcopy4.ico" />
     <Image Include="src\res\fcdone.ico" />
     <Image Include="src\res\fcerr.ico" />
     <Image Include="src\res\fcwait.ico" />
+    <Image Include="src\res\icon1.ico" />
+    <Image Include="src\res\icon2.ico" />
+    <Image Include="src\res\icon3.ico" />
+    <Image Include="src\res\icon4.ico" />
+    <Image Include="src\res\icon5.ico" />
+    <Image Include="src\res\icon6.ico" />
     <Image Include="src\res\menu.ico" />
     <Image Include="src\res\pause.ico" />
     <Image Include="src\res\play.ico" />
