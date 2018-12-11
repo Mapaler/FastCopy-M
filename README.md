@@ -73,10 +73,10 @@ http://mapaler.github.io/FastCopy-M/
 http://ipmsg.org/tools/fastcopy.html
  
 ## Official License | FastCopy官方许可
-> FastCopy ver3.x Copyright(C) 2004-2018 by SHIROUZU Hiroaki
+> FastCopy ver3.x Copyright(C) 2004-2018 by SHIROUZU Hiroaki and FastCopy Lab, LLC.
 > 
-> This program is free software. You can redistribute it and/or modify it under the GNU General Public License version 3(GPLv3).<br />
-> [license-gpl3.txt](http://ipmsg.org/tools/license-gpl3.txt)
+> This program is free software. You can redistribute it and/or modify it under the GNU General Public License version 3(GPLv3).  
+> [license-gpl3.txt](https://fastcopy.jp/help/license-gpl3.txt)
 
-> xxHash Library Copyright (c) 2012-2016, Yann Collet All rights reserved.<br>
-> [License details](https://ipmsg.org/tools/xxhash-LICENSE.txt).
+> xxHash Library Copyright (c) 2012-2016, Yann Collet All rights reserved.  
+> [License details](https://fastcopy.jp/help/xxhash-LICENSE.txt).
