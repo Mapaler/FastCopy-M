@@ -68,14 +68,17 @@ verStr = Mid(verCpp,verStrStart,verStrLength)
 Set verStrReg = RegExpSearch(verStr,"\d+\.\d+\.\d+\.\d+")
 verNum = verStrReg.Item(0)
 
-WScript.Echo "Compiling help project(FastCopy.chm) ..."
+WScript.Echo "编译帮助文件 / Compiling help project(FastCopy.chm) ..."
 command = """" & p_hhc & """ help\fastcopy.hhp"
 Set oExec = osh.Exec(command)
 Do While oExec.StdOut.AtEndOfStream <> True
-	'可加入删除符，解压状态保留在同一行
+	'输出内容
 	ReadLine = oExec.StdOut.ReadLine
 	WScript.Echo ReadLine
 Loop
+If fso.FileExists("help\FastCopy.chm") Then
+	fso.MoveFile "help\FastCopy.chm","doc\FastCopy.chm"
+End If
 
 curDir = osh.CurrentDirectory + "\"
 Dim platform,bit
@@ -87,8 +90,7 @@ For xi = 0 To 1
 	'7-Zip解压文件的命令行
 	command = """" & p_7zip & """ a -tzip"
 	command = command & " """ & zipName & """ " '压缩包地址
-	command = command & " readme_chs.txt  readme_cht.txt readme_eng.txt readme_ja.txt license-gpl3.txt xxhash-LICENSE.txt "
-	command = command & " """ & curDir & "help\FastCopy.chm"" "
+	command = command & " doc "
 	command = command & " """ & curDir & "Output\Release\" & platform(0) & "\FastExt1.dll"" "
 	command = command & " """ & curDir & "Output\Release\" & platform(1) & "\FastEx64.dll"" "
 	command = command & " """ & curDir & "Output\Release\" & platform(xi) & "\FastCopy.exe"" "
@@ -107,7 +109,6 @@ Next
 'command = command & " x64\FastCopy.exe "
 'Set oExec = osh.Exec(command)
 'Do While oExec.StdOut.AtEndOfStream <> True
-	'可加入删除符，解压状态保留在同一行
 '	ReadLine = oExec.StdOut.ReadLine
 '	WScript.Echo ReadLine
 'Loop

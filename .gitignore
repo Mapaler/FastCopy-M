@@ -33,6 +33,7 @@
 *.suo
 *.aps
 /.vs
+
 /Output
 /web
 /*.sdf
@@ -40,5 +41,5 @@
 /src/放弃修改代码
 /FastCopy.VC.db
 /FastCopy.VC.VC.opendb
-/help/FastCopy.chm
 /FastCopy-M_*.zip
+*.chm
