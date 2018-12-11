@@ -1,22 +1,34 @@
 body {
-	background-color: #eeffff;
+	background-color: #eff;
+}
+code {
+	color: #24292e;
+	box-sizing: border-box;
+	line-height: 1.5;
+	word-wrap: break-word;
+	font-family: SFMono-Regular,Consolas,Liberation Mono,Menlo,Courier,monospace;
+	background-color: #ddd;
+	border-radius: 3px;
+	font-size: 85%;
+	margin: 0;
+	padding: .2em .4em;
 }
 .attention {
 	color:red;
 }
 .help_head1 {
 	color:black;
-	background-color:#88bbff;
+	background-color:#7ae;
 }
 .help_head2 {
 	color:black;
 	text-align:center;
-	background-color:#88bbff;
+	background-color:#7ae;
 	margin-bottom:10px;
 }
 .help_head3 {
 	color:black;
-	background-color:#88bbff;
+	background-color:#7ae;
 	margin-bottom:5px;
 }
 .help_head4 {
@@ -25,35 +37,43 @@ body {
 .help_table {
 	border-style:solid;
 	border-collapse: separate;
-	background-color: #ddffdd;
-	border-color: #aaaaaa;
+	background-color: #dfd;
+	border-color: #aaa;
 	font-size: 95%;
 }
+.help_table_mini {
+	font-size: 90%;
+	margin: 10px;
+}
 .tr_default {
-	background-color: #aaffaa;
+	background-color: #afa;
 }
 .help_all {
 }
 .help_section {
+	margin-left:25px;
+	margin-bottom:30px;
 	list-style:decimal;
 }
 .help_sub_section {
+	margin-left:10px;
+	margin-bottom:10px;
 	list-style:decimal;
 }
 .help_mini_section {
-	background-color: #cccccc;
+	background-color: #ccc;
 	padding:2%;
 }
 .help_mini_section2 {
 	margin-top:3px;
-	background-color: #eeffff;
+	background-color: #eff;
 	padding:2%;
 }
 .help_license {
-	border-color:#777777; 
+	border-color:#777; 
 	border-style:solid; 
 	padding:2%;
-	background-color: #dddddd;
+	background-color: #ddd;
 }
 .help_license_cond {
 	padding:5%;
