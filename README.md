@@ -70,7 +70,7 @@ http://mapaler.github.io/FastCopy-M/
 
 ### Official website | FastCopy官方网站
 
-http://ipmsg.org/tools/fastcopy.html
+https://fastcopy.jp/
  
 ## Official License | FastCopy官方许可
 > FastCopy ver3.x Copyright(C) 2004-2018 by SHIROUZU Hiroaki and FastCopy Lab, LLC.
