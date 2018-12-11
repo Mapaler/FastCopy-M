@@ -1,32 +1,131 @@
 <!doctype html>
 <html lang="zh">
 <head>
-<meta name="keywords" content="fast copy, file copy, fast file copy, copy, fast delete, fast file delete, file delete, delete, over MAX_PATH, UNICODE">
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<meta name="viewport" content="width=device-width">
-<TITLE>FastCopy-M</TITLE>
-<link rel="stylesheet" href="css/default_en.css" type="text/css"/>
+<meta name="keywords" content="FastCopy, 快速复制, 快速删除, 文件复制, 文件删除">
+<title>FastCopy-M</title>
 <link rel="icon" href="favicon.ico" type="image/x-icon" />
 <link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
+<meta name="viewport" content="width=device-width">
+<link rel="stylesheet" type="text/css" href="css/main_fc.css?v=5">
 
+<meta property="og:image" content="img/favicon.png">
+<meta property="og:title" content="FastCopy-M" />
+<meta property="og:description" content="FastCopy-M分支的主页" />
+<meta property="og:url" content="mapaler.github.io/FastCopy-M/" />
+<meta property="og:image" content="favicon.png" />
 </head>
 
-<bofy>
+<body id="body" onLoad="on_load();">
 
-<center>
-<h1>FastCopy-M</h1>
+<!-- top_title -->
+<div class="main_head1">
+	<h1><img id="fc_ico" valign="top" src="img/favicon.png" alt="fastcopy" />FastCopy-M</h1>
+	<div>Windows上最快的复制/删除软件FastCopy的分支</div>
+</div>
 
-<strong>源自Windows上最快的复制/删除软件</strong><br>
-<br>
-<h2>本页面施工中 | This page is in construction</h2>
-		<h1><a href="https://github.com/Mapaler/FastCopy-M/blob/master/README.md">介绍页面 | intro pages</a></h1>
-		<table border="1">
-			<tr><td colspan="2"><strong>FastCopy-M 下载 | Download</strong></td></tr>
-			<tr><td><a href="https://github.com/Mapaler/FastCopy-M/releases" target="_blank" >最新程序 | Releases</a></td><td>from GitHub</td></tr>
-			<tr><td><a href="https://github.com/Mapaler/FastCopy-M" target="_blank" >源代码 | Source code</a></td><td>from GitHub</td></tr>
+<div class="base_div">
+
+<table align="center"><tr><td valign="top" align="center" style="width:60%" id="main_td">
+
+	<table class="main_table">
+
+		<tr class="table_head">
+			<th colspan="2" align="center" nowrap>下载最新版本</th>
+		</tr>
+
+		<tr class="mi">
+			<th>
+				<div class="dl_link">
+					<A href="https://github.com/Mapaler/FastCopy-M/releases"
+						target="_blank">压缩包 | Releases</A>
+				</div>
+			</th>
+			<td> from GitHub</td>
+		</tr>
+		
+		<tr class="mi">
+			<th>
+				<div class="dl_link">
+					<A href="https://www.appcgn.com/fastcopy-v3.html"
+						target="_blank" onClick="log('fc64_vector')">压缩包 | Releases</A>
+				</div>
+			</th>
+			<td> from 网盘分流</td>
+		</tr>
+
+		<tr class="mi">
+			<td>
+				<div class="dl_link"> <A href="https://github.com/Mapaler/FastCopy-M" onClick="log('fcsrc_local')">源代码 | Source</A> </div>
+			</td>
+			<td> from GitHub</td>
+		</tr>
+
+		<tr class="mi">
+			<td colspan="2" align="center">
+				<A HREF="/help/fastcopy.htm#history">更新履歴</A>
+			</td>
+		</tr>
+	</table>
+	<br>
+	<table class="main_table">
+
+		<tr class="table_head"><th colspan="2">原版FastCopy特点</th></tr>
+		<tr class="mi">
+			<td colspan="2">
+				<div class="pad">
+				<ol>
+				<li><strong>FastCopy 是Windows上最快的复制/删除软件。</strong></li>
+				<li>它支持UNICODE和超过MAX_PATH(260字符)的文件路径名。</li>
+				<li>它使用多线程进行读/写/校验,重叠IO，直接IO, 所以它可以实现接近设备极限的读写性能。 </li>
+				<li>可以使用 包含/排除 筛选器 (UNIX通配符样式)。</li>
+				<li>仅使用Win32 API和C运行时，没有使用MFC等框架，因此可以轻量、紧凑、轻快的运行。</li>
+				</ol>
+				</div>
+			</td>
+		</tr>
+		<tr class="table_head"><th colspan="2">FastCopy-M特点</th></tr>
+		<tr class="mi">
+			<td colspan="2">
+				<ol>
+				<li>汉化并支持更加完整的多国语言显示，添加语言只需要修改资源文件。</li>
+				<li>支持调用网络URL作为帮助文件，资源文件内“IDS_FASTCOPYHELP”修改为网页url即可。</li>
+				</ol>
+			</td>
+		</tr>
+		<tr class="table_head"><th colspan="2">帮助及许可</th></tr>
+		<tr class="mi">
+			<td colspan="2">
+				<div class="dl_link"><a href="help-chs.html">简体</a>  <a href="help-cht.html">繁體</a>（<a href="help-chs.html#license">#许可协议</a>）</div>
+			</td>
+		</tr>
+	</table>
+
+	</td>
+	<td width valign="top", align="center" id="for_big">
+		<table  id="sample_img">
+		<tr><td>
+		<div class="img_canvas"><img src="img/fc_sample.png"/></div>
+		</td></tr>
+
+		<tr><td><br>
+			<div style="font-size:80%; margin-left:10px">
+				参考) FastCopy vs 资源管理器 网络传输比较(10Gbps、万兆网络)
+				<br>
+				<a href="https://fastcopy.jp/img/fastcopy_vs_explorer3.png" target="_blank">速度图 (12 毫秒延迟环境)</a><br>
+			</div>
+		</td></tr>
 		</table>
-		<h3><a href="http://ipmsg.org/tools/fastcopy.html">原作者官方页面 | Official Website</a></h3>
-</center>
+	</td></tr>
+</table>
+
+</div>
+
+<hr>
+
+<div>Copyright (C) <a href="https://fastcopy.jp/company.html">合同会社FastCopy研究所</a> All rights reserved. <a href="http://ipmsg.org/tools/fastcopy.html">原作者官方页面 | Official Website</a></div>
+
+<hr>
 </body>
-</blockquote>
+</html>
 

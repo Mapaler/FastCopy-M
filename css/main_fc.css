@@ -1,0 +1,154 @@
+body {
+	background-color: #eeffff;
+}
+.span_btn {
+	background-color: #bbddff;
+	font-weight:bold;
+	font-size: 90%;
+	border: 2px;
+	border-style:solid;
+	border-color:#88bbff; 
+}
+.main_head1 {
+	color:black;
+	background-color:#88bbff;
+	text-align: center;
+	padding:15px;
+
+	border: 3px;
+	border-color:#6677ff; 
+	border-style:solid; 
+
+	margin:1px;
+	margin-bottom:10px;
+	margin-top:4px;
+	text-shadow: 3px 3px 3px #AAAAAA;
+	font-size: 1.5em;
+}
+.announce_section {
+	background-color: #ccffcc;
+	padding:0.5%;
+	font-size : 90%;
+	line-height: 150%;
+	border-style:solid; 
+	border-color:#88cc88; 
+}
+.table_head {
+	background-color: #88bbff;
+}
+.main_pad {
+	padding:5px;
+}
+.main_table {
+	border: solid 1px #bbccdd;
+	border-collapse: separate;
+	background-color: #bbccdd;
+	font-size: 95%;
+}
+.mi {
+	background-color:#ddeeff;
+}
+.pad {
+	padding:3px;
+	line-height: 200%;
+}
+.padt {
+	padding-top:8px;
+}
+.base_div {
+	margin: 10px;
+}
+.bbs_table {
+	/-style:solid;/
+	//border-collapse: separate;
+	background-color: #ccddff;
+	//border-color: #88bbff;
+	font-size: 95%;
+	margin-left:2%;
+	padding-left:2%;
+	padding-right:2%;
+	margin-bottom:8px;
+}
+.other_head {
+	background-color: #88bbff;
+	font-weight: bold;
+	padding:5px;
+}
+th {
+	padding:2px;
+	padding-left:5px;
+}
+td {
+	padding:2px;
+	padding-left:5px;
+}
+.other_head2 {
+	background-color: #ddeeff;
+	font-weight: bold;
+}
+.news_table {
+	/-style:solid;/
+	//border-collapse: separate;
+	background-color: #ccddff;
+	margin-bottom: 8px;
+	//border-color: #88bbff;
+	font-size: 100%;
+	font-weight: bold;
+}
+.dl_link {
+	text-align: center;
+	line-height: 160%;
+}
+.img_div {
+	border-style:solid;
+	border-collapse: separate;
+	background-color: #ddffdd;
+	border-color: #88bbff;
+	padding-top: 3px;
+	font-weight: bold;
+	text-align: center;
+}
+.img_title {
+	font-weight: bold;
+	text-align: center;
+}
+.img_canvas {
+	padding: 20px;
+	background-color: #4444aa;
+}
+.tweet_section {
+	margin-left: 0px;
+	margin-right: 4px;
+	padding: 3px;
+	background-color: #ffffff;
+	border:1px;
+	line-height: 120%;
+	border-style:solid; 
+	border-color:#aaaaaa; 
+	text-align: center;
+	font-size: 70%;
+	cursor: pointer;
+}
+.mini_div {
+	margin-top: 3px;
+	font-size: 80%;
+}
+.mini_div2 {
+	margin: 5px;
+	margin-top: 8px;
+	font-size: 80%;
+}
+.msgclick_section {
+	margin:1%;
+	background-color: #ccffcc;
+	padding:1%;
+	font-weight: bold;
+	line-height: 150%;
+	border-style:solid; 
+	border-color:#88cc88; 
+	position: absolute;
+	left: 10px;
+	top: 55px;
+}
+
+
