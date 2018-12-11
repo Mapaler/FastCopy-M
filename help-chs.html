@@ -245,32 +245,32 @@
 		如果要指定两个或多个字符串, 请使用分号作为分隔符。<br>
 		如果要指定目录, 请将“\”添加到目录名称的末尾。<br>
 		 (例如: <code>*.txt; 我的文件夹 [0-9]\</code>)<br>
-		<strong>ver3.0 or later, <a href="#long_filter">relative path filter</a> is available.</strong>
+		<strong>ver3.0 以后可以使用<a href="#long_filter">相对路径筛选器</a>。</strong>
 		</td></tr>
 		<tr><td><strong>排除</strong></td>
 		<td>与指定字符串匹配时不复制该文件/文件夹。</td></tr>
 		<tr><td colspan="2"><strong>选中“选项”->“显示扩展筛选器”时, 将启用以下筛选器。</strong></td></tr>
 		<tr><td><strong>开始日期</strong></td>
-		<td>Don't copy files with timestamps older than a specified date(<a href="#date_filter">format</a>).<br>
-		This can be specified by not only absolute format ("20090322" or "2016/09/26 12:30:56") but also by relative format (10 days before ... "-10D").</td></tr>
+		<td>不复制时间戳早于指定日期的文件(<a href="#date_filter">格式</a>).<br>
+		这不仅可以通过绝对格式 (<code>20090322</code> 或 <code>2016/09/26 12:30:56</code>) 来指定, 还可以通过相对格式 (比如10天前： <code>-10d</code>) 来指定。</td></tr>
 		<tr><td><strong>结束日期</strong></td>
-		<td>Don't copy files with timestamps newer than this specified date.</td></tr>
+		<td>不复制时间戳比指定日期更新的文件。</td></tr>
 		<tr><td><strong>最小尺寸</strong></td>
-		<td>Don't copy the files with sizes that are smaller than the specified size.<br>
-		High number can be abbreviated using K/M/G/T character (Kilo/Mega/Giga/Tera).</td></tr>
+		<td>不复制尺寸小于指定大小的文件。<br>
+		可以用 K/M/G/T 字符 (Kilo/Mega/Giga/Tera缩写) 。</td></tr>
 		<tr><td><strong>最大尺寸</strong></td>
-		<td>Don't copy the files with sizes bigger than the specified size.</td></tr>
+		<td>不复制尺寸大于指定大小的文件。</td></tr>
 		</table>
 		<br>
 		<a name="filter_ps"/>
-		Note 1) In delete mode, it does not delete directories when "only files and not directories" are specified in the Include field.<br> 
-		Note 2) When one or more files are specified in the Include field, files that do not match are not copied.<br>
-		Note 3) When one or more directories are specified in the Include field, directories that do not match are not copied.<br>
+		注解 1) 删除模式时, 当在“包含”字段中指定“仅文件而非目录”时, 它不会删除目录。<br> 
+		注解 2) 在“包含”字段中指定一个或多个文件时, 不会复制不匹配的文件。<br>
+		注解 3) 在“包含”字段中指定一个或多个目录时, 不会复制不匹配的目录。<br>
 		<br>
 
 		<a name="long_filter"/>
 		<table class="help_table" border="4">
-		<tr><td><strong>Relative path filter</strong></td><td>
+		<tr><td><strong>相对路径筛选器</strong></td><td>
 			If the first character of Include/Exclude string items is not '\', it will be Relative path filter. This mode is tail matching policy.<br>
 			
 
@@ -297,7 +297,7 @@
 			</table>
 
 		</td></tr>
-		<tr><td><strong>Forward match filter</strong></td><td>
+		<tr><td><strong>正向匹配筛选器</strong></td><td>
 			If the start character of Include/Exclude string items is '\', it will be Forward match filter. This mode is head -> tail matching policy.<br>
 
 			<table class="help_table_mini" border="1">
@@ -325,7 +325,7 @@
 			</table>
 
 		</td></tr>
-		<tr><td><strong>Start point of filter check</strong></td><td>
+		<tr><td><strong>筛选器的检查起点</strong></td><td>
 			If Source is either C:\src\, C:\src\file.txt or C:\src\dir*, the start point(beginning) of the filter check will be C:\src\<br>
 		</td></tr>
 		</table>
