@@ -82,9 +82,11 @@ struct CopyInfo {
 #define FCNORM2_ICON_IDX			1
 #define FCNORM3_ICON_IDX			2
 #define FCNORM4_ICON_IDX			3
-#define FCDONE_ICON_IDX				4
-#define FCWAIT_ICON_IDX				5
-#define FCERR_ICON_IDX				6
+#define FCNORM5_ICON_IDX			4
+#define FCNORM6_ICON_IDX			5
+#define FCDONE_ICON_IDX				6
+#define FCWAIT_ICON_IDX				7
+#define FCERR_ICON_IDX				8
 #define MAX_FASTCOPY_ICON			(FCERR_ICON_IDX + 1)
 #define MAX_FCNORM_ICON				(FCNORM4_ICON_IDX + 1)
 
