@@ -19,6 +19,7 @@
 #include <Shellapi.h>
 #include <propkey.h>
 #include <propvarutil.h>
+#include <time.h>
 
 using namespace std;
 
@@ -405,6 +406,10 @@ HMODULE TLoadLibrary(LPSTR dllname)
 {
 	HMODULE	hModule = ::LoadLibrary(dllname);
 
+	if (!hModule) {
+		Debug("TLoadLibrary err=%d\n", GetLastError());
+	}
+
 	if (defaultLCID) {
 		TSetThreadLocale(defaultLCID);
 	}
@@ -415,6 +420,10 @@ HMODULE TLoadLibrary(LPSTR dllname)
 HMODULE TLoadLibraryW(WCHAR *dllname)
 {
 	HMODULE	hModule = LoadLibraryW(dllname);
+
+	if (!hModule) {
+		Debug("TLoadLibraryW err=%d\n", GetLastError());
+	}
 
 	if (defaultLCID) {
 		TSetThreadLocale(defaultLCID);
@@ -975,6 +984,50 @@ BOOL MakeDirAllW(WCHAR *dir)
 	return	MakeDirW(dir);
 }
 
+HANDLE CreateFileWithDirU8(const char *path, DWORD flg, DWORD share, SECURITY_ATTRIBUTES *sa,
+	DWORD create_flg, DWORD attr, HANDLE hTmpl)
+{
+	HANDLE	fh = CreateFileU8(path, flg, share, sa, create_flg, attr, hTmpl);
+
+	if (fh != INVALID_HANDLE_VALUE) {
+		return	fh;
+	}
+
+	DWORD	err = GetLastError();
+	char	parent[MAX_PATH_U8];
+
+	if (GetParentDirU8(path, parent) && MakeDirAllU8(parent)) {
+		fh = CreateFileU8(path, flg, share, sa, create_flg, attr, hTmpl);
+	}
+
+	if (fh == INVALID_HANDLE_VALUE) {
+		SetLastError(err);
+	}
+	return	fh;
+}
+
+HANDLE CreateFileWithDirW(const WCHAR *path, DWORD flg, DWORD share, SECURITY_ATTRIBUTES *sa,
+	DWORD create_flg, DWORD attr, HANDLE hTmpl)
+{
+	HANDLE	fh = ::CreateFileW(path, flg, share, sa, create_flg, attr, hTmpl);
+
+	if (fh != INVALID_HANDLE_VALUE) {
+		return	fh;
+	}
+
+	DWORD	err = GetLastError();
+	WCHAR	parent[MAX_PATH];
+
+	if (GetParentDirW(path, parent) && MakeDirAllW(parent)) {
+		fh = ::CreateFileW(path, flg, share, sa, create_flg, attr, hTmpl);
+	}
+
+	if (fh == INVALID_HANDLE_VALUE) {
+		SetLastError(err);
+	}
+	return	fh;
+}
+
 
 // HtmlHelp WorkShop をインストールして、htmlhelp.h を include path に
 // 入れること。
@@ -1039,7 +1092,7 @@ HWND CloseHelpAll()
 #endif
 }
 
-HWND ShowHelpW(HWND hOwner, WCHAR *help_dir, WCHAR *help_file, WCHAR *section)
+HWND ShowHelpW(HWND hOwner, const WCHAR *help_dir, const WCHAR *help_file, const WCHAR *section)
 {
 	if (NULL != strstr(WtoA(help_file), "http"))
 	{
@@ -1490,7 +1543,7 @@ unsigned __stdcall Is3rdPartyFwEnabledProc(void *_param)
 
 	param->ret = FALSE;
 
-	try {
+	__try {
 		::CoInitialize(NULL);
 
 		CoCreateInstance(__uuidof(NetFwProducts), 0, CLSCTX_INPROC_SERVER,
@@ -1518,7 +1571,8 @@ unsigned __stdcall Is3rdPartyFwEnabledProc(void *_param)
 		}
 		param->ret = TRUE;
 	}
-	catch(...) {
+	__except(EXCEPTION_EXECUTE_HANDLER) {
+		param->ret = TRUE;
 		DBG("INetFwProducts exception\n");
 	}
 
@@ -2060,7 +2114,7 @@ void bo_test()
 	bo_test_core(p);
 }
 
-#if !defined(_DEBUG) &&  _MSC_VER >= 1900 && _MSC_VER <= 1914
+#if !defined(_DEBUG) &&  _MSC_VER >= 1900 && _MSC_VER <= 1915
 #define ENABLE_GS_FAILURE_HACK
 extern "C" __declspec(noreturn) void __cdecl __raise_securityfailure(PEXCEPTION_POINTERS const exception_pointers);
 #endif
@@ -2448,4 +2502,59 @@ void U8Out(const char *fmt,...)
 		::WriteFile(hStdOut, u8cr.s(), crlen, &crlen, 0);
 	}
 }
+
+BOOL TGetUrlAssocAppW(const WCHAR *scheme, WCHAR *wbuf, int max_len)
+{
+	TRegistry	reg(HKEY_CURRENT_USER);
+
+	WCHAR	reg_path[MAX_PATH];
+	snwprintfz(reg_path, wsizeof(reg_path),
+		L"Software\\Microsoft\\Windows\\Shell\\Associations\\UrlAssociations\\%s\\UserChoice",
+		scheme);
+	if (reg.OpenKeyW(reg_path)) {
+		WCHAR	progId[MAX_PATH];
+		if (reg.GetStrW(L"ProgId", progId, sizeof(progId))) { // サイズはbyte指定
+			reg.ChangeTopKey(HKEY_CLASSES_ROOT);
+
+			snwprintfz(reg_path, wsizeof(reg_path), L"%s\\shell\\open\\command", progId);
+			if (reg.OpenKeyW(reg_path)) {
+				if (reg.GetStrW(NULL, progId, sizeof(progId))) { // サイズはbyte指定
+					WCHAR	*p = NULL;
+					if (auto tok = strtok_pathW(progId, L" ", &p, FALSE)) {
+						wcsncpyz(wbuf, tok, max_len);
+						return	TRUE;
+					}
+				}
+			}
+		}
+	}
+	return	FALSE;
+}
+
+time_t TGetBuildTimestamp()
+{
+	static time_t	t = [](){
+		char	mon[4];
+		struct tm tm = {};
+		// Fri 19 Aug 13:32:58 2016
+		Debug(__TIMESTAMP__);
+		if (sscanf(__TIMESTAMP__, "%*3c %3s %d %d:%d:%d %d", mon, &tm.tm_mday,
+							&tm.tm_hour, &tm.tm_min, &tm.tm_sec, &tm.tm_year) != 6) {
+			return	(time_t)0;
+		}
+		tm.tm_year -= 1900;
+		tm.tm_mon = [&]() {	// Jan to 0
+			const char *mon_def[] =
+				{ "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", 0 };
+			for (int i=0; mon_def[i]; i++) {
+				if (strcmp(mon_def[i], mon) == 0) return i;
+			}
+			return	0;
+		}();
+		return	mktime(&tm);
+	}();
+
+	return	t;
+}
+
 

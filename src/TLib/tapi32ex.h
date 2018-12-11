@@ -215,8 +215,11 @@ BOOL TGenRandom(void *buf, size_t len);
 BOOL TGenRandomMT(void *buf, size_t len);
 
 BOOL TGetMachineId(GUID *guid);
+const char *TGetMachineIdStr();
 uint64 TGetHashedMachineId();
 const char *TGetHashedMachineIdStr();
+BOOL TGetHashedMachineId2(BYTE *md5);
+const char *TGetHashedMachineIdStr2();
 
 void TSetPubKeyBlob(BYTE *n, int n_size, int e, DynBuf *keyblob);
 

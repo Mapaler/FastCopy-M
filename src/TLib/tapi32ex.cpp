@@ -557,6 +557,18 @@ BOOL TGetMachineId(GUID *ret)
 	return	TRUE;
 }
 
+const char *TGetMachineIdStr()
+{
+	static char id[30];
+	static bool once = [&]() {
+		GUID	v;
+		TGetMachineId(&v);
+		bin2urlstr((BYTE *)&v, sizeof(v), id);
+		return true;
+	}();
+	return id;
+}
+
 uint64 TGetHashedMachineId()
 {
 	static uint64 id = []() {
@@ -584,6 +596,36 @@ const char *TGetHashedMachineIdStr()
 	static bool once = [&]() {
 		auto v = TGetHashedMachineId();
 		bin2urlstr((BYTE *)&v, sizeof(v), id);
+		return true;
+	}();
+	return id;
+}
+
+BOOL TGetHashedMachineId2(BYTE *buf)
+{
+	static BYTE	md5[16];
+	static bool once = []() {
+		GUID	guid = {};
+		TGetMachineId(&guid);
+
+		TDigest	d;
+		d.Init(TDigest::MD5);
+		d.Update(&guid, sizeof(guid));
+		d.GetVal(md5);
+		return	true;
+	}();
+
+	memcpy(buf, md5, sizeof(md5));
+	return	TRUE;
+}
+
+const char *TGetHashedMachineIdStr2()
+{
+	static char id[30];
+	static bool once = [&]() {
+		BYTE	md5[16];
+		TGetHashedMachineId2(md5);
+		bin2urlstr((BYTE *)&md5, sizeof(md5), id);
 		return true;
 	}();
 	return id;

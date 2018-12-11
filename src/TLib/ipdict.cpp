@@ -444,7 +444,7 @@ bool IPDict::parse_list_core(const char *key, IPDictBufList *vlist) const
 	BYTE	*s   = itr->second->Buf();
 	BYTE	*end = s + itr->second->UsedSize();
 
-	while (1) {
+	while (s < end) {
 		size_t	data_len;
 		size_t	list_len = ipdict_parse_list(s, end - s, &data_len);
 		if (list_len == 0) return false;

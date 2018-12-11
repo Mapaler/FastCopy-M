@@ -89,6 +89,11 @@
 #define KB (1024)
 #define MB (1024 * 1024)
 
+#define STRMID_OFFSET	offsetof(WIN32_STREAM_ID, cStreamName)
+#define MAX_ALTSTREAM	1000
+#define REDUCE_SIZE		(1024 * 1024)
+#define MAX_OPENTHREADS	16
+
 inline int64 FASTCOPY_BUFSIZE(int64 ovl_size, int64 ovl_num) {
 	int64	need_size = (int64)(ovl_size + 16*KB) * ovl_num * BUFIO_SIZERATIO;
 	return	ALIGN_SIZE(need_size, MB);
@@ -287,7 +292,7 @@ public:
 	enum Mode { DIFFCP_MODE, SYNCCP_MODE, MOVE_MODE, MUTUAL_MODE, DELETE_MODE, TEST_MODE };
 	enum OverWrite { BY_NAME, BY_ATTR, BY_LASTEST, BY_CONTENTS, BY_ALWAYS };
 	enum FsType { FSTYPE_NONE=0, FSTYPE_NTFS=0x1, FSTYPE_FAT=0x2, FSTYPE_NETWORK=0x10,
-					FSTYPE_SSD=0x20 };
+					FSTYPE_SSD=0x20, FSTYPE_WEBDAV=0x40 };
 	enum Flags {
 		CREATE_OPENERR_FILE	=	0x00000001,
 		USE_OSCACHE_READ	=	0x00000002,
@@ -550,6 +555,16 @@ protected:
 		}
 	};
 
+	struct OpenDat : public TListObj {
+		VBuf		path;
+		FileStat	*stat = NULL;
+		int			dir_len = 0;
+		int			name_len = 0;
+
+		OpenDat() : path(PAGE_SIZE, MAX_WPATH*sizeof(WCHAR)) {
+		}
+	};
+
 	struct RandomDataBuf {	// 上書き削除用
 		BOOL	is_nsa;
 		DWORD	base_size;
@@ -656,16 +671,23 @@ protected:
 	int64		nextFileID;
 	int64		errRFileID;
 	int64		errWFileID;
+
 	FileStat	**openFiles;
 	int			openFilesCnt;
+	typedef TRecycleListEx<OpenDat> OpList;
+	OpList		opList;
+	BOOL		opRun;
 
 	// スレッド関連
 	HANDLE		hReadThread;
 	HANDLE		hWriteThread;
 	HANDLE		hRDigestThread;
 	HANDLE		hWDigestThread;
+	HANDLE		hOpenThreads[MAX_OPENTHREADS];
+	int			openThreadCnt = 0;
 	ShareInfo	shareInfo;
 	Condition	cv;
+	Condition	opCv;
 
 	CRITICAL_SECTION errCs;
 	CRITICAL_SECTION listCs;
@@ -740,6 +762,7 @@ protected:
 	TLinkHashTbl	hardLinkList;	// ハードリンク用リスト
 
 	static unsigned WINAPI ReadThread(void *fastCopyObj);
+	static unsigned WINAPI OpenThread(void *fastCopyObj);
 	static unsigned WINAPI WriteThread(void *fastCopyObj);
 	static unsigned WINAPI DeleteThread(void *fastCopyObj);
 	static unsigned WINAPI RDigestThread(void *fastCopyObj);
@@ -747,6 +770,7 @@ protected:
 	static unsigned WINAPI TestThread(void *fastCopyObj);
 
 	BOOL ReadThreadCore(void);
+	BOOL OpenThreadCore(void);
 	BOOL DeleteThreadCore(void);
 	BOOL WriteThreadCore(void);
 	BOOL RDigestThreadCore(void);
@@ -793,10 +817,12 @@ protected:
 	HANDLE CreateFileWithRetry(WCHAR *path, DWORD mode, DWORD share, SECURITY_ATTRIBUTES *sa,
 			DWORD cr_mode, DWORD flg, HANDLE hTempl, int retry_max=10);
 	BOOL OpenFileProc(FileStat *stat, int dir_len);
-	BOOL OpenFileBackupProc(FileStat *stat, int src_len);
-	BOOL OpenFileBackupStreamLocal(FileStat *stat, int src_len, int *altdata_cnt);
-	BOOL OpenFileBackupStreamCore(int src_len, int64 size, WCHAR *altname, int altnamesize,
-			int *altdata_cnt);
+	BOOL OpenFileProcCore(WCHAR *path, FileStat *stat, int dir_len, int name_len);
+	BOOL OpenFileQueue(WCHAR *path, FileStat *stat, int dir_len, int name_len);
+	BOOL OpenFileBackupProc(WCHAR *path, FileStat *stat, int src_len);
+	BOOL OpenFileBackupStreamLocal(WCHAR *path, FileStat *stat, int src_len, int *altdata_cnt);
+	BOOL OpenFileBackupStreamCore(WCHAR *path, int src_len, int64 size, WCHAR *altname,
+			int altnamesize, int *altdata_cnt);
 	BOOL ReadMultiFilesProc(int dir_len);
 	BOOL CloseMultiFilesProc(int maxCnt=0);
 	WCHAR *RestorePath(WCHAR *path, int idx, int dir_len);
@@ -870,6 +896,8 @@ protected:
 	BOOL	IsNetFs(FsType fstype) { return (fstype & FSTYPE_NETWORK) ? TRUE : FALSE; }
 	BOOL	IsLocalFs(FsType fstype) { return !IsNetFs(fstype); }
 	BOOL	IsSSD(FsType fstype) { return (fstype & FSTYPE_SSD) ? TRUE : FALSE; }
+	BOOL	IsWebDAV(FsType fstype) { return (fstype & FSTYPE_WEBDAV) ? TRUE : FALSE; }
+	BOOL	UseHardlink() { return (info.flags & RESTORE_HARDLINK) && IsNTFS(dstFsType); }
 	int GetSectorSize(const WCHAR *root_dir, BOOL use_cluster=FALSE);
 	int MakeUnlimitedPath(WCHAR *buf);
 	BOOL PutList(WCHAR *path, DWORD opt, DWORD lastErr=0, int64 wtime=-1, int64 size=-1,
@@ -899,6 +927,15 @@ protected:
 	void TestWriteEnd();
 	void OvlLog(OverLap *ovl, const void *buf, const WCHAR *fmt,...); // for debug
 };
+
+void MakeVerifyStr(WCHAR *buf, BYTE *digest1, BYTE *digest2, DWORD digest_len);
+BOOL DisableLocalBuffering(HANDLE hFile);
+BOOL ModifyRealFdat(const WCHAR *path, WIN32_FIND_DATAW *fdat, BOOL backup_flg);
+BOOL GetFileInformation(const WCHAR *path, BY_HANDLE_FILE_INFORMATION *bhi, BOOL backup_flg);
+inline int wcscpy_with_aster(WCHAR *dst, WCHAR *src) {
+	int	len = wcscpyz(dst, src);
+	return	len + (int)wcscpyz(dst + len, L"\\*");
+}
 
 //	RegisterInfoProc
 //	InitConfigProc

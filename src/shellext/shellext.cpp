@@ -47,26 +47,21 @@ static BOOL		isAdminDll = TRUE;
 
 #ifdef SHEXT_DEBUG_LOG
 
-static CRITICAL_SECTION cs;
-
-static BOOL cs_init()
-{
-	::InitializeCriticalSection(&cs);
-	return	TRUE;
-}
-
 DWORD DbgLog(char *fmt,...)
 {
-	static BOOL once = cs_init();
-	static HANDLE hLogFile = INVALID_HANDLE_VALUE;
-	DWORD	ret = 0;
-
+	static CRITICAL_SECTION cs;
+	static BOOL once = [&]() {
+		::InitializeCriticalSection(&cs);
+		return	TRUE;
+	}();
 	::EnterCriticalSection(&cs);
 
-	if (hLogFile == INVALID_HANDLE_VALUE) {
-		hLogFile = ::CreateFile("c:\\temp\\shellext.log", GENERIC_WRITE,
+	static HANDLE hLogFile = []() {
+		return	::CreateFile("c:\\temp\\shellext.log", GENERIC_WRITE,
 					FILE_SHARE_READ|FILE_SHARE_WRITE, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
-	}
+	}();
+	DWORD	ret = 0;
+
 	if (hLogFile != INVALID_HANDLE_VALUE) {
 		char	buf[16384];
 
@@ -96,13 +91,48 @@ DWORD DbgLogW(WCHAR *fmt,...)
 	DWORD	len = wvsprintfW(wbuf, fmt, va);
 	va_end(va);
 
-	WtoA(wbuf, buf, sizeof(buf));
+	WtoU8(wbuf, buf, sizeof(buf));
 	return	DbgLog("%s", buf);
 }
 #else
 #define DbgLog
 #define DbgLogW
 #endif
+
+// from utility.cpp in fastcopy main
+BOOL GetRootDirW(const WCHAR *path, WCHAR *root_dir)
+{
+	if (path[0] == '\\') {	// "\\server\volname\" 4つ目の \ を見つける
+		DWORD	ch;
+		int		backslash_cnt = 0, offset;
+
+		for (offset=0; (ch = path[offset]) != 0 && backslash_cnt < 4; offset++) {
+			if (ch == '\\') {
+				backslash_cnt++;
+			}
+		}
+		memcpy(root_dir, path, offset * sizeof(WCHAR));
+		if (backslash_cnt < 4)					// 4つの \ がない場合は、末尾に \ を付与
+			root_dir[offset++] = '\\';	// （\\server\volume など）
+		root_dir[offset] = 0;	// NULL terminate
+	}
+	else {	// "C:\" 等
+		memcpy(root_dir, path, 3 * sizeof(WCHAR));
+		root_dir[3] = 0;	// NULL terminate
+	}
+	return	TRUE;
+}
+
+BOOL IsSameDrive(const WCHAR *path1, const WCHAR *path2)
+{
+	WCHAR	root1[MAX_PATH];
+	WCHAR	root2[MAX_PATH];
+
+	GetRootDirW(path1, root1);
+	GetRootDirW(path2, root2);
+
+	return	wcsicmp(root1, root2) == 0;
+}
 
 /*=========================================================================
   クラス ： ShellExt
@@ -140,6 +170,7 @@ STDMETHODIMP ShellExt::Initialize(LPCITEMIDLIST pIDFolder, IDataObject *pDataObj
 
 	srcArray.Init();
 	dstArray.Init();
+	clipArray.Init();
 
 	if (dataObj) {
 		dataObj->Release();
@@ -152,8 +183,10 @@ STDMETHODIMP ShellExt::Initialize(LPCITEMIDLIST pIDFolder, IDataObject *pDataObj
 		STGMEDIUM	medium;
 		FORMATETC	fe = { CF_HDROP, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
 
-		if (pDataObj->GetData(&fe, &medium) < 0)
+		if (pDataObj->GetData(&fe, &medium) < 0) {
+			DbgLogW(L"Initialize getdata err\n");
 			return E_INVALIDARG;
+		}
 
 		HDROP	hDrop = (HDROP)::GlobalLock(medium.hGlobal);
 		int max = DragQueryFileW(hDrop, 0xffffffff, NULL, 0);
@@ -171,8 +204,11 @@ STDMETHODIMP ShellExt::Initialize(LPCITEMIDLIST pIDFolder, IDataObject *pDataObj
 	}
 
 	if (srcArray.Num() == 0 && dstArray.Num() == 0) {
+		DbgLogW(L"Initialize none\n");
 		return	E_FAIL;
 	}
+
+	DbgLogW(L"Initialize src=%s dst=%s\n", srcArray.Num() ? srcArray.Path(0) : L"", dstArray.Num() ? dstArray.Path(0) : L"");
 
 	return	NOERROR;
 }
@@ -255,17 +291,22 @@ STDMETHODIMP ShellExt::QueryContextMenu(HMENU hMenu, UINT iMenu, UINT cmdFirst, 
 	BOOL	is_separator = (menu_flags & SHEXT_SUBMENU_NOSEP) ? FALSE : TRUE;
 	int		ico_off = (menu_flags & SHEXT_MENUICON) ? 1 : 0;
 	BOOL	ref_cnt = SysObj->GetDllRef(isAdmin);
+	UINT	wID = ::GetMenuDefaultItem(hMenu, MF_BYCOMMAND, 0);
+
+	DbgLogW(L"QueryContextMenu src=%d dst=%d flg=%x wid=%x\n", srcArray.Num(), dstArray.Num(),
+			flg, wID);
 
 	if (!is_dd && (flg == CMF_NORMAL) || (flg & (CMF_VERBSONLY|CMF_DEFAULTONLY))) {
+		DbgLogW(L" q: return flg\n");
 		return	ResultFromScode(MAKE_SCODE(SEVERITY_SUCCESS, 0, 0));
 	}
 
 	if (ref_cnt >= 2 && hMenu == SysObj->lastMenu) {
-		DbgLogW(L" skip cnt=%d self=%x menu=%x/%x\r\n",
+		DbgLogW(L" skip cnt=%d self=%x menu=%x/%x\n",
 			ref_cnt, hMenu, this, SysObj->lastMenu);
 		return	ResultFromScode(MAKE_SCODE(SEVERITY_SUCCESS, 0, 0));
 	}
-	DbgLogW(L" add cnt=%d self=%x menu=%x/%x\r\n",
+	DbgLogW(L" add cnt=%d self=%x menu=%x/%x\n",
 		ref_cnt, hMenu, this, SysObj->lastMenu);
 
 	isCut = FALSE;
@@ -281,7 +322,7 @@ STDMETHODIMP ShellExt::QueryContextMenu(HMENU hMenu, UINT iMenu, UINT cmdFirst, 
 					mask_menu_flags &= ~SHEXT_RIGHT_PASTE;
 				}
 			}
-			DbgLogW(L"flg=%x isCut=%d mask_menu_flags=%x src=%d dst=%d clip=%d path=%s\r\n",
+			DbgLogW(L" q1: flg=%x isCut=%d mask_menu_flags=%x src=%d dst=%d clip=%d path=%s\n",
 				flg, isCut, mask_menu_flags, srcArray.Num(), dstArray.Num(), clipArray.Num(),
 				target->Path(0));
 		}
@@ -290,9 +331,10 @@ STDMETHODIMP ShellExt::QueryContextMenu(HMENU hMenu, UINT iMenu, UINT cmdFirst, 
 
 	// メニューアイテムの追加
 	if (mask_menu_flags && srcArray.Num() >= ((mask_menu_flags & SHEXT_RIGHT_PASTE) ? 0 : 1)) {
-//		DbgLogW(L"flg=%x isCut=%d mask_menu_flags=%x src=%d dst=%d clip=%d\r\n", flg, isCut,
+//		DbgLogW(L" q2: flg=%x isCut=%d mask_menu_flags=%x src=%d dst=%d clip=%d\n", flg, isCut,
 //			mask_menu_flags, srcArray.Num(), dstArray.Num(), clipArray.Num());
-		if (!is_dd && is_separator)
+
+//		if (!is_dd && is_separator)
 			::InsertMenu(hMenu, iMenu++, MF_SEPARATOR|MF_BYPOSITION, 0, 0);
 
 		if (is_separator)
@@ -335,7 +377,7 @@ STDMETHODIMP ShellExt::QueryContextMenu(HMENU hMenu, UINT iMenu, UINT cmdFirst, 
 			iMenu++;
 		}
 		SysObj->lastMenu = hMenu;
-		DbgLogW(L" added cnt=%d self=%x set menu=%x/%x i=%d\r\n",
+		DbgLogW(L" added cnt=%d self=%x set menu=%x/%x i=%d\n",
 			ref_cnt, this, hMenu, SysObj->lastMenu, iMenu);
 	}
 
@@ -344,6 +386,8 @@ STDMETHODIMP ShellExt::QueryContextMenu(HMENU hMenu, UINT iMenu, UINT cmdFirst, 
 
 STDMETHODIMP ShellExt::InvokeCommand(CMINVOKECOMMANDINFO *info)
 {
+	DbgLogW(L"InvokeCommand mask=%x hwnd=%p verb=%p param=%p dir=%p show=%x hot=%x ico=%p \n", info->fMask, info->hwnd, info->lpVerb, info->lpParameters, info->lpDirectory, info->nShow, info->dwHotKey, info->hIcon);
+
 	int		cmd = LOWORD(info->lpVerb);
 
 	if (cmd < 0 || cmd > 2) {
@@ -382,7 +426,7 @@ STDMETHODIMP ShellExt::InvokeCommand(CMINVOKECOMMANDINFO *info)
 
 	sprintf(arg, "\"%s\" %s %s=%x", SysObj->ExeName, cmd_str, SHELLEXT_OPT, menu_flags);
 
-	DbgLog("CreateProcess(%s)\r\n", arg);
+	DbgLog("CreateProcess(%s)\n", arg);
 
 	BOOL ret = ::CreateProcess(SysObj->ExeName, arg, 0, 0, TRUE, CREATE_DEFAULT_ERROR_MODE,
 				0, 0, &st_info, &pr_info);
@@ -397,7 +441,7 @@ STDMETHODIMP ShellExt::InvokeCommand(CMINVOKECOMMANDINFO *info)
 		// dstArray が無い場合は、\0 まで出力
 		len = src.GetMultiPath(buf, len) + (!is_dd && !isClip ? 1 : 0);
 
-		DbgLogW(L"send fastcopy src=%s\r\n", buf);
+		DbgLogW(L"send fastcopy src=%s\n", buf);
 
 		::WriteFile(hWrite, buf, len * sizeof(WCHAR), &len, 0);
 
@@ -408,7 +452,7 @@ STDMETHODIMP ShellExt::InvokeCommand(CMINVOKECOMMANDINFO *info)
 
 			MakePathW(dir, dstPath, L"");	// 末尾に \\ を付与
 			len = swprintf(buf, FMT_TOSTR, dir) + 1;
-			DbgLogW(L"send fastcopy dst=%s\r\n", buf);
+			DbgLogW(L"send fastcopy dst=%s\n", buf);
 			::WriteFile(hWrite, buf, len * sizeof(WCHAR *), &len, 0);
 		}
 		::CloseHandle(pr_info.hProcess);
@@ -836,9 +880,6 @@ DEFINE_GUID(IID_IShellLinkA, 0x000214EE, 0x0000, 0000, 0xC0, 0x00, 0x00, 0x00, \
 
 ShellExtSystem::ShellExtSystem(HINSTANCE hI)
 {
-#ifdef SHEXT_DEBUG_LOG
-	::InitializeCriticalSection(&cs);
-#endif
 	FMT_TOSTR = L" /to=\"%s\"";
 
 /*	if (TIsWow64()) {
@@ -895,9 +936,6 @@ ShellExtSystem::ShellExtSystem(HINSTANCE hI)
 
 ShellExtSystem::~ShellExtSystem()
 {
-#ifdef SHEXT_DEBUG_LOG
-	::DeleteCriticalSection(&cs);
-#endif
 }
 
 /*=========================================================================
@@ -912,15 +950,15 @@ int APIENTRY DllMain(HINSTANCE hI, DWORD reason, PVOID)
 	case DLL_PROCESS_ATTACH:
 		if (SysObj == NULL)
 			SysObj = new ShellExtSystem(hI);
-		DbgLog("DLL_PROCESS_ATTACH\r\n");
+		DbgLog("DLL_PROCESS_ATTACH\n");
 		return	TRUE;
 
 	case DLL_THREAD_ATTACH:
-		DbgLog("DLL_THREAD_ATTACH\r\n");
+		DbgLog("DLL_THREAD_ATTACH\n");
 		return	TRUE;
 
 	case DLL_THREAD_DETACH:
-		DbgLog("DLL_THREAD_DETACH\r\n");
+		DbgLog("DLL_THREAD_DETACH\n");
 		return	TRUE;
 
 	case DLL_PROCESS_DETACH:
@@ -929,7 +967,7 @@ int APIENTRY DllMain(HINSTANCE hI, DWORD reason, PVOID)
 			delete SysObj;
 			SysObj = NULL;
 		}
-		DbgLog("DLL_PROCESS_DETACH\r\n");
+		DbgLog("DLL_PROCESS_DETACH\n");
 		return	TRUE;
 	}
 	return	TRUE;

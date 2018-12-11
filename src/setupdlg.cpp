@@ -409,7 +409,9 @@ void TSetupSheet::Show(int mode)
 {
 	TDlg::Show(mode);
 
-	if (resId == SHELLEXT_SHEET) {
+	if (resId == IO_SHEET) {
+	}
+	else if (resId == SHELLEXT_SHEET) {
 	}
 	else if (resId == TRAY_SHEET) {
 		if (mode == SW_SHOW) {
@@ -473,7 +475,8 @@ BOOL TSetupSheet::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hWndCtl)
 		else if (resId == MISC_SHEET) {
 			section = L"#setting_misc";
 		}
-		ShowHelpW(NULL, cfg->execDir, LoadStrW(IDS_FASTCOPYHELP), section);
+		//ShowHelpW(NULL, cfg->execDir, LoadStrW(IDS_FASTCOPYHELP), section);
+		ShowHelp(cfg->execDir, LoadStrW(IDS_FASTCOPYHELP), section);
 		return	TRUE;
 	}
 
@@ -551,6 +554,7 @@ BOOL TSetupDlg::EvCreate(LPARAM lParam)
 		sheet[i].Create(SETUP_SHEET1 + i, cfg, this);
 		setup_list.SendMessage(LB_ADDSTRING, 0, (LPARAM)LoadStr(IDS_SETUP_SHEET1 + i));
 	}
+	auto	buf_focus = (nextIdx == SheetToIdx(IO_SHEET)) ? TRUE : FALSE;
 	SetSheet();
 
 	if (rect.left == CW_USEDEFAULT) {
@@ -562,7 +566,7 @@ BOOL TSetupDlg::EvCreate(LPARAM lParam)
 		MoveWindow(rect.x(), rect.y(), rect.cx(), rect.cy(), FALSE);
 	}
 
-	PostMessage(WM_FASTCOPY_FOCUS, 0, 0);
+	PostMessage(WM_FASTCOPY_FOCUS, 0, buf_focus);
 
 	return	TRUE;
 }
@@ -603,7 +607,12 @@ BOOL TSetupDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hWndCtl)
 BOOL TSetupDlg::EventApp(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	if (uMsg == WM_FASTCOPY_FOCUS) {
-		setup_list.SetFocus();
+//		if (lParam) {
+//			::SetFocus(sheet[SheetToIdx(IO_SHEET)].GetDlgItem(BUFSIZE_EDIT));
+//		}
+//		else {
+			setup_list.SetFocus();
+//		}
 		return	TRUE;
 	}
 	return	FALSE;

@@ -126,7 +126,8 @@ BOOL TExecConfirmDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hWndCtl)
 	switch (wID)
 	{
 	case HELP_CONFIRM_BUTTON:
-		ShowHelpW(0, cfg->execDir, LoadStrW(IDS_FASTCOPYHELP), L"#shellcancel");
+		//ShowHelpW(0, cfg->execDir, LoadStrW(IDS_FASTCOPYHELP), L"#shellcancel");
+		ShowHelp(cfg->execDir, LoadStrW(IDS_FASTCOPYHELP), L"#shellcancel");
 		return	TRUE;
 
 	case IDOK: case IDCANCEL: case RUNAS_BUTTON:
@@ -976,7 +977,8 @@ BOOL TJobDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hWndCtl)
 		return	TRUE;
 
 	case HELP_BUTTON:
-		ShowHelpW(NULL, cfg->execDir, LoadStrW(IDS_FASTCOPYHELP), L"#job");
+		// ShowHelpW(NULL, cfg->execDir, LoadStrW(IDS_FASTCOPYHELP), L"#job");
+		ShowHelp(cfg->execDir, LoadStrW(IDS_FASTCOPYHELP), L"#job");
 		return	TRUE;
 	}
 	return	FALSE;
@@ -1164,7 +1166,8 @@ BOOL TFinActDlg::EvCommand(WORD wNotifyCode, WORD wID, LPARAM hWndCtl)
 		return	TRUE;
 
 	case HELP_BUTTON:
-		ShowHelpW(NULL, cfg->execDir, LoadStrW(IDS_FASTCOPYHELP), L"#finact");
+		// ShowHelpW(NULL, cfg->execDir, LoadStrW(IDS_FASTCOPYHELP), L"#finact");
+		ShowHelp(cfg->execDir, LoadStrW(IDS_FASTCOPYHELP), L"#finact");
 		return	TRUE;
 	}
 	return	FALSE;

@@ -8,11 +8,11 @@ Set fso = CreateObject("Scripting.FileSystemObject") '文件操作系统对象
 Set osh = CreateObject("WScript.Shell")
 
 If Not fso.FileExists(p_7zip) Then
-	WScript.Echo "7z.exe(7-Zip) not found."
+	WScript.Echo "没有找到7z.exe / 7z.exe(7-Zip) not found."
 	WScript.Quit
 End If
 If Not fso.FileExists(p_hhc) Then
-	WScript.Echo "hhc.exe(HTML Help Workshop) not found."
+	WScript.Echo "没有找到hhc.exe / hhc.exe(HTML Help Workshop) not found."
 	WScript.Quit
 End If
 
@@ -86,7 +86,7 @@ platform = Split("x86,x64", ",")
 bit = Split("win-32bit,win-64bit", ",")
 For xi = 0 To 1
 	zipName = "FastCopy-M_" & verNum & "_" & bit(xi) & ".zip"
-	WScript.Echo "Add files to " & zipName & ""
+	WScript.Echo "向压缩包添加文件 / Add files to " & zipName & ""
 	'7-Zip解压文件的命令行
 	command = """" & p_7zip & """ a -tzip"
 	command = command & " """ & zipName & """ " '压缩包地址
@@ -102,17 +102,6 @@ For xi = 0 To 1
 	Loop
 Next
 
-'osh.CurrentDirectory = "Output\XP_Release"
-'command = """" & p_7zip & """ a -tzip"
-'command = command & " """ & curDir & "FastCopy-M_" & verNum & "_Main_EXEC_For_WinXP.zip"" " '压缩包地址
-'command = command & " x86\FastCopy.exe "
-'command = command & " x64\FastCopy.exe "
-'Set oExec = osh.Exec(command)
-'Do While oExec.StdOut.AtEndOfStream <> True
-'	ReadLine = oExec.StdOut.ReadLine
-'	WScript.Echo ReadLine
-'Loop
-	
-Msgbox "Done."
+Msgbox "完成 / Done."
 Set fso=Nothing
 Set osh=Nothing

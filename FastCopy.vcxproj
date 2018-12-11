@@ -294,7 +294,11 @@
   <ItemGroup>
     <ClCompile Include="src\cfg.cpp" />
     <ClCompile Include="src\fastcopy.cpp" />
+    <ClCompile Include="src\fastcopyd.cpp" />
+    <ClCompile Include="src\fastcopyr.cpp" />
+    <ClCompile Include="src\fastcopyw.cpp" />
     <ClCompile Include="src\mainwin.cpp" />
+    <ClCompile Include="src\mainwinev.cpp" />
     <ClCompile Include="src\mainwinlog.cpp" />
     <ClCompile Include="src\mainwinopt.cpp" />
     <ClCompile Include="src\mainwinupd.cpp" />
