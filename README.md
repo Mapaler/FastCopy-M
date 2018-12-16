@@ -19,10 +19,13 @@ FastCopy is the Fastest Copy/Delete Software on Windows.
 * 它支持UNICODE和超过MAX_PATH(260字符)的文件路径名。  
 It supports UNICODE and over MAX_PATH (260 characters) file pathnames.
 * 它会根据来源与目录在相同或不同的硬盘自动选择不同的方法。  
+  
   | 不同硬盘 | 相同硬盘 |
   | --- | --- |
   | 读写分别由单独的线程并行处理。 | 首先做连续读取直到充满缓冲区。当缓冲区填满时，才开始大块数据写入。 |
+  
   It automatically selects different methods according to whether Source and DestDir are in the same or different HDD(or SSD).  
+  
   | Diff HDD | Same HDD |
   | --- | --- |
   | Reading and writing are processed respectively in parallel by separate threads. | Reading is processed until the big buffer fills. When the big buffer is filled, writing is started and processed in bulk. |
