@@ -1,4 +1,4 @@
-**FastCopy-M**ultilanguage
+*FastCopy-M*ultilanguage
 ===========
 "FastCopy-M" 是免费开源软件 "FastCopy" 的一个二次开发分支。  
 "FastCopy-M" is a fork of open source soft "FastCopy".
