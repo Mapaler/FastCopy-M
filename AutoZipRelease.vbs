@@ -1,8 +1,8 @@
 '====================================
 '变量定义区
 '====================================
-p_7zip = "E:\Program Files\7-Zip\7z.exe" '7-zip程序路径
-p_hhc = "E:\Program Files (x86)\HTML Help Workshop\hhc.exe" 'HTML Help Workshop程序路径
+p_7zip = "vendor\7z.exe" '7-zip程序路径
+p_hhc = "vendor\hhc.exe" 'HTML Help Workshop程序路径
 p_ver = "src\version.cpp" 'version.cpp文件路径
 Set fso = CreateObject("Scripting.FileSystemObject") '文件操作系统对象
 Set osh = CreateObject("WScript.Shell")
