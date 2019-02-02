@@ -174,6 +174,8 @@ public:
 	BOOL	enableAcl;
 	BOOL	enableStream;
 	BOOL	enableVerify;
+	BOOL	noSacl;
+
 	BOOL	useOverlapIo;
 	BOOL	usingMD5;
 	enum HashMode { MD5, SHA1, SHA256, SHA512, XXHASH32, XXHASH } hashMode;

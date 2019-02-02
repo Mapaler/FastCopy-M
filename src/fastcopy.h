@@ -1,9 +1,9 @@
 ﻿/* static char *fastcopy_id = 
-	"@(#)Copyright (C) 2004-2018 H.Shirouzu		fastcopy.h	Ver3.50"; */
+	"@(#)Copyright (C) 2004-2019 H.Shirouzu		fastcopy.h	Ver3.62"; */
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2018-05-28(Mon)
+	Update					: 2019-01-28(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	Modify					: Mapaler 2015-09-09
@@ -47,6 +47,7 @@
 #define FASTCOPYW			L"FastCopy-M"
 
 #define NTFS_STR			L"NTFS"
+#define REFS_STR			L"REFS"
 #define FMT_RENAME			L"%.*s(%d)%s"
 #define FMT_PUTLIST			L"%c %s%s%s%s\r\n"
 #define FMT_REDUCEMSG		L"Reduce MaxIO(%c) size (%dMB -> %dMB)"
@@ -291,39 +292,51 @@ class FastCopy {
 public:
 	enum Mode { DIFFCP_MODE, SYNCCP_MODE, MOVE_MODE, MUTUAL_MODE, DELETE_MODE, TEST_MODE };
 	enum OverWrite { BY_NAME, BY_ATTR, BY_LASTEST, BY_CONTENTS, BY_ALWAYS };
-	enum FsType { FSTYPE_NONE=0, FSTYPE_NTFS=0x1, FSTYPE_FAT=0x2, FSTYPE_NETWORK=0x10,
-					FSTYPE_SSD=0x20, FSTYPE_WEBDAV=0x40 };
-	enum Flags {
-		CREATE_OPENERR_FILE	=	0x00000001,
-		USE_OSCACHE_READ	=	0x00000002,
-		USE_OSCACHE_WRITE	=	0x00000004,
-		PRE_SEARCH			=	0x00000008,
-		SAMEDIR_RENAME		=	0x00000010,
-		SKIP_EMPTYDIR		=	0x00000020,
-		FIX_SAMEDISK		=	0x00000040,
-		FIX_DIFFDISK		=	0x00000080,
-		AUTOSLOW_IOLIMIT	=	0x00000100,
-		WITH_ACL			=	0x00000200,
-		WITH_ALTSTREAM		=	0x00000400,
-		OVERWRITE_DELETE	=	0x00000800,
-		OVERWRITE_DELETE_NSA=	0x00001000,
-		OVERWRITE_PARANOIA	=	0x00002000,
-		REPARSE_AS_NORMAL	=	0x00004000,
-		COMPARE_CREATETIME	=	0x00008000,
-		SERIAL_MOVE			=	0x00010000,
-		SERIAL_VERIFY_MOVE	=	0x00020000,
-		RESTORE_HARDLINK	=	0x00040000,
-		DEL_BEFORE_CREATE	=	0x00080000,
-		DELDIR_WITH_FILTER	=	0x00100000,
-		NET_BKUPWR_NOOVL	=	0x00200000,
-		NO_LARGE_FETCH		=	0x00400000,
-		WRITESHARE_OPEN		=	0x00800000,
+	enum FsType {
+		FSTYPE_NONE		= 0x0000,
+		FSTYPE_NTFS		= 0x0001,
+		FSTYPE_FAT		= 0x0002,
+		FSTYPE_REFS		= 0x0004,
+		FSTYPE_NETWORK	= 0x0010,
+		FSTYPE_SSD		= 0x0020,
+		FSTYPE_WEBDAV	= 0x0040,
+		FSTYPE_ACL		= 0x0100,
+		FSTYPE_STREAM	= 0x0200,
+		FSTYPE_REPARSE	= 0x0400,
+		FSTYPE_HARDLINK	= 0x0800,
+	};
+	enum Flags : uint64 {
+		CREATE_OPENERR_FILE	=	0x0000000000000001,
+		USE_OSCACHE_READ	=	0x0000000000000002,
+		USE_OSCACHE_WRITE	=	0x0000000000000004,
+		PRE_SEARCH			=	0x0000000000000008,
+		SAMEDIR_RENAME		=	0x0000000000000010,
+		SKIP_EMPTYDIR		=	0x0000000000000020,
+		FIX_SAMEDISK		=	0x0000000000000040,
+		FIX_DIFFDISK		=	0x0000000000000080,
+		AUTOSLOW_IOLIMIT	=	0x0000000000000100,
+		WITH_ACL			=	0x0000000000000200,
+		WITH_ALTSTREAM		=	0x0000000000000400,
+		OVERWRITE_DELETE	=	0x0000000000000800,
+		OVERWRITE_DELETE_NSA=	0x0000000000001000,
+		OVERWRITE_PARANOIA	=	0x0000000000002000,
+		REPARSE_AS_NORMAL	=	0x0000000000004000,
+		COMPARE_CREATETIME	=	0x0000000000008000,
+		SERIAL_MOVE			=	0x0000000000010000,
+		SERIAL_VERIFY_MOVE	=	0x0000000000020000,
+		RESTORE_HARDLINK	=	0x0000000000040000,
+		DEL_BEFORE_CREATE	=	0x0000000000080000,
+		DELDIR_WITH_FILTER	=	0x0000000000100000,
+		NET_BKUPWR_NOOVL	=	0x0000000000200000,
+		NO_LARGE_FETCH		=	0x0000000000400000,
+		WRITESHARE_OPEN		=	0x0000000000800000,
+		NO_SACL				=	0x0000000100000000,
 		//
-		LISTING				=	0x01000000,
-		LISTING_ONLY		=	0x02000000,
+		LISTING				=	0x0000000001000000,
+		LISTING_ONLY		=	0x0000000002000000,
 		//
-		REPORT_ACL_ERROR	=	0x20000000,
-		REPORT_STREAM_ERROR	=	0x40000000,
+		REPORT_ACL_ERROR	=	0x0000000020000000,
+		REPORT_STREAM_ERROR	=	0x0000000040000000,
 		//
 	};
 	enum DlsvtMode {
@@ -600,6 +613,8 @@ protected:
 	BOOL	enableAcl;
 	BOOL	enableStream;
 	BOOL	enableBackupPriv;
+	BOOL	enableSecName;
+	DWORD	acsSysSec; // 有効な場合のみACCESS_SYSTEM_SECURITYが入る
 
 	FINDEX_INFO_LEVELS
 			findInfoLv; // FindFirstFileEx用info level
@@ -889,15 +904,27 @@ protected:
 	BOOL InitDstPath(void);
 	BOOL InitDepthBuf(void);
 	FsType	GetFsType(const WCHAR *root_dir);
-	BOOL	IsLocalNTFS(FsType fstype) {
-		return (IsNTFS(fstype) && !IsNetFs(fstype)) ? TRUE : FALSE;
+//	BOOL	IsLocalNTFS(FsType fstype) {
+//		return (IsNTFS(fstype) && !IsNetFs(fstype)) ? TRUE : FALSE;
+//	}
+	BOOL	IsLocalModernFs(FsType fstype) {
+		return (IsModernFs(fstype) && !IsNetFs(fstype)) ? TRUE : FALSE;
 	}
-	BOOL	IsNTFS(FsType fstype) { return (fstype & FSTYPE_NTFS) ? TRUE : FALSE; }
+//	BOOL	IsNTFS(FsType fstype) { return (fstype & FSTYPE_NTFS) ? TRUE : FALSE; }
+//	BOOL	IsReFS(FsType fstype) { return (fstype & FSTYPE_REFS) ? TRUE : FALSE; }
 	BOOL	IsNetFs(FsType fstype) { return (fstype & FSTYPE_NETWORK) ? TRUE : FALSE; }
+	BOOL	IsModernFs(FsType fstype) { return (fstype & (FSTYPE_NTFS|FSTYPE_REFS)) ? TRUE:FALSE; }
 	BOOL	IsLocalFs(FsType fstype) { return !IsNetFs(fstype); }
 	BOOL	IsSSD(FsType fstype) { return (fstype & FSTYPE_SSD) ? TRUE : FALSE; }
 	BOOL	IsWebDAV(FsType fstype) { return (fstype & FSTYPE_WEBDAV) ? TRUE : FALSE; }
-	BOOL	UseHardlink() { return (info.flags & RESTORE_HARDLINK) && IsNTFS(dstFsType); }
+	BOOL	IsAclFs(FsType fstype) { return (fstype & FSTYPE_ACL) ? TRUE : FALSE; }
+	BOOL	IsStreamFs(FsType fstype) { return (fstype & FSTYPE_STREAM) ? TRUE : FALSE; }
+	BOOL	IsReparseFs(FsType fsType) { return (fsType & FSTYPE_REPARSE) ? TRUE : FALSE; }
+	BOOL	IsHardlinkFs(FsType fsType) { return (fsType & FSTYPE_HARDLINK) ? TRUE : FALSE; }
+	BOOL	UseHardlink() {
+		return (info.flags & RESTORE_HARDLINK) &&
+				IsHardlinkFs(srcFsType) && IsHardlinkFs(dstFsType);
+	}
 	int GetSectorSize(const WCHAR *root_dir, BOOL use_cluster=FALSE);
 	int MakeUnlimitedPath(WCHAR *buf);
 	BOOL PutList(WCHAR *path, DWORD opt, DWORD lastErr=0, int64 wtime=-1, int64 size=-1,

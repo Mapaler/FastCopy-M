@@ -29,6 +29,11 @@ TDlg::~TDlg()
 
 BOOL TDlg::Create(HINSTANCE hInstance)
 {
+	if (hWnd) {
+		Debug("Already created\n");
+		return FALSE;
+	}
+
 	TApp::GetApp()->AddWin(this);
 
 	hWnd = ::CreateDialogW(hInstance ? hInstance : TApp::hInst(), (WCHAR *)(DWORD_PTR)resId,

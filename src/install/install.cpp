@@ -7,7 +7,7 @@
 	Update					: 2018-05-28(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
-	Modify  				: Mapaler 2017-03-06
+	Modify  				: Mapaler 2018-12-11
 	======================================================================== */
 
 #include "../tlib/tlib.h"
@@ -89,7 +89,10 @@ int WINAPI WinMain(HINSTANCE hI, HINSTANCE, LPSTR cmdLine, int nCmdShow)
 		if (!wcsstr(cmdLineW, TEMPDIR_OPT) &&
 			!wcsstr(cmdLineW, RUNAS_OPT)   &&
 			!wcsstr(cmdLineW, UNINST_OPT)) {
-			return	ExecInTempDir();
+			IPDict	dict;
+			if (GetIPDictBySelf(&dict)) {
+				return	ExecInTempDir();
+			}
 		}
 	}
 

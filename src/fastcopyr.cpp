@@ -729,7 +729,7 @@ FastCopy::ReqHead *FastCopy::GetDirExtData(FileStat *stat)
 	BOOL	ret = TRUE;
 	BOOL	is_reparse = IsReparseEx(stat->dwFileAttributes);
 	int		used_size_save = (int)dirStatBuf.UsedSize();
-	DWORD	mode = GENERIC_READ|READ_CONTROL;
+	DWORD	mode = GENERIC_READ|READ_CONTROL|acsSysSec;
 	DWORD	share = FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE;
 	DWORD	flg = FILE_FLAG_BACKUP_SEMANTICS | (is_reparse ? FILE_FLAG_OPEN_REPARSE_POINT : 0);
 	ReqHead	*req=NULL;
@@ -915,18 +915,18 @@ BOOL FastCopy::IsOverWriteFile(FileStat *srcStat, FileStat *dstStat)
 	if (info.overWrite == BY_NAME)
 		return	FALSE;
 
-	bool	all_ntfs = IsNTFS(srcFsType) && IsNTFS(dstFsType);
+	bool	all_modernfs = IsModernFs(srcFsType) && IsModernFs(dstFsType);
 	bool	is_dlsvt = (info.dlsvtMode == DLSVT_ALWAYS ||
-						info.dlsvtMode == DLSVT_FAT && !all_ntfs);
+						info.dlsvtMode == DLSVT_FAT && !all_modernfs);
 	bool	use_crtime = (info.flags & COMPARE_CREATETIME) ? true : false;
 
 	int64&	stm = use_crtime ? srcStat->CreateTime() : srcStat->WriteTime();
 	int64&	dtm = use_crtime ? dstStat->CreateTime() : dstStat->WriteTime();
 
 	// どちらかが NTFS でない場合（ネットワークドライブを含む）2秒の猶予
-	bool	all_ntfs_local = IsLocalNTFS(srcFsType) && IsLocalNTFS(dstFsType);
+	bool	all_modern_local = IsLocalModernFs(srcFsType) && IsLocalModernFs(dstFsType);
 #define FAT_GRACE 20000000LL
-	int64	grace = (all_ntfs_local || timeDiffGrace > FAT_GRACE ||
+	int64	grace = (all_modern_local || timeDiffGrace > FAT_GRACE ||
 						((stm % 10000000) && (dtm % 10000000))) ? timeDiffGrace : FAT_GRACE;
 
 	if (info.overWrite == BY_ATTR) {
@@ -1058,7 +1058,7 @@ BOOL FastCopy::OpenFileProcCore(WCHAR *path, FileStat *stat, int dir_len, int na
 		stat->hOvlFile = INVALID_HANDLE_VALUE;
 
 		if (is_backup) {
-			mode |= READ_CONTROL;
+			mode |= READ_CONTROL|acsSysSec;
 		}
 		else if (useOvl) {
 			flg |= flagOvl;
@@ -1271,8 +1271,9 @@ BOOL FastCopy::OpenFileBackupStreamCore(WCHAR *path, int src_len, int64 size, WC
 
 	//DebugW(L"CreateFile(OpenFileBackupStreamCore) %d %s\n", isExec, path);
 
-	if ((subStat->hFile = ::CreateFileW(path, GENERIC_READ|READ_CONTROL, share, 0, OPEN_EXISTING
-			, flg, 0)) == INVALID_HANDLE_VALUE) {
+	if ((subStat->hFile = ::CreateFileW(path,
+			GENERIC_READ|READ_CONTROL|acsSysSec,
+			share, 0, OPEN_EXISTING, flg, 0)) == INVALID_HANDLE_VALUE) {
 		if (info.flags & REPORT_STREAM_ERROR) ConfirmErr(L"OpenFile(st)", path + srcPrefixLen);
 		subStat->lastError = ::GetLastError();
 		return	FALSE;

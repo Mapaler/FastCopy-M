@@ -1,5 +1,5 @@
 ﻿======================================================================
-                   FastCopy  ver3.61                   2018/11/08
+                   FastCopy  ver3.62                   2019/01/28
                                                  SHIROUZU Hiroaki
                                                  FastCopy Lab, LLC.
                    FastCopy-M branch                   2018/12/11
@@ -24,8 +24,8 @@
 License:
 	-------------------------------------------------------------------------
 	 FastCopy ver3.x
-	 Copyright(C) 2004-2018 SHIROUZU Hiroaki All rights reserved.
-	 Copyright(C) 2018 FastCopy Lab, LLC. All rights reserved.
+	 Copyright(C) 2004-2019 SHIROUZU Hiroaki All rights reserved.
+	 Copyright(C) 2018-2019 FastCopy Lab, LLC. All rights reserved.
 
 	 This program is free software. You can redistribute it and/or modify
 	 it under the GNU General Public License version 3.

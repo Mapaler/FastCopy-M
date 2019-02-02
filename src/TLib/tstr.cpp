@@ -286,34 +286,33 @@ int bin2urlstr(const BYTE *bindata, size_t size, char *str)
 {
 	int ret = bin2b64str(bindata, size, str);
 
+	// strip \r\n
+	for (char *s=str, *d=str; *d = *s; s++) {
+		if (*s != '\r' && *s != '\n') {
+			d++;
+			ret--;
+		}
+	}
+
+	// replace char
 	for (char *s=str; *s; s++) {
 		switch (*s) {
-		case '+': *s = '-'; break;
-		case '/': *s = '_'; break;
+		case '+':
+			*s = '-';
+			break;
 
-		case '\r':
-		case '\n':
-		case '=': *s = 0;   break;
+		case '/':
+			*s = '_';
+			break;
+
+		case '=':
+			*s = 0;
+			ret--;
+			break;
 		}
 	}
 	return	ret;
 }
-
-void swap_s(BYTE *s, size_t len)
-{
-	if (len == 0) return;
-
-	size_t	mid = len / 2;
-
-	for (size_t i=0, e=len-1; i < mid; i++, e--) {
-		BYTE	&c1 = s[i];
-		BYTE	&c2 = s[e];
-		BYTE	tmp = c1;
-		c1 = c2;
-		c2 = tmp;
-	}
-}
-
 
 /*
 0: 0
@@ -336,13 +335,28 @@ size_t urlstr2bin(const char *str, BYTE *bindata, size_t maxsize)
 		}
 	}
 	if (b64[len-1] != '\n' && (len % 4) && b64[len-1] != '=') {
-		sprintf(b64 + len -1, "%.*s", int(4 - (len % 4)), "===");
+		sprintf(b64 + len, "%.*s", int(4 - (len % 4)), "===");
 	}
 
 	size_t	size = b64str2bin(b64, bindata, maxsize);
 	delete [] b64;
 
 	return	size;
+}
+
+void swap_s(BYTE *s, size_t len)
+{
+	if (len == 0) return;
+
+	size_t	mid = len / 2;
+
+	for (size_t i=0, e=len-1; i < mid; i++, e--) {
+		BYTE	&c1 = s[i];
+		BYTE	&c2 = s[e];
+		BYTE	tmp = c1;
+		c1 = c2;
+		c2 = tmp;
+	}
 }
 
 /*

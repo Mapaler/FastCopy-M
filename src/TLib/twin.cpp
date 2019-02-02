@@ -43,6 +43,10 @@ BOOL TWin::Create(LPCSTR className, LPCSTR title, DWORD style, DWORD exStyle, HM
 BOOL TWin::CreateW(const WCHAR *className, const WCHAR *title, DWORD style, DWORD exStyle,
 	HMENU hMenu)
 {
+	if (hWnd) {
+		Debug("Already created\n");
+		return FALSE;
+	}
 	if (className == NULL || !*className) {
 		className = TApp::GetApp()->GetDefaultClassW();
 	}
