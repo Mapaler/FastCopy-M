@@ -1,9 +1,9 @@
 ﻿static char *mainwin_id = 
-	"@(#)Copyright (C) 2004-2018 H.Shirouzu and FastCopy Lab, LLC.	mainwin.cpp	ver3.50";
+	"@(#)Copyright (C) 2004-2019 H.Shirouzu and FastCopy Lab, LLC.	mainwin.cpp	ver3.62";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2018-05-28(Mon)
+	Update					: 2019-01-28(Mon)
 	Copyright				: H.Shirouzu / FastCopy Lab, LLC.
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -282,7 +282,10 @@ BOOL TMainDlg::MoveCenter()
 			MONITORINFO	mi = { sizeof(mi) };
 
 			if (::GetMonitorInfoW(hMon, &mi)) {
-				if (PtInRect(&mi.rcMonitor, cfg.winpos)) {
+				auto	pos = cfg.winpos;
+				pos.x += orgRect.cx() / 2; // タイトルバーの左右中央
+				pos.y += 10; // タイトルバーが可視の範囲
+				if (PtInRect(&mi.rcMonitor, pos)) {
 					pt = cfg.winpos;
 					isFixPos = TRUE;
 				}
@@ -1112,6 +1115,7 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 		| (!is_listing && fileLogMode != NO_FILELOG ? FastCopy::LISTING : 0)
 		| (IsDlgButtonChecked(ACL_CHECK) ? FastCopy::WITH_ACL : 0)
 		| (IsDlgButtonChecked(STREAM_CHECK) ? FastCopy::WITH_ALTSTREAM : 0)
+		| (cfg.noSacl ? FastCopy::NO_SACL : 0)
 		| (cfg.aclErrLog ? FastCopy::REPORT_ACL_ERROR : 0)
 		| (cfg.streamErrLog ? FastCopy::REPORT_STREAM_ERROR : 0)
 		| (!is_delete_mode && !is_test_mode && IsDlgButtonChecked(ESTIMATE_CHECK) && !is_listing ?

@@ -1,5 +1,5 @@
 ﻿static char *version_id = 
-	"@(#)Copyright (C) 2004-2018 H.Shirouzu and FastCopy Lab, LLC.	Version.cpp ver3.61"
+	"@(#)Copyright (C) 2004-2019 H.Shirouzu and FastCopy Lab, LLC.	Version.cpp ver3.62"
 #ifdef _DEBUG
 	"d"
 #endif
@@ -8,7 +8,7 @@
 	Project  Name			: Fast/Force copy file and directory
 	Module Name				: Version
 	Create					: 2010-06-13(Sun)
-	Update					: 2018-05-28(Mon)
+	Update					: 2019-01-28(Mon)
 	Copyright				: H.Shirouzu and FastCopy Lab, LLC.
 	License					: GNU General Public License version 3
 	======================================================================== */

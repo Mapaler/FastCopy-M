@@ -88,7 +88,10 @@ int WINAPI WinMain(HINSTANCE hI, HINSTANCE, LPSTR cmdLine, int nCmdShow)
 		if (!wcsstr(cmdLineW, TEMPDIR_OPT) &&
 			!wcsstr(cmdLineW, RUNAS_OPT)   &&
 			!wcsstr(cmdLineW, UNINST_OPT)) {
-			return	ExecInTempDir();
+			IPDict	dict;
+			if (GetIPDictBySelf(&dict)) {
+				return	ExecInTempDir();
+			}
 		}
 	}
 

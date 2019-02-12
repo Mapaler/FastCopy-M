@@ -43,6 +43,9 @@ size_t b64str2bin(const char *buf, BYTE *bindata, size_t maxlen);
 size_t b64str2bin_ex(const char *buf, int buf_len, BYTE *bindata, size_t maxlen);
 size_t b64str2bin_revendian(const char *buf, BYTE *bindata, size_t maxlen);
 
+int bin2b32str(const BYTE *bindata, size_t len, char *buf);
+size_t b32str2bin(const char *buf, BYTE *bindata, size_t maxlen);
+
 void swap_s(BYTE *s, size_t len);
 
 int bin2urlstr(const BYTE *bindata, size_t len, char *str);

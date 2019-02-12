@@ -301,6 +301,20 @@ BOOL VBuf::Grow(size_t grow_size)
 	return	TRUE;
 }
 
+BOOL VBuf::Duplicate(VBuf *dup)
+{
+	dup->FreeBuf();
+	dup->dumpExcept = dumpExcept;
+
+	if (MaxSize()) {
+		if (!dup->AllocBuf(size, maxSize)) return FALSE;
+
+		dup->SetUsedSize(usedSize);
+		memcpy(dup->Buf(), buf, size);
+	}
+	return	TRUE;
+}
+
 
 // LoadStr
 void InitInstanceForLoadStr(HINSTANCE hI)
@@ -2008,7 +2022,7 @@ HBITMAP TDIBtoDDB(HBITMAP hDibBmp) // 8bit には非対応
 BOOL TOpenExplorerSelOneW(const WCHAR *path)
 {
 	WCHAR	buf[MAX_PATH + 20];
-	snwprintfz(buf, wsizeof(buf), L"/select,%s", path);
+	snwprintfz(buf, wsizeof(buf), L"/select,\"%s\"", path);
 	return	INT_RDC(::ShellExecuteW(0, 0, L"explorer", buf, 0, SW_SHOW)) > 32;
 }
 

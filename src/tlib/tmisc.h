@@ -238,6 +238,7 @@ public:
 	size_t	AddUsedSize(size_t _used_size) { return usedSize += _used_size; }
 	size_t	RemainSize(void) const { return size - usedSize; }
 	VBuf& operator =(const VBuf&); // prohibit
+	BOOL	Duplicate(VBuf *buf);
 	void	EnableDumpExcept(BOOL on=TRUE) { dumpExcept = on; }
 };
 
@@ -276,6 +277,12 @@ public:
 		return	Get(idx);
 	}
 	VBVec<T>& operator =(const VBVec<T> &);	// default definition is none
+	bool Duplicate(VBVec<T> *dup) {
+		if (!VBuf::Duplicate(dup)) return false;
+		dup->growSize = growSize;
+		dup->usedNum = usedNum;
+		return true;
+	}
 	bool Aquire(size_t idx) {
 		size_t	need_num = idx + 1;
 		if (need_num <= usedNum) {

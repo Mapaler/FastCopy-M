@@ -136,6 +136,18 @@ public:
 	bool put_ipdict_list(const char *key, const IPDictList &val);
 
 	bool get_int(const char *key, int64 *val) const;
+	bool get_int(const char *key, u_int *val) const {
+		int64	v;
+		bool ret = get_int(key, &v);
+		if (ret) *val = (u_int)v;
+		return	ret;
+	}
+	bool get_int(const char *key, int *val) const {
+		return	get_int(key, (u_int *)val);
+	}
+	bool get_int(const char *key, u_long *val) const {
+		return	get_int(key, (u_int *)val);
+	}
 	bool get_str(const char *key, U8str *str) const;
 	bool get_bytes(const char *key, DynBuf *dbuf) const;
 	bool get_bytes_str(const char *key, DynBuf *dbuf) const;

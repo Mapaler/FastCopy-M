@@ -1,10 +1,10 @@
 static char *tcmndlg_id = 
-	"@(#)Copyright (C) 2018 H.Shirouzu		tcmndlg.cpp	Ver0.99";
+	"@(#)Copyright (C) 2018-2019 H.Shirouzu		tcmndlg.cpp	Ver0.99";
 /* ========================================================================
 	Project  Name			: Win32 Lightweight  Class Library Test
 	Module Name				: Common Dialog Class
 	Create					: 2018-04-26(Thu)
-	Update					: 2018-04-26(Thu)
+	Update					: 2019-01-12(Sat)
 	Copyright				: H.Shirouzu
 	Reference				: 
 	======================================================================== */

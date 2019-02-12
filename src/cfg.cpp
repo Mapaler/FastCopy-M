@@ -1,9 +1,9 @@
 ﻿static char *cfg_id = 
-	"@(#)Copyright (C) 2004-2018 H.Shirouzu		cfg.cpp	ver3.50";
+	"@(#)Copyright (C) 2004-2019 H.Shirouzu		cfg.cpp	ver3.62";
 /* ========================================================================
 	Project  Name			: Fast/Force copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2018-05-28(Mon)
+	Update					: 2019-01-28(Mon)
 	Copyright				: H.Shirouzu
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -113,6 +113,7 @@
 #define UPDCHECK_KEY			"updCheck"
 #define LASTUPDCHECK_KEY		"lastUpdCheck"
 #define VERIFY_REMOVE_KEY		"verifyRemove"
+#define NO_SACL_KEY				"no_sacl"
 
 #define NONBUFMINSIZENTFS_KEY	"nonbuf_minsize_ntfs2"
 #define NONBUFMINSIZEFAT_KEY	"nonbuf_minsize_fat"
@@ -598,6 +599,8 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 	enableAcl		= ini.GetInt(ACL_KEY, FALSE);
 	enableStream	= ini.GetInt(STREAM_KEY, FALSE);
 	enableVerify	= ini.GetInt(VERIFY_KEY, FALSE);
+	noSacl			= ini.GetInt(NO_SACL_KEY, 0);
+
 	useOverlapIo	= ini.GetInt(USEOVERLAPIO_KEY, TRUE);
 
 	if ((hashMode = (HashMode)ini.GetInt(HASHMODE_KEY, -1)) == -1) {
@@ -862,6 +865,8 @@ BOOL Cfg::WriteIni(void)
 	ini.SetInt(ACL_KEY, enableAcl);
 	ini.SetInt(STREAM_KEY, enableStream);
 	ini.SetInt(VERIFY_KEY, enableVerify);
+//	ini.SetInt(NO_SACL_KEY, noSacl);
+
 	ini.SetInt(USEOVERLAPIO_KEY, useOverlapIo);
 //	ini.SetInt(USEMD5_KEY, usingMD5);
 	ini.SetInt(HASHMODE_KEY, hashMode);

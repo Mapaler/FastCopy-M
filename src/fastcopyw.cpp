@@ -266,7 +266,7 @@ BOOL FastCopy::SetDirExtData(FileStat *stat)
 {
 	HANDLE	fh;
 	DWORD	mode = GENERIC_WRITE | (stat->acl && stat->aclSize && enableAcl ?
-		(WRITE_OWNER|WRITE_DAC) : 0) | READ_CONTROL;
+					(WRITE_OWNER|WRITE_DAC|acsSysSec) : 0) | READ_CONTROL;
 	BOOL	is_reparse = IsReparseEx(stat->dwFileAttributes);
 	BOOL	ret = FALSE;
 	DWORD	share = FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE;
@@ -471,7 +471,9 @@ BOOL FastCopy::WriteFileProcCore(HANDLE *_fh, FileStat *stat, WInfo *_wi)
 		((info.flags & NET_BKUPWR_NOOVL) == 0 || IsLocalFs(dstFsType) || wi.cmd == WRITE_FILE);
 
 	if (wi.cmd == WRITE_BACKUP_FILE || wi.cmd == WRITE_BACKUP_ALTSTREAM) {
-		if (stat->acl && stat->aclSize && enableAcl) mode |= WRITE_OWNER|WRITE_DAC;
+		if (stat->acl && stat->aclSize && enableAcl) {
+			mode |= WRITE_OWNER|WRITE_DAC|acsSysSec;
+		}
 	}
 
 	if (useOvl /* && wi.cmd != WRITE_BACKUP_FILE*/) {
@@ -717,7 +719,7 @@ BOOL FastCopy::WriteFileCore(HANDLE fh, FileStat *stat, WInfo *_wi, DWORD mode, 
 		//DebugW(L"CreateFile(WriteFileCore2) %d %s\n", isExec, dst);
 		fh2 = CreateFileWithRetry(dst, mode, share, 0, OPEN_EXISTING, flg, 0, 10);
 		if (fh2 == INVALID_HANDLE_VALUE && ::GetLastError() != ERROR_SHARING_VIOLATION) {
-			mode &= ~(WRITE_OWNER|WRITE_DAC);
+			mode &= ~(WRITE_OWNER|WRITE_DAC|acsSysSec);
 			fh2 = CreateFileWithRetry(dst, mode, share, 0, OPEN_EXISTING, flg, 0, 10);
 		}
 		if (fh2 == INVALID_HANDLE_VALUE) {

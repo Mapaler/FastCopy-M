@@ -194,6 +194,31 @@ void TDigest::GetEmptyVal(void *data)
 	}
 }
 
+BOOL TDigest::HMac(void *key, DWORD klen, void *src, DWORD slen, void *hmac)
+{
+#define HMAC_BLOCK_SIZE 64
+	BYTE	block[HMAC_BLOCK_SIZE];
+	BYTE	hash[SHA256_SIZE];
+
+	// H(K XOR ipad, text)
+	Reset();
+	memset(block, 0x36, HMAC_BLOCK_SIZE);
+	byte_xor(block, (BYTE *)key, block, klen);
+	Update(block, HMAC_BLOCK_SIZE);
+	Update(src, slen);
+	if (!GetVal(hash)) return FALSE;
+
+	// H(K XOR opad, H(K XOR ipad, text)=hash)
+	Reset();
+	memset(block, 0x5c, HMAC_BLOCK_SIZE);
+	byte_xor(block, (BYTE *)key, block, klen);
+	Update(block, HMAC_BLOCK_SIZE);
+	Update(hash, GetDigestSize());
+	if (!GetVal(hmac)) return FALSE;
+
+	return	TRUE;
+}
+
 BOOL TGenRandomMT(void *buf, size_t size)
 {
 	std::mt19937_64	mt64((std::random_device())());

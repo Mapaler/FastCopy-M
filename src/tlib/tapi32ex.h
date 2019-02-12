@@ -152,6 +152,7 @@ public:
 									type == SHA256 ? SHA256_SIZE : XXHASH_SIZE;
 									}
 	void GetEmptyVal(void *data);
+	BOOL HMac(void *key, DWORD klen, void *src, DWORD slen, void *hmac);
 };
 
 #ifdef UNICODE

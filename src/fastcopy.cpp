@@ -1,9 +1,9 @@
 ﻿static char *fastcopy_id = 
-	"@(#)Copyright (C) 2004-2018 H.Shirouzu and FastCopy Lab, LLC.	fastcopy.cpp	ver3.50";
+	"@(#)Copyright (C) 2004-2019 H.Shirouzu and FastCopy Lab, LLC.	fastcopy.cpp	ver3.62";
 /* ========================================================================
 	Project  Name			: Fast Copy file and directory
 	Create					: 2004-09-15(Wed)
-	Update					: 2018-05-28(Mon)
+	Update					: 2019-01-28(Mon)
 	Copyright				: H.Shirouzu and FastCopy Lab, LLC.
 	License					: GNU General Public License version 3
 	======================================================================== */
@@ -36,6 +36,16 @@ FastCopy::FastCopy()
 	if (!TSetPrivilege(SE_RESTORE_NAME, TRUE)) {
 		enableBackupPriv = FALSE;
 	}
+
+	enableSecName = TRUE;
+	if (!TSetPrivilege(SE_SECURITY_NAME, TRUE)) {
+		enableSecName = FALSE;
+	}
+	if (!IsUserAnAdmin()) {
+		enableSecName = FALSE;
+	}
+	acsSysSec = 0;
+
 	TSetPrivilege(SE_CREATE_SYMBOLIC_LINK_NAME, TRUE);
 
 	TLibInit_Ntdll();
@@ -162,7 +172,33 @@ FastCopy::FsType FastCopy::GetFsType(const WCHAR *root_dir)
 		return	fstype;
 	}
 
-	fstype = FsType(fstype | ((wcsicmp(fs, NTFS_STR) ? FSTYPE_FAT : FSTYPE_NTFS)));
+	fstype = FsType(fstype |
+				(wcsicmp(fs, NTFS_STR) == 0 ? FSTYPE_NTFS :
+				 wcsicmp(fs, REFS_STR) == 0 ? FSTYPE_REFS : FSTYPE_FAT)
+			);
+
+	if (fs_flags & FILE_PERSISTENT_ACLS) {
+		fstype = FsType(fstype | FSTYPE_ACL);
+	}
+	if (fs_flags & FILE_NAMED_STREAMS) {
+		fstype = FsType(fstype | FSTYPE_STREAM);
+	}
+	if (fs_flags & FILE_SUPPORTS_REPARSE_POINTS) {
+		fstype = FsType(fstype | FSTYPE_REPARSE);
+	}
+	if (fs_flags & FILE_SUPPORTS_HARD_LINKS) {
+		fstype = FsType(fstype | FSTYPE_HARDLINK);
+	}
+	if (!IsWin7()) {
+		if (IsModernFs(fstype) && IsReparseFs(fstype)) {
+			fstype = FsType(fstype | FSTYPE_STREAM);
+			fstype = FsType(fstype | FSTYPE_REPARSE);
+			fstype = FsType(fstype | FSTYPE_HARDLINK);
+		}
+	}
+
+//	DebugW(L"fs(%s)=%x / fs_flags=%x\n", root_dir, fstype, fs_flags);
+
 	return	fstype;
 }
 
@@ -241,7 +277,7 @@ BOOL FastCopy::InitDstPath(void)
 	dstSectorSize = GetSectorSize(dst_root,
 		(IsNetFs(dstFsType) || info.minSectorSize) ? FALSE : TRUE);
 	dstSectorSize = max(dstSectorSize, info.minSectorSize);
-	nbMinSize = IsLocalNTFS(dstFsType) ? info.nbMinSizeNtfs : info.nbMinSizeFat;
+	nbMinSize = IsLocalModernFs(dstFsType) ? info.nbMinSizeNtfs : info.nbMinSizeFat;
 
 	// 差分コピー用dst先ファイル確認
 	wcscpy(confirmDst, dst);
@@ -360,10 +396,17 @@ BOOL FastCopy::InitSrcPath(int idx)
 			isSameVol = wcscmp(src_root_cur, dst_root);
 	}
 
-	BOOL	ntfs_to_ntfs = IsNTFS(srcFsType) && IsNTFS(dstFsType);
-	enableAcl    = ntfs_to_ntfs && (info.flags & WITH_ACL);
-	enableStream = ntfs_to_ntfs && (info.flags & WITH_ALTSTREAM);
+	enableAcl    = (IsAclFs(srcFsType) && IsAclFs(dstFsType)) && (info.flags & WITH_ACL);
+	enableStream = (IsStreamFs(srcFsType) && IsStreamFs(dstFsType))
+					&& (info.flags & WITH_ALTSTREAM);
 	wcscpy(src_root, src_root_cur);
+
+	acsSysSec = (enableSecName && enableAcl
+				 && (info.flags & NO_SACL) == 0
+				 && !IsNetFs(srcFsType) && !IsNetFs(dstFsType)
+				 && IsReparseFs(srcFsType) && IsReparseFs(dstFsType) // samba除去用
+				)
+				? ACCESS_SYSTEM_SECURITY : 0;
 
 	// 最大転送サイズ
 	int64 tmpSize = ssize_t(isSameDrv ? info.bufSize : info.bufSize / 4);
@@ -377,7 +420,8 @@ BOOL FastCopy::InitSrcPath(int idx)
 	// 片方が NTFS でない場合、1msec 未満の誤差は許容（UDF 対策）
 #define UDF_GRACE	10000
 	timeDiffGrace = info.timeDiffGrace;
-	if ((!ntfs_to_ntfs || IsNetFs(srcFsType) || IsNetFs(dstFsType)) && UDF_GRACE > timeDiffGrace) {
+	if ((!IsLocalModernFs(srcFsType) || !IsLocalModernFs(dstFsType))
+		&& UDF_GRACE > timeDiffGrace) {
 		timeDiffGrace = UDF_GRACE;
 	}
 
@@ -436,7 +480,7 @@ BOOL FastCopy::InitDeletePath(int idx)
 			dstSectorSize = GetSectorSize(dst_root,
 				(IsNetFs(dstFsType) || info.minSectorSize) ? FALSE : TRUE);
 			dstSectorSize = max(dstSectorSize, info.minSectorSize);
-			nbMinSize = IsNTFS(dstFsType) ? info.nbMinSizeNtfs : info.nbMinSizeFat;
+			nbMinSize = IsModernFs(dstFsType) ? info.nbMinSizeNtfs : info.nbMinSizeFat;
 		}
 	}
 
@@ -848,9 +892,6 @@ BOOL FastCopy::Start(TransInfo *ti)
 		return	TRUE;
 	}
 
-	hWriteThread  = (HANDLE)_beginthreadex(0, 0, WriteThread, this, 0, &id);
-	hReadThread   = (HANDLE)_beginthreadex(0, 0, ReadThread, this, 0, &id);
-
 	opRun = TRUE;
 	openThreadCnt = 0;
 	for (auto &i=openThreadCnt; i < MAX_OPENTHREADS; i++) {
@@ -859,6 +900,9 @@ BOOL FastCopy::Start(TransInfo *ti)
 		}
 	}
 
+	hWriteThread  = (HANDLE)_beginthreadex(0, 0, WriteThread, this, CREATE_SUSPENDED, &id);
+	hReadThread   = (HANDLE)_beginthreadex(0, 0, ReadThread, this, CREATE_SUSPENDED, &id);
+
 	if (!hWriteThread || !hReadThread) goto ERR;
 
 	if (IsUsingDigestList()) {
@@ -866,6 +910,9 @@ BOOL FastCopy::Start(TransInfo *ti)
 		hWDigestThread = (HANDLE)_beginthreadex(0, 0, WDigestThread, this, 0, &id);
 		if (!hRDigestThread || !hWDigestThread) goto ERR;
 	}
+	::ResumeThread(hReadThread);
+	::ResumeThread(hWriteThread);
+
 	return	TRUE;
 
 ERR:
