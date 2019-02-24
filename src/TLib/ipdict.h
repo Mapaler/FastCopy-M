@@ -26,10 +26,10 @@
    Contents Format:
     "(key):(value_hexlen):(value)"
 
-    int value format:       "(int_hex_string)"  (if negative: "-(int_hex_string)")
-    str value format:       "(string_as_utf8)"
-    bytes value format:     "(bytes_as_bytes)"
-    bytes_str value format: "(bytes_as_base64)" ... (for avoid \0) optional
+    int value format:   "(int_hex_string)"  (if negative: "-(int_hex_string)")
+    str value format:   "(string_as_utf8)"
+    bytes value format: "(bytes_as_bytes)"
+    float value format: "(bytes_as_IEEE752)" (litte_endian, reduce left-side 0x00)
 
     list value format:  "(item1_hexlen):(item1_value):(item2_hexlen):(item2_value)..."
       (itemN_value) is one of int/str/bytes/list/dict/ipdict value
@@ -96,6 +96,7 @@ class IPDict;
 typedef std::map<U8str, std::shared_ptr<DynBuf>> IPDictMap;
 typedef std::list<U8str>                   IPDictKeyList;
 typedef std::list<int64>                   IPDictIntList;
+typedef std::list<double>                  IPDictFloatList;
 typedef std::list<std::shared_ptr<U8str>>  IPDictStrList;
 typedef std::list<std::shared_ptr<DynBuf>> IPDictBufList;
 typedef IPDictBufList                      IPDictBytesList;
@@ -122,16 +123,16 @@ public:
 	~IPDict();
 
 	bool put_int(const char *key, int64 val);
+	bool put_float(const char *key, double val);
 	bool put_str(const char *key, const char *s, int slen=-1);
 	bool put_bytes(const char *key, const BYTE *buf, size_t len);
-	bool put_bytes_str(const char *key, const BYTE *buf, size_t len);
 	bool put_dict(const char *key, const IPDict &dict);   // store as dict
 	bool put_ipdict(const char *key, const IPDict &dict); // store as nested ipdict
 
 	bool put_int_list(const char *key, const IPDictIntList &val);
+	bool put_float_list(const char *key, const IPDictFloatList &val);
 	bool put_str_list(const char *key, const IPDictStrList &val);
 	bool put_bytes_list(const char *key, const IPDictBufList &val);
-	bool put_bytes_str_list(const char *key, const IPDictBufList &val);
 	bool put_dict_list(const char *key, const IPDictList &val);
 	bool put_ipdict_list(const char *key, const IPDictList &val);
 
@@ -148,16 +149,22 @@ public:
 	bool get_int(const char *key, u_long *val) const {
 		return	get_int(key, (u_int *)val);
 	}
+	bool get_float(const char *key, double *val) const;
+	bool get_float(const char *key, float *val) const {
+		double	v;
+		bool ret = get_float(key, &v);
+		if (ret) *val = (float)v;
+		return	ret;
+	}
 	bool get_str(const char *key, U8str *str) const;
 	bool get_bytes(const char *key, DynBuf *dbuf) const;
-	bool get_bytes_str(const char *key, DynBuf *dbuf) const;
 	bool get_dict(const char *key,  IPDict *dict) const;
 	bool get_ipdict(const char *key, IPDict *dict) const;
 
 	bool get_int_list(const char *key, IPDictIntList *val) const;
+	bool get_float_list(const char *key, IPDictFloatList *val) const;
 	bool get_str_list(const char *key, IPDictStrList *val) const;
 	bool get_bytes_list(const char *key, IPDictBufList *val) const;
-	bool get_bytes_str_list(const char *key, IPDictBufList *val) const;
 	bool get_dict_list(const char *key, IPDictList *val) const;
 	bool get_ipdict_list(const char *key, IPDictList *val) const;
 
@@ -209,15 +216,15 @@ private:
 };
 
 size_t ipdict_pack_int(int64 val, BYTE *buf, size_t max_len);
+size_t ipdict_pack_float(double val, BYTE *buf, size_t max_len);
 size_t ipdict_pack_str(const char *s, size_t len, BYTE *buf, size_t max_len);
 size_t ipdict_pack_bytes(const BYTE *val, size_t len, BYTE *buf, size_t max_len);
-size_t ipdict_pack_bytes_str(const BYTE *val, size_t len, BYTE *buf, size_t max_len);
 
 bool ipdict_parse_int(const BYTE *s, size_t len, int64 *val);
 //bool ipdict_parse_int(const BYTE *s, size_t len, int *val);
+bool ipdict_parse_float(const BYTE *s, size_t len, double *val);
 size_t ipdict_parse_str(const BYTE *s, size_t len, char *buf, size_t max_len);
 size_t ipdict_parse_bytes(const BYTE *s, size_t len, BYTE *buf, size_t max_size);
-size_t ipdict_parse_bytes_str(const BYTE *s, size_t len, BYTE *buf, size_t max_size);
 bool ipdict_parse_dict(const BYTE *s, size_t len, IPDict *dict);
 bool ipdict_parse_ipdict(const BYTE *s, size_t len, IPDict *dict);
 size_t ipdict_parse_list(const BYTE *_s, size_t len, size_t *rlen);

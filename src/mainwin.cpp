@@ -1161,6 +1161,7 @@ BOOL TMainDlg::ExecCopy(DWORD exec_flags)
 				break;
 			}
 		}
+		info.verifyFlags |= (cfg.verifyInfo ? FastCopy::VERIFY_INFO : 0);
 	}
 
 	info.timeDiffGrace	= (int64)cfg.timeDiffGrace * 10000; // 1ms -> 100ns

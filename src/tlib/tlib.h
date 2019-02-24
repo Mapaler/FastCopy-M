@@ -303,6 +303,8 @@ struct TRect : public RECT {
 	}
 	long&	x() { return left; }
 	long&	y() { return top; }
+	const long&	x() const { return left; }
+	const long&	y() const { return top; }
 	long	cx() const { return right - left; }
 	long	cy() const { return bottom - top; }
 	void	set_x(long  x) { left = x; }

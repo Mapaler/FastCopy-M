@@ -480,6 +480,15 @@ public:
 			usedSize = _size;
 		}
 	}
+	void Realloc(size_t _size, bool used_size_only=false) {
+		if (_size > size) {
+			char *next_buf = (char *)malloc(_size);
+			memcpy(next_buf, buf, used_size_only ? usedSize : size);
+			free(buf);
+			buf = next_buf;
+			size = _size;
+		}
+	}
 	void Free() 		{ Alloc(0); }
 	BYTE *Buf()			{ return (BYTE *)buf; }
 	const char *s() const { return (buf && size) ? (const char *)buf : ""; }
@@ -846,6 +855,17 @@ BOOL TGetUrlAssocAppW(const WCHAR *scheme, WCHAR *wbuf, int max_len);
 time_t TGetBuildTimestamp();
 
 #define BIT_SET(flg, targ, val) (flg ? (targ |= val) : (targ &= ~val))
+
+//#define REPLACE_DEBUG_ALLOCATOR
+#ifdef REPLACE_DEBUG_ALLOCATOR
+extern "C" {
+void *valloc(size_t);
+void *vrealloc(void *, size_t);
+void *vcalloc(size_t, size_t);
+void vfree(void *);
+void replace_allocator();
+}
+#endif
 
 #endif
 

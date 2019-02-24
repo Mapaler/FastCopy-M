@@ -42,6 +42,14 @@ bool IPDict::put_int(const char *key, int64 val)
 	return	set(key, buf, pack_len);
 }
 
+bool IPDict::put_float(const char *key, double val)
+{
+	BYTE	buf[64];
+	size_t	pack_len = ipdict_pack_float(val, buf, sizeof(buf));
+
+	return	set(key, buf, pack_len);
+}
+
 bool IPDict::put_str(const char *key, const char *s, int slen)
 {
 	if (slen == -1) {
@@ -61,16 +69,6 @@ bool IPDict::put_bytes(const char *key, const BYTE *buf, size_t len)
 	DynBuf	*dbuf = new DynBuf(full_len);
 
 	dbuf->SetUsedSize(ipdict_pack_bytes(buf, len, dbuf->Buf(), full_len));
-
-	return	set_core(key, dbuf);
-}
-
-bool IPDict::put_bytes_str(const char *key, const BYTE *buf, size_t len)
-{
-	size_t	full_len = ipdict_pack_bytes_str(0, len, 0, 0) + 1;
-	DynBuf	*dbuf = new DynBuf(full_len);
-
-	dbuf->SetUsedSize(ipdict_pack_bytes_str(buf, len, dbuf->Buf(), full_len));
 
 	return	set_core(key, dbuf);
 }
@@ -109,6 +107,22 @@ bool IPDict::put_int_list(const char *key, const IPDictIntList &val)
 	return	put_list_core(key, vlist, content_len);
 }
 
+bool IPDict::put_float_list(const char *key, const IPDictFloatList &val)
+{
+	size_t						content_len = 0;
+	list<shared_ptr<DynBuf>>	vlist;
+
+	for (auto &i: val) {
+		DynBuf	*dbuf = new DynBuf(ipdict_pack_float(i, 0, 0) + 1);
+		size_t	len = ipdict_pack_float(i, dbuf->Buf(), dbuf->Size());
+		dbuf->SetUsedSize(len);
+		vlist.push_back(shared_ptr<DynBuf>(dbuf));
+		content_len += len + 2 + len_to_hexlen(len);
+	}
+
+	return	put_list_core(key, vlist, content_len);
+}
+
 bool IPDict::put_str_list(const char *key, const IPDictStrList &val)
 {
 	size_t						content_len = 0;
@@ -133,22 +147,6 @@ bool IPDict::put_bytes_list(const char *key, const IPDictBufList &val)
 	for (auto &d: val) {
 		DynBuf	*dbuf = new DynBuf(ipdict_pack_bytes(0, d->UsedSize(), 0, 0) + 1);
 		size_t	len = ipdict_pack_bytes(d->Buf(), d->UsedSize(), dbuf->Buf(), dbuf->Size());
-		dbuf->SetUsedSize(len);
-		vlist.push_back(shared_ptr<DynBuf>(dbuf));
-		content_len += len + 2 + len_to_hexlen(len);
-	}
-
-	return	put_list_core(key, vlist, content_len);
-}
-
-bool IPDict::put_bytes_str_list(const char *key, const IPDictBufList &val)
-{
-	size_t						content_len = 0;
-	list<shared_ptr<DynBuf>>	vlist;
-
-	for (auto &d: val) {
-		DynBuf	*dbuf = new DynBuf(ipdict_pack_bytes_str(0, d->UsedSize(), 0, 0) + 1);
-		size_t	len = ipdict_pack_bytes_str(d->Buf(), d->UsedSize(), dbuf->Buf(), dbuf->Size());
 		dbuf->SetUsedSize(len);
 		vlist.push_back(shared_ptr<DynBuf>(dbuf));
 		content_len += len + 2 + len_to_hexlen(len);
@@ -223,6 +221,19 @@ bool IPDict::get_int(const char *key, int64 *val) const
 	return	true;
 }
 
+bool IPDict::get_float(const char *key, double *val) const
+{
+	auto	itr = dict.find(key);
+	if (itr == dict.end()) {
+		return false;
+	}
+
+	if (!ipdict_parse_float(itr->second->Buf(), itr->second->UsedSize(), val)) {
+		return	false;
+	}
+	return	true;
+}
+
 bool IPDict::get_str(const char *key, U8str *str) const
 {
 	auto	itr = dict.find(key);
@@ -253,24 +264,6 @@ bool IPDict::get_bytes(const char *key, DynBuf *dbuf) const
 
 	if (max_len > 0) {
 		size_t len = ipdict_parse_bytes(ibuf->Buf(), ibuf->UsedSize(), dbuf->Buf(), max_len);
-		if (len == 0) return false;
-		dbuf->SetUsedSize(len);
-	}
-	return	true;
-}
-
-bool IPDict::get_bytes_str(const char *key, DynBuf *dbuf) const
-{
-	auto	itr = dict.find(key);
-	if (itr == dict.end()) {
-		return false;
-	}
-	auto	&ibuf = itr->second;
-	size_t	max_len = b64_to_len(ibuf->UsedSize());
-	dbuf->Alloc(max_len);
-
-	if (max_len > 0) {
-		size_t len = ipdict_parse_bytes_str(ibuf->Buf(), ibuf->UsedSize(), dbuf->Buf(), max_len);
 		if (len == 0) return false;
 		dbuf->SetUsedSize(len);
 	}
@@ -316,6 +309,22 @@ bool IPDict::get_int_list(const char *key, IPDictIntList *val) const
 	return	true;
 }
 
+bool IPDict::get_float_list(const char *key, IPDictFloatList *val) const
+{
+	IPDictBufList	vlist;
+
+	if (!parse_list_core(key, &vlist)) return false;
+
+	val->clear();
+	for (auto &d: vlist) {
+		double	v;
+		bool ret = ipdict_parse_float(d->Buf(), d->UsedSize(), &v);
+		if (!ret) return false;
+		val->push_back(v);
+	}
+	return	true;
+}
+
 bool IPDict::get_str_list(const char *key, IPDictStrList *val) const
 {
 	IPDictBufList	vlist;
@@ -353,30 +362,6 @@ bool IPDict::get_bytes_list(const char *key, IPDictBufList *val) const
 
 		if (d->UsedSize() > 0) {
 			len = ipdict_parse_bytes(d->Buf(), d->UsedSize(), dbuf->Buf(), len);
-			if (len == 0) return false;
-		} else {
-			len = 0;
-		}
-
-		dbuf->SetUsedSize(len);
-		val->push_back(shared_ptr<DynBuf>(dbuf));
-	}
-	return	true;
-}
-
-bool IPDict::get_bytes_str_list(const char *key, IPDictBufList *val) const
-{
-	IPDictBufList	vlist;
-
-	if (!parse_list_core(key, &vlist)) return false;
-
-	val->clear();
-	for (auto &d: vlist) {
-		size_t	len = b64_to_len(d->UsedSize()) + 1; // ipdict_parse_bytes(s,len,0,0)
-		DynBuf	*dbuf = new DynBuf(len);
-
-		if (d->UsedSize() > 0) {
-			len = ipdict_parse_bytes_str(d->Buf(), d->UsedSize(), dbuf->Buf(), len);
 			if (len == 0) return false;
 		} else {
 			len = 0;
@@ -643,13 +628,13 @@ size_t ipdict_pack_int(int64 val, BYTE *buf, size_t max_len)
 	char	tmp[128];
 
 	if (!buf) {
-		return	(val >= 0 || val == INT64_MIN) ? len_to_hexlen(val) : len_to_hexlen(-val);
+		return	(val >= 0) ? len_to_hexlen(val) : len_to_hexlen(-val)+1;
 	}
 
 	if (val >= 0) {
 		len = sprintf(tmp, "%llx", val);
 	}
-	else if (val != INT64_MIN) {	// avoid underflow exception
+	else {
 		len = sprintf(tmp, "-%llx", -val);
 	}
 	if (!buf) {
@@ -658,6 +643,18 @@ size_t ipdict_pack_int(int64 val, BYTE *buf, size_t max_len)
 	if (len + 1 > max_len) return 0;
 
 	return	strcpyz((char *)buf, tmp);
+}
+
+size_t ipdict_pack_float(double val, BYTE *buf, size_t max_len)
+{
+	BYTE	*p = (BYTE *)&val;
+	int		len = sizeof(double);
+
+	for (int i=sizeof(double)-1; i >= 0; i--) {
+		if (p[i]) break;
+		len--;
+	}
+	return	ipdict_pack_bytes(p, len, buf, max_len);
 }
 
 size_t ipdict_pack_str(const char *s, size_t len, BYTE *buf, size_t max_len)
@@ -675,20 +672,6 @@ size_t ipdict_pack_bytes(const BYTE *val, size_t len, BYTE *buf, size_t max_len)
 	memcpy(buf, val, len);
 
 	return	len;
-}
-
-size_t ipdict_pack_bytes_str(const BYTE *val, size_t len, BYTE *buf, size_t max_len)
-{
-	size_t	b64_len = b64_size(len);
-
-	if (!buf) {
-		return	b64_len;
-	}
-	if (b64_len + 1 > max_len) return 0;
-
-	if (bin2b64str(val, len, (char *)buf) != b64_len) return 0;
-
-	return	b64_len;
 }
 
 bool ipdict_parse_int(const BYTE *_s, size_t len, int64 *val)
@@ -711,6 +694,17 @@ bool ipdict_parse_int(const BYTE *_s, size_t len, int64 *val)
 	return	blen ? true : false;
 }
 
+bool ipdict_parse_float(const BYTE *s, size_t len, double *val)
+{
+	int64		sign = 1;
+
+	if (len > sizeof(double)) return false;
+	*val = 0.0;
+	memcpy(val, s, len);
+
+	return	true;
+}
+
 size_t ipdict_parse_str(const BYTE *s, size_t len, char *data, size_t max_len)
 {
 	return	ipdict_parse_bytes(s, len, (BYTE *)data, max_len);
@@ -723,11 +717,6 @@ size_t ipdict_parse_bytes(const BYTE *s, size_t len, BYTE *data, size_t max_len)
 	memcpy(data, s, len);
 
 	return	len;
-}
-
-size_t ipdict_parse_bytes_str(const BYTE *s, size_t len, BYTE *data, size_t max_size)
-{
-	return	b64str2bin_ex((char *)s, (int)len, data, max_size);
 }
 
 size_t ipdict_parse_list(const BYTE *_s, size_t size, size_t *rsize)
@@ -835,13 +824,6 @@ static bool ipdic_prim_put(shared_ptr<IPDict> cmd)
 	if (!cmd->put_bytes("bytes1", db1->Buf(), db1->UsedSize())) return DBG("put_bytes"), false;
 	if (!cmd->put_bytes("bytes2", db2->Buf(), db2->UsedSize())) return DBG("put_bytes2"), false;
 
-	if (!cmd->put_bytes_str("bytes_str1", dbs1->Buf(), dbs1->UsedSize())) {
-		return DBG("put_bytes_str1"), false;
-	}
-	if (!cmd->put_bytes_str("bytes_str2", dbs2->Buf(), dbs2->UsedSize())) {
-		return DBG("put_bytes_str2"), false;
-	}
-
 	return	true;
 }
 
@@ -862,12 +844,6 @@ static bool ipdic_prim_get(shared_ptr<IPDict> cmd)
 	if (!cmd->get_str("str2",    &rs2)  || rs2 != sv2)	return DBG("get_str2 err\n"), false;
 	if (!cmd->get_bytes("bytes1", &rdb1)|| rdb1 != *db1)	return DBG("get_bytes"),      false;
 	if (!cmd->get_bytes("bytes2", &rdb2)|| rdb2 != *db2)	return DBG("get_bytes2"),     false;
-	if (!cmd->get_bytes_str("bytes_str1", &rdbs1)|| rdbs1 != *dbs1) {
-		return DBG("get_bytes_str1"), false;
-	}
-	if (!cmd->get_bytes_str("bytes_str2", &rdbs2)|| rdbs2 != *dbs2) {
-		return DBG("get_bytes_str2"), false;
-	}
 
 	return	true;
 }
@@ -900,19 +876,25 @@ static bool ipdic_dict_get(shared_ptr<IPDict> cmd)
 }
 
 /* list */
-static const IPDictIntList	il  = { 1, 2, 3, 4 };
+static const IPDictIntList	il  = { 1, 2, 3, 4, 0, -5, INT64_MIN, INT64_MAX };
+static const IPDictFloatList fl = { 0.0, 0.1, 2.2, -0.07, -100.3,
+	DBL_MAX,
+	DBL_MIN,
+	numeric_limits<double>::infinity(),
+//	numeric_limits<float>::quiet_NaN(),
+//	numeric_limits<float>::signaling_NaN()
+};
 static const IPDictStrList	sl  = { make_shared<U8str>("str1"), make_shared<U8str>("strstr2") };
 static const IPDictBufList	bl  = { shared_ptr<DynBuf>(db1), shared_ptr<DynBuf>(db2) };
-static const IPDictBufList	bsl = { shared_ptr<DynBuf>(dbs1), shared_ptr<DynBuf>(dbs2) };
 static const IPDictList		dl  = { shared_ptr<IPDict>(sd1), shared_ptr<IPDict>(sd1) };
 static const IPDictList		ipl = { shared_ptr<IPDict>(sd1), shared_ptr<IPDict>(sd2) };
 
 static bool ipdic_list_put(shared_ptr<IPDict> cmd)
 {
 	if (!cmd->put_int_list("il",         il)) return DBG("put_int_list"), false;
+	if (!cmd->put_float_list("fl",       fl)) return DBG("put_float_list"), false;
 	if (!cmd->put_str_list("sl",         sl)) return DBG("put_str_list"), false;
 	if (!cmd->put_bytes_list("bl",       bl)) return DBG("put_bytes_list"), false;
-	if (!cmd->put_bytes_str_list("bsl", bsl)) return DBG("put_bytes_str_list"), false;
 	if (!cmd->put_dict_list("dl",        dl)) return DBG("put_dict_list"), false;
 	if (!cmd->put_ipdict_list("ipl",    ipl)) return DBG("put_ipdict_list"), false;
 
@@ -922,34 +904,33 @@ static bool ipdic_list_put(shared_ptr<IPDict> cmd)
 static bool ipdic_list_get(shared_ptr<IPDict> cmd)
 {
 	IPDictIntList	ril;
+	IPDictFloatList	rfl;
 	IPDictStrList	rsl;
 	IPDictBufList	rbl;
-	IPDictBufList	rbsl;
 	IPDictList		rdl;
 	IPDictList		ripl;
 
 	if (!cmd->get_int_list("il",   &ril) || ril != il)
-		return DBG("get_int_list"), false;
+		return DBG("get_int_list\n"), false;
+
+	if (!cmd->get_float_list("fl",  &rfl) || rfl != fl)
+		return DBG("get_float_list\n"), false;
 
 	if (!cmd->get_str_list("sl",   &rsl) ||
 		!equal(rsl.begin(), rsl.end(), sl.begin(), deref_eq<shared_ptr<U8str>>))
-		return DBG("get_str_list"), false;
+		return DBG("get_str_list\n"), false;
 
 	if (!cmd->get_bytes_list("bl", &rbl) ||
 		!equal(rbl.begin(), rbl.end(), bl.begin(), deref_eq<shared_ptr<DynBuf>>))
-		return DBG("get_bytes_list"), false;
-
-	if (!cmd->get_bytes_str_list("bsl", &rbsl) ||
-		!equal(rbsl.begin(), rbsl.end(), bsl.begin(), deref_eq<shared_ptr<DynBuf>>))
-		return DBG("get_bytes_str_list"), false;
+		return DBG("get_bytes_list\n"), false;
 
 	if (!cmd->get_dict_list("dl",  &rdl) ||
 		!equal(rdl.begin(), rdl.end(), dl.begin(), deref_eq<shared_ptr<IPDict>>))
-		return DBG("get_dict_list"), false;
+		return DBG("get_dict_list\n"), false;
 
 	if (!cmd->get_ipdict_list("ipl", &ripl) ||
 		!equal(ripl.begin(), ripl.end(), ipl.begin(), deref_eq<shared_ptr<IPDict>>))
-		return DBG("get_ipdict_list"), false;
+		return DBG("get_ipdict_list\n"), false;
 
 	return	true;
 }

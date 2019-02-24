@@ -153,6 +153,12 @@ public:
 									}
 	void GetEmptyVal(void *data);
 	BOOL HMac(void *key, DWORD klen, void *src, DWORD slen, void *hmac);
+	const char *HashName() {
+		return	type == XXHASH ? "xxHash" :
+				type == MD5    ? "md5" :
+				type == SHA1   ? "sha1" :
+				type == SHA256 ? "sha256" : "none";
+	}
 };
 
 #ifdef UNICODE

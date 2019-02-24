@@ -205,6 +205,7 @@ BOOL TSetupSheet::SetData()
 		SendDlgItemMessage(HASH_COMBO, CB_SETCURSEL,
 			cfg->hashMode <= Cfg::SHA256 ? int(cfg->hashMode) : 3, 0);
 		CheckDlgButton(VERIFYREMOVE_CHK, cfg->verifyRemove);
+//		CheckDlgButton(VERIFYINFO_CHK, cfg->verifyInfo);
 	}
 	else if (resId == DEL_SHEET) {
 		CheckDlgButton(NSA_CHECK, cfg->enableNSA);
@@ -359,6 +360,7 @@ BOOL TSetupSheet::GetData()
 		int val = (int)SendDlgItemMessage(HASH_COMBO, CB_GETCURSEL, 0, 0);
 		cfg->hashMode = (val <= 2) ? (Cfg::HashMode)val : Cfg::XXHASH;
 		cfg->verifyRemove = IsDlgButtonChecked(VERIFYREMOVE_CHK);
+//		cfg->verifyInfo = IsDlgButtonChecked(VERIFYINFO_CHK);
 	}
 	else if (resId == DEL_SHEET) {
 		cfg->enableNSA        = IsDlgButtonChecked(NSA_CHECK);

@@ -214,6 +214,7 @@ public:
 	BOOL	updCheck;
 	time_t	lastUpdCheck;
 	BOOL	verifyRemove;
+	BOOL	verifyInfo;
 
 	struct ShExtCfg {
 		BOOL	autoClose;

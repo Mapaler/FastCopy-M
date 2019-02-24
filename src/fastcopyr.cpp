@@ -1481,7 +1481,9 @@ BOOL FastCopy::ReadAbortFile(int cur_idx, Command cmd, int dir_len, BOOL is_stre
 
 	IoAbortFile(hIoFile, &rOvl);
 
-	SetTotalErrInfo(is_stream, stat->FileSize());
+	if (cmd != REQ_NONE) {
+		SetTotalErrInfo(is_stream, stat->FileSize());
+	}
 	stat->SetFileSize(0);
 
 	if (cmd == WRITE_FILE_CONT) {
