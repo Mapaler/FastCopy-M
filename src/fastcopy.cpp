@@ -965,7 +965,7 @@ BOOL FastCopy::PutList(WCHAR *path, DWORD opt, DWORD lastErr, int64 wtime, int64
 					SYSTEMTIME	sst={};
 					SYSTEMTIME	lst={};
 					FileTimeToSystemTime((FILETIME *)&wtime, &sst);
-					SystemTimeToTzSpecificLocalTime (NULL, &sst, &lst);
+					SystemTimeToTzSpecificLocalTime(NULL, &sst, &lst);
 					p += swprintf(p, L"%04d%02d%02d-%02d%02d%02d",
 						lst.wYear, lst.wMonth, lst.wDay, lst.wHour, lst.wMinute, lst.wSecond);
 				}
@@ -1468,6 +1468,9 @@ BOOL FastCopy::WDigestThreadCore(void)
 			if (calc->dataSize) {
 				if (memcmp(calc->digest, dstDigest.val, dstDigest.GetDigestSize()) == 0) {
 					// compare OK
+					if ((info.verifyFlags & VERIFY_INFO) && IsStreamFs(dstFsType)) {
+						AddVerifyInfo(calc);
+					}
 				}
 				else {
 					calc->status = DigestCalc::ERR;
@@ -1522,6 +1525,75 @@ BOOL FastCopy::WDigestThreadCore(void)
 	wDigestList.UnLock();
 
 	return	isAbort;
+}
+
+BOOL FastCopy::AddVerifyInfo(DigestCalc *calc)
+{
+	int		len = (int)wcslen(calc->path);
+	Wstr	wpath(len + 30);
+
+	wcscpyz(wpath.Buf(), calc->path);
+	wcscpyz(wpath.Buf() + len, L":fc_verify");
+
+	HANDLE	hFile = ::CreateFileW(
+		wpath.s(),
+		GENERIC_WRITE,
+		FILE_SHARE_READ|FILE_SHARE_WRITE,
+		0,
+		CREATE_ALWAYS,
+		enableBackupPriv ? FILE_FLAG_BACKUP_SEMANTICS : 0,
+		0
+	);
+	if (hFile == INVALID_HANDLE_VALUE) return FALSE;
+
+	SYSTEMTIME	sst={};
+	SYSTEMTIME	fst={};
+	::FileTimeToSystemTime((FILETIME *)&calc->wTime, &sst);
+	::SystemTimeToTzSpecificLocalTime(NULL, &sst, &fst);
+
+	SYSTEMTIME	lst={};
+	FILETIME	lft={};
+	FILETIME	sft={};
+	::GetLocalTime(&lst);
+	::SystemTimeToFileTime(&lst, &lft);
+	::LocalFileTimeToFileTime(&lft, &sft);
+
+	char	buf[1024];
+	char	*p = buf;
+
+	p += snprintfz(p, sizeof(buf),
+		"{date=%04d%02d%02d-%02d%02d%02d, "
+		"fdate=%04d%02d%02d-%02d%02d%02d, "
+		"time=%llx, "
+		"ftime=%llx, "
+		"size=%lld, "
+		"%s=",
+		lst.wYear, lst.wMonth, lst.wDay, lst.wHour, lst.wMinute, lst.wSecond,
+		fst.wYear, fst.wMonth, fst.wDay, fst.wHour, fst.wMinute, fst.wSecond,
+		*(int64 *)&sft, calc->wTime,
+		calc->fileSize, dstDigest.HashName()
+	);
+
+	p += bin2hexstr(calc->digest, dstDigest.GetDigestSize(), p);
+	p += strcpyz(p, "}");
+
+//	IPDict	d;
+//
+//	d.put_int("date", *(int64 *)&sft);
+//	d.put_int("fdate", calc->wTime);
+//	d.put_int("size", calc->fileSize);
+//	d.put_bytes("hash", calc->digest, dstDigest.GetDigestSize());
+//	p += d.pack((BYTE *)p, sizeof(buf) - (p-buf));
+
+	DWORD	size = (DWORD)(p - buf);
+
+	FILETIME	ft={};
+	::GetFileTime(hFile, 0, 0, &ft);
+	::WriteFile(hFile, buf, size, &size, 0);
+	::SetFileTime(hFile, 0, 0, &ft);
+	::CloseHandle(hFile);
+
+	return	TRUE;
 }
 
 BOOL FastCopy::VerifyErrPostProc(DigestCalc *calc)

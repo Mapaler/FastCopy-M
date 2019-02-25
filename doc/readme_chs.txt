@@ -1,5 +1,5 @@
 ﻿======================================================================
-                     FastCopy  ver3.62                 2019/01/28
+                     FastCopy  ver3.63                 2019/02/19
                                             H.Shirouzu（白水啓章）
                                             FastCopy Lab, LLC.
                      FastCopy-M branch                 2018/12/11

@@ -114,6 +114,7 @@
 #define UPDCHECK_KEY			"updCheck"
 #define LASTUPDCHECK_KEY		"lastUpdCheck"
 #define VERIFY_REMOVE_KEY		"verifyRemove"
+#define VERIFY_INFO_KEY			"verifyInfo"
 #define NO_SACL_KEY				"no_sacl"
 
 #define NONBUFMINSIZENTFS_KEY	"nonbuf_minsize_ntfs2"
@@ -612,6 +613,7 @@ BOOL Cfg::ReadIni(WCHAR *user_dir, WCHAR *virtual_dir)
 	}
 
 	verifyRemove	= ini.GetInt(VERIFY_REMOVE_KEY, 0);
+	verifyInfo		= ini.GetInt(VERIFY_INFO_KEY, 0);
 
 	enableNSA		= ini.GetInt(NSA_KEY, FALSE);
 	delDirWithFilter= ini.GetInt(DELDIR_KEY, FALSE);
@@ -872,6 +874,7 @@ BOOL Cfg::WriteIni(void)
 //	ini.SetInt(USEMD5_KEY, usingMD5);
 	ini.SetInt(HASHMODE_KEY, hashMode);
 	ini.SetInt(VERIFY_REMOVE_KEY, verifyRemove);
+//	ini.SetInt(VERIFY_INFO_KEY, verifyInfo);
 
 	ini.SetInt(NSA_KEY, enableNSA);
 	ini.SetInt(DELDIR_KEY, delDirWithFilter);

@@ -88,6 +88,7 @@ int WINAPI WinMain(HINSTANCE hI, HINSTANCE, LPSTR cmdLine, int nCmdShow)
 		WCHAR	*cmdLineW = ::GetCommandLineW();
 		if (!wcsstr(cmdLineW, TEMPDIR_OPT) &&
 			!wcsstr(cmdLineW, RUNAS_OPT)   &&
+			!wcsstr(cmdLineW, UPDATE_OPT)  &&
 			!wcsstr(cmdLineW, UNINST_OPT)) {
 			IPDict	dict;
 			if (GetIPDictBySelf(&dict)) {

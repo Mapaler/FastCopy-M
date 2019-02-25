@@ -171,8 +171,13 @@ void TInifile::InitCore(WCHAR *_ini_file)
 			char		name[1024], *tok;
 			BOOL		is_section;
 			TIniSection	*target_sec=rootSec;
+			BYTE		*top = vbuf;
 
-			for (tok=strtok(vbuf, "\r\n"); tok; tok=strtok(NULL, "\r\n")) {
+			if (top[0] == 0xEF && top[1] == 0xBB && top[2] == 0xBF) {
+				top += 3;
+			}
+
+			for (tok=strtok((char *)top, "\r\n"); tok; tok=strtok(NULL, "\r\n")) {
 				BOOL	ret = Parse(tok, &is_section, name, val);
 				if (!ret) { // AddKey reject over 64KB entry
 					target_sec->AddKey(NULL, tok);

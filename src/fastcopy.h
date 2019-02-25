@@ -351,6 +351,7 @@ public:
 		VERIFY_XXHASH		=	0x00000020,
 		VERIFY_FILE			=	0x00001000,
 		VERIFY_REMOVE		=	0x00002000,
+		VERIFY_INFO			=	0x00004000,
 	};
 	enum FileLogFlags {
 		FILELOG_TIMESTAMP	=	0x00000001,
@@ -791,6 +792,7 @@ protected:
 	BOOL RDigestThreadCore(void);
 	BOOL WDigestThreadCore(void);
 	BOOL VerifyErrPostProc(DigestCalc *calc);
+	BOOL AddVerifyInfo(DigestCalc *calc);
 
 	LinkStatus CheckHardLink(WCHAR *path, int len=-1, HANDLE hFileOrg=INVALID_HANDLE_VALUE,
 				DWORD *data=NULL);
