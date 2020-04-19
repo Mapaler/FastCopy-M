@@ -3,8 +3,8 @@
 "FastCopy-M" 是免费开源软件 "FastCopy" 的一个二次开发分支。  
 FastCopy-M is a fork of open source soft FastCopy.
 
-官方最后公开源代码的版本为3.63，之后并未公开源代码，因此FastCopy-M无法跟进更新。  
-The official final opensource version is 3.63, so FastCopy-M cannot follow up on the update.
+**官方最后公开源代码的版本为 3.63，之后并未公开源代码，因此FastCopy-M无法跟进更新。因为已经一年多没有提供源代码了，因此本项目更改为休眠状态。  
+The official final opensource version is 3.63, so FastCopy-M cannot follow up on the update.This project was modified to archive status because the source code has not been provided for more than one year.**
 
 现在拥有如下语言：  
 Now has the following language:
